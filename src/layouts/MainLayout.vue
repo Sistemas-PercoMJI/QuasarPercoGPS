@@ -90,7 +90,7 @@ function toggleLeftDrawer() {
 <style scoped>
 /* Header con gradiente aaaaaa*/
 .bg-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
 
 .menu-btn {
@@ -109,7 +109,7 @@ function toggleLeftDrawer() {
 .drawer-header {
   padding: 32px 24px 16px;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   border-radius: 0 0 24px 24px;
   margin-bottom: 16px;
