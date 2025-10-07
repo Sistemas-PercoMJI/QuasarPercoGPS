@@ -2,41 +2,28 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated class="bg-gradient">
       <q-toolbar>
-        <q-btn 
-          flat 
-          dense 
-          round 
-          icon="menu" 
-          aria-label="Menu" 
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
           @click="toggleLeftDrawer"
           class="menu-btn"
         />
 
-        <q-toolbar-title class="text-weight-bold">
-          ✨ Mi Portafolio Increíble
-        </q-toolbar-title>
+        <q-toolbar-title class="text-weight-bold"> ✨ PERCO GPS </q-toolbar-title>
 
-        <q-chip 
-          outline 
-          color="white" 
-          text-color="white"
-          icon="bug_report"
-        >
+        <q-chip outline color="white" text-color="white" icon="bug_report">
           Quasar v{{ $q.version }}
         </q-chip>
       </q-toolbar>
     </q-header>
 
-    <q-drawer 
-      v-model="leftDrawerOpen" 
-      show-if-above 
-      bordered
-      :width="300"
-      class="drawer-custom"
-    >
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="300" class="drawer-custom">
       <div class="drawer-header">
         <q-avatar size="80px" class="q-mb-md">
-          <img src="https://cdn.quasar.dev/logo-v2/svg/logo.svg" alt="Logo">
+          <img src="https://cdn.quasar.dev/logo-v2/svg/logo.svg" alt="Logo" />
         </q-avatar>
         <div class="text-h6 text-weight-bold">Enlaces Esenciales</div>
         <div class="text-caption text-grey-7">Recursos y proyectos destacados</div>
@@ -45,11 +32,7 @@
       <q-separator class="q-my-md" />
 
       <q-list padding>
-        <EssentialLink 
-          v-for="link in linksList" 
-          :key="link.title" 
-          v-bind="link" 
-        />
+        <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
       </q-list>
     </q-drawer>
 
@@ -65,47 +48,30 @@ import EssentialLink from 'components/EssentialLink.vue'
 
 const linksList = [
   {
-    title: 'Docs',
+    title: 'Estado de la flota ',
     caption: 'quasar.dev',
     icon: 'school',
     link: 'https://quasar.dev',
   },
   {
-    title: 'Github',
+    title: 'Conductores',
     caption: 'github.com/quasarframework',
     icon: 'code',
     link: 'https://github.com/quasarframework',
   },
   {
-    title: 'Discord Chat Channel',
+    title: 'Puntos de Interés',
     caption: 'chat.quasar.dev',
     icon: 'chat',
     link: 'https://chat.quasar.dev',
   },
   {
-    title: 'Forum',
+    title: 'Eventos',
     caption: 'forum.quasar.dev',
     icon: 'record_voice_over',
     link: 'https://forum.quasar.dev',
   },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
-  },
+
   {
     title: 'Perco',
     caption: 'Página Web de perco',
@@ -122,7 +88,7 @@ function toggleLeftDrawer() {
 </script>
 
 <style scoped>
-/* Header con gradiente */
+/* Header con gradiente aaaaaa*/
 .bg-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
