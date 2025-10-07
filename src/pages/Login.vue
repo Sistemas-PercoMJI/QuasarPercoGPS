@@ -27,13 +27,13 @@ const login = () => {
     <q-page-container>
       <q-page
         class="flex flex-center"
-        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+        style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
       >
         <q-card style="width: 400px; max-width: 90vw">
           <!-- Logo/Header -->
           <q-card-section class="text-center q-pt-lg">
             <q-icon name="location_on" size="60px" color="primary" />
-            <div class="text-h4 text-weight-bold q-mt-md">PercoGPS</div>
+            <div class="text-h4 text-weight-bold q-mt-md">MJ Indsutrial GPS</div>
             <div class="text-subtitle2 text-grey-7">Sistema de Rastreo Vehicular</div>
           </q-card-section>
 
