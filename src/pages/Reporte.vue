@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <q-page padding>
-    <div class="text-h4 q-mb-md">Reportes</div>
+    <div class="text-h4 text-weight-bold q-mb-md">Reportes</div>
 
     <q-tabs
       v-model="tab"
