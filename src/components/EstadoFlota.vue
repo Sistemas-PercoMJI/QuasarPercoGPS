@@ -3,33 +3,19 @@
     <!-- Header con título y botón cerrar -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Estado de la flota</div>
-      <q-btn 
-        flat 
-        dense 
-        round 
-        icon="close" 
-        color="white"
-        @click="cerrarDrawer"
-      />
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
     </div>
 
     <!-- Selector de todos los vehículos -->
     <div class="q-pa-sm q-px-md">
-      <q-checkbox 
-        v-model="todosVehiculos" 
-        label="Todos los vehículos" 
+      <q-checkbox
+        v-model="todosVehiculos"
+        label="Todos los vehículos"
         @update:model-value="seleccionarTodos"
         dense
       />
       <span class="text-grey-7 q-ml-sm">{{ totalVehiculos }}</span>
-      <q-btn 
-        flat 
-        dense 
-        round 
-        icon="more_vert"
-        size="sm"
-        class="float-right"
-      />
+      <q-btn flat dense round icon="more_vert" size="sm" class="float-right" />
     </div>
 
     <!-- Filtros por estado con iconos y colores -->
@@ -43,12 +29,7 @@
         :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
       >
         <div class="estado-contenido">
-          <q-icon 
-            :name="estado.icono" 
-            size="22px"
-            :color="estado.color"
-            class="estado-icono"
-          />
+          <q-icon :name="estado.icono" size="22px" :color="estado.color" class="estado-icono" />
           <div class="estado-numero" :style="{ background: getColorHex(estado.color) }">
             {{ estado.cantidad }}
           </div>
@@ -58,13 +39,7 @@
 
     <!-- Búsqueda -->
     <div class="q-px-md q-pb-sm">
-      <q-input
-        v-model="busqueda"
-        outlined
-        dense
-        placeholder="Búsqueda"
-        class="search-input"
-      >
+      <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
         <template v-slot:prepend>
           <q-icon name="search" />
         </template>
@@ -90,11 +65,7 @@
         class="vehiculo-item"
       >
         <q-item-section avatar>
-          <q-avatar 
-            :color="getColorEstado(vehiculo.estado)" 
-            text-color="white"
-            size="40px"
-          >
+          <q-avatar :color="getColorEstado(vehiculo.estado)" text-color="white" size="40px">
             <q-icon :name="getIconoEstado(vehiculo.estado)" size="24px" />
           </q-avatar>
         </q-item-section>
@@ -131,43 +102,43 @@ const estadosVehiculos = ref([
     nombre: 'Todos',
     icono: 'directions_car',
     color: 'blue',
-    cantidad: 6
+    cantidad: 6,
   },
   {
     tipo: 'movimiento',
     nombre: 'En movimiento',
     icono: 'navigation',
     color: 'green',
-    cantidad: 0
+    cantidad: 0,
   },
   {
     tipo: 'inactivo',
     nombre: 'Inactivo',
     icono: 'pause_circle',
     color: 'orange',
-    cantidad: 1
+    cantidad: 1,
   },
   {
     tipo: 'ignicion_apagada',
     nombre: 'Ignición apagada',
     icono: 'power_settings_new',
     color: 'blue-grey',
-    cantidad: 4
+    cantidad: 4,
   },
   {
     tipo: 'carga',
     nombre: 'Carga',
     icono: 'local_gas_station',
     color: 'cyan',
-    cantidad: 0
+    cantidad: 0,
   },
   {
     tipo: 'ignicion_bloqueada',
     nombre: 'Ignición bloqueada',
     icono: 'lock',
     color: 'red',
-    cantidad: 1
-  }
+    cantidad: 1,
+  },
 ])
 
 // Lista de vehículos (datos de ejemplo)
@@ -177,43 +148,43 @@ const vehiculos = ref([
     nombre: 'CRAFTER-VF61428_REV',
     ubicacion: 'MX, Hermosillo, Boulevard E...',
     velocidad: '0 km/h',
-    estado: 'inactivo'
+    estado: 'inactivo',
   },
   {
     id: 2,
     nombre: 'ELEV TIJ-SOTO-FRONTI...',
     ubicacion: 'MX, Ensenada, Calle Lago de...',
     velocidad: '0 km/h',
-    estado: 'ignicion_apagada'
+    estado: 'ignicion_apagada',
   },
   {
     id: 3,
     nombre: 'PERCO TIJ-CRAFTER-UX...',
     ubicacion: 'MX, Tijuana, Calle Rey Alejan...',
     velocidad: '0 km/h',
-    estado: 'ignicion_apagada'
+    estado: 'ignicion_apagada',
   },
   {
     id: 4,
     nombre: 'SPRINTER-PANEL-1-HF3...',
     ubicacion: 'MX, Tijuana, Boulevard Guad...',
     velocidad: '0 km/h',
-    estado: 'ignicion_apagada'
+    estado: 'ignicion_apagada',
   },
   {
     id: 5,
     nombre: 'TIENDAPERCO-TIJ-NP3...',
     ubicacion: 'MX, Tijuana, Boulevard de lo...',
     velocidad: '0 km/h',
-    estado: 'ignicion_apagada'
+    estado: 'ignicion_apagada',
   },
   {
     id: 6,
     nombre: 'VENTAS_PERCO_INS_N...',
     ubicacion: 'MX, Tijuana, Boulevard de lo...',
     velocidad: '0 km/h',
-    estado: 'ignicion_bloqueada'
-  }
+    estado: 'ignicion_bloqueada',
+  },
 ])
 
 // Computed
@@ -224,14 +195,15 @@ const vehiculosFiltrados = computed(() => {
 
   // Filtrar por estado
   if (estadoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter(v => v.estado === estadoSeleccionado.value)
+    resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(v => 
-      v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase())
+    resultado = resultado.filter(
+      (v) =>
+        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -269,7 +241,7 @@ function getColorEstado(estado) {
     inactivo: 'orange',
     ignicion_apagada: 'blue-grey',
     carga: 'cyan',
-    ignicion_bloqueada: 'red'
+    ignicion_bloqueada: 'red',
   }
   return colores[estado] || 'grey'
 }
@@ -281,7 +253,7 @@ function getIconoEstado(estado) {
     inactivo: 'pause_circle',
     ignicion_apagada: 'power_settings_new',
     carga: 'local_gas_station',
-    ignicion_bloqueada: 'lock'
+    ignicion_bloqueada: 'lock',
   }
   return iconos[estado] || 'directions_car'
 }
@@ -293,7 +265,7 @@ function getColorHex(color) {
     orange: '#FF9800',
     'blue-grey': '#607D8B',
     cyan: '#00BCD4',
-    red: '#F44336'
+    red: '#F44336',
   }
   return colores[color] || '#9E9E9E'
 }
@@ -313,7 +285,7 @@ function getColorHex(color) {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   min-height: 48px;
 }
