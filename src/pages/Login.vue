@@ -2,11 +2,12 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { Notify } from 'quasar'
 
 const router = useRouter()
+const $q = useQuasar()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -14,7 +15,7 @@ const loading = ref(false)
 const login = async () => {
   // Validar campos
   if (!email.value || !password.value) {
-    Notify.create({
+    $q.notify({
       type: 'negative',
       message: 'Por favor ingresa email y contraseña',
     })
@@ -30,7 +31,7 @@ const login = async () => {
     // Login exitoso
     console.log('Usuario logueado:', userCredential.user)
 
-    Notify.create({
+    $q.notify({
       type: 'positive',
       message: 'Bienvenido!',
     })
@@ -53,7 +54,7 @@ const login = async () => {
       mensaje = 'Credenciales inválidas'
     }
 
-    Notify.create({
+    $q.notify({
       type: 'negative',
       message: mensaje,
     })
