@@ -102,6 +102,11 @@
       <Conductores @close="cerrarConductores" />
     </q-drawer>
 
+    <!-- Drawer Geozonas -->
+    <q-drawer v-model="geozonaDrawerOpen" side="left" bordered :width="350" overlay elevated>
+      <GeoZonas @close="cerrarGeozonas" />
+    </q-drawer>
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -179,6 +184,7 @@ import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
+import GeoZonas from 'src/components/GeoZonas.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -213,10 +219,10 @@ const linksList = [
     action: 'open-conductores',
   },
   {
-    title: 'Puntos de Interés',
+    title: 'GeoZonas',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    link: '/dashboard',
+    action: 'open-geozonas',
   },
   {
     title: 'Eventos',
@@ -242,6 +248,7 @@ const linksList = [
 const leftDrawerOpen = ref(false)
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
+const geozonaDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -254,6 +261,8 @@ function handleLinkClick(link) {
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
     conductoresDrawerOpen.value = true
+  } else if (link.action === 'open-geozonas') {
+    geozonaDrawerOpen.value = true
   }
 }
 
@@ -263,6 +272,10 @@ function cerrarEstadoFlota() {
 
 function cerrarConductores() {
   conductoresDrawerOpen.value = false
+}
+
+function cerrarGeozonas() {
+  geozonaDrawerOpen.value = false
 }
 
 const logout = async () => {
