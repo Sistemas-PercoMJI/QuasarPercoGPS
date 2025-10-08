@@ -32,7 +32,23 @@
       <q-separator class="q-my-md" />
 
       <q-list padding>
-        <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
+        <q-item
+          v-for="link in linksList"
+          :key="link.title"
+          clickable
+          :to="link.action === 'logout' ? undefined : link.link"
+          @click="link.action === 'logout' ? logout() : null"
+          v-ripple
+        >
+          <q-item-section avatar>
+            <q-icon :name="link.icon" />
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label>{{ link.title }}</q-item-label>
+            <q-item-label caption>{{ link.caption }}</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -44,39 +60,50 @@
 
 <script setup>
 import { ref } from 'vue'
-import EssentialLink from 'components/EssentialLink.vue'
+import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
+import { auth } from 'src/firebase/firebaseConfig'
+import { signOut } from 'firebase/auth'
+
+const router = useRouter()
+const $q = useQuasar()
 
 const linksList = [
   {
-    title: 'Estado de la flota ',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
+    title: 'Estado de la flota',
+    caption: 'Monitoreo en tiempo real',
+    icon: 'directions_car',
+    link: '/flota',
   },
   {
     title: 'Conductores',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
+    caption: 'Gestión de conductores',
+    icon: 'person',
+    link: '/conductores',
   },
   {
     title: 'Puntos de Interés',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev',
+    caption: 'Ubicaciones importantes',
+    icon: 'place',
+    link: '/puntos-interes',
   },
   {
     title: 'Eventos',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
+    caption: 'Alertas y notificaciones',
+    icon: 'notifications',
+    link: '/eventos',
   },
-
   {
     title: 'Perco',
     caption: 'Página Web de perco',
-    icon: 'https://perco.com.mx/wp-content/uploads/2025/01/logo-perco.png',
+    icon: 'language',
     link: 'https://perco.com.mx/',
+  },
+  {
+    title: 'Salir',
+    caption: 'Cerrar sesión',
+    icon: 'logout',
+    action: 'logout',
   },
 ]
 
@@ -85,10 +112,32 @@ const leftDrawerOpen = ref(false)
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
+
+const logout = async () => {
+  try {
+    await signOut(auth)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Sesión cerrada correctamente',
+      icon: 'check_circle',
+    })
+
+    router.push('/login')
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error)
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cerrar sesión',
+      icon: 'error',
+    })
+  }
+}
 </script>
 
 <style scoped>
-/* Header con gradiente aaaaaa*/
+/* Header con gradiente */
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }

@@ -69,7 +69,7 @@ const login = async () => {
     <q-page-container>
       <q-page
         class="flex flex-center"
-        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+        style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
       >
         <q-card style="width: 400px; max-width: 90vw">
           <!-- Logo/Header -->
