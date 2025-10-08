@@ -1,4 +1,5 @@
 import { defineRouter } from '#q-app/wrappers'
+import { authGuard } from './authGuard'
 import {
   createRouter,
   createMemoryHistory,
@@ -32,6 +33,6 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     // quasar.conf.js -> build -> publicPath
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
-
+  Router.beforeEach(authGuard)
   return Router
 })
