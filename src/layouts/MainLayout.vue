@@ -20,7 +20,8 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="300" class="drawer-custom">
+    <!-- Drawer principal -->
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="350" class="drawer-custom">
       <div class="drawer-header">
         <q-avatar size="80px" class="q-mb-md">
           <img src="https://cdn.quasar.dev/logo-v2/svg/logo.svg" alt="Logo" />
@@ -53,8 +54,8 @@
           <q-item
             v-else
             clickable
-            :to="link.action === 'logout' ? undefined : link.link"
-            @click="link.action === 'logout' ? logout() : null"
+            :to="link.action ? undefined : link.link"
+            @click="handleLinkClick(link)"
             v-ripple
           >
             <q-item-section avatar>
@@ -70,6 +71,20 @@
       </q-list>
     </q-drawer>
 
+    <!-- Drawer Estado de la Flota -->
+    <q-drawer
+      v-model="estadoFlotaDrawerOpen"
+      side="left"
+      bordered
+      :width="350"
+      overlay
+      elevated
+    >
+      <EstadoFlota 
+        @close="cerrarEstadoFlota"
+      />
+    </q-drawer>
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -82,6 +97,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
+import EstadoFlota from 'src/components/EstadoFlota.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -91,7 +107,7 @@ const linksList = [
     title: 'Estado de la flota',
     caption: 'Monitoreo en tiempo real',
     icon: 'directions_car',
-    link: '/dashboard',
+    action: 'open-estado-flota',
   },
   {
     title: 'Conductores',
@@ -127,9 +143,22 @@ const linksList = [
 ]
 
 const leftDrawerOpen = ref(false)
+const estadoFlotaDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+function handleLinkClick(link) {
+  if (link.action === 'logout') {
+    logout()
+  } else if (link.action === 'open-estado-flota') {
+    estadoFlotaDrawerOpen.value = true
+  }
+}
+
+function cerrarEstadoFlota() {
+  estadoFlotaDrawerOpen.value = false
 }
 
 const logout = async () => {
