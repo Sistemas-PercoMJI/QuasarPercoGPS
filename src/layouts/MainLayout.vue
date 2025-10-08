@@ -108,32 +108,6 @@
               <q-separator class="q-my-sm" />
 
               <q-list dense>
-                <q-item clickable v-ripple @click="irAPerfil" v-close-popup>
-                  <q-item-section avatar>
-                    <q-avatar color="primary" text-color="white" size="sm">
-                      <q-icon name="person" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Perfil</q-item-label>
-                    <q-item-label caption>Ver y editar tu perfil</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-separator inset />
-
-                <q-item clickable v-ripple @click="irAConfiguracion" v-close-popup>
-                  <q-item-section avatar>
-                    <q-avatar color="blue-grey" text-color="white" size="sm">
-                      <q-icon name="settings" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Configuración General</q-item-label>
-                    <q-item-label caption>Ajustes del sistema</q-item-label>
-                  </q-item-section>
-                </q-item>
-
                 <q-separator class="q-my-sm" />
 
                 <q-item clickable v-ripple @click="cerrarSesionDesdeConfig" v-close-popup>
@@ -187,14 +161,6 @@ import GeoZonas from 'src/components/GeoZonas.vue'
 
 const router = useRouter()
 const $q = useQuasar()
-
-function irAPerfil() {
-  router.push('/perfil')
-}
-
-function irAConfiguracion() {
-  router.push('/configuracion')
-}
 
 function cerrarSesionDesdeConfig() {
   logout()
