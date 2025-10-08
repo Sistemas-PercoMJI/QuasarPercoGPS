@@ -98,7 +98,7 @@
             transition-show="jump-up"
             transition-hide="jump-down"
           >
-            <q-card style="width: 300px; max-width: 90vw">
+            <q-card style="width: 300px; max-width: 90vw" class="rounded-borders">
               <q-card-section class="row items-center q-pb-none">
                 <div class="text-h6 text-weight-bold">Configuración</div>
                 <q-space />
@@ -134,7 +134,7 @@
                   </q-item-section>
                 </q-item>
 
-                <q-separator inset />
+                <q-separator class="q-my-sm" />
 
                 <q-item clickable v-ripple @click="cerrarSesionDesdeConfig" v-close-popup>
                   <q-item-section avatar>
