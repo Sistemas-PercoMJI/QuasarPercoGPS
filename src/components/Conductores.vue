@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="conductores-drawer">
     <!-- Header -->
@@ -235,7 +236,6 @@
 </template>
 
 <script setup>
-/* eslint-disable vue/multi-word-component-names */
 import { ref, computed } from 'vue'
 
 // Emits
