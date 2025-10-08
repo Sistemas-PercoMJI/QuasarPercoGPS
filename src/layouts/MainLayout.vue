@@ -36,16 +36,9 @@
       <q-separator class="q-my-md" />
 
       <q-list padding>
-        <template v-for="link in linksList">
+        <template v-for="link in linksList" :key="link.title">
           <!-- Link externo -->
-          <q-item 
-            v-if="link.external" 
-            :key="link.title"
-            clickable 
-            :href="link.link" 
-            target="_blank" 
-            v-ripple
-          >
+          <q-item v-if="link.external" clickable :href="link.link" target="_blank" v-ripple>
             <q-item-section avatar>
               <q-icon :name="link.icon" />
             </q-item-section>
@@ -63,7 +56,6 @@
           <!-- Link interno o acción -->
           <q-item
             v-else
-            :key="link.title"
             clickable
             :to="link.action ? undefined : link.link"
             @click="handleLinkClick(link)"
@@ -83,26 +75,12 @@
     </q-drawer>
 
     <!-- Drawer Estado de la Flota -->
-    <q-drawer 
-      v-model="estadoFlotaDrawerOpen" 
-      side="left" 
-      bordered 
-      :width="350" 
-      overlay 
-      elevated
-    >
+    <q-drawer v-model="estadoFlotaDrawerOpen" side="left" bordered :width="350" overlay elevated>
       <EstadoFlota @close="cerrarEstadoFlota" />
     </q-drawer>
 
     <!-- Drawer Conductores -->
-    <q-drawer 
-      v-model="conductoresDrawerOpen" 
-      side="left" 
-      bordered 
-      :width="350" 
-      overlay 
-      elevated
-    >
+    <q-drawer v-model="conductoresDrawerOpen" side="left" bordered :width="350" overlay elevated>
       <Conductores @close="cerrarConductores" />
     </q-drawer>
 
