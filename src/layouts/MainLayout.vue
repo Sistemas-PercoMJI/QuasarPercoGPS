@@ -72,6 +72,24 @@
           </q-item>
         </template>
       </q-list>
+      <!-- Botón de configuración en la parte inferior -->
+      <div class="absolute-bottom q-pa-md bg-white">
+        <q-separator class="q-mb-md" />
+        <q-item clickable v-ripple @click="configDrawerOpen = true" class="config-item">
+          <q-item-section avatar>
+            <q-avatar color="grey-3" text-color="grey-8" size="40px">
+              <q-icon name="settings" />
+            </q-avatar>
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">Configuración</q-item-label>
+            <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-icon name="expand_less" color="grey-5" />
+          </q-item-section>
+        </q-item>
+      </div>
     </q-drawer>
 
     <!-- Drawer Estado de la Flota -->
@@ -87,6 +105,69 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <q-dialog v-model="configDrawerOpen" position="bottom">
+      <q-card style="width: 100%; max-width: 500px" class="q-pa-md">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Configuración</div>
+          <q-space />
+          <q-btn icon="close" flat round dense @click="configDrawerOpen = false" />
+        </q-card-section>
+
+        <q-separator class="q-my-md" />
+
+        <q-list>
+          <q-item clickable v-ripple @click="irAPerfil">
+            <q-item-section avatar>
+              <q-avatar color="primary" text-color="white">
+                <q-icon name="person" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Perfil</q-item-label>
+              <q-item-label caption>Ver y editar tu perfil</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <q-separator inset />
+
+          <q-item clickable v-ripple @click="irAConfiguracion">
+            <q-item-section avatar>
+              <q-avatar color="blue-grey" text-color="white">
+                <q-icon name="settings" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Configuración General</q-item-label>
+              <q-item-label caption>Ajustes del sistema</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <q-separator inset />
+
+          <q-item clickable v-ripple @click="cerrarSesionDesdeConfig">
+            <q-item-section avatar>
+              <q-avatar color="negative" text-color="white">
+                <q-icon name="logout" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Cerrar Sesión</q-item-label>
+              <q-item-label caption>Salir de tu cuenta</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -101,6 +182,22 @@ import Conductores from 'src/components/Conductores.vue'
 
 const router = useRouter()
 const $q = useQuasar()
+const configDrawerOpen = ref(false)
+
+function irAPerfil() {
+  configDrawerOpen.value = false
+  router.push('/perfil')
+}
+
+function irAConfiguracion() {
+  configDrawerOpen.value = false
+  router.push('/configuracion')
+}
+
+function cerrarSesionDesdeConfig() {
+  configDrawerOpen.value = false
+  logout()
+}
 
 const linksList = [
   {
@@ -139,12 +236,6 @@ const linksList = [
     caption: 'Crear reporte',
     icon: 'description',
     link: '/reporte',
-  },
-  {
-    title: 'Salir',
-    caption: 'Cerrar sesión',
-    icon: 'logout',
-    action: 'logout',
   },
 ]
 
