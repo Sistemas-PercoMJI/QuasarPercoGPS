@@ -23,8 +23,11 @@
     <!-- Drawer principal -->
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="350" class="drawer-custom">
       <div class="drawer-header">
-        <q-avatar size="80px" class="q-mb-md">
-          <img src="https://cdn.quasar.dev/logo-v2/svg/logo.svg" alt="Logo" />
+        <q-avatar size="100px" class="q-mb-md">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
+            alt="Logo"
+          />
         </q-avatar>
         <div class="text-h6 text-weight-bold">Enlaces Esenciales</div>
         <div class="text-caption text-grey-7">Recursos y proyectos destacados</div>
@@ -72,17 +75,8 @@
     </q-drawer>
 
     <!-- Drawer Estado de la Flota -->
-    <q-drawer
-      v-model="estadoFlotaDrawerOpen"
-      side="left"
-      bordered
-      :width="350"
-      overlay
-      elevated
-    >
-      <EstadoFlota 
-        @close="cerrarEstadoFlota"
-      />
+    <q-drawer v-model="estadoFlotaDrawerOpen" side="left" bordered :width="350" overlay elevated>
+      <EstadoFlota @close="cerrarEstadoFlota" />
     </q-drawer>
 
     <q-page-container>
@@ -210,10 +204,5 @@ const logout = async () => {
   color: white;
   border-radius: 0 0 24px 24px;
   margin-bottom: 16px;
-}
-
-.drawer-header .q-avatar {
-  border: 4px solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>
