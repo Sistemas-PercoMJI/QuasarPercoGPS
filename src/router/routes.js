@@ -15,6 +15,10 @@ const routes = [
         path: '',
         component: () => import('pages/IndexPage.vue'),
       },
+      {
+        path: '/reporte', // ← Agrega esto (en minúscula)
+        component: () => import('pages/Reporte.vue'),
+      },
     ],
   },
 

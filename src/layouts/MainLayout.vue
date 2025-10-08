@@ -129,6 +129,12 @@ const linksList = [
     external: true,
   },
   {
+    title: 'Reportes',
+    caption: 'Crear reporte',
+    icon: 'description',
+    link: '/reporte',
+  },
+  {
     title: 'Salir',
     caption: 'Cerrar sesión',
     icon: 'logout',
