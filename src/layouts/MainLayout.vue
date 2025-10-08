@@ -36,9 +36,16 @@
       <q-separator class="q-my-md" />
 
       <q-list padding>
-        <template v-for="link in linksList" :key="link.title">
+        <template v-for="link in linksList">
           <!-- Link externo -->
-          <q-item v-if="link.external" clickable :href="link.link" target="_blank" v-ripple>
+          <q-item 
+            v-if="link.external" 
+            :key="link.title"
+            clickable 
+            :href="link.link" 
+            target="_blank" 
+            v-ripple
+          >
             <q-item-section avatar>
               <q-icon :name="link.icon" />
             </q-item-section>
@@ -56,6 +63,7 @@
           <!-- Link interno o acción -->
           <q-item
             v-else
+            :key="link.title"
             clickable
             :to="link.action ? undefined : link.link"
             @click="handleLinkClick(link)"
@@ -75,8 +83,27 @@
     </q-drawer>
 
     <!-- Drawer Estado de la Flota -->
-    <q-drawer v-model="estadoFlotaDrawerOpen" side="left" bordered :width="350" overlay elevated>
+    <q-drawer 
+      v-model="estadoFlotaDrawerOpen" 
+      side="left" 
+      bordered 
+      :width="350" 
+      overlay 
+      elevated
+    >
       <EstadoFlota @close="cerrarEstadoFlota" />
+    </q-drawer>
+
+    <!-- Drawer Conductores -->
+    <q-drawer 
+      v-model="conductoresDrawerOpen" 
+      side="left" 
+      bordered 
+      :width="350" 
+      overlay 
+      elevated
+    >
+      <Conductores @close="cerrarConductores" />
     </q-drawer>
 
     <q-page-container>
@@ -92,6 +119,7 @@ import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
+import Conductores from 'src/components/Conductores.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -107,7 +135,7 @@ const linksList = [
     title: 'Conductores',
     caption: 'Gestión de conductores',
     icon: 'person',
-    link: '/dashboard',
+    action: 'open-conductores',
   },
   {
     title: 'Puntos de Interés',
@@ -144,6 +172,7 @@ const linksList = [
 
 const leftDrawerOpen = ref(false)
 const estadoFlotaDrawerOpen = ref(false)
+const conductoresDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -154,11 +183,17 @@ function handleLinkClick(link) {
     logout()
   } else if (link.action === 'open-estado-flota') {
     estadoFlotaDrawerOpen.value = true
+  } else if (link.action === 'open-conductores') {
+    conductoresDrawerOpen.value = true
   }
 }
 
 function cerrarEstadoFlota() {
   estadoFlotaDrawerOpen.value = false
+}
+
+function cerrarConductores() {
+  conductoresDrawerOpen.value = false
 }
 
 const logout = async () => {
