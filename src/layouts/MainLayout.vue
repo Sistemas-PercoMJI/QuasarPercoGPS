@@ -32,23 +32,41 @@
       <q-separator class="q-my-md" />
 
       <q-list padding>
-        <q-item
-          v-for="link in linksList"
-          :key="link.title"
-          clickable
-          :to="link.action === 'logout' ? undefined : link.link"
-          @click="link.action === 'logout' ? logout() : null"
-          v-ripple
-        >
-          <q-item-section avatar>
-            <q-icon :name="link.icon" />
-          </q-item-section>
+        <template v-for="link in linksList" :key="link.title">
+          <!-- Link externo -->
+          <q-item v-if="link.external" clickable :href="link.link" target="_blank" v-ripple>
+            <q-item-section avatar>
+              <q-icon :name="link.icon" />
+            </q-item-section>
 
-          <q-item-section>
-            <q-item-label>{{ link.title }}</q-item-label>
-            <q-item-label caption>{{ link.caption }}</q-item-label>
-          </q-item-section>
-        </q-item>
+            <q-item-section>
+              <q-item-label>{{ link.title }}</q-item-label>
+              <q-item-label caption>{{ link.caption }}</q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
+              <q-icon name="open_in_new" size="xs" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Link interno o acción -->
+          <q-item
+            v-else
+            clickable
+            :to="link.action === 'logout' ? undefined : link.link"
+            @click="link.action === 'logout' ? logout() : null"
+            v-ripple
+          >
+            <q-item-section avatar>
+              <q-icon :name="link.icon" />
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label>{{ link.title }}</q-item-label>
+              <q-item-label caption>{{ link.caption }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </template>
       </q-list>
     </q-drawer>
 
@@ -73,31 +91,32 @@ const linksList = [
     title: 'Estado de la flota',
     caption: 'Monitoreo en tiempo real',
     icon: 'directions_car',
-    link: '/flota',
+    link: '/dashboard',
   },
   {
     title: 'Conductores',
     caption: 'Gestión de conductores',
     icon: 'person',
-    link: '/conductores',
+    link: '/dashboard',
   },
   {
     title: 'Puntos de Interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    link: '/puntos-interes',
+    link: '/dashboard',
   },
   {
     title: 'Eventos',
     caption: 'Alertas y notificaciones',
     icon: 'notifications',
-    link: '/eventos',
+    link: '/dashboard',
   },
   {
     title: 'Perco',
     caption: 'Página Web de perco',
     icon: 'language',
     link: 'https://perco.com.mx/',
+    external: true,
   },
   {
     title: 'Salir',
