@@ -120,6 +120,17 @@
                     <q-item-label class="q-pb-md" caption> Salir de tu cuenta</q-item-label>
                   </q-item-section>
                 </q-item>
+                <q-item clickable>
+                  <q-item-section avatar>
+                    <q-avatar color="negative" text-color="white" size="sm">
+                      <q-icon name="directions_car" />
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>Estado de la Unidad</q-item-label>
+                    <q-item-label class="q-pb-md" caption> Seleccionar Unidad</q-item-label>
+                  </q-item-section>
+                </q-item>
               </q-list>
             </q-card>
           </q-menu>
