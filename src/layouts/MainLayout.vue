@@ -12,7 +12,7 @@
           class="menu-btn"
         />
 
-        <q-toolbar-title class="text-weight-bold"> ✨ PERCO GPS </q-toolbar-title>
+        <q-toolbar-title class="text-weight-bold">MJ GPS </q-toolbar-title>
 
         <q-chip outline color="white" text-color="white" icon="bug_report">
           Quasar v{{ $q.version }}
@@ -29,8 +29,7 @@
             alt="Logo"
           />
         </q-avatar>
-        <div class="text-h6 text-weight-bold">Enlaces Esenciales</div>
-        <div class="text-caption text-grey-7">Recursos y proyectos destacados</div>
+        <div class="text-h6 text-weight-bold">Ubicacion de flotas</div>
       </div>
 
       <q-separator class="q-my-md" />
