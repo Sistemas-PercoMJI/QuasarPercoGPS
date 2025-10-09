@@ -143,6 +143,11 @@
       <GeoZonas @close="cerrarGeozonas" />
     </q-drawer>
 
+    <!-- Drawer Eventos -->
+    <q-drawer v-model="EventosDrawerOpen" side="left" bordered :width="350" overlay elevated>
+      <Eventos @close="cerrarEventos" />
+    </q-drawer>
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -158,6 +163,7 @@ import { signOut } from 'firebase/auth'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
 import GeoZonas from 'src/components/GeoZonas.vue'
+import Eventos from 'src/components/Eventos.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -189,7 +195,7 @@ const linksList = [
     title: 'Eventos',
     caption: 'Alertas y notificaciones',
     icon: 'notifications',
-    link: '/dashboard',
+    action: 'open-eventos',
   },
   {
     title: 'Perco',
@@ -210,6 +216,7 @@ const leftDrawerOpen = ref(false)
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
+const EventosDrawerOpen = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -224,6 +231,8 @@ function handleLinkClick(link) {
     conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
     geozonaDrawerOpen.value = true
+  } else if (link.action === 'open-eventos') {
+    EventosDrawerOpen.value = true
   }
 }
 
@@ -237,6 +246,10 @@ function cerrarConductores() {
 
 function cerrarGeozonas() {
   geozonaDrawerOpen.value = false
+}
+
+function cerrarEventos() {
+  EventosDrawerOpen.value = false
 }
 
 const logout = async () => {
