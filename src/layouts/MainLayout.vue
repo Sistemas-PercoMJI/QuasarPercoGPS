@@ -117,7 +117,7 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Cerrar Sesión</q-item-label>
-                    <q-item-label caption>Salir de tu cuenta</q-item-label>
+                    <q-item-label class="q-pb-md" caption> Salir de tu cuenta</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
