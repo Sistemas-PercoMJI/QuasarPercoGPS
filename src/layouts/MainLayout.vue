@@ -174,6 +174,12 @@ function cerrarSesionDesdeConfig() {
 
 const linksList = [
   {
+    title: 'Mapa',
+    caption: 'Mapa',
+    icon: 'map',
+    link: '/dashboard',
+  },
+  {
     title: 'Estado de la flota',
     caption: 'Monitoreo en tiempo real',
     icon: 'directions_car',
@@ -197,13 +203,7 @@ const linksList = [
     icon: 'notifications',
     action: 'open-eventos',
   },
-  {
-    title: 'Perco',
-    caption: 'Página Web de perco',
-    icon: 'language',
-    link: 'https://perco.com.mx/',
-    external: true,
-  },
+
   {
     title: 'Reportes',
     caption: 'Crear reporte',
