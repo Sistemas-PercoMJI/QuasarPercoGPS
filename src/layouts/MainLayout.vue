@@ -4,6 +4,21 @@
       <q-toolbar>
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
+        <!-- BOTÓN DE NOTIFICACIONES CON DIALOG -->
+        <!-- BOTÓN DE NOTIFICACIONES -->
+        <!-- BOTÓN DE NOTIFICACIONES -->
+        <q-btn flat dense round icon="notifications" class="q-mr-sm" ref="notifBtn">
+          <q-badge color="red" floating v-if="notificacionesCount > 0">
+            {{ notificacionesCount }}
+          </q-badge>
+          <q-tooltip>Notificaciones</q-tooltip>
+
+          <!-- Q-MENU en lugar de Q-DIALOG -->
+          <q-menu anchor="bottom middle" self="top middle" :offset="[0, 8]">
+            <NotificacionesPanel />
+          </q-menu>
+        </q-btn>
+
         <q-chip outline color="white" text-color="white" icon="bug_report">
           Quasar v{{ $q.version }}
         </q-chip>
@@ -31,9 +46,7 @@
             alt="Logo"
           />
         </q-avatar>
-        <div v-if="drawerExpanded" class="text-h6 text-weight-bold">
-          Ubicacion de flotas
-        </div>
+        <div v-if="drawerExpanded" class="text-h6 text-weight-bold">Ubicacion de flotas</div>
       </div>
 
       <q-separator class="q-my-md" />
@@ -64,7 +77,12 @@
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
-            <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+            <q-tooltip
+              v-if="!drawerExpanded"
+              anchor="center right"
+              self="center left"
+              :offset="[10, 0]"
+            >
               {{ link.title }}
             </q-tooltip>
           </q-item>
@@ -88,7 +106,12 @@
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
-            <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+            <q-tooltip
+              v-if="!drawerExpanded"
+              anchor="center right"
+              self="center left"
+              :offset="[10, 0]"
+            >
               {{ link.title }}
             </q-tooltip>
           </q-item>
@@ -104,18 +127,23 @@
               <q-icon name="settings" />
             </q-avatar>
           </q-item-section>
-          
+
           <q-item-section v-if="drawerExpanded">
             <q-item-label class="text-weight-medium">Configuración</q-item-label>
             <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
           </q-item-section>
-          
+
           <q-item-section side v-if="drawerExpanded">
             <q-icon name="expand_less" color="grey-5" />
           </q-item-section>
 
           <!-- Tooltip cuando está minimizado -->
-          <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+          <q-tooltip
+            v-if="!drawerExpanded"
+            anchor="center right"
+            self="center left"
+            :offset="[10, 0]"
+          >
             Configuración
           </q-tooltip>
 
@@ -201,10 +229,12 @@ import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
+import { useNotifications } from 'src/composables/useNotifications.js'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
+import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -214,6 +244,10 @@ const $q = useQuasar()
 const isReportePage = computed(() => {
   return route.path === '/reporte'
 })
+
+// NOTIFICACIONES
+const { notifications } = useNotifications()
+const notificacionesCount = computed(() => notifications.value.length)
 
 function cerrarSesionDesdeConfig() {
   logout()
@@ -258,8 +292,8 @@ const linksList = [
   },
 ]
 
-const leftDrawerOpen = ref(true) // Siempre visible
-const drawerExpanded = ref(false) // Controla la expansión al hover
+const leftDrawerOpen = ref(true)
+const drawerExpanded = ref(false)
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)

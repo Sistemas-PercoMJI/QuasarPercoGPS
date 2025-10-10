@@ -1,40 +1,48 @@
 <template>
-  <q-card style="width: 400px; max-width: 90vw; max-height: 600px" class="column">
-    <q-card-section class="row items-center q-pb-none bg-primary text-white">
-      <div class="text-h6 text-weight-bold">Notificaciones</div>
+  <q-card style="width: 380px; max-height: 500px" class="column no-wrap">
+    <!-- Header compacto con gradiente -->
+    <q-card-section
+      class="row items-center text-white q-pa-sm"
+      style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
+    >
+      <q-icon name="notifications" size="20px" class="q-mr-xs" />
+      <div class="text-subtitle1 text-weight-bold">Notificaciones</div>
       <q-space />
-      <q-btn icon="close" flat round dense v-close-popup />
+      <q-btn icon="close" flat round dense size="sm" v-close-popup />
     </q-card-section>
 
     <q-separator />
 
-    <q-card-section class="col scroll q-pa-none">
-      <q-scroll-area style="height: 500px">
-        <div v-if="notifications.length === 0" class="q-pa-lg text-center text-grey-6">
-          <q-icon name="notifications_none" size="64px" class="q-mb-md" />
-          <div>No hay notificaciones</div>
-        </div>
+    <!-- Contenido scrolleable -->
+    <q-scroll-area style="height: 380px">
+      <div v-if="notifications.length === 0" class="q-pa-lg text-center text-grey-6">
+        <q-icon name="notifications_none" size="64px" class="q-mb-md" />
+        <div class="text-body2">No hay notificaciones</div>
+      </div>
 
-        <div v-else class="q-pa-md">
-          <NotificationCard
-            v-for="(notif, index) in notifications"
-            :key="notif.id"
-            :type="notif.type"
-            :title="notif.title"
-            :message="notif.message"
-            @close="removeNotification(index)"
-          />
-        </div>
-      </q-scroll-area>
-    </q-card-section>
+      <div v-else class="q-pa-sm">
+        <NotificationCard
+          v-for="(notif, index) in notifications"
+          :key="notif.id"
+          :type="notif.type"
+          :title="notif.title"
+          :message="notif.message"
+          @close="removeNotification(index)"
+        />
+      </div>
+    </q-scroll-area>
 
     <q-separator />
 
-    <q-card-actions align="right" class="q-pa-md">
+    <!-- Footer -->
+    <q-card-actions align="right" class="q-pa-sm bg-grey-1">
       <q-btn
         flat
+        dense
         label="Limpiar todas"
         color="negative"
+        icon="delete_sweep"
+        size="sm"
         @click="clearAll"
         :disable="notifications.length === 0"
       />
