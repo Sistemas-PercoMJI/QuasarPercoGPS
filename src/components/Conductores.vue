@@ -4,29 +4,22 @@
     <!-- Header -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Conductores</div>
-      <q-btn 
-        flat 
-        dense 
-        round 
-        icon="close" 
-        color="white"
-        @click="cerrarDrawer"
-      />
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
     </div>
 
     <!-- Selector de todos los conductores -->
     <div class="q-pa-sm q-px-md">
-      <q-checkbox 
-        v-model="todosConductores" 
-        label="Todos los conductores" 
+      <q-checkbox
+        v-model="todosConductores"
+        label="Todos los conductores"
         @update:model-value="seleccionarTodos"
         dense
       />
       <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
-      <q-btn 
-        flat 
-        dense 
-        round 
+      <q-btn
+        flat
+        dense
+        round
         icon="create_new_folder"
         size="sm"
         class="float-right"
@@ -38,13 +31,7 @@
 
     <!-- Búsqueda -->
     <div class="q-px-md q-pb-sm">
-      <q-input
-        v-model="busqueda"
-        outlined
-        dense
-        placeholder="Búsqueda"
-        class="search-input"
-      >
+      <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
         <template v-slot:prepend>
           <q-icon name="search" />
         </template>
@@ -83,15 +70,17 @@
 
           <q-item-section>
             <q-item-label>{{ grupo.nombre }}</q-item-label>
-            <q-item-label caption>{{ contarConductoresPorGrupo(grupo.id) }} conductores</q-item-label>
+            <q-item-label caption
+              >{{ contarConductoresPorGrupo(grupo.id) }} conductores</q-item-label
+            >
           </q-item-section>
 
           <q-item-section side>
-            <q-btn 
-              flat 
-              dense 
-              round 
-              icon="more_vert" 
+            <q-btn
+              flat
+              dense
+              round
+              icon="more_vert"
               size="sm"
               @click.stop="mostrarMenuGrupo(grupo)"
             />
@@ -118,11 +107,7 @@
         class="conductor-item"
       >
         <q-item-section avatar>
-          <q-avatar 
-            :color="getColorGrupo(conductor.grupoId)" 
-            text-color="white"
-            size="40px"
-          >
+          <q-avatar :color="getColorGrupo(conductor.grupoId)" text-color="white" size="40px">
             {{ conductor.iniciales }}
           </q-avatar>
         </q-item-section>
@@ -133,11 +118,11 @@
         </q-item-section>
 
         <q-item-section side>
-          <q-btn 
-            flat 
-            dense 
-            round 
-            icon="more_vert" 
+          <q-btn
+            flat
+            dense
+            round
+            icon="more_vert"
             size="sm"
             @click.stop="mostrarMenuConductor(conductor)"
           />
@@ -159,14 +144,8 @@
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-input
-            v-model="nuevoGrupo.nombre"
-            label="Nombre del grupo"
-            outlined
-            dense
-            autofocus
-          />
-          
+          <q-input v-model="nuevoGrupo.nombre" label="Nombre del grupo" outlined dense autofocus />
+
           <div class="q-mt-md">
             <div class="text-caption q-mb-sm">Color del grupo</div>
             <div class="color-picker">
@@ -186,10 +165,10 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Cancelar" color="grey" v-close-popup />
-          <q-btn 
-            flat 
-            label="Crear" 
-            color="primary" 
+          <q-btn
+            flat
+            label="Crear"
+            color="primary"
             @click="crearGrupo"
             :disable="!nuevoGrupo.nombre"
           />
@@ -254,7 +233,7 @@ const conductorMenu = ref(null)
 
 const nuevoGrupo = ref({
   nombre: '',
-  color: 'blue'
+  color: 'blue',
 })
 
 const coloresDisponibles = [
@@ -265,7 +244,7 @@ const coloresDisponibles = [
   { label: 'Púrpura', value: 'purple' },
   { label: 'Cyan', value: 'cyan' },
   { label: 'Rosa', value: 'pink' },
-  { label: 'Gris', value: 'blue-grey' }
+  { label: 'Gris', value: 'blue-grey' },
 ]
 
 // Grupos de conductores
@@ -273,18 +252,18 @@ const grupos = ref([
   {
     id: 'grupo1',
     nombre: 'Flota Principal',
-    color: 'blue'
+    color: 'blue',
   },
   {
     id: 'grupo2',
     nombre: 'Distribución',
-    color: 'green'
+    color: 'green',
   },
   {
     id: 'grupo3',
     nombre: 'Ventas',
-    color: 'orange'
-  }
+    color: 'orange',
+  },
 ])
 
 // Lista de conductores (ejemplo - vendrán de Firebase)
@@ -294,29 +273,29 @@ const conductores = ref([
     nombre: 'Antonio Soto',
     iniciales: 'AS',
     vehiculo: 'Vehículo no asignado',
-    grupoId: null
+    grupoId: null,
   },
   {
     id: 2,
     nombre: 'BRANDON',
     iniciales: 'BR',
     vehiculo: 'SPRINTER-PANEL-1-HF3500C*',
-    grupoId: 'grupo1'
+    grupoId: 'grupo1',
   },
   {
     id: 3,
     nombre: 'CHRISTOPHER',
     iniciales: 'CH',
     vehiculo: 'PERCO TIJ-CRAFTER-UX23465A*',
-    grupoId: 'grupo1'
+    grupoId: 'grupo1',
   },
   {
     id: 4,
     nombre: 'Josue Corona',
     iniciales: 'JC',
     vehiculo: 'Vehículo no asignado',
-    grupoId: 'grupo2'
-  }
+    grupoId: 'grupo2',
+  },
 ])
 
 // Computed
@@ -324,10 +303,10 @@ const totalConductores = computed(() => conductores.value.length)
 
 const opcionesGrupos = computed(() => {
   const opciones = [{ label: 'Todos', value: 'todos' }]
-  grupos.value.forEach(grupo => {
+  grupos.value.forEach((grupo) => {
     opciones.push({
       label: grupo.nombre,
-      value: grupo.id
+      value: grupo.id,
     })
   })
   opciones.push({ label: 'Sin grupo', value: 'sin-grupo' })
@@ -339,16 +318,17 @@ const conductoresFiltrados = computed(() => {
 
   // Filtrar por grupo
   if (grupoSeleccionado.value === 'sin-grupo') {
-    resultado = resultado.filter(c => !c.grupoId)
+    resultado = resultado.filter((c) => !c.grupoId)
   } else if (grupoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter(c => c.grupoId === grupoSeleccionado.value)
+    resultado = resultado.filter((c) => c.grupoId === grupoSeleccionado.value)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(c => 
-      c.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      c.vehiculo.toLowerCase().includes(busqueda.value.toLowerCase())
+    resultado = resultado.filter(
+      (c) =>
+        c.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        c.vehiculo.toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -375,12 +355,12 @@ function cerrarDrawer() {
 }
 
 function contarConductoresPorGrupo(grupoId) {
-  return conductores.value.filter(c => c.grupoId === grupoId).length
+  return conductores.value.filter((c) => c.grupoId === grupoId).length
 }
 
 function getColorGrupo(grupoId) {
   if (!grupoId) return 'grey'
-  const grupo = grupos.value.find(g => g.id === grupoId)
+  const grupo = grupos.value.find((g) => g.id === grupoId)
   return grupo ? grupo.color : 'grey'
 }
 
@@ -389,13 +369,13 @@ function crearGrupo() {
   grupos.value.push({
     id: nuevoId,
     nombre: nuevoGrupo.value.nombre,
-    color: nuevoGrupo.value.color
+    color: nuevoGrupo.value.color,
   })
-  
+
   // Reset form
   nuevoGrupo.value = { nombre: '', color: 'blue' }
   dialogNuevoGrupo.value = false
-  
+
   console.log('Grupo creado:', grupos.value[grupos.value.length - 1])
 }
 
@@ -444,7 +424,7 @@ function verDetalles() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   min-height: 48px;
 }

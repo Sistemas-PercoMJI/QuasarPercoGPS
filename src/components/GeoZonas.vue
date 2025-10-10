@@ -4,28 +4,21 @@
     <div class="drawer-header">
       <div class="header-content">
         <div class="text-h6 text-weight-medium">Ubicaciones</div>
-        <q-btn 
-          flat 
-          dense 
-          round 
-          icon="close" 
-          color="white"
-          @click="cerrarDrawer"
-        />
+        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
       </div>
-      
+
       <!-- Tabs modernos para cambiar de vista -->
       <div class="modern-tabs">
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: vistaActual === 'poi' }"
           @click="cambiarVista('poi')"
         >
           <q-icon name="place" size="20px" />
           <span>Puntos de Interés</span>
         </div>
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: vistaActual === 'geozona' }"
           @click="cambiarVista('geozona')"
         >
@@ -84,7 +77,12 @@
             clickable
             @click="grupoSeleccionado = null"
           >
-            <q-avatar v-if="grupoSeleccionado === null" icon="check" color="white" text-color="primary" />
+            <q-avatar
+              v-if="grupoSeleccionado === null"
+              icon="check"
+              color="white"
+              text-color="primary"
+            />
             Todos ({{ poisFiltrados.length }})
           </q-chip>
           <q-chip
@@ -96,7 +94,12 @@
             clickable
             @click="grupoSeleccionado = grupo.id"
           >
-            <q-avatar v-if="grupoSeleccionado === grupo.id" icon="check" color="white" :text-color="grupo.color" />
+            <q-avatar
+              v-if="grupoSeleccionado === grupo.id"
+              icon="check"
+              color="white"
+              :text-color="grupo.color"
+            />
             {{ grupo.nombre }} ({{ contarPOIPorGrupo(grupo.id) }})
           </q-chip>
         </div>
@@ -118,7 +121,7 @@
               <q-avatar size="48px" :color="getColorGrupo(poi.grupoId)" text-color="white">
                 <q-icon name="place" size="28px" />
               </q-avatar>
-              
+
               <div class="col q-ml-md">
                 <div class="text-subtitle1 text-weight-medium">{{ poi.nombre }}</div>
                 <div class="text-caption text-grey-7">
@@ -139,13 +142,7 @@
       </q-scroll-area>
 
       <!-- Botón flotante para agregar POI -->
-      <q-btn
-        fab
-        color="primary"
-        icon="add"
-        class="floating-btn"
-        @click="dialogNuevoPOI = true"
-      >
+      <q-btn fab color="primary" icon="add" class="floating-btn" @click="dialogNuevoPOI = true">
         <q-tooltip>Nuevo Punto de Interés</q-tooltip>
       </q-btn>
     </div>
@@ -199,7 +196,12 @@
             clickable
             @click="grupoSeleccionadoGZ = null"
           >
-            <q-avatar v-if="grupoSeleccionadoGZ === null" icon="check" color="white" text-color="secondary" />
+            <q-avatar
+              v-if="grupoSeleccionadoGZ === null"
+              icon="check"
+              color="white"
+              text-color="secondary"
+            />
             Todos ({{ geozonasFiltradas.length }})
           </q-chip>
           <q-chip
@@ -211,7 +213,12 @@
             clickable
             @click="grupoSeleccionadoGZ = grupo.id"
           >
-            <q-avatar v-if="grupoSeleccionadoGZ === grupo.id" icon="check" color="white" :text-color="grupo.color" />
+            <q-avatar
+              v-if="grupoSeleccionadoGZ === grupo.id"
+              icon="check"
+              color="white"
+              :text-color="grupo.color"
+            />
             {{ grupo.nombre }} ({{ contarGeozonaPorGrupo(grupo.id) }})
           </q-chip>
         </div>
@@ -233,7 +240,7 @@
               <q-avatar size="48px" :color="getColorGrupo(geozona.grupoId)" text-color="white">
                 <q-icon name="layers" size="28px" />
               </q-avatar>
-              
+
               <div class="col q-ml-md">
                 <div class="text-subtitle1 text-weight-medium">{{ geozona.nombre }}</div>
                 <div class="text-caption text-grey-7">
@@ -242,7 +249,13 @@
                 </div>
               </div>
 
-              <q-btn flat dense round icon="more_vert" @click.stop="mostrarMenuContextual(geozona)" />
+              <q-btn
+                flat
+                dense
+                round
+                icon="more_vert"
+                @click.stop="mostrarMenuContextual(geozona)"
+              />
             </q-card-section>
           </q-card>
 
@@ -281,23 +294,13 @@
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
-          <q-input
-            v-model="nuevoPOI.nombre"
-            label="Nombre del punto"
-            outlined
-            class="q-mb-md"
-          >
+          <q-input v-model="nuevoPOI.nombre" label="Nombre del punto" outlined class="q-mb-md">
             <template v-slot:prepend>
               <q-icon name="label" />
             </template>
           </q-input>
 
-          <q-input
-            v-model="nuevoPOI.direccion"
-            label="Dirección"
-            outlined
-            class="q-mb-md"
-          >
+          <q-input v-model="nuevoPOI.direccion" label="Dirección" outlined class="q-mb-md">
             <template v-slot:prepend>
               <q-icon name="location_on" />
             </template>
@@ -332,10 +335,10 @@
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
           <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-          <q-btn 
-            unelevated 
-            label="Guardar" 
-            color="primary" 
+          <q-btn
+            unelevated
+            label="Guardar"
+            color="primary"
             @click="guardarPOI"
             :disable="!nuevoPOI.nombre"
           />
@@ -359,12 +362,7 @@
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
-          <q-input
-            v-model="nuevaGeozona.nombre"
-            label="Nombre de la zona"
-            outlined
-            class="q-mb-md"
-          >
+          <q-input v-model="nuevaGeozona.nombre" label="Nombre de la zona" outlined class="q-mb-md">
             <template v-slot:prepend>
               <q-icon name="label" />
             </template>
@@ -411,10 +409,10 @@
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
           <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-          <q-btn 
-            unelevated 
-            label="Guardar" 
-            color="secondary" 
+          <q-btn
+            unelevated
+            label="Guardar"
+            color="secondary"
             @click="guardarGeozona"
             :disable="!nuevaGeozona.nombre"
           />
@@ -431,16 +429,16 @@
           </q-item-section>
           <q-item-section>Editar</q-item-section>
         </q-item>
-        
+
         <q-item clickable v-close-popup @click="verEnMapa">
           <q-item-section avatar>
             <q-icon name="map" color="positive" />
           </q-item-section>
           <q-item-section>Ver en mapa</q-item-section>
         </q-item>
-        
+
         <q-separator />
-        
+
         <q-item clickable v-close-popup @click="eliminarItem">
           <q-item-section avatar>
             <q-icon name="delete" color="negative" />
@@ -472,32 +470,62 @@ const nuevoPOI = ref({
   nombre: '',
   direccion: '',
   grupoId: null,
-  notas: ''
+  notas: '',
 })
 
 const nuevaGeozona = ref({
   nombre: '',
   radio: 50,
   grupoId: null,
-  notas: ''
+  notas: '',
 })
 
 const grupos = ref([
   { id: 'grupo1', nombre: 'Clientes', color: 'blue' },
   { id: 'grupo2', nombre: 'Almacenes', color: 'green' },
-  { id: 'grupo3', nombre: 'Oficinas', color: 'orange' }
+  { id: 'grupo3', nombre: 'Oficinas', color: 'orange' },
 ])
 
 const items = ref([
-  { id: 1, nombre: 'A&J PROCESSING', direccion: 'Av. José Murua Martínez, Tijuana', tipo: 'poi', grupoId: 'grupo1' },
-  { id: 2, nombre: 'AGUILAS DEL DESIERTO', direccion: 'Carretera Libre Tecate', tipo: 'poi', grupoId: 'grupo1' },
-  { id: 3, nombre: 'ALBERTO PESQUEIRA', direccion: 'Calle Cite, Municipio de Tijuana', tipo: 'poi', grupoId: null },
-  { id: 4, nombre: 'ALLIANCE PLANTA 2', direccion: 'Radio: 100m', tipo: 'geozona', grupoId: 'grupo2' },
-  { id: 5, nombre: 'ALLIANSE BLVD 200', direccion: 'Radio: 150m', tipo: 'geozona', grupoId: 'grupo2' }
+  {
+    id: 1,
+    nombre: 'A&J PROCESSING',
+    direccion: 'Av. José Murua Martínez, Tijuana',
+    tipo: 'poi',
+    grupoId: 'grupo1',
+  },
+  {
+    id: 2,
+    nombre: 'AGUILAS DEL DESIERTO',
+    direccion: 'Carretera Libre Tecate',
+    tipo: 'poi',
+    grupoId: 'grupo1',
+  },
+  {
+    id: 3,
+    nombre: 'ALBERTO PESQUEIRA',
+    direccion: 'Calle Cite, Municipio de Tijuana',
+    tipo: 'poi',
+    grupoId: null,
+  },
+  {
+    id: 4,
+    nombre: 'ALLIANCE PLANTA 2',
+    direccion: 'Radio: 100m',
+    tipo: 'geozona',
+    grupoId: 'grupo2',
+  },
+  {
+    id: 5,
+    nombre: 'ALLIANSE BLVD 200',
+    direccion: 'Radio: 150m',
+    tipo: 'geozona',
+    grupoId: 'grupo2',
+  },
 ])
 
-const pois = computed(() => items.value.filter(i => i.tipo === 'poi'))
-const geozonas = computed(() => items.value.filter(i => i.tipo === 'geozona'))
+const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
+const geozonas = computed(() => items.value.filter((i) => i.tipo === 'geozona'))
 const totalPOIs = computed(() => pois.value.length)
 const totalGeozonas = computed(() => geozonas.value.length)
 const gruposPOI = computed(() => grupos.value.length)
@@ -506,12 +534,13 @@ const gruposGeozona = computed(() => grupos.value.length)
 const poisFiltrados = computed(() => {
   let resultado = pois.value
   if (grupoSeleccionado.value) {
-    resultado = resultado.filter(p => p.grupoId === grupoSeleccionado.value)
+    resultado = resultado.filter((p) => p.grupoId === grupoSeleccionado.value)
   }
   if (busquedaPOI.value) {
-    resultado = resultado.filter(p => 
-      p.nombre.toLowerCase().includes(busquedaPOI.value.toLowerCase()) ||
-      p.direccion.toLowerCase().includes(busquedaPOI.value.toLowerCase())
+    resultado = resultado.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(busquedaPOI.value.toLowerCase()) ||
+        p.direccion.toLowerCase().includes(busquedaPOI.value.toLowerCase()),
     )
   }
   return resultado
@@ -520,12 +549,13 @@ const poisFiltrados = computed(() => {
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
   if (grupoSeleccionadoGZ.value) {
-    resultado = resultado.filter(g => g.grupoId === grupoSeleccionadoGZ.value)
+    resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
   }
   if (busquedaGeozona.value) {
-    resultado = resultado.filter(g => 
-      g.nombre.toLowerCase().includes(busquedaGeozona.value.toLowerCase()) ||
-      g.direccion.toLowerCase().includes(busquedaGeozona.value.toLowerCase())
+    resultado = resultado.filter(
+      (g) =>
+        g.nombre.toLowerCase().includes(busquedaGeozona.value.toLowerCase()) ||
+        g.direccion.toLowerCase().includes(busquedaGeozona.value.toLowerCase()),
     )
   }
   return resultado
@@ -533,7 +563,7 @@ const geozonasFiltradas = computed(() => {
 
 const opcionesGruposSelect = computed(() => {
   const opciones = [{ label: 'Sin grupo', value: null }]
-  grupos.value.forEach(grupo => {
+  grupos.value.forEach((grupo) => {
     opciones.push({ label: grupo.nombre, value: grupo.id })
   })
   return opciones
@@ -555,16 +585,16 @@ function seleccionarItem(item) {
 
 function getColorGrupo(grupoId) {
   if (!grupoId) return 'grey'
-  const grupo = grupos.value.find(g => g.id === grupoId)
+  const grupo = grupos.value.find((g) => g.id === grupoId)
   return grupo ? grupo.color : 'grey'
 }
 
 function contarPOIPorGrupo(grupoId) {
-  return pois.value.filter(p => p.grupoId === grupoId).length
+  return pois.value.filter((p) => p.grupoId === grupoId).length
 }
 
 function contarGeozonaPorGrupo(grupoId) {
-  return geozonas.value.filter(g => g.grupoId === grupoId).length
+  return geozonas.value.filter((g) => g.grupoId === grupoId).length
 }
 
 function guardarPOI() {
@@ -573,7 +603,7 @@ function guardarPOI() {
     nombre: nuevoPOI.value.nombre,
     direccion: nuevoPOI.value.direccion || 'Sin dirección',
     tipo: 'poi',
-    grupoId: nuevoPOI.value.grupoId
+    grupoId: nuevoPOI.value.grupoId,
   })
   nuevoPOI.value = { nombre: '', direccion: '', grupoId: null, notas: '' }
   dialogNuevoPOI.value = false
@@ -585,7 +615,7 @@ function guardarGeozona() {
     nombre: nuevaGeozona.value.nombre,
     direccion: `Radio: ${nuevaGeozona.value.radio}m`,
     tipo: 'geozona',
-    grupoId: nuevaGeozona.value.grupoId
+    grupoId: nuevaGeozona.value.grupoId,
   })
   nuevaGeozona.value = { nombre: '', radio: 50, grupoId: null, notas: '' }
   dialogNuevaGeozona.value = false
@@ -605,7 +635,7 @@ function verEnMapa() {
 }
 
 function eliminarItem() {
-  const index = items.value.findIndex(i => i.id === itemMenu.value.id)
+  const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
   if (index > -1) {
     items.value.splice(index, 1)
   }
@@ -622,7 +652,7 @@ function eliminarItem() {
 }
 
 .drawer-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   padding: 0;
 }

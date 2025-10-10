@@ -5,14 +5,7 @@
     <div class="drawer-header">
       <div class="header-content">
         <div class="text-h6 text-weight-medium">Eventos</div>
-        <q-btn 
-          flat 
-          dense 
-          round 
-          icon="close" 
-          color="white"
-          @click="cerrarDrawer"
-        />
+        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
       </div>
     </div>
 
@@ -93,7 +86,7 @@
             <q-avatar size="48px" :color="getColorTipoEvento(evento.tipo)" text-color="white">
               <q-icon :name="getIconoTipoEvento(evento.tipo)" size="28px" />
             </q-avatar>
-            
+
             <div class="col q-ml-md">
               <div class="text-subtitle1 text-weight-medium">{{ evento.nombre }}</div>
               <div class="text-caption text-grey-7">
@@ -101,7 +94,10 @@
                 {{ evento.geozona }}
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
-                <q-badge :color="evento.activo ? 'positive' : 'grey'" :label="evento.activo ? 'Activo' : 'Inactivo'" />
+                <q-badge
+                  :color="evento.activo ? 'positive' : 'grey'"
+                  :label="evento.activo ? 'Activo' : 'Inactivo'"
+                />
               </div>
             </div>
 
@@ -112,7 +108,14 @@
                 color="positive"
                 @click.stop
               />
-              <q-btn flat dense round icon="more_vert" size="sm" @click.stop="mostrarMenuContextual(evento)" />
+              <q-btn
+                flat
+                dense
+                round
+                icon="more_vert"
+                size="sm"
+                @click.stop="mostrarMenuContextual(evento)"
+              />
             </div>
           </q-card-section>
         </q-card>
@@ -134,12 +137,7 @@
               <div class="text-h6">Crear Nuevo Evento</div>
               <div class="text-caption">Estado de evento "ON"</div>
             </div>
-            <q-toggle
-              v-model="nuevoEvento.activo"
-              color="white"
-              keep-color
-              size="lg"
-            />
+            <q-toggle v-model="nuevoEvento.activo" color="white" keep-color size="lg" />
             <q-btn flat dense round icon="close" v-close-popup color="white" class="q-ml-md" />
           </div>
         </q-card-section>
@@ -172,11 +170,7 @@
                 <q-icon name="schedule" size="24px" color="primary" class="q-mr-sm" />
                 Condición de tiempo
               </div>
-              <q-toggle
-                v-model="nuevoEvento.condicionTiempo"
-                label="Apagado"
-                color="positive"
-              />
+              <q-toggle v-model="nuevoEvento.condicionTiempo" label="Apagado" color="positive" />
             </div>
 
             <!-- Condición geográfica -->
@@ -185,7 +179,7 @@
                 <q-icon name="place" size="24px" color="primary" class="q-mr-sm" />
                 Condición geográfica
               </div>
-              
+
               <div class="row q-col-gutter-md">
                 <div class="col-6">
                   <q-select
@@ -224,13 +218,7 @@
                 </template>
               </q-select>
 
-              <q-btn
-                flat
-                color="primary"
-                icon="add"
-                label="Añadir condición"
-                class="q-mt-md"
-              />
+              <q-btn flat color="primary" icon="add" label="Añadir condición" class="q-mt-md" />
             </div>
 
             <!-- Patrón de criterios -->
@@ -263,12 +251,7 @@
 
               <!-- Horario si se selecciona "A los días y horas establecidos" -->
               <div v-if="nuevoEvento.aplicacion === 'horario'" class="q-mt-md">
-                <q-input
-                  label="Días de la semana"
-                  outlined
-                  readonly
-                  hint="Selecciona los días"
-                >
+                <q-input label="Días de la semana" outlined readonly hint="Selecciona los días">
                   <template v-slot:append>
                     <q-icon name="calendar_today" class="cursor-pointer" />
                   </template>
@@ -284,12 +267,7 @@
                     />
                   </div>
                   <div class="col-6">
-                    <q-input
-                      v-model="nuevoEvento.horaFin"
-                      label="Hora fin"
-                      outlined
-                      type="time"
-                    />
+                    <q-input v-model="nuevoEvento.horaFin" label="Hora fin" outlined type="time" />
                   </div>
                 </div>
               </div>
@@ -301,10 +279,10 @@
         <q-card-actions class="dialog-actions q-pa-lg bg-grey-1">
           <q-btn flat label="Cerrar" color="grey-7" v-close-popup size="md" />
           <q-space />
-          <q-btn 
-            unelevated 
-            label="Crear" 
-            color="primary" 
+          <q-btn
+            unelevated
+            label="Crear"
+            color="primary"
             @click="guardarEvento"
             :disable="!nuevoEvento.nombre"
             size="md"
@@ -323,16 +301,16 @@
           </q-item-section>
           <q-item-section>Editar</q-item-section>
         </q-item>
-        
+
         <q-item clickable v-close-popup @click="duplicarEvento">
           <q-item-section avatar>
             <q-icon name="content_copy" color="blue" />
           </q-item-section>
           <q-item-section>Duplicar</q-item-section>
         </q-item>
-        
+
         <q-separator />
-        
+
         <q-item clickable v-close-popup @click="eliminarEvento">
           <q-item-section avatar>
             <q-icon name="delete" color="negative" />
@@ -369,45 +347,45 @@ const nuevoEvento = ref({
   activacionAlerta: 'Al inicio',
   aplicacion: 'siempre',
   horaInicio: '',
-  horaFin: ''
+  horaFin: '',
 })
 
 // Opciones
 const opcionesFiltro = [
   { label: 'Todos', value: 'todos' },
   { label: 'Activos', value: 'activos' },
-  { label: 'Inactivos', value: 'inactivos' }
+  { label: 'Inactivos', value: 'inactivos' },
 ]
 
 const opcionesCondicion = [
   { label: 'Geocerca', value: 'Geocerca' },
   { label: 'Velocidad', value: 'Velocidad' },
-  { label: 'Tiempo', value: 'Tiempo' }
+  { label: 'Tiempo', value: 'Tiempo' },
 ]
 
 const opcionesActivacion = [
   { label: 'Dentro', value: 'Dentro' },
   { label: 'Fuera', value: 'Fuera' },
   { label: 'Entrada', value: 'Entrada' },
-  { label: 'Salida', value: 'Salida' }
+  { label: 'Salida', value: 'Salida' },
 ]
 
 const opcionesGeozonas = [
   { label: 'A&J PROCESSING "MURUA"', value: 'geozona1' },
   { label: 'AGUILAS DEL DESIERTO', value: 'geozona2' },
   { label: 'ALBERTO PESQUEIRA', value: 'geozona3' },
-  { label: 'ALLIANCE PLANTA 2', value: 'geozona4' }
+  { label: 'ALLIANCE PLANTA 2', value: 'geozona4' },
 ]
 
 const opcionesActivacionAlerta = [
   { label: 'Al inicio', value: 'Al inicio' },
   { label: 'Cada vez', value: 'Cada vez' },
-  { label: 'Una vez al día', value: 'Una vez al día' }
+  { label: 'Una vez al día', value: 'Una vez al día' },
 ]
 
 const opcionesAplicacion = [
   { label: 'Siempre', value: 'siempre' },
-  { label: 'A los días y horas establecidos', value: 'horario' }
+  { label: 'A los días y horas establecidos', value: 'horario' },
 ]
 
 // Datos de ejemplo
@@ -417,57 +395,58 @@ const eventos = ref([
     nombre: 'SALIDA OPTI-SOURCE',
     geozona: 'OPTI-SOURCE',
     tipo: 'salida',
-    activo: true
+    activo: true,
   },
   {
     id: 2,
     nombre: 'ENTRADA OPTI-SOURCE',
     geozona: 'OPTI-SOURCE',
     tipo: 'entrada',
-    activo: true
+    activo: true,
   },
   {
     id: 3,
     nombre: 'SALIDA CESPT ROSARITO',
     geozona: 'CESPT ROSARITO',
     tipo: 'salida',
-    activo: true
+    activo: true,
   },
   {
     id: 4,
     nombre: 'ENTRADA CESPT ROSARITO',
     geozona: 'CESPT ROSARITO',
     tipo: 'entrada',
-    activo: true
+    activo: true,
   },
   {
     id: 5,
     nombre: 'SALIDA CESPT REFORMA',
     geozona: 'CESPT REFORMA',
     tipo: 'salida',
-    activo: false
-  }
+    activo: false,
+  },
 ])
 
 // Computed
-const totalEventos = computed(() => eventos.value.filter(e => e.activo).length)
-const eventosInactivos = computed(() => eventos.value.filter(e => !e.activo).length)
+const totalEventos = computed(() => eventos.value.filter((e) => e.activo).length)
+const eventosInactivos = computed(() => eventos.value.filter((e) => !e.activo).length)
 
 const eventosFiltrados = computed(() => {
   let resultado = eventos.value
 
   // Filtrar por estado
   if (filtroEstado.value === 'activos') {
-    resultado = resultado.filter(e => e.activo)
+    resultado = resultado.filter((e) => e.activo)
   } else if (filtroEstado.value === 'inactivos') {
-    resultado = resultado.filter(e => !e.activo)
+    resultado = resultado.filter((e) => !e.activo)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(e => 
-      e.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      e.geozona.toLowerCase().includes(busqueda.value.toLowerCase())
+    resultado = resultado.filter(
+      (e) =>
+        e.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        e.geozona.toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -501,8 +480,11 @@ function guardarEvento() {
     id: eventos.value.length + 1,
     nombre: nuevoEvento.value.nombre,
     geozona: nuevoEvento.value.geozona || 'Sin geozona',
-    tipo: nuevoEvento.value.activacion === 'Entrada' || nuevoEvento.value.activacion === 'Dentro' ? 'entrada' : 'salida',
-    activo: nuevoEvento.value.activo
+    tipo:
+      nuevoEvento.value.activacion === 'Entrada' || nuevoEvento.value.activacion === 'Dentro'
+        ? 'entrada'
+        : 'salida',
+    activo: nuevoEvento.value.activo,
   })
 
   // Reset form
@@ -517,7 +499,7 @@ function guardarEvento() {
     activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     horaInicio: '',
-    horaFin: ''
+    horaFin: '',
   }
 
   dialogNuevoEvento.value = false
@@ -533,12 +515,16 @@ function editarEvento() {
 }
 
 function duplicarEvento() {
-  const eventoDuplicado = { ...eventoMenu.value, id: eventos.value.length + 1, nombre: `${eventoMenu.value.nombre} (Copia)` }
+  const eventoDuplicado = {
+    ...eventoMenu.value,
+    id: eventos.value.length + 1,
+    nombre: `${eventoMenu.value.nombre} (Copia)`,
+  }
   eventos.value.push(eventoDuplicado)
 }
 
 function eliminarEvento() {
-  const index = eventos.value.findIndex(e => e.id === eventoMenu.value.id)
+  const index = eventos.value.findIndex((e) => e.id === eventoMenu.value.id)
   if (index > -1) {
     eventos.value.splice(index, 1)
   }
@@ -555,7 +541,7 @@ function eliminarEvento() {
 }
 
 .drawer-header {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   padding: 0;
 }
