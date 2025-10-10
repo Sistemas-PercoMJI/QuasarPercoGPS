@@ -4,14 +4,66 @@
       <q-toolbar>
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
-        <!-- BOTÓN DE NOTIFICACIONES -->
-        <q-btn flat dense round icon="notifications" class="q-mr-sm" ref="notifBtn">
+        <!-- BOTÓN DE INFORMACIÓN CON CLASE ESPECÍFICA -->
+        <q-btn flat dense round icon="info" class="info-btn q-mr-sm" size="md">
+          <q-tooltip>Información</q-tooltip>
+
+          <q-menu
+            anchor="bottom middle"
+            self="top middle"
+            :offset="[0, 8]"
+            transition-show="jump-down"
+            transition-hide="jump-up"
+          >
+            <q-card style="width: 300px">
+              <q-card-section
+                style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
+                class="text-white"
+              >
+                <div class="text-h6 text-weight-bold">MJ GPS</div>
+                <div class="text-caption">Sistema de rastreo de flotas</div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-section>
+                <div class="q-mb-sm">
+                  <q-icon name="info" size="20px" class="q-mr-sm" style="color: #bb0000" />
+                  <strong>Versión:</strong> 1.0.0
+                </div>
+                <div class="q-mb-sm">
+                  <q-icon name="code" size="20px" class="q-mr-sm" style="color: #bb0000" />
+                  <strong>Quasar:</strong> v{{ $q.version }}
+                </div>
+                <div class="q-mb-sm">
+                  <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
+                  <strong>Empresa:</strong> MJ Industrias
+                </div>
+              </q-card-section>
+
+              <q-separator />
+
+              <q-card-actions align="right">
+                <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-menu>
+        </q-btn>
+
+        <!-- BOTÓN DE NOTIFICACIONES CON CLASE ESPECÍFICA -->
+        <q-btn
+          flat
+          dense
+          round
+          icon="notifications"
+          class="notif-btn q-mr-sm"
+          ref="notifBtn"
+          size="md"
+        >
           <q-badge color="red" floating v-if="notificacionesCount > 0">
             {{ notificacionesCount }}
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
-
-          <!-- Q-MENU en lugar de Q-DIALOG -->
 
           <q-menu anchor="bottom middle" self="top middle" :offset="[0, 8]">
             <NotificacionesPanel />
@@ -316,14 +368,26 @@ function handleLinkClick(link) {
   if (link.action === 'logout') {
     logout()
   } else if (link.action === 'open-estado-flota') {
+    cerrarTodosLosDrawers()
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
+    cerrarTodosLosDrawers()
     conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
+    cerrarTodosLosDrawers()
     geozonaDrawerOpen.value = true
   } else if (link.action === 'open-eventos') {
+    cerrarTodosLosDrawers()
     EventosDrawerOpen.value = true
   }
+}
+
+// Nueva función para cerrar todos los drawers
+function cerrarTodosLosDrawers() {
+  estadoFlotaDrawerOpen.value = false
+  conductoresDrawerOpen.value = false
+  geozonaDrawerOpen.value = false
+  EventosDrawerOpen.value = false
 }
 
 function cerrarEstadoFlota() {
@@ -366,9 +430,45 @@ const logout = async () => {
 </script>
 
 <style scoped>
-/* Header con gradiente */
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+}
+
+/* ESTILOS ESPECÍFICOS Y AISLADOS PARA LOS BOTONES DEL HEADER */
+.info-btn,
+.notif-btn {
+  position: relative;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  margin: 0 4px;
+  transform: none !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* Resetear cualquier transformación heredada */
+.info-btn:hover,
+.notif-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  transform: none !important;
+}
+
+/* Asegurar que los iconos estén centrados y tengan tamaño consistente */
+.info-btn .q-icon,
+.notif-btn .q-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+}
+
+/* Contener el área del badge */
+.notif-btn :deep(.q-badge--floating) {
+  top: 2px;
+  right: 2px;
+  transform: scale(0.8);
+  pointer-events: none;
 }
 
 /* Drawer personalizado */
@@ -412,43 +512,23 @@ const logout = async () => {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Animación suave para iconos */
-.q-icon {
+/* Animación solo para iconos del drawer */
+.nav-item .q-icon,
+.config-item .q-icon {
   transition: transform 0.3s ease;
 }
 
-.nav-item:hover .q-icon {
+.nav-item:hover .q-icon,
+.config-item:hover .q-icon {
   transform: scale(1.1);
 }
 
-.modern-tabs {
-  display: flex;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px;
+/* Resetear estilos para otros botones en el toolbar */
+:deep(.q-toolbar .q-btn) {
+  transform: none !important;
 }
 
-.tab-item {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 13px;
-}
-.tab-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-}
-
-.tab-item.active {
-  background: white;
-  color: black;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+:deep(.q-toolbar .q-btn:hover) {
+  transform: none !important;
 }
 </style>
