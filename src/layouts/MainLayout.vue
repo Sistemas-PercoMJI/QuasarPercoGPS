@@ -4,8 +4,6 @@
       <q-toolbar>
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
-        <!-- BOTÓN DE NOTIFICACIONES CON DIALOG -->
-        <!-- BOTÓN DE NOTIFICACIONES -->
         <!-- BOTÓN DE NOTIFICACIONES -->
         <q-btn flat dense round icon="notifications" class="q-mr-sm" ref="notifBtn">
           <q-badge color="red" floating v-if="notificacionesCount > 0">
@@ -14,6 +12,7 @@
           <q-tooltip>Notificaciones</q-tooltip>
 
           <!-- Q-MENU en lugar de Q-DIALOG -->
+
           <q-menu anchor="bottom middle" self="top middle" :offset="[0, 8]">
             <NotificacionesPanel />
           </q-menu>
@@ -297,10 +296,14 @@ const geozonaDrawerOpen = ref(false)
 const EventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
-watch(() => route.path, () => {
-  leftDrawerOpen.value = true
-  drawerExpanded.value = false // Resetear a mini cuando cambias de página
-}, { immediate: true })
+watch(
+  () => route.path,
+  () => {
+    leftDrawerOpen.value = true
+    drawerExpanded.value = false // Resetear a mini cuando cambias de página
+  },
+  { immediate: true },
+)
 
 // Watch adicional por si algo intenta cerrarlo
 watch(leftDrawerOpen, (newVal) => {
@@ -416,5 +419,36 @@ const logout = async () => {
 
 .nav-item:hover .q-icon {
   transform: scale(1.1);
+}
+
+.modern-tabs {
+  display: flex;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+}
+.tab-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.tab-item.active {
+  background: white;
+  color: black;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

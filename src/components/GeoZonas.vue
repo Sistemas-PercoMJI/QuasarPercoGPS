@@ -267,13 +267,7 @@
       </q-scroll-area>
 
       <!-- Botón flotante para agregar Geozona -->
-      <q-btn
-        fab
-        color="secondary"
-        icon="add"
-        class="floating-btn"
-        @click="dialogNuevaGeozona = true"
-      >
+      <q-btn fab color="primary" icon="add" class="floating-btn" @click="dialogNuevaGeozona = true">
         <q-tooltip>Nueva Geozona</q-tooltip>
       </q-btn>
     </div>
@@ -699,7 +693,7 @@ function eliminarItem() {
 
 .tab-item.active {
   background: white;
-  color: #667eea;
+  color: black;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
