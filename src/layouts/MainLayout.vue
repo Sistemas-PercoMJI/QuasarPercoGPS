@@ -36,7 +36,9 @@
       :width="350"
       :mini-width="70"
       class="drawer-custom"
-      :overlay="!isReportePage"
+      :overlay="drawerExpanded"
+      elevated
+      mini-to-overlay
     >
       <!-- Header del drawer -->
       <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded }">
@@ -224,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -239,11 +241,6 @@ import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
-
-// Detectar si estamos en la página de reportes
-const isReportePage = computed(() => {
-  return route.path === '/reporte'
-})
 
 // NOTIFICACIONES
 const { notifications } = useNotifications()
@@ -292,12 +289,25 @@ const linksList = [
   },
 ]
 
-const leftDrawerOpen = ref(true)
-const drawerExpanded = ref(false)
+const leftDrawerOpen = ref(true) // Siempre visible
+const drawerExpanded = ref(false) // Controla la expansión al hover
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
 const EventosDrawerOpen = ref(false)
+
+// Watch para mantener el drawer abierto al cambiar de ruta
+watch(() => route.path, () => {
+  leftDrawerOpen.value = true
+  drawerExpanded.value = false // Resetear a mini cuando cambias de página
+}, { immediate: true })
+
+// Watch adicional por si algo intenta cerrarlo
+watch(leftDrawerOpen, (newVal) => {
+  if (!newVal) {
+    leftDrawerOpen.value = true
+  }
+})
 
 function handleLinkClick(link) {
   if (link.action === 'logout') {
