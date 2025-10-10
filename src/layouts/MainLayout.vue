@@ -2,17 +2,7 @@
   <q-layout view="lHh lpr lFf">
     <q-header elevated class="bg-gradient">
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-          class="menu-btn"
-        />
-
-        <q-toolbar-title class="text-weight-bold">MJ GPS </q-toolbar-title>
+        <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
         <q-chip outline color="white" text-color="white" icon="bug_report">
           Quasar v{{ $q.version }}
@@ -20,42 +10,63 @@
       </q-toolbar>
     </q-header>
 
-    <!-- Drawer principal -->
+    <!-- Mini Drawer que se expande al hover -->
     <q-drawer
       v-model="leftDrawerOpen"
+      show-if-above
+      :mini="!drawerExpanded"
+      @mouseenter="drawerExpanded = true"
+      @mouseleave="drawerExpanded = false"
       bordered
       :width="350"
+      :mini-width="70"
       class="drawer-custom"
       behavior="desktop"
     >
-      <div class="drawer-header">
-        <q-avatar size="100px" class="q-mb-md">
+      <!-- Header del drawer -->
+      <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded }">
+        <q-avatar :size="drawerExpanded ? '100px' : '40px'" class="q-mb-md">
           <img
             src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
             alt="Logo"
           />
         </q-avatar>
-        <div class="text-h6 text-weight-bold">Ubicacion de flotas</div>
+        <div v-if="drawerExpanded" class="text-h6 text-weight-bold">
+          Ubicacion de flotas
+        </div>
       </div>
 
       <q-separator class="q-my-md" />
 
+      <!-- Lista de navegación -->
       <q-list padding>
         <template v-for="link in linksList" :key="link.title">
           <!-- Link externo -->
-          <q-item v-if="link.external" clickable :href="link.link" target="_blank" v-ripple>
+          <q-item
+            v-if="link.external"
+            clickable
+            :href="link.link"
+            target="_blank"
+            v-ripple
+            class="nav-item"
+          >
             <q-item-section avatar>
-              <q-icon :name="link.icon" />
+              <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section>
+            <q-item-section v-if="drawerExpanded">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
 
-            <q-item-section side>
+            <q-item-section side v-if="drawerExpanded">
               <q-icon name="open_in_new" size="xs" />
             </q-item-section>
+
+            <!-- Tooltip cuando está minimizado -->
+            <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+              {{ link.title }}
+            </q-tooltip>
           </q-item>
 
           <!-- Link interno o acción -->
@@ -65,19 +76,25 @@
             :to="link.action ? undefined : link.link"
             @click="handleLinkClick(link)"
             v-ripple
+            class="nav-item"
           >
             <q-item-section avatar>
-              <q-icon :name="link.icon" />
+              <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section>
+            <q-item-section v-if="drawerExpanded">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
+
+            <!-- Tooltip cuando está minimizado -->
+            <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+              {{ link.title }}
+            </q-tooltip>
           </q-item>
         </template>
       </q-list>
-      <!-- Botón de configuración en la parte inferior -->
+
       <!-- Botón de configuración en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
@@ -87,15 +104,22 @@
               <q-icon name="settings" />
             </q-avatar>
           </q-item-section>
-          <q-item-section>
+          
+          <q-item-section v-if="drawerExpanded">
             <q-item-label class="text-weight-medium">Configuración</q-item-label>
             <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
           </q-item-section>
-          <q-item-section side>
+          
+          <q-item-section side v-if="drawerExpanded">
             <q-icon name="expand_less" color="grey-5" />
           </q-item-section>
 
-          <!-- Menu que se abre desde este botón -->
+          <!-- Tooltip cuando está minimizado -->
+          <q-tooltip v-if="!drawerExpanded" anchor="center right" self="center left" :offset="[10, 0]">
+            Configuración
+          </q-tooltip>
+
+          <!-- Menu de configuración -->
           <q-menu
             anchor="top left"
             self="bottom left"
@@ -123,9 +147,10 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Cerrar Sesión</q-item-label>
-                    <q-item-label class="q-pb-md" caption> Salir de tu cuenta</q-item-label>
+                    <q-item-label class="q-pb-md" caption>Salir de tu cuenta</q-item-label>
                   </q-item-section>
                 </q-item>
+
                 <q-item clickable>
                   <q-item-section avatar>
                     <q-avatar color="negative" text-color="white" size="sm">
@@ -134,7 +159,7 @@
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>Estado de la Unidad</q-item-label>
-                    <q-item-label class="q-pb-md" caption> Seleccionar Unidad</q-item-label>
+                    <q-item-label class="q-pb-md" caption>Seleccionar Unidad</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -219,7 +244,6 @@ const linksList = [
     icon: 'notifications',
     action: 'open-eventos',
   },
-
   {
     title: 'Reportes',
     caption: 'Crear reporte',
@@ -228,15 +252,12 @@ const linksList = [
   },
 ]
 
-const leftDrawerOpen = ref(false)
+const leftDrawerOpen = ref(true) // Siempre visible
+const drawerExpanded = ref(false) // Controla la expansión al hover
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
 const EventosDrawerOpen = ref(false)
-
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value
-}
 
 function handleLinkClick(link) {
   if (link.action === 'logout') {
@@ -297,17 +318,10 @@ const logout = async () => {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
 
-.menu-btn {
-  transition: transform 0.3s ease;
-}
-
-.menu-btn:hover {
-  transform: rotate(90deg);
-}
-
 /* Drawer personalizado */
 .drawer-custom {
   background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+  transition: width 0.3s ease;
 }
 
 .drawer-header {
@@ -317,5 +331,40 @@ const logout = async () => {
   color: white;
   border-radius: 0 0 24px 24px;
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.mini-header {
+  padding: 16px 8px;
+}
+
+/* Estilos para los items de navegación */
+.nav-item {
+  border-radius: 12px;
+  margin: 4px 8px;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+  background-color: rgba(187, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+.config-item {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.config-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Animación suave para iconos */
+.q-icon {
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover .q-icon {
+  transform: scale(1.1);
 }
 </style>
