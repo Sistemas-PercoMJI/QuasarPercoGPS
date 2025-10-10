@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout view="lHh lpr lFf">
     <q-header elevated class="bg-gradient">
       <q-toolbar>
         <q-btn
@@ -21,7 +21,13 @@
     </q-header>
 
     <!-- Drawer principal -->
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="350" class="drawer-custom">
+    <q-drawer
+      v-model="leftDrawerOpen"
+      bordered
+      :width="350"
+      class="drawer-custom"
+      behavior="desktop"
+    >
       <div class="drawer-header">
         <q-avatar size="100px" class="q-mb-md">
           <img
