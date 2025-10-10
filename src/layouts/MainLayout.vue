@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="lHh lpr lFf">
+  <q-layout view="lHh Lpr lFf">
     <q-header elevated class="bg-gradient">
       <q-toolbar>
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
@@ -21,7 +21,7 @@
       :width="350"
       :mini-width="70"
       class="drawer-custom"
-      behavior="desktop"
+      :overlay="!isReportePage"
     >
       <!-- Header del drawer -->
       <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded }">
@@ -196,8 +196,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
@@ -207,7 +207,13 @@ import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
 
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
+
+// Detectar si estamos en la página de reportes
+const isReportePage = computed(() => {
+  return route.path === '/reporte'
+})
 
 function cerrarSesionDesdeConfig() {
   logout()
