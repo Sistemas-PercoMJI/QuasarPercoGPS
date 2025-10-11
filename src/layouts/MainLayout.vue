@@ -1,8 +1,26 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-header elevated class="bg-gradient">
-      <q-toolbar>
+      <q-toolbar class="toolbar-custom">
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
+
+        <!-- Búsqueda - Más grande y a la izquierda -->
+        <div class="search-container">
+          <q-input
+            v-model="busqueda"
+            outlined
+            placeholder="Buscar vehículos, conductores..."
+            class="search-input"
+            bg-color="white"
+            dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" color="grey-7" />
+            </template>
+          </q-input>
+        </div>
+
+        <q-space />
 
         <!-- BOTÓN DE INFORMACIÓN CON CLASE ESPECÍFICA -->
         <q-btn flat dense round icon="info" class="info-btn q-mr-sm" size="md">
@@ -43,7 +61,9 @@
 
               <q-separator />
 
-              <q-card-actions align="right">
+              <q-card-actions class="q-px-md q-pb-md">
+                <q-btn flat label="Tutorial" style="color: #bb0000" v-close-popup />
+                <q-space />
                 <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
               </q-card-actions>
             </q-card>
@@ -530,5 +550,17 @@ const logout = async () => {
 
 :deep(.q-toolbar .q-btn:hover) {
   transform: none !important;
+}
+
+.search-input {
+  background: white;
+  border-radius: 500px;
+}
+
+.search-container {
+  width: 500px; /* <-- AQUÍ defines el ancho */
+  max-width: 60vw; /* <-- Ancho máximo en pantallas pequeñas */
+  margin-left: 24px;
+  border-radius: 500px;
 }
 </style>

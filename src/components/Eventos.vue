@@ -180,51 +180,104 @@
                 Condición geográfica
               </div>
 
-              <div class="row q-col-gutter-md">
-                <div class="col-6">
+              <!-- Lista de condiciones -->
+              <div v-for="(condicion, index) in nuevoEvento.condiciones" :key="index">
+                <div class="condicion-item q-mb-md">
+                  <div class="condicion-header">
+                    <q-badge color="primary" :label="String.fromCharCode(65 + index)" />
+                    <q-btn
+                      v-if="nuevoEvento.condiciones.length > 1"
+                      flat
+                      dense
+                      round
+                      icon="close"
+                      size="sm"
+                      color="negative"
+                      @click="eliminarCondicion(index)"
+                    >
+                      <q-tooltip>Eliminar condición</q-tooltip>
+                    </q-btn>
+                  </div>
+
+                  <div class="row q-col-gutter-md q-mt-sm">
+                    <div class="col-6">
+                      <q-select
+                        v-model="condicion.tipo"
+                        :options="opcionesCondicion"
+                        label="Condición"
+                        outlined
+                        dense
+                        emit-value
+                        map-options
+                      />
+                    </div>
+                    <div class="col-6">
+                      <q-select
+                        v-model="condicion.activacion"
+                        :options="opcionesActivacion"
+                        label="Activar cuando el vehículo está"
+                        outlined
+                        dense
+                        emit-value
+                        map-options
+                      />
+                    </div>
+                  </div>
+
                   <q-select
-                    v-model="nuevoEvento.condicion"
-                    :options="opcionesCondicion"
-                    label="Condición"
+                    v-model="condicion.geozona"
+                    :options="opcionesGeozonas"
+                    label="Geozona"
                     outlined
+                    dense
                     emit-value
                     map-options
-                  />
+                    class="q-mt-md"
+                    hint="Selecciona una geozona o POI"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="layers" />
+                    </template>
+                  </q-select>
                 </div>
-                <div class="col-6">
-                  <q-select
-                    v-model="nuevoEvento.activacion"
-                    :options="opcionesActivacion"
-                    label="Activar cuando el vehículo está"
-                    outlined
-                    emit-value
-                    map-options
+
+                <!-- Operador lógico entre condiciones -->
+                <div
+                  v-if="index < nuevoEvento.condiciones.length - 1"
+                  class="operador-logico q-my-md"
+                >
+                  <q-btn-toggle
+                    v-model="nuevoEvento.operadoresLogicos[index]"
+                    toggle-color="primary"
+                    :options="[
+                      { label: 'Y (AND)', value: 'AND' },
+                      { label: 'O (OR)', value: 'OR' },
+                    ]"
+                    unelevated
+                    class="operador-toggle"
                   />
                 </div>
               </div>
 
-              <q-select
-                v-model="nuevoEvento.geozona"
-                :options="opcionesGeozonas"
-                label="Geozona"
-                outlined
-                emit-value
-                map-options
+              <q-btn
+                flat
+                color="primary"
+                icon="add"
+                label="Añadir condición"
+                @click="agregarCondicion"
                 class="q-mt-md"
-                hint="Selecciona una geozona o POI"
-              >
-                <template v-slot:prepend>
-                  <q-icon name="layers" />
-                </template>
-              </q-select>
-
-              <q-btn flat color="primary" icon="add" label="Añadir condición" class="q-mt-md" />
+              />
             </div>
 
             <!-- Patrón de criterios -->
             <div class="form-section">
               <div class="section-title">Patrón de criterios</div>
-              <div class="patron-box">A</div>
+              <div class="patron-box">
+                {{ patronCriterios }}
+              </div>
+              <div class="text-caption text-grey-6 q-mt-sm">
+                Las condiciones se evalúan con operador AND (todas deben cumplirse)
+              </div>
             </div>
 
             <!-- Activación de alerta -->
@@ -341,13 +394,35 @@ const nuevoEvento = ref({
   descripcion: '',
   activo: true,
   condicionTiempo: false,
-  condicion: 'Geocerca',
-  activacion: 'Dentro',
-  geozona: null,
+  condiciones: [
+    {
+      tipo: 'Geocerca',
+      activacion: 'Dentro',
+      geozona: null,
+    },
+  ],
+  operadoresLogicos: [], // Array de operadores entre condiciones
   activacionAlerta: 'Al inicio',
   aplicacion: 'siempre',
   horaInicio: '',
   horaFin: '',
+})
+
+// Computed para el patrón de criterios
+const patronCriterios = computed(() => {
+  if (nuevoEvento.value.condiciones.length === 1) {
+    return 'A'
+  }
+
+  const letras = nuevoEvento.value.condiciones.map((_, index) => String.fromCharCode(65 + index))
+  let patron = letras[0]
+
+  for (let i = 0; i < nuevoEvento.value.operadoresLogicos.length; i++) {
+    const operador = nuevoEvento.value.operadoresLogicos[i] || 'AND'
+    patron += ` ${operador} ${letras[i + 1]}`
+  }
+
+  return patron
 })
 
 // Opciones
@@ -475,13 +550,43 @@ function toggleEvento(evento) {
   evento.activo = !evento.activo
 }
 
+// Agregar nueva condición
+function agregarCondicion() {
+  nuevoEvento.value.condiciones.push({
+    tipo: 'Geocerca',
+    activacion: 'Dentro',
+    geozona: null,
+  })
+
+  // Agregar operador por defecto (AND)
+  nuevoEvento.value.operadoresLogicos.push('AND')
+}
+
+// Eliminar condición
+function eliminarCondicion(index) {
+  if (nuevoEvento.value.condiciones.length > 1) {
+    nuevoEvento.value.condiciones.splice(index, 1)
+
+    // Ajustar operadores lógicos
+    if (index < nuevoEvento.value.operadoresLogicos.length) {
+      nuevoEvento.value.operadoresLogicos.splice(index, 1)
+    } else if (nuevoEvento.value.operadoresLogicos.length > 0) {
+      nuevoEvento.value.operadoresLogicos.splice(index - 1, 1)
+    }
+  }
+}
+
 function guardarEvento() {
   eventos.value.push({
     id: eventos.value.length + 1,
     nombre: nuevoEvento.value.nombre,
-    geozona: nuevoEvento.value.geozona || 'Sin geozona',
+    geozona:
+      nuevoEvento.value.condiciones[0]?.geozona ||
+      opcionesGeozonas.find((g) => g.value === nuevoEvento.value.condiciones[0]?.geozona)?.label ||
+      'Sin geozona',
     tipo:
-      nuevoEvento.value.activacion === 'Entrada' || nuevoEvento.value.activacion === 'Dentro'
+      nuevoEvento.value.condiciones[0]?.activacion === 'Entrada' ||
+      nuevoEvento.value.condiciones[0]?.activacion === 'Dentro'
         ? 'entrada'
         : 'salida',
     activo: nuevoEvento.value.activo,
@@ -493,9 +598,14 @@ function guardarEvento() {
     descripcion: '',
     activo: true,
     condicionTiempo: false,
-    condicion: 'Geocerca',
-    activacion: 'Dentro',
-    geozona: null,
+    condiciones: [
+      {
+        tipo: 'Geocerca',
+        activacion: 'Dentro',
+        geozona: null,
+      },
+    ],
+    operadoresLogicos: [],
     activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     horaInicio: '',
@@ -665,6 +775,20 @@ function eliminarEvento() {
   align-items: center;
 }
 
+.condicion-item {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.condicion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .patron-box {
   background: #f5f5f5;
   border: 2px dashed #ccc;
@@ -674,6 +798,17 @@ function eliminarEvento() {
   font-size: 18px;
   font-weight: 600;
   color: #666;
+}
+
+.operador-logico {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.operador-toggle {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .dialog-actions {

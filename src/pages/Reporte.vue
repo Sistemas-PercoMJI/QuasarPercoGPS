@@ -49,19 +49,19 @@
               />
             </div>
 
-            <!-- Objetos -->
+            <!-- Selector dinámico según "Reportar por" -->
             <div class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Objetos</div>
+              <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
               <q-select
-                v-model="objetos"
-                :options="listaObjetos"
+                v-model="elementosSeleccionados"
+                :options="opcionesSelector"
                 outlined
                 dense
                 use-input
                 use-chips
                 multiple
                 input-debounce="0"
-                placeholder="Seleccionar objetos..."
+                :placeholder="`Seleccionar ${reportarPor.toLowerCase()}...`"
               />
             </div>
 
@@ -100,13 +100,25 @@
             <!-- Rango de fecha -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
-              <q-input v-model="rangoFecha" outlined dense placeholder="Elegir rango de fechas">
+              <q-input
+                :model-value="rangoFechaFormateado"
+                outlined
+                dense
+                placeholder="Elegir rango de fechas"
+                readonly
+              >
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer">
-                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="rangoFecha" range>
-                        <div class="row items-center justify-end">
-                          <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                    <q-popup-proxy
+                      ref="dateProxy"
+                      cover
+                      transition-show="scale"
+                      transition-hide="scale"
+                    >
+                      <q-date v-model="rangoFechaTemporal" range>
+                        <div class="row items-center justify-end q-gutter-sm">
+                          <q-btn label="Cancelar" color="grey-7" flat v-close-popup />
+                          <q-btn label="Aceptar" color="primary" flat @click="aplicarRangoFecha" />
                         </div>
                       </q-date>
                     </q-popup-proxy>
@@ -118,7 +130,26 @@
             <!-- Lista de columnas -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
-              <div class="q-gutter-sm">
+
+              <!-- Buscador de columnas -->
+              <q-select
+                v-model="columnaAgregar"
+                :options="columnasDisponiblesFiltradas"
+                outlined
+                dense
+                use-input
+                input-debounce="0"
+                placeholder="Buscar y agregar columnas..."
+                @filter="filtrarColumnas"
+                @update:model-value="agregarColumna"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="add" />
+                </template>
+              </q-select>
+
+              <!-- Columnas seleccionadas -->
+              <div class="q-gutter-sm q-mt-md">
                 <q-chip
                   v-for="col in columnasSeleccionadas"
                   :key="col"
@@ -150,11 +181,19 @@
         <div class="row q-gutter-md q-mt-lg">
           <q-btn
             color="primary"
-            label="Generar"
-            icon="description"
+            label="Generar PDF"
+            icon="picture_as_pdf"
             unelevated
             style="width: 200px"
             @click="generarReporte"
+          />
+          <q-btn
+            color="positive"
+            label="Generar Excel"
+            icon="table_chart"
+            unelevated
+            style="width: 200px"
+            @click="generarExcel"
           />
           <q-btn outline color="grey-7" label="Cancelar" style="width: 200px" />
         </div>
@@ -191,8 +230,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import ExcelJS from 'exceljs'
 
 const $q = useQuasar()
 const tab = ref('crear')
@@ -200,18 +242,66 @@ const tab = ref('crear')
 // Datos del formulario
 const tipoInforme = ref('Informe de eventos')
 const reportarPor = ref('Objetos')
-const objetos = ref([])
+const elementosSeleccionados = ref([])
 const eventos = ref([])
 const agruparPor = ref('Objetos')
 const mostrarUnidades = ref(false)
-const rangoFecha = ref('')
+const rangoFecha = ref(null)
+const rangoFechaTemporal = ref(null)
+const dateProxy = ref(null)
+const mostrarResumen = ref(true)
+
+// Computed para formatear el rango de fechas
+const rangoFechaFormateado = computed(() => {
+  if (!rangoFecha.value) return ''
+
+  if (typeof rangoFecha.value === 'string') {
+    return rangoFecha.value
+  }
+
+  if (rangoFecha.value.from && rangoFecha.value.to) {
+    return `${rangoFecha.value.from} - ${rangoFecha.value.to}`
+  }
+
+  return ''
+})
+
+// Función para aplicar el rango de fecha
+const aplicarRangoFecha = () => {
+  rangoFecha.value = rangoFechaTemporal.value
+  dateProxy.value.hide()
+}
+
+// Columnas
 const columnasSeleccionadas = ref([
   'Nombre de evento',
   'Hora de inicio de evento',
   'Duración',
   'Ubicación de eventos',
 ])
-const mostrarResumen = ref(true)
+
+const columnaAgregar = ref(null)
+const columnasDisponiblesFiltradas = ref([])
+
+// Todas las columnas disponibles
+const todasLasColumnas = [
+  'Nombre de evento',
+  'Hora de inicio de evento',
+  'Hora de fin de evento',
+  'Duración',
+  'Ubicación de eventos',
+  'Nombre de objeto',
+  'Conductor',
+  'Ubicación al inicio',
+  'Ubicación al final',
+  'Velocidad máxima',
+  'Velocidad promedio',
+  'Distancia recorrida',
+  'Combustible consumido',
+  'Tiempo de ralentí',
+  'Número de frenadas',
+  'Temperatura',
+]
 
 // Opciones
 const tiposInforme = [
@@ -224,7 +314,16 @@ const tiposInforme = [
 const opcionesReportar = ['Objetos', 'Grupos', 'Conductores']
 const opcionesAgrupar = ['Objetos', 'Eventos', 'Fecha']
 
-const listaObjetos = ['Vehículo 1', 'Vehículo 2', 'Vehículo 3', 'Camión 001', 'Camión 002']
+// Datos según la selección de "Reportar por"
+const datosObjetos = ['Vehículo 1', 'Vehículo 2', 'Vehículo 3', 'Camión 001', 'Camión 002']
+const datosGrupos = ['Grupo Norte', 'Grupo Sur', 'Grupo Este', 'Grupo Oeste', 'Flota Principal']
+const datosConductores = [
+  'Juan Pérez',
+  'María González',
+  'Carlos Rodríguez',
+  'Ana Martínez',
+  'Luis Hernández',
+]
 
 const listaEventos = [
   'Exceso de velocidad',
@@ -233,6 +332,60 @@ const listaEventos = [
   'Ralentí prolongado',
   'Frenado brusco',
 ]
+
+// Computed para etiqueta dinámica
+const etiquetaSelector = computed(() => {
+  return reportarPor.value
+})
+
+// Computed para opciones dinámicas según "Reportar por"
+const opcionesSelector = computed(() => {
+  switch (reportarPor.value) {
+    case 'Objetos':
+      return datosObjetos
+    case 'Grupos':
+      return datosGrupos
+    case 'Conductores':
+      return datosConductores
+    default:
+      return []
+  }
+})
+
+// Computed para columnas disponibles (las que no están seleccionadas)
+const columnasDisponibles = computed(() => {
+  return todasLasColumnas.filter((col) => !columnasSeleccionadas.value.includes(col))
+})
+
+// Filtrar columnas en el buscador
+const filtrarColumnas = (val, update) => {
+  update(() => {
+    if (val === '') {
+      columnasDisponiblesFiltradas.value = columnasDisponibles.value
+    } else {
+      const needle = val.toLowerCase()
+      columnasDisponiblesFiltradas.value = columnasDisponibles.value.filter(
+        (col) => col.toLowerCase().indexOf(needle) > -1,
+      )
+    }
+  })
+}
+
+// Agregar columna seleccionada
+const agregarColumna = (val) => {
+  if (val && !columnasSeleccionadas.value.includes(val)) {
+    columnasSeleccionadas.value.push(val)
+    columnaAgregar.value = null // Limpiar el selector
+  }
+}
+
+// Remover columna
+const removerColumna = (col) => {
+  const index = columnasSeleccionadas.value.indexOf(col)
+  if (index > -1) {
+    columnasSeleccionadas.value.splice(index, 1)
+  }
+}
 
 // Historial
 const columnasHistorial = [
@@ -267,25 +420,506 @@ const reportesAnteriores = ref([
   },
 ])
 
-const removerColumna = (col) => {
-  const index = columnasSeleccionadas.value.indexOf(col)
-  if (index > -1) {
-    columnasSeleccionadas.value.splice(index, 1)
+const generarReporte = () => {
+  // Validaciones básicas
+  if (!rangoFecha.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'Por favor selecciona un rango de fechas',
+      icon: 'warning',
+    })
+    return
+  }
+
+  if (elementosSeleccionados.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: `Por favor selecciona al menos un ${reportarPor.value.toLowerCase()}`,
+      icon: 'warning',
+    })
+    return
+  }
+
+  // Datos de ejemplo para el PDF
+  const datosEjemplo = [
+    {
+      nombreEvento: 'SALIDA TALLER MJ INDUSTRIAL PINOS',
+      horaInicio: '2 de octubre de 2025, 8:27',
+      duracion: '03:48:05',
+      condicion: 'Vehículo fuera de la geozona MJ INDUSTRIAL TALLER',
+    },
+    {
+      nombreEvento: 'ENTRADA ÁGUILAS DEL DESIERTO CARRETERA LIBRE TECATE',
+      horaInicio: '2 de octubre de 2025, 9:40',
+      duracion: '01:29:24',
+      condicion: 'El vehículo ha entrado en la geozona ÁGUILAS DEL DESIERTO LIBRE-TECATE',
+    },
+    {
+      nombreEvento: 'SALIDA ÁGUILAS DEL DESIERTO CARRETERA LIBRE A TECATE',
+      horaInicio: '2 de octubre de 2025, 11:09',
+      duracion: '',
+      condicion: 'Vehículo fuera de la geozona ÁGUILAS DEL DESIERTO LIBRE-TECATE',
+    },
+    {
+      nombreEvento: 'ENTRADA TALLER MJ INDUSTRIAL PINOS',
+      horaInicio: '2 de octubre de 2025, 12:15',
+      duracion: '01:48:37',
+      condicion: 'El vehículo ha entrado en la geozona MJ INDUSTRIAL TALLER',
+    },
+    {
+      nombreEvento: 'SALIDA TALLER MJ INDUSTRIAL PINOS',
+      horaInicio: '2 de octubre de 2025, 14:04',
+      duracion: '00:46:37',
+      condicion: 'Vehículo fuera de la geozona MJ INDUSTRIAL TALLER',
+    },
+    {
+      nombreEvento: 'ENTRADA TALLER MJ INDUSTRIAL PINOS',
+      horaInicio: '2 de octubre de 2025, 14:50',
+      duracion: '',
+      condicion: 'El vehículo ha entrado en la geozona MJ INDUSTRIAL TALLER',
+    },
+  ]
+
+  try {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
+    let yPos = 20
+
+    // Logo MJ GPS (texto como placeholder)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(187, 0, 0)
+    doc.text('MJ GPS', pageWidth - 40, yPos, { align: 'right' })
+
+    // Título del informe
+    doc.setFontSize(18)
+    doc.setTextColor(0, 0, 0)
+    doc.text('Informe de eventos', 14, yPos)
+
+    yPos += 15
+
+    // Información del período
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    const periodoTexto = `Periodo: ${rangoFechaFormateado.value || 'No especificado'}`
+    doc.text(periodoTexto, 14, yPos)
+
+    yPos += 5
+    const fechaGeneracion = new Date().toLocaleString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    doc.text(`Informe generado: ${fechaGeneracion}`, 14, yPos)
+
+    yPos += 10
+
+    // Resumen del informe
+    if (mostrarResumen.value) {
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Resumen del informe', 14, yPos)
+
+      yPos += 8
+
+      // Tabla de resumen
+      const conductorEjemplo = elementosSeleccionados.value[0] || 'CHRISTOPHER'
+      const resumenData = [[conductorEjemplo, '6']]
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [[reportarPor.value === 'Conductores' ? 'Conductor' : 'Objeto', 'Eventos']],
+        body: resumenData,
+        foot: [['Totales:', '6']],
+        theme: 'grid',
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          fontSize: 10,
+        },
+        footStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          lineWidth: 0.1,
+          lineColor: [200, 200, 200],
+        },
+        bodyStyles: {
+          fontSize: 9,
+        },
+        margin: { left: 14 },
+      })
+
+      yPos = doc.lastAutoTable.finalY + 10
+
+      // Nota sobre conductores sin datos
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'italic')
+      const elementosSinDatos = elementosSeleccionados.value.filter((_, i) => i > 0)
+      if (elementosSinDatos.length > 0) {
+        doc.text(
+          `${reportarPor.value} que no contienen ningún dato del período seleccionado:`,
+          14,
+          yPos,
+        )
+        yPos += 5
+        doc.setFont('helvetica', 'bold')
+        doc.text(elementosSinDatos.join(', '), 14, yPos)
+        yPos += 10
+      }
+    }
+
+    // Detalle por conductor/objeto
+    elementosSeleccionados.value.forEach((elemento, index) => {
+      if (index > 0 && yPos > 250) {
+        doc.addPage()
+        yPos = 20
+      }
+
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(0, 0, 0)
+      doc.text(elemento.toUpperCase(), 14, yPos)
+
+      yPos += 8
+
+      // Preparar datos de la tabla según columnas seleccionadas
+      const tableData = datosEjemplo.map((evento) => {
+        const row = []
+        columnasSeleccionadas.value.forEach((col) => {
+          switch (col) {
+            case 'Nombre de evento':
+              row.push(evento.nombreEvento)
+              break
+            case 'Hora de inicio de evento':
+              row.push(evento.horaInicio)
+              break
+            case 'Duración':
+              row.push(evento.duracion)
+              break
+            case 'Condición de evento':
+            case 'Ubicación de eventos':
+              row.push(evento.condicion)
+              break
+            default:
+              row.push('-')
+          }
+        })
+        return row
+      })
+
+      // Tabla de eventos
+      autoTable(doc, {
+        startY: yPos,
+        head: [columnasSeleccionadas.value],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [220, 220, 220],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'left',
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 3,
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 45 },
+          2: { cellWidth: 25, halign: 'center' },
+          3: { cellWidth: 'auto' },
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data) => {
+          // Pie de página con número de página
+          const pageCount = doc.internal.getNumberOfPages()
+          doc.setFontSize(8)
+          doc.setTextColor(128)
+          doc.text(
+            `Página ${data.pageNumber} de ${pageCount}`,
+            pageWidth / 2,
+            doc.internal.pageSize.height - 10,
+            { align: 'center' },
+          )
+        },
+      })
+
+      yPos = doc.lastAutoTable.finalY + 15
+    })
+
+    // Guardar el PDF
+    const nombreArchivo = `informe_eventos_${Date.now()}.pdf`
+    doc.save(nombreArchivo)
+
+    $q.notify({
+      type: 'positive',
+      message: 'PDF generado exitosamente',
+      icon: 'check_circle',
+      timeout: 2000,
+    })
+
+    console.log('Reporte generado con:', {
+      tipoInforme: tipoInforme.value,
+      reportarPor: reportarPor.value,
+      elementos: elementosSeleccionados.value,
+      eventos: eventos.value,
+      rangoFecha: rangoFecha.value,
+      columnas: columnasSeleccionadas.value,
+    })
+  } catch (error) {
+    console.error('Error al generar PDF:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al generar el PDF',
+      icon: 'error',
+    })
   }
 }
 
-const generarReporte = () => {
-  $q.notify({
-    type: 'positive',
-    message: 'Generando reporte...',
-    icon: 'description',
-  })
+const generarExcel = async () => {
+  // Validaciones básicas
+  if (!rangoFecha.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'Por favor selecciona un rango de fechas',
+      icon: 'warning',
+    })
+    return
+  }
 
-  console.log('Generar reporte con:', {
-    tipoInforme: tipoInforme.value,
-    objetos: objetos.value,
-    eventos: eventos.value,
-    rangoFecha: rangoFecha.value,
-  })
+  if (elementosSeleccionados.value.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: `Por favor selecciona al menos un ${reportarPor.value.toLowerCase()}`,
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    // Crear un nuevo libro de Excel
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'MJ GPS'
+    workbook.created = new Date()
+
+    // Datos de ejemplo
+    const datosEjemplo = [
+      {
+        nombreEvento: 'SALIDA TALLER MJ INDUSTRIAL PINOS',
+        horaInicio: '02/10/2025 8:27:36',
+        duracion: '03:48:05',
+        condicion: 'Vehículo fuera de la geozona MJ INDUSTRIAL TALLER',
+      },
+      {
+        nombreEvento: 'ENTRADA ÁGUILAS DEL DESIERTO CARRETERA LIBRE TECATE',
+        horaInicio: '02/10/2025 9:40:05',
+        duracion: '01:29:24',
+        condicion: 'El vehículo ha entrado en la geozona ÁGUILAS DEL DESIERTO LIBRE-TECATE',
+      },
+      {
+        nombreEvento: 'SALIDA ÁGUILAS DEL DESIERTO CARRETERA LIBRE A TECATE',
+        horaInicio: '02/10/2025 11:09:30',
+        duracion: '',
+        condicion: 'Vehículo fuera de la geozona ÁGUILAS DEL DESIERTO LIBRE-TECATE',
+      },
+      {
+        nombreEvento: 'ENTRADA TALLER MJ INDUSTRIAL PINOS',
+        horaInicio: '02/10/2025 12:15:41',
+        duracion: '01:48:37',
+        condicion: 'El vehículo ha entrado en la geozona MJ INDUSTRIAL TALLER',
+      },
+      {
+        nombreEvento: 'SALIDA TALLER MJ INDUSTRIAL PINOS',
+        horaInicio: '02/10/2025 14:04:18',
+        duracion: '00:46:37',
+        condicion: 'Vehículo fuera de la geozona MJ INDUSTRIAL TALLER',
+      },
+      {
+        nombreEvento: 'ENTRADA TALLER MJ INDUSTRIAL PINOS',
+        horaInicio: '02/10/2025 14:50:55',
+        duracion: '',
+        condicion: 'El vehículo ha entrado en la geozona MJ INDUSTRIAL TALLER',
+      },
+    ]
+
+    // Hoja 1: Información del informe
+    const infoSheet = workbook.addWorksheet('Información')
+
+    // Título
+    infoSheet.addRow(['Informe de eventos'])
+    infoSheet.getCell('A1').font = { bold: true, size: 14 }
+
+    infoSheet.addRow([])
+    infoSheet.addRow([`Periodo: ${rangoFechaFormateado.value || 'No especificado'}`])
+    infoSheet.addRow(['Informe generado'])
+    infoSheet.addRow([
+      `por: PERCO-TIJUANA, PERCO a: ${new Date().toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+    ])
+    infoSheet.addRow([])
+
+    // Resumen
+    infoSheet.addRow(['Resumen del informe'])
+    infoSheet.getCell(`A${infoSheet.rowCount}`).font = { bold: true }
+
+    const headerRow = infoSheet.addRow([
+      reportarPor.value === 'Conductores' ? 'Conductor' : 'Conductor',
+      'Eventos',
+    ])
+    headerRow.font = { bold: true }
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFD3D3D3' },
+    }
+
+    // Agregar datos del resumen
+    elementosSeleccionados.value.forEach((elemento) => {
+      infoSheet.addRow([elemento.toUpperCase(), 6])
+    })
+
+    const totalesRow = infoSheet.addRow(['Totales:', 6])
+    totalesRow.font = { bold: true }
+
+    infoSheet.addRow([])
+    infoSheet.addRow(['Informe de eventos'])
+
+    // Conductores sin datos
+    const conductoresSinDatos = elementosSeleccionados.value.filter((_, i) => i > 0)
+    if (conductoresSinDatos.length > 0) {
+      infoSheet.addRow([])
+      infoSheet.addRow([
+        'El informe contiene solo los vehículos que el usuario puede ver. Los conductores seleccionados pueden haber conducido más vehículos de los que se muestran en el informe generado.',
+      ])
+      infoSheet.addRow([])
+      infoSheet.addRow([
+        `${reportarPor.value} que no contienen ningún dato del período seleccionado:`,
+      ])
+      conductoresSinDatos.forEach((conductor) => {
+        infoSheet.addRow([conductor.toUpperCase()])
+      })
+    }
+
+    // Ajustar anchos de columna
+    infoSheet.getColumn(1).width = 80
+    infoSheet.getColumn(2).width = 15
+
+    // Hoja 2+: Detalle de eventos por conductor/objeto
+    elementosSeleccionados.value.forEach((elemento) => {
+      const sheetName = elemento.substring(0, 30)
+      const detalleSheet = workbook.addWorksheet(sheetName)
+
+      // Título con el nombre del conductor
+      detalleSheet.addRow([elemento.toUpperCase()])
+      detalleSheet.getCell('A1').font = { bold: true, size: 12 }
+      detalleSheet.addRow([])
+
+      // Headers de columnas
+      const headerRow = detalleSheet.addRow(columnasSeleccionadas.value)
+      headerRow.font = { bold: true }
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD3D3D3' },
+      }
+
+      // Agregar bordes al header
+      headerRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        }
+      })
+
+      // Datos de eventos
+      datosEjemplo.forEach((evento) => {
+        const rowData = []
+        columnasSeleccionadas.value.forEach((col) => {
+          switch (col) {
+            case 'Nombre de evento':
+              rowData.push(evento.nombreEvento)
+              break
+            case 'Hora de inicio de evento':
+              rowData.push(evento.horaInicio)
+              break
+            case 'Duración':
+              rowData.push(evento.duracion)
+              break
+            case 'Condición de evento':
+            case 'Ubicación de eventos':
+              rowData.push(evento.condicion)
+              break
+            default:
+              rowData.push('-')
+          }
+        })
+
+        const dataRow = detalleSheet.addRow(rowData)
+
+        // Agregar bordes a cada celda
+        dataRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+      })
+
+      // Ajustar anchos de columna
+      detalleSheet.getColumn(1).width = 50 // Nombre de evento
+      detalleSheet.getColumn(2).width = 20 // Hora
+      detalleSheet.getColumn(3).width = 12 // Duración
+      detalleSheet.getColumn(4).width = 60 // Condición
+    })
+
+    // Guardar el archivo
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `informe_eventos_${Date.now()}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Excel generado exitosamente',
+      icon: 'check_circle',
+      timeout: 2000,
+    })
+
+    console.log('Excel generado con:', {
+      tipoInforme: tipoInforme.value,
+      reportarPor: reportarPor.value,
+      elementos: elementosSeleccionados.value,
+      eventos: eventos.value,
+      rangoFecha: rangoFecha.value,
+      columnas: columnasSeleccionadas.value,
+    })
+  } catch (error) {
+    console.error('Error al generar Excel:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al generar el Excel',
+      icon: 'error',
+    })
+  }
 }
 </script>

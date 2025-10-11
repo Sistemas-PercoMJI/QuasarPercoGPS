@@ -136,6 +136,148 @@
       </div>
     </q-list>
 
+    <!-- Dialog: Detalles del Conductor -->
+    <q-dialog v-model="dialogDetallesConductor" seamless position="standard" class="detalle-dialog">
+      <q-card
+        style="
+          position: fixed;
+          left: 350px;
+          top: 0;
+          bottom: 0;
+          width: 400px;
+          margin: 0;
+          border-radius: 0;
+        "
+      >
+        <!-- Header del card -->
+        <q-card-section
+          style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
+          class="text-white row items-center"
+        >
+          <div class="col">
+            <div class="text-h6">{{ conductorSeleccionado?.nombre }}</div>
+          </div>
+          <q-btn
+            flat
+            dense
+            round
+            icon="close"
+            @click="dialogDetallesConductor = false"
+            color="white"
+          />
+        </q-card-section>
+
+        <q-separator />
+
+        <!-- Contenido -->
+        <q-card-section class="q-pa-md" style="height: calc(100vh - 200px); overflow-y: auto">
+          <!-- Asignación de vehículo -->
+          <div class="detalle-section">
+            <div class="detalle-label">Nombre del vehículo asignado</div>
+            <div class="detalle-campo">
+              <q-btn
+                flat
+                no-caps
+                color="primary"
+                :label="conductorSeleccionado?.vehiculo || 'Asignar vehículo'"
+                icon-right="add"
+                class="full-width text-left"
+                align="left"
+                @click="dialogAsignarVehiculo = true"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Teléfono -->
+          <div class="detalle-section">
+            <div class="detalle-label">Teléfono</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.telefono || '—' }}</div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Fecha de expiración del carnet -->
+          <div class="detalle-section">
+            <div class="detalle-label">Fecha de expiración del carnet de conducir</div>
+            <div class="detalle-campo">
+              <q-btn
+                flat
+                no-caps
+                color="grey-7"
+                :label="conductorSeleccionado?.fechaExpiracion || '—'"
+                icon-right="edit"
+                class="full-width text-left"
+                align="left"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Notas -->
+          <div class="detalle-section">
+            <div class="detalle-label">Notas</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.notas || '—' }}</div>
+          </div>
+        </q-card-section>
+
+        <!-- Botones de acción -->
+        <q-card-actions
+          class="q-pa-md q-gutter-sm"
+          style="position: absolute; bottom: 0; left: 0; right: 0; background: white"
+        >
+          <q-btn
+            unelevated
+            color="primary"
+            label="Editar"
+            icon="edit"
+            class="full-width"
+            @click="editarConductor"
+          />
+          <q-btn
+            outline
+            color="negative"
+            label="Borrar"
+            icon="delete"
+            class="full-width"
+            @click="confirmarEliminarConductor"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog: Asignar Vehículo -->
+    <q-dialog v-model="dialogAsignarVehiculo">
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Asignar vehículo</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="vehiculoAsignado"
+            :options="vehiculosDisponibles"
+            label="Seleccionar vehículo"
+            outlined
+            emit-value
+            map-options
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="directions_car" />
+            </template>
+          </q-select>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn flat label="Asignar" color="primary" @click="asignarVehiculoAConductor" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialog: Nuevo Grupo -->
     <q-dialog v-model="dialogNuevoGrupo">
       <q-card style="min-width: 350px">
@@ -216,9 +358,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useQuasar } from 'quasar'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
+
+const $q = useQuasar()
 
 // Estado
 const todosConductores = ref(true)
@@ -226,10 +371,13 @@ const busqueda = ref('')
 const conductorSeleccionado = ref(null)
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
+const dialogDetallesConductor = ref(false)
+const dialogAsignarVehiculo = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
+const vehiculoAsignado = ref(null)
 
 const nuevoGrupo = ref({
   nombre: '',
@@ -245,6 +393,15 @@ const coloresDisponibles = [
   { label: 'Cyan', value: 'cyan' },
   { label: 'Rosa', value: 'pink' },
   { label: 'Gris', value: 'blue-grey' },
+]
+
+// Lista de vehículos disponibles (vendrá de Firebase)
+const vehiculosDisponibles = [
+  { label: 'SPRINTER-PANEL-1-HF3500C', value: 'vehiculo1' },
+  { label: 'PERCO TIJ-CRAFTER-UX23465A', value: 'vehiculo2' },
+  { label: 'Camión 001', value: 'vehiculo3' },
+  { label: 'Camión 002', value: 'vehiculo4' },
+  { label: 'Vehículo no asignado', value: null },
 ]
 
 // Grupos de conductores
@@ -273,20 +430,29 @@ const conductores = ref([
     nombre: 'Antonio Soto',
     iniciales: 'AS',
     vehiculo: 'Vehículo no asignado',
+    telefono: '+52 1 663 203 0458',
+    fechaExpiracion: '—',
+    notas: '—',
     grupoId: null,
   },
   {
     id: 2,
     nombre: 'BRANDON',
     iniciales: 'BR',
-    vehiculo: 'SPRINTER-PANEL-1-HF3500C*',
+    vehiculo: 'SPRINTER-PANEL-1-HF3500C',
+    telefono: '+52 664 123 4567',
+    fechaExpiracion: '15/06/2026',
+    notas: 'Conductor experimentado',
     grupoId: 'grupo1',
   },
   {
     id: 3,
     nombre: 'CHRISTOPHER',
     iniciales: 'CH',
-    vehiculo: 'PERCO TIJ-CRAFTER-UX23465A*',
+    vehiculo: 'PERCO TIJ-CRAFTER-UX23465A',
+    telefono: '+52 664 987 6543',
+    fechaExpiracion: '20/12/2025',
+    notas: 'Disponible para rutas largas',
     grupoId: 'grupo1',
   },
   {
@@ -294,6 +460,9 @@ const conductores = ref([
     nombre: 'Josue Corona',
     iniciales: 'JC',
     vehiculo: 'Vehículo no asignado',
+    telefono: '+52 664 555 1234',
+    fechaExpiracion: '—',
+    notas: '—',
     grupoId: 'grupo2',
   },
 ])
@@ -346,7 +515,17 @@ function filtrarPorGrupo(grupo) {
 }
 
 function seleccionarConductor(conductor) {
+  // Si es el mismo conductor, cerrar el dialog
+  if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
+    dialogDetallesConductor.value = false
+    conductorSeleccionado.value = null
+    return
+  }
+
+  // Si es otro conductor, abrir sus detalles
   conductorSeleccionado.value = conductor
+  vehiculoAsignado.value = conductor.vehiculo
+  dialogDetallesConductor.value = true
   emit('conductor-seleccionado', conductor)
 }
 
@@ -364,6 +543,53 @@ function getColorGrupo(grupoId) {
   return grupo ? grupo.color : 'grey'
 }
 
+function asignarVehiculoAConductor() {
+  if (conductorSeleccionado.value) {
+    const conductor = conductores.value.find((c) => c.id === conductorSeleccionado.value.id)
+    if (conductor) {
+      conductor.vehiculo = vehiculoAsignado.value || 'Vehículo no asignado'
+      conductorSeleccionado.value.vehiculo = conductor.vehiculo
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Vehículo asignado correctamente',
+      icon: 'check_circle',
+    })
+
+    dialogAsignarVehiculo.value = false
+  }
+}
+
+function editarConductor() {
+  $q.notify({
+    type: 'info',
+    message: 'Función de edición en desarrollo',
+    icon: 'info',
+  })
+}
+
+function confirmarEliminarConductor() {
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: `¿Estás seguro de eliminar al conductor ${conductorSeleccionado.value?.nombre}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    const index = conductores.value.findIndex((c) => c.id === conductorSeleccionado.value.id)
+    if (index > -1) {
+      conductores.value.splice(index, 1)
+      dialogDetallesConductor.value = false
+
+      $q.notify({
+        type: 'positive',
+        message: 'Conductor eliminado',
+        icon: 'check_circle',
+      })
+    }
+  })
+}
+
 function crearGrupo() {
   const nuevoId = `grupo${grupos.value.length + 1}`
   grupos.value.push({
@@ -376,7 +602,11 @@ function crearGrupo() {
   nuevoGrupo.value = { nombre: '', color: 'blue' }
   dialogNuevoGrupo.value = false
 
-  console.log('Grupo creado:', grupos.value[grupos.value.length - 1])
+  $q.notify({
+    type: 'positive',
+    message: 'Grupo creado correctamente',
+    icon: 'check_circle',
+  })
 }
 
 function mostrarMenuGrupo(grupo) {
@@ -395,8 +625,23 @@ function editarGrupo() {
 }
 
 function eliminarGrupo() {
-  console.log('Eliminar grupo:', grupoMenu.value)
-  // Aquí implementarías la lógica de eliminación
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.nombre}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    const index = grupos.value.findIndex((g) => g.id === grupoMenu.value.id)
+    if (index > -1) {
+      grupos.value.splice(index, 1)
+
+      $q.notify({
+        type: 'positive',
+        message: 'Grupo eliminado',
+        icon: 'check_circle',
+      })
+    }
+  })
 }
 
 function asignarGrupo() {
@@ -405,8 +650,7 @@ function asignarGrupo() {
 }
 
 function verDetalles() {
-  console.log('Ver detalles de:', conductorMenu.value)
-  emit('conductor-seleccionado', conductorMenu.value)
+  seleccionarConductor(conductorMenu.value)
 }
 </script>
 
@@ -496,5 +740,36 @@ function verDetalles() {
 .color-picker {
   display: flex;
   flex-wrap: wrap;
+}
+
+/* Detalles del conductor */
+.detalle-dialog :deep(.q-dialog__backdrop) {
+  background: transparent !important;
+}
+
+.detalle-section {
+  margin-bottom: 16px;
+}
+
+.detalle-label {
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.detalle-valor {
+  font-size: 14px;
+  color: #212121;
+  padding: 8px 0;
+}
+
+.detalle-campo {
+  margin-top: 4px;
+}
+
+.detalle-campo .q-btn {
+  justify-content: space-between;
+  padding: 8px 12px;
 }
 </style>
