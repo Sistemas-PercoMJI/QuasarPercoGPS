@@ -4,29 +4,22 @@
     <!-- Header -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Conductores</div>
-      <q-btn 
-        flat 
-        dense 
-        round 
-        icon="close" 
-        color="white"
-        @click="cerrarDrawer"
-      />
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
     </div>
 
     <!-- Selector de todos los conductores -->
     <div class="q-pa-sm q-px-md">
-      <q-checkbox 
-        v-model="todosConductores" 
-        label="Todos los conductores" 
+      <q-checkbox
+        v-model="todosConductores"
+        label="Todos los conductores"
         @update:model-value="seleccionarTodos"
         dense
       />
       <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
-      <q-btn 
-        flat 
-        dense 
-        round 
+      <q-btn
+        flat
+        dense
+        round
         icon="create_new_folder"
         size="sm"
         class="float-right"
@@ -38,13 +31,7 @@
 
     <!-- Búsqueda -->
     <div class="q-px-md q-pb-sm">
-      <q-input
-        v-model="busqueda"
-        outlined
-        dense
-        placeholder="Búsqueda"
-        class="search-input"
-      >
+      <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
         <template v-slot:prepend>
           <q-icon name="search" />
         </template>
@@ -83,15 +70,17 @@
 
           <q-item-section>
             <q-item-label>{{ grupo.nombre }}</q-item-label>
-            <q-item-label caption>{{ contarConductoresPorGrupo(grupo.id) }} conductores</q-item-label>
+            <q-item-label caption
+              >{{ contarConductoresPorGrupo(grupo.id) }} conductores</q-item-label
+            >
           </q-item-section>
 
           <q-item-section side>
-            <q-btn 
-              flat 
-              dense 
-              round 
-              icon="more_vert" 
+            <q-btn
+              flat
+              dense
+              round
+              icon="more_vert"
               size="sm"
               @click.stop="mostrarMenuGrupo(grupo)"
             />
@@ -118,11 +107,7 @@
         class="conductor-item"
       >
         <q-item-section avatar>
-          <q-avatar 
-            :color="getColorGrupo(conductor.grupoId)" 
-            text-color="white"
-            size="40px"
-          >
+          <q-avatar :color="getColorGrupo(conductor.grupoId)" text-color="white" size="40px">
             {{ conductor.iniciales }}
           </q-avatar>
         </q-item-section>
@@ -133,11 +118,11 @@
         </q-item-section>
 
         <q-item-section side>
-          <q-btn 
-            flat 
-            dense 
-            round 
-            icon="more_vert" 
+          <q-btn
+            flat
+            dense
+            round
+            icon="more_vert"
             size="sm"
             @click.stop="mostrarMenuConductor(conductor)"
           />
@@ -151,6 +136,148 @@
       </div>
     </q-list>
 
+    <!-- Dialog: Detalles del Conductor -->
+    <q-dialog v-model="dialogDetallesConductor" seamless position="standard" class="detalle-dialog">
+      <q-card
+        style="
+          position: fixed;
+          left: 350px;
+          top: 0;
+          bottom: 0;
+          width: 400px;
+          margin: 0;
+          border-radius: 0;
+        "
+      >
+        <!-- Header del card -->
+        <q-card-section
+          style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
+          class="text-white row items-center"
+        >
+          <div class="col">
+            <div class="text-h6">{{ conductorSeleccionado?.nombre }}</div>
+          </div>
+          <q-btn
+            flat
+            dense
+            round
+            icon="close"
+            @click="dialogDetallesConductor = false"
+            color="white"
+          />
+        </q-card-section>
+
+        <q-separator />
+
+        <!-- Contenido -->
+        <q-card-section class="q-pa-md" style="height: calc(100vh - 200px); overflow-y: auto">
+          <!-- Asignación de vehículo -->
+          <div class="detalle-section">
+            <div class="detalle-label">Nombre del vehículo asignado</div>
+            <div class="detalle-campo">
+              <q-btn
+                flat
+                no-caps
+                color="primary"
+                :label="conductorSeleccionado?.vehiculo || 'Asignar vehículo'"
+                icon-right="add"
+                class="full-width text-left"
+                align="left"
+                @click="dialogAsignarVehiculo = true"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Teléfono -->
+          <div class="detalle-section">
+            <div class="detalle-label">Teléfono</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.telefono || '—' }}</div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Fecha de expiración del carnet -->
+          <div class="detalle-section">
+            <div class="detalle-label">Fecha de expiración del carnet de conducir</div>
+            <div class="detalle-campo">
+              <q-btn
+                flat
+                no-caps
+                color="grey-7"
+                :label="conductorSeleccionado?.fechaExpiracion || '—'"
+                icon-right="edit"
+                class="full-width text-left"
+                align="left"
+              />
+            </div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Notas -->
+          <div class="detalle-section">
+            <div class="detalle-label">Notas</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.notas || '—' }}</div>
+          </div>
+        </q-card-section>
+
+        <!-- Botones de acción -->
+        <q-card-actions
+          class="q-pa-md q-gutter-sm"
+          style="position: absolute; bottom: 0; left: 0; right: 0; background: white"
+        >
+          <q-btn
+            unelevated
+            color="primary"
+            label="Editar"
+            icon="edit"
+            class="full-width"
+            @click="editarConductor"
+          />
+          <q-btn
+            outline
+            color="negative"
+            label="Borrar"
+            icon="delete"
+            class="full-width"
+            @click="confirmarEliminarConductor"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog: Asignar Vehículo -->
+    <q-dialog v-model="dialogAsignarVehiculo">
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Asignar vehículo</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="vehiculoAsignado"
+            :options="vehiculosDisponibles"
+            label="Seleccionar vehículo"
+            outlined
+            emit-value
+            map-options
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="directions_car" />
+            </template>
+          </q-select>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn flat label="Asignar" color="primary" @click="asignarVehiculoAConductor" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialog: Nuevo Grupo -->
     <q-dialog v-model="dialogNuevoGrupo">
       <q-card style="min-width: 350px">
@@ -159,14 +286,8 @@
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-input
-            v-model="nuevoGrupo.nombre"
-            label="Nombre del grupo"
-            outlined
-            dense
-            autofocus
-          />
-          
+          <q-input v-model="nuevoGrupo.nombre" label="Nombre del grupo" outlined dense autofocus />
+
           <div class="q-mt-md">
             <div class="text-caption q-mb-sm">Color del grupo</div>
             <div class="color-picker">
@@ -186,10 +307,10 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Cancelar" color="grey" v-close-popup />
-          <q-btn 
-            flat 
-            label="Crear" 
-            color="primary" 
+          <q-btn
+            flat
+            label="Crear"
+            color="primary"
             @click="crearGrupo"
             :disable="!nuevoGrupo.nombre"
           />
@@ -237,9 +358,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useQuasar } from 'quasar'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
+
+const $q = useQuasar()
 
 // Estado
 const todosConductores = ref(true)
@@ -247,14 +371,17 @@ const busqueda = ref('')
 const conductorSeleccionado = ref(null)
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
+const dialogDetallesConductor = ref(false)
+const dialogAsignarVehiculo = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
+const vehiculoAsignado = ref(null)
 
 const nuevoGrupo = ref({
   nombre: '',
-  color: 'blue'
+  color: 'blue',
 })
 
 const coloresDisponibles = [
@@ -265,7 +392,16 @@ const coloresDisponibles = [
   { label: 'Púrpura', value: 'purple' },
   { label: 'Cyan', value: 'cyan' },
   { label: 'Rosa', value: 'pink' },
-  { label: 'Gris', value: 'blue-grey' }
+  { label: 'Gris', value: 'blue-grey' },
+]
+
+// Lista de vehículos disponibles (vendrá de Firebase)
+const vehiculosDisponibles = [
+  { label: 'SPRINTER-PANEL-1-HF3500C', value: 'vehiculo1' },
+  { label: 'PERCO TIJ-CRAFTER-UX23465A', value: 'vehiculo2' },
+  { label: 'Camión 001', value: 'vehiculo3' },
+  { label: 'Camión 002', value: 'vehiculo4' },
+  { label: 'Vehículo no asignado', value: null },
 ]
 
 // Grupos de conductores
@@ -273,18 +409,18 @@ const grupos = ref([
   {
     id: 'grupo1',
     nombre: 'Flota Principal',
-    color: 'blue'
+    color: 'blue',
   },
   {
     id: 'grupo2',
     nombre: 'Distribución',
-    color: 'green'
+    color: 'green',
   },
   {
     id: 'grupo3',
     nombre: 'Ventas',
-    color: 'orange'
-  }
+    color: 'orange',
+  },
 ])
 
 // Lista de conductores (ejemplo - vendrán de Firebase)
@@ -294,29 +430,41 @@ const conductores = ref([
     nombre: 'Antonio Soto',
     iniciales: 'AS',
     vehiculo: 'Vehículo no asignado',
-    grupoId: null
+    telefono: '+52 1 663 203 0458',
+    fechaExpiracion: '—',
+    notas: '—',
+    grupoId: null,
   },
   {
     id: 2,
     nombre: 'BRANDON',
     iniciales: 'BR',
-    vehiculo: 'SPRINTER-PANEL-1-HF3500C*',
-    grupoId: 'grupo1'
+    vehiculo: 'SPRINTER-PANEL-1-HF3500C',
+    telefono: '+52 664 123 4567',
+    fechaExpiracion: '15/06/2026',
+    notas: 'Conductor experimentado',
+    grupoId: 'grupo1',
   },
   {
     id: 3,
     nombre: 'CHRISTOPHER',
     iniciales: 'CH',
-    vehiculo: 'PERCO TIJ-CRAFTER-UX23465A*',
-    grupoId: 'grupo1'
+    vehiculo: 'PERCO TIJ-CRAFTER-UX23465A',
+    telefono: '+52 664 987 6543',
+    fechaExpiracion: '20/12/2025',
+    notas: 'Disponible para rutas largas',
+    grupoId: 'grupo1',
   },
   {
     id: 4,
     nombre: 'Josue Corona',
     iniciales: 'JC',
     vehiculo: 'Vehículo no asignado',
-    grupoId: 'grupo2'
-  }
+    telefono: '+52 664 555 1234',
+    fechaExpiracion: '—',
+    notas: '—',
+    grupoId: 'grupo2',
+  },
 ])
 
 // Computed
@@ -324,10 +472,10 @@ const totalConductores = computed(() => conductores.value.length)
 
 const opcionesGrupos = computed(() => {
   const opciones = [{ label: 'Todos', value: 'todos' }]
-  grupos.value.forEach(grupo => {
+  grupos.value.forEach((grupo) => {
     opciones.push({
       label: grupo.nombre,
-      value: grupo.id
+      value: grupo.id,
     })
   })
   opciones.push({ label: 'Sin grupo', value: 'sin-grupo' })
@@ -339,16 +487,17 @@ const conductoresFiltrados = computed(() => {
 
   // Filtrar por grupo
   if (grupoSeleccionado.value === 'sin-grupo') {
-    resultado = resultado.filter(c => !c.grupoId)
+    resultado = resultado.filter((c) => !c.grupoId)
   } else if (grupoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter(c => c.grupoId === grupoSeleccionado.value)
+    resultado = resultado.filter((c) => c.grupoId === grupoSeleccionado.value)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(c => 
-      c.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      c.vehiculo.toLowerCase().includes(busqueda.value.toLowerCase())
+    resultado = resultado.filter(
+      (c) =>
+        c.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        c.vehiculo.toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -366,7 +515,17 @@ function filtrarPorGrupo(grupo) {
 }
 
 function seleccionarConductor(conductor) {
+  // Si es el mismo conductor, cerrar el dialog
+  if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
+    dialogDetallesConductor.value = false
+    conductorSeleccionado.value = null
+    return
+  }
+
+  // Si es otro conductor, abrir sus detalles
   conductorSeleccionado.value = conductor
+  vehiculoAsignado.value = conductor.vehiculo
+  dialogDetallesConductor.value = true
   emit('conductor-seleccionado', conductor)
 }
 
@@ -375,13 +534,60 @@ function cerrarDrawer() {
 }
 
 function contarConductoresPorGrupo(grupoId) {
-  return conductores.value.filter(c => c.grupoId === grupoId).length
+  return conductores.value.filter((c) => c.grupoId === grupoId).length
 }
 
 function getColorGrupo(grupoId) {
   if (!grupoId) return 'grey'
-  const grupo = grupos.value.find(g => g.id === grupoId)
+  const grupo = grupos.value.find((g) => g.id === grupoId)
   return grupo ? grupo.color : 'grey'
+}
+
+function asignarVehiculoAConductor() {
+  if (conductorSeleccionado.value) {
+    const conductor = conductores.value.find((c) => c.id === conductorSeleccionado.value.id)
+    if (conductor) {
+      conductor.vehiculo = vehiculoAsignado.value || 'Vehículo no asignado'
+      conductorSeleccionado.value.vehiculo = conductor.vehiculo
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Vehículo asignado correctamente',
+      icon: 'check_circle',
+    })
+
+    dialogAsignarVehiculo.value = false
+  }
+}
+
+function editarConductor() {
+  $q.notify({
+    type: 'info',
+    message: 'Función de edición en desarrollo',
+    icon: 'info',
+  })
+}
+
+function confirmarEliminarConductor() {
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: `¿Estás seguro de eliminar al conductor ${conductorSeleccionado.value?.nombre}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    const index = conductores.value.findIndex((c) => c.id === conductorSeleccionado.value.id)
+    if (index > -1) {
+      conductores.value.splice(index, 1)
+      dialogDetallesConductor.value = false
+
+      $q.notify({
+        type: 'positive',
+        message: 'Conductor eliminado',
+        icon: 'check_circle',
+      })
+    }
+  })
 }
 
 function crearGrupo() {
@@ -389,14 +595,18 @@ function crearGrupo() {
   grupos.value.push({
     id: nuevoId,
     nombre: nuevoGrupo.value.nombre,
-    color: nuevoGrupo.value.color
+    color: nuevoGrupo.value.color,
   })
-  
+
   // Reset form
   nuevoGrupo.value = { nombre: '', color: 'blue' }
   dialogNuevoGrupo.value = false
-  
-  console.log('Grupo creado:', grupos.value[grupos.value.length - 1])
+
+  $q.notify({
+    type: 'positive',
+    message: 'Grupo creado correctamente',
+    icon: 'check_circle',
+  })
 }
 
 function mostrarMenuGrupo(grupo) {
@@ -415,8 +625,23 @@ function editarGrupo() {
 }
 
 function eliminarGrupo() {
-  console.log('Eliminar grupo:', grupoMenu.value)
-  // Aquí implementarías la lógica de eliminación
+  $q.dialog({
+    title: 'Confirmar eliminación',
+    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.nombre}?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    const index = grupos.value.findIndex((g) => g.id === grupoMenu.value.id)
+    if (index > -1) {
+      grupos.value.splice(index, 1)
+
+      $q.notify({
+        type: 'positive',
+        message: 'Grupo eliminado',
+        icon: 'check_circle',
+      })
+    }
+  })
 }
 
 function asignarGrupo() {
@@ -425,8 +650,7 @@ function asignarGrupo() {
 }
 
 function verDetalles() {
-  console.log('Ver detalles de:', conductorMenu.value)
-  emit('conductor-seleccionado', conductorMenu.value)
+  seleccionarConductor(conductorMenu.value)
 }
 </script>
 
@@ -444,7 +668,7 @@ function verDetalles() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
   min-height: 48px;
 }
@@ -516,5 +740,36 @@ function verDetalles() {
 .color-picker {
   display: flex;
   flex-wrap: wrap;
+}
+
+/* Detalles del conductor */
+.detalle-dialog :deep(.q-dialog__backdrop) {
+  background: transparent !important;
+}
+
+.detalle-section {
+  margin-bottom: 16px;
+}
+
+.detalle-label {
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.detalle-valor {
+  font-size: 14px;
+  color: #212121;
+  padding: 8px 0;
+}
+
+.detalle-campo {
+  margin-top: 4px;
+}
+
+.detalle-campo .q-btn {
+  justify-content: space-between;
+  padding: 8px 12px;
 }
 </style>
