@@ -12,7 +12,7 @@ export function useMap() {
     map.value = L.map(containerId).setView(center, zoom)
 
     L.tileLayer(
-      `https://api.mapbox.com/styles/v1/${MAPBOX_STYLES.streets}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+      `https://api.mapbox.com/styles/v1/${MAPBOX_STYLES.satellite}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
       {
         attribution: '© <a href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
@@ -49,27 +49,6 @@ export function useMap() {
     }
   }
 
-  // Cambiar estilo del mapa
-  const changeStyle = (style) => {
-    if (map.value) {
-      map.value.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer) {
-          map.value.removeLayer(layer)
-        }
-      })
-
-      L.tileLayer(
-        `https://api.mapbox.com/styles/v1/${MAPBOX_STYLES[style]}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
-        {
-          attribution: '© <a href="https://www.mapbox.com/">Mapbox</a>',
-          tileSize: 512,
-          zoomOffset: -1,
-          maxZoom: 19,
-        },
-      ).addTo(map.value)
-    }
-  }
-
   // Limpiar al desmontar
   const cleanup = () => {
     if (map.value) {
@@ -85,7 +64,7 @@ export function useMap() {
     addMarker,
     clearMarkers,
     centerMap,
-    changeStyle,
+
     cleanup,
   }
 }

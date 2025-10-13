@@ -2,31 +2,6 @@
   <q-page class="full-height">
     <div id="map" class="full-map">
       <!-- Selector de estilos -->
-      <div class="map-controls">
-        <q-btn-group unelevated>
-          <q-btn
-            label="Calles"
-            color="white"
-            text-color="black"
-            @click="changeStyle('streets')"
-            size="sm"
-          />
-          <q-btn
-            label="Satélite"
-            color="white"
-            text-color="black"
-            @click="changeStyle('satellite')"
-            size="sm"
-          />
-          <q-btn
-            label="Oscuro"
-            color="white"
-            text-color="black"
-            @click="changeStyle('dark')"
-            size="sm"
-          />
-        </q-btn-group>
-      </div>
     </div>
   </q-page>
 </template>
@@ -35,11 +10,11 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useMap } from 'src/composables/useMap'
 
-const { initMap, addMarker, changeStyle, cleanup } = useMap()
+const { initMap, addMarker, cleanup } = useMap()
 
 onMounted(() => {
-  initMap('map', [32.5149, -117.0382], 13)
-  addMarker(32.5149, -117.0382, {
+  initMap('map', [32.0692, -116.6217], 13)
+  addMarker(32.0692, -116.6217, {
     popup: '<b>MJ Industrias</b><br>Ubicación principal',
   })
 })
