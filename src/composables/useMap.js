@@ -6,7 +6,6 @@ import { MAPBOX_TOKEN, MAPBOX_STYLES } from 'src/config/mapbox'
 export function useMap() {
   const map = ref(null)
   const markers = ref([])
-  const trafficLayer = ref(null)
 
   // Inicializar mapa
   const initMap = (containerId, center = [32.5149, -117.0382], zoom = 13) => {
@@ -54,7 +53,7 @@ export function useMap() {
   const changeStyle = (style) => {
     if (map.value) {
       map.value.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer && layer !== trafficLayer.value) {
+        if (layer instanceof L.TileLayer) {
           map.value.removeLayer(layer)
         }
       })
@@ -68,30 +67,6 @@ export function useMap() {
           maxZoom: 19,
         },
       ).addTo(map.value)
-    }
-  }
-
-  // Toggle de tráfico
-  const toggleTraffic = (show) => {
-    if (!map.value) return
-
-    if (show) {
-      // Agregar capa de tráfico
-      if (!trafficLayer.value) {
-        trafficLayer.value = L.tileLayer(
-          `https://api.mapbox.com/v4/mapbox.mapbox-traffic-v1/{z}/{x}/{y}.vector.pbf?access_token=${MAPBOX_TOKEN}`,
-          {
-            attribution: '© Mapbox Traffic',
-            maxZoom: 19,
-          },
-        )
-      }
-      trafficLayer.value.addTo(map.value)
-    } else {
-      // Quitar capa de tráfico
-      if (trafficLayer.value) {
-        map.value.removeLayer(trafficLayer.value)
-      }
     }
   }
 
@@ -111,7 +86,6 @@ export function useMap() {
     clearMarkers,
     centerMap,
     changeStyle,
-    toggleTraffic,
     cleanup,
   }
 }

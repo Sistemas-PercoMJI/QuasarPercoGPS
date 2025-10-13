@@ -1,6 +1,6 @@
 <template>
-  <q-page>
-    <div id="map" style="height: 100vh; width: 100%; position: relative">
+  <q-page class="full-height">
+    <div id="map" class="full-map">
       <!-- Selector de estilos -->
       <div class="map-controls">
         <q-btn-group unelevated>
@@ -27,34 +27,15 @@
           />
         </q-btn-group>
       </div>
-
-      <!-- Toggle de tráfico -->
-      <div class="traffic-control">
-        <q-btn
-          :color="trafficVisible ? 'negative' : 'white'"
-          :text-color="trafficVisible ? 'white' : 'black'"
-          icon="traffic"
-          label="TRÁFICO"
-          unelevated
-          size="sm"
-          @click="toggleTrafficLayer"
-        />
-      </div>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useMap } from 'src/composables/useMap'
 
-const { initMap, addMarker, changeStyle, toggleTraffic, cleanup } = useMap()
-const trafficVisible = ref(false)
-
-const toggleTrafficLayer = () => {
-  trafficVisible.value = !trafficVisible.value
-  toggleTraffic(trafficVisible.value)
-}
+const { initMap, addMarker, changeStyle, cleanup } = useMap()
 
 onMounted(() => {
   initMap('map', [32.5149, -117.0382], 13)
@@ -69,16 +50,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.map-controls {
-  position: absolute;
-  top: 80px;
-  right: 10px;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+.full-height {
+  height: 100%;
+  overflow: hidden;
 }
 
-.traffic-control {
+.full-map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-controls {
   position: absolute;
   top: 10px;
   right: 10px;

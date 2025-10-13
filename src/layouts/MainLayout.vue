@@ -563,4 +563,8 @@ const logout = async () => {
   margin-left: 24px;
   border-radius: 500px;
 }
+
+.q-page-container {
+  overflow: hidden !important;
+}
 </style>
