@@ -149,7 +149,7 @@ export default defineConfig((/* ctx */) => {
               cacheName: 'mapbox-tiles-cache',
               expiration: {
                 maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
               },
               cacheableResponse: {
                 statuses: [0, 200],
