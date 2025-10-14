@@ -7,6 +7,7 @@
         <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
+            ref="searchInput"
             v-model="busqueda"
             outlined
             placeholder="Buscar dirección, vehículo, conductor..."
@@ -14,8 +15,8 @@
             bg-color="white"
             dense
             @keyup.enter="buscar"
-            @focus="mostrarSugerencias = true"
-            @blur="cerrarSugerenciasConDelay"
+            @focus="onFocus"
+            @blur="() => setTimeout(() => (mostrarSugerencias = false), 200)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
@@ -48,8 +49,14 @@
             </div>
           </q-slide-transition>
 
-          <!-- Sugerencias de búsqueda -->
-          <q-menu v-model="mostrarSugerencias" fit :offset="[0, 8]" class="sugerencias-menu">
+          <!-- Sugerencias de búsqueda - OPTIMIZADO -->
+          <q-menu
+            v-model="mostrarSugerencias"
+            fit
+            :offset="[0, 8]"
+            class="sugerencias-menu"
+            persistent
+          >
             <q-list style="min-width: 500px; max-height: 400px" class="scroll">
               <!-- Mientras escribe -->
               <div
@@ -117,7 +124,7 @@
                   :key="index"
                   clickable
                   v-ripple
-                  @click="busqueda = reciente"
+                  @click="seleccionarBusquedaReciente(reciente)"
                 >
                   <q-item-section avatar>
                     <q-icon name="history" color="grey-6" />
@@ -469,7 +476,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -491,7 +498,7 @@ const notificacionesCount = computed(() => notifications.value.length)
 // Control de dialogs abiertos
 const dialogAbierto = ref(false)
 
-// ========== BUSCADOR ==========
+// ========== BUSCADOR OPTIMIZADO - CORREGIDO ==========
 const busqueda = ref('')
 const mostrarSugerencias = ref(false)
 const mostrarFiltros = ref(false)
@@ -499,6 +506,7 @@ const buscando = ref(false)
 const resultadosBusqueda = ref([])
 const busquedasRecientes = ref([])
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
+const searchInput = ref(null) // Referencia ya la tienes
 
 const filtrosDisponibles = [
   { label: 'Direcciones', value: 'direccion', icon: 'place', color: 'blue' },
@@ -520,8 +528,7 @@ const resultadosAgrupados = computed(() => {
   return grupos
 })
 
-// Watch OPTIMIZADO - sin parpadeo
-// Watch SIMPLIFICADO - SIN parpadeo
+// ⚡ WATCH OPTIMIZADO - SOLO UNO
 let timeoutBusqueda = null
 
 watch(busqueda, (newVal) => {
@@ -530,99 +537,79 @@ watch(busqueda, (newVal) => {
     clearTimeout(timeoutBusqueda)
   }
 
-  // Si está vacío o muy corto, limpiar inmediatamente
-  if (!newVal || newVal.length < 3) {
+  // Si está vacío, limpiar todo SIN TOCAR mostrarSugerencias
+  if (!newVal) {
+    resultadosBusqueda.value = []
+    buscando.value = false
+    // NO tocar mostrarSugerencias aquí
+    return
+  }
+
+  // Para texto corto, mostrar recientes
+  if (newVal.length < 3) {
     resultadosBusqueda.value = []
     buscando.value = false
     return
   }
 
-  // Mostrar loading solo si no hay resultados
-  if (resultadosBusqueda.value.length === 0) {
-    buscando.value = true
-  }
-
-  // Esperar 1 segundo completo antes de buscar
+  // Debounce para búsqueda
   timeoutBusqueda = setTimeout(() => {
     realizarBusqueda(newVal)
-  }, 1000)
+  }, 500) // Reducido a 500ms para mejor UX
 })
 
-// Función de búsqueda SIMPLIFICADA
+// 🔍 FUNCIÓN DE BÚSQUEDA SIMPLIFICADA
 async function realizarBusqueda(termino) {
+  if (busqueda.value !== termino) return
+
+  buscando.value = true
+  const promesas = []
+
+  if (filtrosActivos.value.includes('direccion')) {
+    promesas.push(buscarDirecciones(termino))
+  }
+  if (filtrosActivos.value.includes('vehiculo')) {
+    promesas.push(buscarVehiculos(termino))
+  }
+  if (filtrosActivos.value.includes('conductor')) {
+    promesas.push(buscarConductores(termino))
+  }
+  if (filtrosActivos.value.includes('poi')) {
+    promesas.push(buscarPOIs())
+  }
+  if (filtrosActivos.value.includes('geozona')) {
+    promesas.push(buscarGeozonas())
+  }
+
   try {
-    const promesas = []
-
-    if (filtrosActivos.value.includes('direccion')) {
-      promesas.push(buscarDirecciones(termino))
-    }
-    if (filtrosActivos.value.includes('vehiculo')) {
-      promesas.push(buscarVehiculos(termino))
-    }
-    if (filtrosActivos.value.includes('conductor')) {
-      promesas.push(buscarConductores(termino))
-    }
-    if (filtrosActivos.value.includes('poi')) {
-      promesas.push(buscarPOIs(termino))
-    }
-    if (filtrosActivos.value.includes('geozona')) {
-      promesas.push(buscarGeozonas(termino))
-    }
-
     const resultadosArray = await Promise.all(promesas)
 
-    const resultados = []
-    resultadosArray.forEach((resultado) => {
-      if (Array.isArray(resultado) && resultado.length > 0) {
-        resultados.push(...resultado)
-      }
-    })
+    if (busqueda.value !== termino) return
+
+    const resultados = resultadosArray.flat().filter((r) => r !== undefined)
 
     resultadosBusqueda.value = resultados
   } catch (error) {
     console.error('Error en búsqueda:', error)
+    resultadosBusqueda.value = []
   } finally {
     buscando.value = false
   }
 }
 
-// QUITAR console.log de estas funciones
-// eslint-disable-next-line no-unused-vars
-async function buscarPOIs(termino) {
-  // SIN console.log
-  return []
-}
-
-// eslint-disable-next-line no-unused-vars
-async function buscarGeozonas(termino) {
-  // SIN console.log
-  return []
-}
-
-function cerrarSugerenciasConDelay() {
-  setTimeout(() => {
-    mostrarSugerencias.value = false
-  }, 200)
-}
-function toggleFiltro(filtro) {
-  const index = filtrosActivos.value.indexOf(filtro)
-  if (index > -1) {
-    filtrosActivos.value.splice(index, 1)
-  } else {
-    filtrosActivos.value.push(filtro)
-  }
-
-  if (busqueda.value && busqueda.value.length >= 3) {
-    realizarBusqueda(busqueda.value)
-  }
-}
-
-// Buscar direcciones usando Nominatim
+// 📍 BÚSQUEDA DE DIRECCIONES
 async function buscarDirecciones(termino) {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
+      {
+        headers: {
+          'User-Agent': 'MJ GPS App/1.0',
+        },
+      },
     )
+
+    if (!response.ok) throw new Error('Error en la respuesta')
     const data = await response.json()
 
     return data.map((lugar) => ({
@@ -638,23 +625,120 @@ async function buscarDirecciones(termino) {
     return []
   }
 }
+async function buscarVehiculos() {
+  // TODO: Implementar cuando tengas vehículos en Firebase
+  console.log('Búsqueda de vehículos pendiente de implementar')
+  return []
+}
 
-function centrarMapaEn(lat, lng, zoom = 16) {
-  const mapPage = document.querySelector('#map-page')
+// 👤 BÚSQUEDA DE CONDUCTORES - Placeholder
+async function buscarConductores() {
+  // TODO: Implementar cuando tengas conductores en Firebase
+  console.log('Búsqueda de conductores pendiente de implementar')
+  return []
+}
 
-  if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
-    const map = mapPage._mapaAPI.map
+// 📌 BÚSQUEDA DE POIs - Placeholder
+async function buscarPOIs() {
+  // TODO: Implementar cuando tengas POIs en Firebase
+  console.log('Búsqueda de POIs pendiente de implementar')
+  return []
+}
 
-    map.setView([lat, lng], zoom, {
-      animate: true,
-      duration: 1.5,
+// 🗺️ BÚSQUEDA DE GEOZONAS - Placeholder
+async function buscarGeozonas() {
+  // TODO: Implementar cuando tengas geozonas en Firebase
+  console.log('Búsqueda de geozonas pendiente de implementar')
+  return []
+}
+// 🔧 FUNCIONES DE EVENTOS - SIMPLIFICADAS
+function onFocus() {
+  mostrarSugerencias.value = true
+}
+
+// ❌ ELIMINAR onBusquedaChange completamente - causa el bug
+
+function limpiarBusqueda() {
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+  busqueda.value = ''
+  resultadosBusqueda.value = []
+  mostrarSugerencias.value = false
+  buscando.value = false
+}
+
+function seleccionarBusquedaReciente(reciente) {
+  busqueda.value = reciente
+  mostrarSugerencias.value = true
+  if (reciente.length >= 3) {
+    realizarBusqueda(reciente)
+  }
+}
+
+function toggleFiltro(filtro) {
+  const index = filtrosActivos.value.indexOf(filtro)
+  if (index > -1) {
+    filtrosActivos.value.splice(index, 1)
+  } else {
+    filtrosActivos.value.push(filtro)
+  }
+
+  if (busqueda.value && busqueda.value.length >= 3) {
+    realizarBusqueda(busqueda.value)
+  }
+}
+function centrarMapaEn(lat, lng, zoom = 18) {
+  console.log('🎯 Intentando centrar mapa en:', { lat, lng, zoom })
+
+  // Verificar que el mapa global existe
+  if (!window.mapaGlobal) {
+    console.error('❌ window.mapaGlobal no está disponible')
+    $q.notify({
+      message: 'El mapa aún no está cargado. Espera un momento.',
+      color: 'warning',
+      icon: 'warning',
+      position: 'top',
+    })
+    return
+  }
+
+  if (!window.L) {
+    console.error('❌ Leaflet no está disponible')
+    $q.notify({
+      message: 'Error: Librería del mapa no cargada',
+      color: 'negative',
+      icon: 'error',
+      position: 'top',
+    })
+    return
+  }
+
+  try {
+    const map = window.mapaGlobal
+    console.log('✅ Mapa encontrado, centrando...')
+
+    // Centrar el mapa con animación suave
+    map.flyTo([lat, lng], zoom, {
+      duration: 2, // 2 segundos de animación
+      easeLinearity: 0.25,
     })
 
-    // Agregar marcador temporal verde
-    const L = window.L
-    if (L) {
-      const marker = L.marker([lat, lng], {
-        icon: L.icon({
+    console.log('✅ Comando flyTo ejecutado')
+
+    // Pequeño delay para asegurar que el mapa se movió
+    setTimeout(() => {
+      // Remover marcador anterior si existe
+      if (window.marcadorBusqueda) {
+        console.log('🗑️ Removiendo marcador anterior')
+        map.removeLayer(window.marcadorBusqueda)
+        window.marcadorBusqueda = null
+      }
+
+      // Crear nuevo marcador verde
+      console.log('📍 Creando nuevo marcador')
+      window.marcadorBusqueda = window.L.marker([lat, lng], {
+        icon: window.L.icon({
           iconUrl:
             'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
           shadowUrl:
@@ -666,123 +750,113 @@ function centrarMapaEn(lat, lng, zoom = 16) {
         }),
       }).addTo(map)
 
-      marker.bindPopup('<b>Ubicación buscada</b>').openPopup()
+      // Agregar popup y abrirlo
+      window.marcadorBusqueda.bindPopup('<b>📍 Ubicación buscada</b>').openPopup()
 
+      console.log('✅ Marcador agregado y popup abierto')
+
+      // Remover marcador después de 10 segundos
       setTimeout(() => {
-        map.removeLayer(marker)
-      }, 5000)
-    }
+        if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
+          map.removeLayer(window.marcadorBusqueda)
+          window.marcadorBusqueda = null
+          console.log('🗑️ Marcador removido automáticamente')
+        }
+      }, 10000)
+    }, 500) // Esperar 500ms a que termine la animación de flyTo
+  } catch (error) {
+    console.error('❌ Error al centrar mapa:', error)
+    $q.notify({
+      message: `Error al mover el mapa: ${error.message}`,
+      color: 'negative',
+      icon: 'error',
+      position: 'top',
+    })
   }
 }
 
-// TODO: Conectar con Firestore
-async function buscarVehiculos(termino) {
-  // TODO: Conectar con Firestore
-  const vehiculosEjemplo = [
-    { id: 'v1', nombre: 'Camión 001', placa: 'ABC-123', estado: 'En ruta' },
-    { id: 'v2', nombre: 'Camión 002', placa: 'DEF-456', estado: 'Detenido' },
-  ]
-
-  return vehiculosEjemplo
-    .filter(
-      (v) =>
-        v.nombre.toLowerCase().includes(termino.toLowerCase()) ||
-        v.placa.toLowerCase().includes(termino.toLowerCase()),
-    )
-    .map((v) => ({
-      id: v.id,
-      tipo: 'vehiculo',
-      nombre: v.nombre,
-      detalle: `Placa: ${v.placa} • ${v.estado}`,
-    }))
-}
-// TODO: Conectar con Firestore
-
-// TODO: Conectar con Firestore
-async function buscarConductores(termino) {
-  // TODO: Conectar con Firestore
-  const conductoresEjemplo = [
-    { id: 'c1', nombre: 'Juan Pérez', telefono: '664-123-4567' },
-    { id: 'c2', nombre: 'María García', telefono: '664-987-6543' },
-  ]
-
-  return conductoresEjemplo
-    .filter((c) => c.nombre.toLowerCase().includes(termino.toLowerCase()))
-    .map((c) => ({
-      id: c.id,
-      tipo: 'conductor',
-      nombre: c.nombre,
-      detalle: c.telefono,
-    }))
-}
-
 function seleccionarResultado(resultado) {
+  console.log('🎯 Resultado seleccionado:', resultado)
+
   // Guardar en búsquedas recientes
-  if (!busquedasRecientes.value.includes(busqueda.value)) {
+  if (busqueda.value && !busquedasRecientes.value.includes(busqueda.value)) {
     busquedasRecientes.value.unshift(busqueda.value)
     if (busquedasRecientes.value.length > 5) {
       busquedasRecientes.value.pop()
     }
   }
 
+  // Cerrar sugerencias y limpiar
   mostrarSugerencias.value = false
+  const resultadoTemp = { ...resultado }
   busqueda.value = ''
   resultadosBusqueda.value = []
 
   // Acción según el tipo
-  if (resultado.tipo === 'direccion') {
-    centrarMapaEn(resultado.lat, resultado.lng)
+  if (resultadoTemp.tipo === 'direccion') {
+    console.log('📍 Procesando dirección:', resultadoTemp.lat, resultadoTemp.lng)
 
-    $q.notify({
-      message: `Mostrando: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'place',
-      position: 'top',
-    })
-  } else if (resultado.tipo === 'vehiculo') {
+    // Verificar que tenemos coordenadas válidas
+    if (resultadoTemp.lat && resultadoTemp.lng) {
+      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
+
+      $q.notify({
+        message: `📍 Mostrando: ${resultadoTemp.nombre}`,
+        color: 'positive',
+        icon: 'place',
+        position: 'top',
+        timeout: 3000,
+      })
+    } else {
+      console.error('❌ Coordenadas inválidas:', resultadoTemp)
+      $q.notify({
+        message: 'Error: Ubicación sin coordenadas válidas',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+      })
+    }
+  } else if (resultadoTemp.tipo === 'vehiculo') {
+    console.log('🚗 Abriendo estado de flota')
     estadoFlotaDrawerOpen.value = true
-
     $q.notify({
-      message: `Vehículo: ${resultado.nombre}`,
+      message: `🚗 Vehículo: ${resultadoTemp.nombre}`,
       color: 'positive',
       icon: 'directions_car',
       position: 'top',
     })
-  } else if (resultado.tipo === 'conductor') {
+  } else if (resultadoTemp.tipo === 'conductor') {
+    console.log('👤 Abriendo conductores')
     conductoresDrawerOpen.value = true
-
     $q.notify({
-      message: `Conductor: ${resultado.nombre}`,
+      message: `👤 Conductor: ${resultadoTemp.nombre}`,
       color: 'positive',
       icon: 'person',
       position: 'top',
     })
-  } else if (resultado.tipo === 'poi') {
+  } else if (resultadoTemp.tipo === 'poi') {
+    console.log('📌 Procesando POI')
+    // Si el POI tiene coordenadas, centrar mapa
+    if (resultadoTemp.lat && resultadoTemp.lng) {
+      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
+    }
     geozonaDrawerOpen.value = true
-
     $q.notify({
-      message: `POI: ${resultado.nombre}`,
+      message: `📌 POI: ${resultadoTemp.nombre}`,
       color: 'positive',
       icon: 'location_on',
       position: 'top',
     })
-  } else if (resultado.tipo === 'geozona') {
+  } else if (resultadoTemp.tipo === 'geozona') {
+    console.log('🗺️ Abriendo geozonas')
     geozonaDrawerOpen.value = true
-
     $q.notify({
-      message: `Geozona: ${resultado.nombre}`,
+      message: `🗺️ Geozona: ${resultadoTemp.nombre}`,
       color: 'positive',
       icon: 'layers',
       position: 'top',
     })
   }
-}
-
-function limpiarBusqueda() {
-  busqueda.value = ''
-  resultadosBusqueda.value = []
-  mostrarSugerencias.value = false
-  buscando.value = false
 }
 
 function eliminarReciente(index) {
@@ -792,10 +866,10 @@ function eliminarReciente(index) {
 function buscar() {
   if (busqueda.value && busqueda.value.length >= 3) {
     realizarBusqueda(busqueda.value)
-    mostrarSugerencias.value = true
   }
 }
 
+// Helper functions sin cambios
 function getIconoTipo(tipo) {
   const iconos = {
     direccion: 'place',
@@ -828,6 +902,12 @@ function getColorTipo(tipo) {
   }
   return colores[tipo] || 'grey'
 }
+
+onUnmounted(() => {
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+})
 
 function cerrarSesionDesdeConfig() {
   logout()
