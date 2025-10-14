@@ -3,85 +3,76 @@ import 'leaflet/dist/leaflet.css'
 import { ref } from 'vue'
 
 const map = ref(null)
-const markers = ref([]) // Array para guardar todos los marcadores
+const markers = ref([])
 const modoSeleccion = ref(false)
 const marcadorTemporal = ref(null)
 const ubicacionSeleccionada = ref(null)
 
+// 🗝️ TOKEN DE MAPBOX
+const MAPBOX_TOKEN =
+  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA' // ← CAMBIA ESTO
+
 export function useMap() {
   const initMap = (containerId, center, zoom) => {
-    // Si ya existe un mapa, destruirlo primero
+    // Limpiar mapa existente
     if (map.value) {
       map.value.remove()
       map.value = null
+      markers.value = []
     }
 
-    // Crear el mapa con opciones específicas para evitar problemas de proyección
+    // Crear mapa con configuración fija
     map.value = L.map(containerId, {
       center: center,
       zoom: zoom,
       zoomControl: true,
       attributionControl: true,
-      preferCanvas: false, // Usar SVG en lugar de Canvas
-      worldCopyJump: false, // Evitar que los marcadores salten entre copias del mundo
-      maxBounds: null, // Sin límites
+      worldCopyJump: false,
       maxBoundsViscosity: 1.0,
     })
 
-    // SOLO capa de satélite (Esri World Imagery)
+    // 🛰️ Mapbox Satellite Streets
     L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
       {
-        attribution: 'Tiles © Esri',
-        maxZoom: 19,
-        minZoom: 2,
-        tileSize: 256,
-        zoomOffset: 0,
-        detectRetina: true, // Mejor calidad en pantallas retina
+        attribution: '© Mapbox © OpenStreetMap',
+        maxZoom: 22,
+        tileSize: 512,
+        zoomOffset: -1,
       },
     ).addTo(map.value)
 
-    // Forzar redibujado después de inicializar
+    // Forzar redibujado
     setTimeout(() => {
       if (map.value) {
         map.value.invalidateSize()
       }
-    }, 100)
+    }, 200)
 
-    console.log('🗺️ Mapa inicializado correctamente')
+    console.log('🗺️ Mapbox inicializado')
     return map.value
   }
 
   const addMarker = (lat, lng, options = {}) => {
-    // Crear icono personalizado para evitar problemas de visualización
-    const icon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    })
-
-    const marker = L.marker([lat, lng], { icon }).addTo(map.value)
+    const marker = L.marker([parseFloat(lat), parseFloat(lng)], {
+      draggable: false,
+      autoPan: false,
+    }).addTo(map.value)
 
     if (options.popup) {
       marker.bindPopup(options.popup)
     }
 
-    // Guardar referencia del marcador
     markers.value.push({
       marker: marker,
-      lat: lat,
-      lng: lng,
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
     })
 
-    console.log('✅ Marcador agregado. Total marcadores:', markers.value.length)
+    console.log('✅ Marcador agregado en:', lat, lng)
     return marker
   }
 
-  // Activar modo selección
   const activarModoSeleccion = () => {
     modoSeleccion.value = true
     ubicacionSeleccionada.value = null
@@ -89,23 +80,22 @@ export function useMap() {
     map.value.on('click', onMapClick)
   }
 
-  // Desactivar modo selección
   const desactivarModoSeleccion = () => {
     modoSeleccion.value = false
     map.value.getContainer().style.cursor = ''
     map.value.off('click', onMapClick)
   }
 
-  // Manejador del clic en el mapa
   const onMapClick = async (e) => {
-    const { lat, lng } = e.latlng
+    const lat = parseFloat(e.latlng.lat.toFixed(6))
+    const lng = parseFloat(e.latlng.lng.toFixed(6))
 
-    // Remover marcador temporal anterior si existe
+    // Remover marcador temporal anterior
     if (marcadorTemporal.value) {
       map.value.removeLayer(marcadorTemporal.value)
     }
 
-    // Crear nuevo marcador temporal ROJO
+    // Crear marcador temporal ROJO
     marcadorTemporal.value = L.marker([lat, lng], {
       icon: L.icon({
         iconUrl:
@@ -116,147 +106,108 @@ export function useMap() {
         popupAnchor: [1, -34],
         shadowSize: [41, 41],
       }),
+      draggable: false,
     }).addTo(map.value)
 
-    // Obtener dirección
     const direccion = await obtenerDireccion(lat, lng)
 
-    // Guardar ubicación seleccionada
     ubicacionSeleccionada.value = {
       coordenadas: { lat, lng },
       direccion: direccion,
     }
 
-    // Mostrar popup
     marcadorTemporal.value
       .bindPopup(
-        `
-        <b>Ubicación seleccionada</b><br>
-        ${direccion}<br>
-        <small>Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</small>
-      `,
+        `<b>Ubicación seleccionada</b><br>${direccion}<br><small>Lat: ${lat}, Lng: ${lng}</small>`,
       )
       .openPopup()
+
+    console.log('📍 Ubicación seleccionada:', { lat, lng, direccion })
   }
 
-  // Geocodificación inversa
   const obtenerDireccion = async (lat, lng) => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
       )
       const data = await response.json()
-      return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      return data.display_name || `${lat}, ${lng}`
     } catch (error) {
       console.error('Error en geocodificación:', error)
-      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      return `${lat}, ${lng}`
     }
   }
 
-  // Obtener ubicación seleccionada
   const getUbicacionSeleccionada = () => {
     return ubicacionSeleccionada.value
   }
 
-  // Convertir marcador temporal a permanente
   const confirmarMarcadorTemporal = (nombre) => {
     if (marcadorTemporal.value && ubicacionSeleccionada.value) {
       const { lat, lng } = ubicacionSeleccionada.value.coordenadas
 
-      console.log('📍 Confirmando marcador en:', { lat, lng, nombre })
+      console.log('📍 Confirmando marcador:', { lat, lng, nombre })
 
-      // Eliminar el marcador temporal rojo
+      // Remover temporal
       map.value.removeLayer(marcadorTemporal.value)
 
-      // Crear marcador permanente AZUL con coordenadas fijas
+      // Crear permanente
       const markerPermanente = L.marker([lat, lng], {
-        icon: L.icon({
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41],
-        }),
-        draggable: false, // IMPORTANTE: No permitir arrastre
+        draggable: false,
         autoPan: false,
       }).addTo(map.value)
 
-      // Agregar popup permanente
-      markerPermanente.bindPopup(`
-      <b>${nombre}</b><br>
-      ${ubicacionSeleccionada.value.direccion}<br>
-      <small>Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</small>
-    `)
+      markerPermanente.bindPopup(
+        `<b>${nombre}</b><br>${ubicacionSeleccionada.value.direccion}<br><small>Lat: ${lat}, Lng: ${lng}</small>`,
+      )
 
-      // Guardar en el array con las coordenadas exactas
       markers.value.push({
         marker: markerPermanente,
-        lat: parseFloat(lat), // Asegurar que sea número
-        lng: parseFloat(lng), // Asegurar que sea número
+        lat: lat,
+        lng: lng,
         nombre: nombre,
       })
 
-      // Limpiar referencias temporales
       marcadorTemporal.value = null
       ubicacionSeleccionada.value = null
 
       console.log('✅ Marcador permanente creado. Total:', markers.value.length)
-      console.log(
-        '📊 Marcadores actuales:',
-        markers.value.map((m) => ({
-          nombre: m.nombre,
-          lat: m.lat,
-          lng: m.lng,
-        })),
-      )
     }
   }
 
-  // Limpiar marcador temporal
   const limpiarMarcadorTemporal = () => {
     if (marcadorTemporal.value) {
       map.value.removeLayer(marcadorTemporal.value)
       marcadorTemporal.value = null
       ubicacionSeleccionada.value = null
-      console.log('🗑️ Marcador temporal eliminado')
     }
   }
 
-  // Eliminar marcador por coordenadas
   const eliminarMarcadorPorCoordenadas = (lat, lng) => {
     const markerIndex = markers.value.findIndex((m) => {
-      return Math.abs(m.lat - lat) < 0.00001 && Math.abs(m.lng - lng) < 0.00001
+      return Math.abs(m.lat - lat) < 0.000001 && Math.abs(m.lng - lng) < 0.000001
     })
 
     if (markerIndex > -1) {
       map.value.removeLayer(markers.value[markerIndex].marker)
       markers.value.splice(markerIndex, 1)
-      console.log('✅ Marcador eliminado. Total marcadores:', markers.value.length)
-    } else {
-      console.warn('⚠️ No se encontró el marcador para eliminar')
+      console.log('✅ Marcador eliminado. Total:', markers.value.length)
     }
   }
 
-  // Actualizar marcador existente
   const actualizarMarcador = (lat, lng, nombre, direccion) => {
     const markerObj = markers.value.find((m) => {
-      return Math.abs(m.lat - lat) < 0.00001 && Math.abs(m.lng - lng) < 0.00001
+      return Math.abs(m.lat - lat) < 0.000001 && Math.abs(m.lng - lng) < 0.000001
     })
 
     if (markerObj) {
       markerObj.marker.bindPopup(`<b>${nombre}</b><br>${direccion}`)
       markerObj.nombre = nombre
       console.log('✅ Marcador actualizado:', nombre)
-    } else {
-      console.warn('⚠️ No se encontró el marcador para actualizar')
     }
   }
 
-  // Cleanup
   const cleanup = () => {
-    // Limpiar todos los marcadores
     markers.value.forEach((m) => {
       if (map.value && m.marker) {
         map.value.removeLayer(m.marker)
@@ -264,13 +215,11 @@ export function useMap() {
     })
     markers.value = []
 
-    // Limpiar marcador temporal
     if (marcadorTemporal.value && map.value) {
       map.value.removeLayer(marcadorTemporal.value)
       marcadorTemporal.value = null
     }
 
-    // Destruir el mapa
     if (map.value) {
       map.value.remove()
       map.value = null
