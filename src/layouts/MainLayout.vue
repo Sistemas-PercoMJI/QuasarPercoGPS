@@ -4,20 +4,139 @@
       <q-toolbar class="toolbar-custom">
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
-        <!-- Búsqueda - Más grande y a la izquierda -->
+        <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
             v-model="busqueda"
             outlined
-            placeholder="Buscar vehículos, conductores..."
+            placeholder="Buscar dirección, vehículo, conductor..."
             class="search-input"
             bg-color="white"
             dense
+            @keyup.enter="buscar"
+            @focus="mostrarSugerencias = true"
+            @blur="cerrarSugerenciasConDelay"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
             </template>
+
+            <template v-slot:append>
+              <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
+              <q-btn flat dense round icon="tune" @click="mostrarFiltros = !mostrarFiltros">
+                <q-tooltip>Filtros</q-tooltip>
+              </q-btn>
+            </template>
           </q-input>
+
+          <!-- Panel de Filtros -->
+          <q-slide-transition>
+            <div v-show="mostrarFiltros" class="filtros-panel">
+              <q-chip
+                v-for="filtro in filtrosDisponibles"
+                :key="filtro.value"
+                :outline="!filtrosActivos.includes(filtro.value)"
+                :color="filtro.color"
+                text-color="white"
+                clickable
+                @click="toggleFiltro(filtro.value)"
+                size="sm"
+              >
+                <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
+                {{ filtro.label }}
+              </q-chip>
+            </div>
+          </q-slide-transition>
+
+          <!-- Sugerencias de búsqueda -->
+          <q-menu v-model="mostrarSugerencias" fit :offset="[0, 8]" class="sugerencias-menu">
+            <q-list style="min-width: 500px; max-height: 400px" class="scroll">
+              <!-- Mientras escribe -->
+              <div
+                v-if="busqueda && resultadosBusqueda.length === 0 && buscando"
+                class="q-pa-md text-center text-grey-6"
+              >
+                <q-spinner color="primary" size="24px" />
+                <div class="q-mt-sm text-caption">Buscando...</div>
+              </div>
+
+              <!-- Sin resultados -->
+              <div
+                v-else-if="busqueda && resultadosBusqueda.length === 0 && !buscando"
+                class="q-pa-md text-center text-grey-6"
+              >
+                <q-icon name="search_off" size="48px" />
+                <div class="q-mt-sm">No se encontraron resultados</div>
+              </div>
+
+              <!-- Resultados agrupados por tipo -->
+              <template v-else-if="resultadosBusqueda.length > 0">
+                <div v-for="(grupo, tipo) in resultadosAgrupados" :key="tipo">
+                  <!-- Header del grupo -->
+                  <q-item-label header class="text-weight-bold text-primary">
+                    <q-icon :name="getIconoTipo(tipo)" size="18px" class="q-mr-xs" />
+                    {{ getTituloTipo(tipo) }} ({{ grupo.length }})
+                  </q-item-label>
+
+                  <!-- Items del grupo -->
+                  <q-item
+                    v-for="resultado in grupo"
+                    :key="resultado.id"
+                    clickable
+                    v-ripple
+                    @click="seleccionarResultado(resultado)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar :color="getColorTipo(tipo)" text-color="white" size="40px">
+                        <q-icon :name="getIconoTipo(tipo)" />
+                      </q-avatar>
+                    </q-item-section>
+
+                    <q-item-section>
+                      <q-item-label>{{ resultado.nombre }}</q-item-label>
+                      <q-item-label caption>{{ resultado.detalle }}</q-item-label>
+                    </q-item-section>
+
+                    <q-item-section side>
+                      <q-icon name="chevron_right" color="grey-5" />
+                    </q-item-section>
+                  </q-item>
+
+                  <q-separator v-if="Object.keys(resultadosAgrupados).length > 1" />
+                </div>
+              </template>
+
+              <!-- Búsquedas recientes (cuando no hay texto) -->
+              <template v-else-if="!busqueda && busquedasRecientes.length > 0">
+                <q-item-label header>
+                  <q-icon name="history" class="q-mr-xs" />
+                  Búsquedas recientes
+                </q-item-label>
+                <q-item
+                  v-for="(reciente, index) in busquedasRecientes"
+                  :key="index"
+                  clickable
+                  v-ripple
+                  @click="busqueda = reciente"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="history" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>{{ reciente }}</q-item-section>
+                  <q-item-section side>
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="close"
+                      size="sm"
+                      @click.stop="eliminarReciente(index)"
+                    />
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-list>
+          </q-menu>
         </div>
 
         <q-space />
@@ -113,13 +232,15 @@
     >
       <!-- Header del drawer -->
       <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded || dialogAbierto }">
-        <q-avatar :size="(drawerExpanded && !dialogAbierto) ? '100px' : '40px'" class="q-mb-md">
+        <q-avatar :size="drawerExpanded && !dialogAbierto ? '100px' : '40px'" class="q-mb-md">
           <img
             src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
             alt="Logo"
           />
         </q-avatar>
-        <div v-if="drawerExpanded && !dialogAbierto" class="text-h6 text-weight-bold">Ubicacion de flotas</div>
+        <div v-if="drawerExpanded && !dialogAbierto" class="text-h6 text-weight-bold">
+          Ubicacion de flotas
+        </div>
       </div>
 
       <q-separator class="q-my-md" />
@@ -272,8 +393,8 @@
 
     <!-- DIALOGS PARA COMPONENTES - SOLUCIÓN DEFINITIVA -->
     <!-- Dialog Estado de la Flota -->
-    <q-dialog 
-      v-model="estadoFlotaDrawerOpen" 
+    <q-dialog
+      v-model="estadoFlotaDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -286,8 +407,8 @@
     </q-dialog>
 
     <!-- Dialog EstadoFlota -->
-    <q-dialog 
-      v-model="estadoFlotaDrawerOpen" 
+    <q-dialog
+      v-model="estadoFlotaDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -300,8 +421,8 @@
     </q-dialog>
 
     <!-- Dialog Conductores -->
-    <q-dialog 
-      v-model="conductoresDrawerOpen" 
+    <q-dialog
+      v-model="conductoresDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -314,8 +435,8 @@
     </q-dialog>
 
     <!-- Dialog Geozonas -->
-    <q-dialog 
-      v-model="geozonaDrawerOpen" 
+    <q-dialog
+      v-model="geozonaDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -328,8 +449,8 @@
     </q-dialog>
 
     <!-- Dialog Eventos -->
-    <q-dialog 
-      v-model="EventosDrawerOpen" 
+    <q-dialog
+      v-model="EventosDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -369,6 +490,344 @@ const notificacionesCount = computed(() => notifications.value.length)
 
 // Control de dialogs abiertos
 const dialogAbierto = ref(false)
+
+// ========== BUSCADOR ==========
+const busqueda = ref('')
+const mostrarSugerencias = ref(false)
+const mostrarFiltros = ref(false)
+const buscando = ref(false)
+const resultadosBusqueda = ref([])
+const busquedasRecientes = ref([])
+const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
+
+const filtrosDisponibles = [
+  { label: 'Direcciones', value: 'direccion', icon: 'place', color: 'blue' },
+  { label: 'Vehículos', value: 'vehiculo', icon: 'directions_car', color: 'green' },
+  { label: 'Conductores', value: 'conductor', icon: 'person', color: 'orange' },
+  { label: 'POIs', value: 'poi', icon: 'location_on', color: 'red' },
+  { label: 'Geozonas', value: 'geozona', icon: 'layers', color: 'purple' },
+]
+
+// Agrupar resultados por tipo
+const resultadosAgrupados = computed(() => {
+  const grupos = {}
+  resultadosBusqueda.value.forEach((resultado) => {
+    if (!grupos[resultado.tipo]) {
+      grupos[resultado.tipo] = []
+    }
+    grupos[resultado.tipo].push(resultado)
+  })
+  return grupos
+})
+
+// Watch OPTIMIZADO - sin parpadeo
+// Watch SIMPLIFICADO - SIN parpadeo
+let timeoutBusqueda = null
+
+watch(busqueda, (newVal) => {
+  // Limpiar timeout anterior
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+
+  // Si está vacío o muy corto, limpiar inmediatamente
+  if (!newVal || newVal.length < 3) {
+    resultadosBusqueda.value = []
+    buscando.value = false
+    return
+  }
+
+  // Mostrar loading solo si no hay resultados
+  if (resultadosBusqueda.value.length === 0) {
+    buscando.value = true
+  }
+
+  // Esperar 1 segundo completo antes de buscar
+  timeoutBusqueda = setTimeout(() => {
+    realizarBusqueda(newVal)
+  }, 1000)
+})
+
+// Función de búsqueda SIMPLIFICADA
+async function realizarBusqueda(termino) {
+  try {
+    const promesas = []
+
+    if (filtrosActivos.value.includes('direccion')) {
+      promesas.push(buscarDirecciones(termino))
+    }
+    if (filtrosActivos.value.includes('vehiculo')) {
+      promesas.push(buscarVehiculos(termino))
+    }
+    if (filtrosActivos.value.includes('conductor')) {
+      promesas.push(buscarConductores(termino))
+    }
+    if (filtrosActivos.value.includes('poi')) {
+      promesas.push(buscarPOIs(termino))
+    }
+    if (filtrosActivos.value.includes('geozona')) {
+      promesas.push(buscarGeozonas(termino))
+    }
+
+    const resultadosArray = await Promise.all(promesas)
+
+    const resultados = []
+    resultadosArray.forEach((resultado) => {
+      if (Array.isArray(resultado) && resultado.length > 0) {
+        resultados.push(...resultado)
+      }
+    })
+
+    resultadosBusqueda.value = resultados
+  } catch (error) {
+    console.error('Error en búsqueda:', error)
+  } finally {
+    buscando.value = false
+  }
+}
+
+// QUITAR console.log de estas funciones
+// eslint-disable-next-line no-unused-vars
+async function buscarPOIs(termino) {
+  // SIN console.log
+  return []
+}
+
+// eslint-disable-next-line no-unused-vars
+async function buscarGeozonas(termino) {
+  // SIN console.log
+  return []
+}
+
+function cerrarSugerenciasConDelay() {
+  setTimeout(() => {
+    mostrarSugerencias.value = false
+  }, 200)
+}
+function toggleFiltro(filtro) {
+  const index = filtrosActivos.value.indexOf(filtro)
+  if (index > -1) {
+    filtrosActivos.value.splice(index, 1)
+  } else {
+    filtrosActivos.value.push(filtro)
+  }
+
+  if (busqueda.value && busqueda.value.length >= 3) {
+    realizarBusqueda(busqueda.value)
+  }
+}
+
+// Buscar direcciones usando Nominatim
+async function buscarDirecciones(termino) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
+    )
+    const data = await response.json()
+
+    return data.map((lugar) => ({
+      id: `dir-${lugar.place_id}`,
+      tipo: 'direccion',
+      nombre: lugar.display_name.split(',')[0],
+      detalle: lugar.display_name,
+      lat: parseFloat(lugar.lat),
+      lng: parseFloat(lugar.lon),
+    }))
+  } catch (error) {
+    console.error('Error buscando direcciones:', error)
+    return []
+  }
+}
+
+function centrarMapaEn(lat, lng, zoom = 16) {
+  const mapPage = document.querySelector('#map-page')
+
+  if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+    const map = mapPage._mapaAPI.map
+
+    map.setView([lat, lng], zoom, {
+      animate: true,
+      duration: 1.5,
+    })
+
+    // Agregar marcador temporal verde
+    const L = window.L
+    if (L) {
+      const marker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+      }).addTo(map)
+
+      marker.bindPopup('<b>Ubicación buscada</b>').openPopup()
+
+      setTimeout(() => {
+        map.removeLayer(marker)
+      }, 5000)
+    }
+  }
+}
+
+// TODO: Conectar con Firestore
+async function buscarVehiculos(termino) {
+  // TODO: Conectar con Firestore
+  const vehiculosEjemplo = [
+    { id: 'v1', nombre: 'Camión 001', placa: 'ABC-123', estado: 'En ruta' },
+    { id: 'v2', nombre: 'Camión 002', placa: 'DEF-456', estado: 'Detenido' },
+  ]
+
+  return vehiculosEjemplo
+    .filter(
+      (v) =>
+        v.nombre.toLowerCase().includes(termino.toLowerCase()) ||
+        v.placa.toLowerCase().includes(termino.toLowerCase()),
+    )
+    .map((v) => ({
+      id: v.id,
+      tipo: 'vehiculo',
+      nombre: v.nombre,
+      detalle: `Placa: ${v.placa} • ${v.estado}`,
+    }))
+}
+// TODO: Conectar con Firestore
+
+// TODO: Conectar con Firestore
+async function buscarConductores(termino) {
+  // TODO: Conectar con Firestore
+  const conductoresEjemplo = [
+    { id: 'c1', nombre: 'Juan Pérez', telefono: '664-123-4567' },
+    { id: 'c2', nombre: 'María García', telefono: '664-987-6543' },
+  ]
+
+  return conductoresEjemplo
+    .filter((c) => c.nombre.toLowerCase().includes(termino.toLowerCase()))
+    .map((c) => ({
+      id: c.id,
+      tipo: 'conductor',
+      nombre: c.nombre,
+      detalle: c.telefono,
+    }))
+}
+
+function seleccionarResultado(resultado) {
+  // Guardar en búsquedas recientes
+  if (!busquedasRecientes.value.includes(busqueda.value)) {
+    busquedasRecientes.value.unshift(busqueda.value)
+    if (busquedasRecientes.value.length > 5) {
+      busquedasRecientes.value.pop()
+    }
+  }
+
+  mostrarSugerencias.value = false
+  busqueda.value = ''
+  resultadosBusqueda.value = []
+
+  // Acción según el tipo
+  if (resultado.tipo === 'direccion') {
+    centrarMapaEn(resultado.lat, resultado.lng)
+
+    $q.notify({
+      message: `Mostrando: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'place',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'vehiculo') {
+    estadoFlotaDrawerOpen.value = true
+
+    $q.notify({
+      message: `Vehículo: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'directions_car',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'conductor') {
+    conductoresDrawerOpen.value = true
+
+    $q.notify({
+      message: `Conductor: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'person',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'poi') {
+    geozonaDrawerOpen.value = true
+
+    $q.notify({
+      message: `POI: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'location_on',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'geozona') {
+    geozonaDrawerOpen.value = true
+
+    $q.notify({
+      message: `Geozona: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'layers',
+      position: 'top',
+    })
+  }
+}
+
+function limpiarBusqueda() {
+  busqueda.value = ''
+  resultadosBusqueda.value = []
+  mostrarSugerencias.value = false
+  buscando.value = false
+}
+
+function eliminarReciente(index) {
+  busquedasRecientes.value.splice(index, 1)
+}
+
+function buscar() {
+  if (busqueda.value && busqueda.value.length >= 3) {
+    realizarBusqueda(busqueda.value)
+    mostrarSugerencias.value = true
+  }
+}
+
+function getIconoTipo(tipo) {
+  const iconos = {
+    direccion: 'place',
+    vehiculo: 'directions_car',
+    conductor: 'person',
+    poi: 'location_on',
+    geozona: 'layers',
+  }
+  return iconos[tipo] || 'search'
+}
+
+function getTituloTipo(tipo) {
+  const titulos = {
+    direccion: 'Direcciones',
+    vehiculo: 'Vehículos',
+    conductor: 'Conductores',
+    poi: 'Puntos de Interés',
+    geozona: 'Geozonas',
+  }
+  return titulos[tipo] || tipo
+}
+
+function getColorTipo(tipo) {
+  const colores = {
+    direccion: 'blue',
+    vehiculo: 'green',
+    conductor: 'orange',
+    poi: 'red',
+    geozona: 'purple',
+  }
+  return colores[tipo] || 'grey'
+}
 
 function cerrarSesionDesdeConfig() {
   logout()
@@ -421,17 +880,18 @@ const geozonaDrawerOpen = ref(false)
 const EventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
-watch([estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen], 
+watch(
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
   ([estado, conductores, geozona, eventos]) => {
     const algunDialogAbierto = estado || conductores || geozona || eventos
     dialogAbierto.value = algunDialogAbierto
-    
+
     // Si algún dialog está abierto, forzar drawer mini
     if (algunDialogAbierto) {
       drawerExpanded.value = false
     }
   },
-  { immediate: true } // Agregar immediate
+  { immediate: true }, // Agregar immediate
 )
 
 // Watch adicional por si algo intenta cerrarlo
@@ -442,28 +902,33 @@ watch(leftDrawerOpen, (newVal) => {
 })
 
 // Control de dialogs
-watch([estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen], 
+watch(
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
   ([estado, conductores, geozona, eventos]) => {
     dialogAbierto.value = estado || conductores || geozona || eventos
-  }
+  },
 )
 
 function onDrawerMouseEnter() {
   // Verificar explícitamente cada dialog
-  if (!estadoFlotaDrawerOpen.value && 
-      !conductoresDrawerOpen.value && 
-      !geozonaDrawerOpen.value && 
-      !EventosDrawerOpen.value) {
+  if (
+    !estadoFlotaDrawerOpen.value &&
+    !conductoresDrawerOpen.value &&
+    !geozonaDrawerOpen.value &&
+    !EventosDrawerOpen.value
+  ) {
     drawerExpanded.value = true
   }
 }
 
 function onDrawerMouseLeave() {
   // Solo contraer si NO hay dialogs abiertos
-  if (!estadoFlotaDrawerOpen.value && 
-      !conductoresDrawerOpen.value && 
-      !geozonaDrawerOpen.value && 
-      !EventosDrawerOpen.value) {
+  if (
+    !estadoFlotaDrawerOpen.value &&
+    !conductoresDrawerOpen.value &&
+    !geozonaDrawerOpen.value &&
+    !EventosDrawerOpen.value
+  ) {
     drawerExpanded.value = false
   }
 }
@@ -678,7 +1143,7 @@ const logout = async () => {
   height: 100vh !important;
   border-radius: 0 !important;
   max-width: none !important;
-  margin: 0 !important; 
+  margin: 0 !important;
 }
 
 /* NUEVO ESTILO PARA LAS TARJETAS DE COMPONENTES Ya de modifico */
@@ -690,14 +1155,12 @@ const logout = async () => {
   margin-top: 26px !important;
   display: flex;
   flex-direction: column;
-
 }
 
 /* Asegurar que el componente ocupe todo el espacio disponible */
 .component-card :deep(> *) {
   flex: 1;
   min-height: 0; /* Importante para flexbox en algunos navegadores */
-  
 }
 
 /* Ajustar posición del dialog para que empiece justo debajo del header */
@@ -707,5 +1170,25 @@ const logout = async () => {
 
 :deep(.component-dialog .q-card) {
   margin-top: 0 !important;
+}
+
+/* Nuevos estilos para el buscador */
+.filtros-panel {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 8px;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 1000;
+}
+
+.sugerencias-menu {
+  z-index: 9999 !important;
 }
 </style>
