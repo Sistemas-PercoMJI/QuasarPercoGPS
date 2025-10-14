@@ -102,7 +102,7 @@
       show-if-above
       :mini="!drawerExpanded || dialogAbierto"
       @mouseenter="onDrawerMouseEnter"
-      @mouseleave="drawerExpanded = false"
+      @mouseleave="onDrawerMouseLeave"
       bordered
       :width="350"
       :mini-width="70"
@@ -349,7 +349,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
@@ -361,7 +361,6 @@ import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 
 const router = useRouter()
-const route = useRoute()
 const $q = useQuasar()
 
 // NOTIFICACIONES
@@ -422,13 +421,17 @@ const geozonaDrawerOpen = ref(false)
 const EventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
-watch(
-  () => route.path,
-  () => {
-    leftDrawerOpen.value = true
-    drawerExpanded.value = false // Resetear a mini cuando cambias de página
+watch([estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen], 
+  ([estado, conductores, geozona, eventos]) => {
+    const algunDialogAbierto = estado || conductores || geozona || eventos
+    dialogAbierto.value = algunDialogAbierto
+    
+    // Si algún dialog está abierto, forzar drawer mini
+    if (algunDialogAbierto) {
+      drawerExpanded.value = false
+    }
   },
-  { immediate: true },
+  { immediate: true } // Agregar immediate
 )
 
 // Watch adicional por si algo intenta cerrarlo
@@ -446,18 +449,33 @@ watch([estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosD
 )
 
 function onDrawerMouseEnter() {
-  if (!dialogAbierto.value) {
+  // Verificar explícitamente cada dialog
+  if (!estadoFlotaDrawerOpen.value && 
+      !conductoresDrawerOpen.value && 
+      !geozonaDrawerOpen.value && 
+      !EventosDrawerOpen.value) {
     drawerExpanded.value = true
+  }
+}
+
+function onDrawerMouseLeave() {
+  // Solo contraer si NO hay dialogs abiertos
+  if (!estadoFlotaDrawerOpen.value && 
+      !conductoresDrawerOpen.value && 
+      !geozonaDrawerOpen.value && 
+      !EventosDrawerOpen.value) {
+    drawerExpanded.value = false
   }
 }
 
 function onDialogShow() {
   dialogAbierto.value = true
-  drawerExpanded.value = false // Forzar que el drawer se quede mini
+  drawerExpanded.value = false // Ya lo tienes, bien!
 }
 
 function onDialogHide() {
   dialogAbierto.value = false
+  drawerExpanded.value = false // Agregar esto para asegurar
 }
 
 function handleLinkClick(link) {
@@ -663,7 +681,7 @@ const logout = async () => {
   margin: 0 !important; 
 }
 
-/* NUEVO ESTILO PARA LAS TARJETAS DE COMPONENTES */
+/* NUEVO ESTILO PARA LAS TARJETAS DE COMPONENTES Ya de modifico */
 .component-card {
   width: 350px;
   height: 100vh !important;
