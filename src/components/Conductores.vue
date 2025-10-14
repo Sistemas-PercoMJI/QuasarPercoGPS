@@ -14,7 +14,7 @@
           size="sm"
           @click="diagnosticar"
         >
-          <q-tooltip>Diagnosticar conexión</q-tooltip>
+          <q-tooltip>Diagnosticar datos locales</q-tooltip>
         </q-btn>
         <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
       </div>
@@ -437,11 +437,17 @@
         </q-card-section>
 
         <q-card-section>
-          <q-img
-            :src="conductorSeleccionado?.LicenciaConduccirFoto"
-            style="max-height: 500px"
-            fit="contain"
-          />
+          <div v-if="conductorSeleccionado?.LicenciaConduccirFoto" class="text-center">
+            <q-img
+              :src="conductorSeleccionado.LicenciaConduccirFoto"
+              style="max-height: 500px"
+              fit="contain"
+            />
+          </div>
+          <div v-else class="text-center q-pa-lg">
+            <q-icon name="image_not_supported" size="64px" color="grey-4" />
+            <div class="text-grey-6 q-mt-md">No hay licencia cargada</div>
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -473,7 +479,12 @@
           </q-item-section>
           <q-item-section>Ver detalles</q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="quitarDeGrupo">
+        <q-item 
+          clickable 
+          v-close-popup 
+          @click="quitarDeGrupo"
+          v-if="grupoSeleccionado !== 'todos'"
+        >
           <q-item-section avatar>
             <q-icon name="remove_circle" size="xs" color="negative" />
           </q-item-section>
@@ -487,9 +498,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar, date } from 'quasar'
-import { useConductores } from 'src/composables/useConductores.js'
-import { auth, db } from 'src/firebase/firebaseConfig'
-import { collection, getDocs } from 'firebase/firestore'
+import { useConductoresLocal as useConductores } from 'src/composables/useConductoresLocal.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
@@ -519,7 +528,7 @@ const {
 const todosConductores = ref(true)
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
-const conductorSeleccionado = ref(null)
+const conductorSeleccionado = ref({})
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
 const dialogNuevoConductor = ref(false)
@@ -604,14 +613,14 @@ const conductoresDisponiblesParaGrupo = computed(() => {
 })
 
 const fechaVencimientoFormato = computed(() => {
-  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return '—'
-  const timestamp = conductorSeleccionado.value.LicenciaConduccirVFecha
-  return date.formatDate(timestamp.toDate(), 'DD/MM/YYYY')
+  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return ''
+  const fecha = conductorSeleccionado.value.LicenciaConduccirVFecha
+  return date.formatDate(fecha, 'DD/MM/YYYY')
 })
 
 const esLicenciaVigente = computed(() => {
   if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return false
-  const fechaVencimiento = conductorSeleccionado.value.LicenciaConduccirVFecha.toDate()
+  const fechaVencimiento = new Date(conductorSeleccionado.value.LicenciaConduccirVFecha)
   return fechaVencimiento > new Date()
 })
 
@@ -635,7 +644,7 @@ function filtrarPorGrupo(grupo) {
 function seleccionarConductor(conductor) {
   if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
     dialogDetallesConductor.value = false
-    conductorSeleccionado.value = null
+    conductorSeleccionado.value = {}
     return
   }
 
@@ -650,7 +659,7 @@ function cerrarDrawer() {
 
 async function recargarDatos() {
   try {
-    console.log('🔄 Recargando datos...')
+    console.log('🔄 Recargando datos locales...')
     await Promise.all([
       obtenerConductores(),
       obtenerGrupos()
@@ -672,53 +681,16 @@ async function recargarDatos() {
 }
 
 async function diagnosticar() {
-  console.log('🔍 === DIAGNÓSTICO DE CONEXIÓN ===')
+  console.log('🔍 === DIAGNÓSTICO DE DATOS LOCALES ===')
+  console.log('📊 Conductores:', conductores.value.length)
+  conductores.value.forEach(c => {
+    console.log('   👤', c.id, '-', c.Usuario, '-', c.Nombre)
+  })
   
-  // Test 1: Auth
-  console.log('1️⃣ Auth inicializado:', auth ? '✅' : '❌')
-  console.log('   Usuario actual:', auth.currentUser)
-  console.log('   Email:', auth.currentUser?.email || 'No autenticado')
-  console.log('   UID:', auth.currentUser?.uid || 'No disponible')
-  
-  // Test 2: Firestore
-  console.log('2️⃣ Firestore inicializado:', db ? '✅' : '❌')
-  console.log('   App ID:', db?.app?.options?.projectId || 'No disponible')
-  
-  // Test 3: Lectura de Conductores
-  try {
-    console.log('3️⃣ Intentando leer colección "Conductores"...')
-    const conductoresRef = collection(db, 'Conductores')
-    const snapshot = await getDocs(conductoresRef)
-    console.log('   ✅ Lectura exitosa!')
-    console.log('   Documentos encontrados:', snapshot.size)
-    snapshot.forEach(doc => {
-      console.log('   📄', doc.id, '→', doc.data())
-    })
-  } catch (error) {
-    console.error('   ❌ Error al leer Conductores:', error)
-    console.error('   Código:', error.code)
-    console.error('   Mensaje:', error.message)
-  }
-  
-  // Test 4: Lectura de Grupos
-  if (auth.currentUser) {
-    try {
-      console.log('4️⃣ Intentando leer grupos del usuario...')
-      const gruposRef = collection(db, 'Usuarios', auth.currentUser.uid, 'GruposConductores')
-      const snapshot = await getDocs(gruposRef)
-      console.log('   ✅ Lectura exitosa!')
-      console.log('   Grupos encontrados:', snapshot.size)
-      snapshot.forEach(doc => {
-        console.log('   📁', doc.id, '→', doc.data())
-      })
-    } catch (error) {
-      console.error('   ❌ Error al leer Grupos:', error)
-      console.error('   Código:', error.code)
-      console.error('   Mensaje:', error.message)
-    }
-  } else {
-    console.log('4️⃣ ⚠️ No se puede leer grupos (usuario no autenticado)')
-  }
+  console.log('📁 Grupos:', grupos.value.length)
+  grupos.value.forEach(g => {
+    console.log('   📂', g.id, '-', g.Nombre, '- Conductores:', g.ConductoresIds?.length || 0)
+  })
   
   console.log('🔍 === FIN DEL DIAGNÓSTICO ===')
   
@@ -731,7 +703,7 @@ async function diagnosticar() {
 }
 
 async function actualizarCampo(campo, valor) {
-  if (!conductorSeleccionado.value) return
+  if (!conductorSeleccionado.value?.id) return
 
   try {
     await actualizarConductor(conductorSeleccionado.value.id, { [campo]: valor })
@@ -751,10 +723,14 @@ async function actualizarCampo(campo, valor) {
 }
 
 async function actualizarFechaVencimiento(fecha) {
-  if (!conductorSeleccionado.value) return
+  if (!conductorSeleccionado.value?.id) return
 
   try {
-    const fechaTimestamp = date.buildDate({ year: fecha.split('/')[2], month: fecha.split('/')[1], date: fecha.split('/')[0] })
+    const fechaTimestamp = new Date(
+      fecha.split('/')[2], 
+      fecha.split('/')[1] - 1, 
+      fecha.split('/')[0]
+    )
     
     await actualizarConductor(conductorSeleccionado.value.id, {
       LicenciaConduccirVFecha: fechaTimestamp
@@ -981,8 +957,7 @@ async function quitarDeGrupo() {
 // Lifecycle
 onMounted(async () => {
   try {
-    console.log('🔄 Iniciando carga de datos...')
-    console.log('👤 Usuario actual:', auth.currentUser)
+    console.log('🔄 Iniciando carga de datos locales...')
     
     await Promise.all([
       obtenerConductores(),
@@ -1000,12 +975,7 @@ onMounted(async () => {
       type: 'negative',
       message: 'Error al cargar datos: ' + error.message,
       icon: 'error',
-      timeout: 5000,
-      actions: [
-        { label: 'Ver detalles', color: 'white', handler: () => {
-          console.error('Detalles del error:', error)
-        }}
-      ]
+      timeout: 5000
     })
   }
 })

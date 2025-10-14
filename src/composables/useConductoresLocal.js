@@ -1,46 +1,95 @@
+// src/composables/useConductoresLocal.js
 import { ref, computed } from 'vue'
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc,
-  addDoc, 
-  updateDoc, 
-  deleteDoc,
-  query,
-  orderBy
-} from 'firebase/firestore'
-import { db, auth } from 'src/firebase/firebaseConfig'
 
-export function useConductores() {
+export function useConductoresLocal() {
   const conductores = ref([])
   const grupos = ref([])
   const loading = ref(false)
   const error = ref(null)
 
-  // Obtener el ID del usuario actual
-  const getUserId = () => {
-    const user = auth.currentUser
-    if (!user) throw new Error('Usuario no autenticado')
-    return user.uid
+  // Datos de prueba
+  const datosPrueba = {
+    conductores: [
+      {
+        id: '1',
+        Nombre: 'Juan Pérez García',
+        Usuario: 'juanpg',
+        Telefono: '6641234567',
+        LicenciaConduccirFoto: '',
+        LicenciaConduccirVFecha: new Date('2025-12-31')
+      },
+      {
+        id: '2', 
+        Nombre: 'María López Hernández',
+        Usuario: 'marialh',
+        Telefono: '6647654321',
+        LicenciaConduccirFoto: '',
+        LicenciaConduccirVFecha: new Date('2024-06-15')
+      },
+      {
+        id: '3',
+        Nombre: 'Carlos Rodríguez',
+        Usuario: 'carlosr',
+        Telefono: '6645558888',
+        LicenciaConduccirFoto: '',
+        LicenciaConduccirVFecha: new Date('2025-08-20')
+      },
+      {
+        id: '4',
+        Nombre: 'Ana Martínez',
+        Usuario: 'anam',
+        Telefono: '6642223333',
+        LicenciaConduccirFoto: '',
+        LicenciaConduccirVFecha: new Date('2024-11-30')
+      }
+    ],
+    grupos: [
+      {
+        id: 'grupo1',
+        Nombre: 'Conductores Matutinos',
+        ConductoresIds: ['1', '2']
+      },
+      {
+        id: 'grupo2', 
+        Nombre: 'Conductores Vespertinos',
+        ConductoresIds: ['3', '4']
+      },
+      {
+        id: 'grupo3',
+        Nombre: 'Conductores Especiales',
+        ConductoresIds: ['1']
+      }
+    ]
+  }
+
+  // Simular delay de red
+  const simularDelay = () => new Promise(resolve => setTimeout(resolve, 500))
+
+  // Función para simular subida de imagen (convierte a base64)
+  const simularSubidaImagen = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        // Simular procesamiento
+        setTimeout(() => {
+          resolve(e.target.result)
+        }, 1000)
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   // ===============================
-  // CONDUCTORES (Global)
+  // CONDUCTORES
   // ===============================
   
   const obtenerConductores = async () => {
     loading.value = true
     error.value = null
     try {
-      const q = query(collection(db, 'Conductores'), orderBy('Nombre'))
-      const querySnapshot = await getDocs(q)
-      
-      conductores.value = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      
+      await simularDelay()
+      conductores.value = [...datosPrueba.conductores]
+      console.log('✅ Conductores cargados (local):', conductores.value.length)
       return conductores.value
     } catch (err) {
       error.value = err.message
@@ -55,7 +104,10 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
+      await simularDelay()
+      
       const nuevoConductor = {
+        id: Date.now().toString(),
         Nombre: conductorData.Nombre,
         Usuario: conductorData.Usuario,
         Telefono: conductorData.Telefono || '',
@@ -63,15 +115,9 @@ export function useConductores() {
         LicenciaConduccirVFecha: conductorData.LicenciaConduccirVFecha || null
       }
       
-      const docRef = await addDoc(collection(db, 'Conductores'), nuevoConductor)
-      
-      const conductorCreado = {
-        id: docRef.id,
-        ...nuevoConductor
-      }
-      
-      conductores.value.push(conductorCreado)
-      return conductorCreado
+      conductores.value.push(nuevoConductor)
+      console.log('✅ Conductor agregado:', nuevoConductor)
+      return nuevoConductor
     } catch (err) {
       error.value = err.message
       console.error('Error al agregar conductor:', err)
@@ -85,8 +131,7 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const conductorRef = doc(db, 'Conductores', conductorId)
-      await updateDoc(conductorRef, datos)
+      await simularDelay()
       
       const index = conductores.value.findIndex(c => c.id === conductorId)
       if (index !== -1) {
@@ -96,6 +141,7 @@ export function useConductores() {
         }
       }
       
+      console.log('✅ Conductor actualizado:', conductores.value[index])
       return conductores.value[index]
     } catch (err) {
       error.value = err.message
@@ -110,13 +156,21 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      await deleteDoc(doc(db, 'Conductores', conductorId))
+      await simularDelay()
       
       const index = conductores.value.findIndex(c => c.id === conductorId)
       if (index !== -1) {
         conductores.value.splice(index, 1)
       }
-         
+      
+      // También eliminar de todos los grupos
+      grupos.value.forEach(grupo => {
+        if (grupo.ConductoresIds) {
+          grupo.ConductoresIds = grupo.ConductoresIds.filter(id => id !== conductorId)
+        }
+      })
+      
+      console.log('✅ Conductor eliminado:', conductorId)
       return true
     } catch (err) {
       error.value = err.message
@@ -127,24 +181,43 @@ export function useConductores() {
     }
   }
 
+  const subirFotoLicencia = async (conductorId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📸 Subiendo foto para conductor:', conductorId)
+      
+      // Simular subida de imagen
+      const fotoBase64 = await simularSubidaImagen(file)
+      
+      // Actualizar conductor con la nueva foto
+      const index = conductores.value.findIndex(c => c.id === conductorId)
+      if (index !== -1) {
+        conductores.value[index].LicenciaConduccirFoto = fotoBase64
+      }
+      
+      console.log('✅ Foto subida correctamente')
+      return fotoBase64
+    } catch (err) {
+      error.value = err.message
+      console.error('Error al subir foto:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // ===============================
-  // GRUPOS (Subcolección por usuario)
+  // GRUPOS
   // ===============================
   
   const obtenerGrupos = async () => {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
-      const querySnapshot = await getDocs(gruposRef)
-      
-      grupos.value = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        ConductoresIds: doc.data().ConductoresIds || []
-      }))
-      
+      await simularDelay()
+      grupos.value = [...datosPrueba.grupos]
+      console.log('✅ Grupos cargados (local):', grupos.value.length)
       return grupos.value
     } catch (err) {
       error.value = err.message
@@ -159,23 +232,17 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
+      await simularDelay()
       
       const nuevoGrupo = {
+        id: 'grupo' + Date.now(),
         Nombre: grupoData.Nombre,
         ConductoresIds: grupoData.ConductoresIds || []
       }
       
-      const docRef = await addDoc(gruposRef, nuevoGrupo)
-      
-      const grupoCreado = {
-        id: docRef.id,
-        ...nuevoGrupo
-      }
-      
-      grupos.value.push(grupoCreado)
-      return grupoCreado
+      grupos.value.push(nuevoGrupo)
+      console.log('✅ Grupo creado:', nuevoGrupo)
+      return nuevoGrupo
     } catch (err) {
       error.value = err.message
       console.error('Error al crear grupo:', err)
@@ -189,9 +256,7 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      const grupoRef = doc(db, 'Usuarios', userId, 'GruposConductores', grupoId)
-      await updateDoc(grupoRef, datos)
+      await simularDelay()
       
       const index = grupos.value.findIndex(g => g.id === grupoId)
       if (index !== -1) {
@@ -201,6 +266,7 @@ export function useConductores() {
         }
       }
       
+      console.log('✅ Grupo actualizado:', grupos.value[index])
       return grupos.value[index]
     } catch (err) {
       error.value = err.message
@@ -215,14 +281,14 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      await deleteDoc(doc(db, 'Usuarios', userId, 'GruposConductores', grupoId))
+      await simularDelay()
       
       const index = grupos.value.findIndex(g => g.id === grupoId)
       if (index !== -1) {
         grupos.value.splice(index, 1)
       }
       
+      console.log('✅ Grupo eliminado:', grupoId)
       return true
     } catch (err) {
       error.value = err.message
@@ -237,26 +303,15 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      const grupoRef = doc(db, 'Usuarios', userId, 'GruposConductores', grupoId)
+      await simularDelay()
       
-      const grupoDoc = await getDoc(grupoRef)
-      const grupoData = grupoDoc.data()
-      const conductoresActuales = grupoData.ConductoresIds || []
-      
-      // Combinar sin duplicados
-      const nuevosConductores = [...new Set([...conductoresActuales, ...conductoresIds])]
-      
-      await updateDoc(grupoRef, {
-        ConductoresIds: nuevosConductores
-      })
-      
-      // Actualizar local
       const grupo = grupos.value.find(g => g.id === grupoId)
       if (grupo) {
-        grupo.ConductoresIds = nuevosConductores
+        // Combinar sin duplicados
+        grupo.ConductoresIds = [...new Set([...grupo.ConductoresIds, ...conductoresIds])]
       }
       
+      console.log('✅ Conductores agregados al grupo:', grupoId, conductoresIds)
       return true
     } catch (err) {
       error.value = err.message
@@ -271,25 +326,14 @@ export function useConductores() {
     loading.value = true
     error.value = null
     try {
-      const userId = getUserId()
-      const grupoRef = doc(db, 'Usuarios', userId, 'GruposConductores', grupoId)
+      await simularDelay()
       
-      const grupoDoc = await getDoc(grupoRef)
-      const grupoData = grupoDoc.data()
-      const conductoresActuales = grupoData.ConductoresIds || []
-      
-      const nuevosConductores = conductoresActuales.filter(id => id !== conductorId)
-      
-      await updateDoc(grupoRef, {
-        ConductoresIds: nuevosConductores
-      })
-      
-      // Actualizar local
       const grupo = grupos.value.find(g => g.id === grupoId)
       if (grupo) {
-        grupo.ConductoresIds = nuevosConductores
+        grupo.ConductoresIds = grupo.ConductoresIds.filter(id => id !== conductorId)
       }
       
+      console.log('✅ Conductor removido del grupo:', grupoId, conductorId)
       return true
     } catch (err) {
       error.value = err.message
@@ -333,6 +377,7 @@ export function useConductores() {
     agregarConductor,
     actualizarConductor,
     eliminarConductor,
+    subirFotoLicencia,
     
     // Grupos
     obtenerGrupos,
