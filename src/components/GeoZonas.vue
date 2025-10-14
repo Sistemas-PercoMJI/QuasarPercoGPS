@@ -283,17 +283,32 @@
               <div class="text-caption">Marca una ubicación en el mapa</div>
             </div>
             <q-space />
-            <q-btn flat dense round icon="close" v-close-popup color="white" />
+            <q-btn flat dense round icon="close" @click="cancelarNuevoPOI" color="white" />
           </div>
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
+          <!-- NUEVO: Input de Nombre -->
+          <q-input
+            v-model="nuevoPOI.nombre"
+            label="Nombre del punto *"
+            outlined
+            class="q-mb-md"
+            placeholder="Ej: Oficina Central"
+          >
+            <template v-slot:prepend>
+              <q-icon name="label" />
+            </template>
+          </q-input>
+
+          <!-- Input de Dirección (existente) -->
           <q-input
             v-model="nuevoPOI.direccion"
-            label="Dirección"
+            label="Dirección *"
             outlined
             class="q-mb-md"
             readonly
+            placeholder="Haz clic para seleccionar en el mapa"
             @click="activarSeleccionMapa"
           >
             <template v-slot:prepend>
@@ -419,32 +434,67 @@
     </q-dialog>
 
     <!-- Menú contextual -->
-    <q-menu v-model="menuContextualVisible" context-menu>
-      <q-list style="min-width: 180px">
-        <q-item clickable v-close-popup @click="editarItem">
-          <q-item-section avatar>
-            <q-icon name="edit" color="primary" />
-          </q-item-section>
-          <q-item-section>Editar</q-item-section>
-        </q-item>
-
-        <q-item clickable v-close-popup @click="verEnMapa">
-          <q-item-section avatar>
-            <q-icon name="map" color="positive" />
-          </q-item-section>
-          <q-item-section>Ver en mapa</q-item-section>
-        </q-item>
+    <q-dialog
+      v-model="menuContextualVisible"
+      position="bottom"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
+        <!-- Header opcional -->
+        <q-card-section class="q-pa-md bg-grey-1">
+          <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
+        </q-card-section>
 
         <q-separator />
 
-        <q-item clickable v-close-popup @click="eliminarItem">
-          <q-item-section avatar>
-            <q-icon name="delete" color="negative" />
-          </q-item-section>
-          <q-item-section class="text-negative">Eliminar</q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
+        <!-- Opciones -->
+        <q-list padding>
+          <q-item clickable v-ripple @click="(editarItem(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="primary" text-color="white">
+                <q-icon name="edit" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Editar</q-item-label>
+              <q-item-label caption>Modificar información</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <q-item clickable v-ripple @click="(verEnMapa(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="positive" text-color="white">
+                <q-icon name="map" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Ver en mapa</q-item-label>
+              <q-item-label caption>Centrar en ubicación</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <q-separator class="q-my-sm" />
+
+          <q-item clickable v-ripple @click="(eliminarItem(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="negative" text-color="white">
+                <q-icon name="delete" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-negative">Eliminar</q-item-label>
+              <q-item-label caption>Eliminar permanentemente</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <!-- Botón cancelar -->
+        <q-card-actions class="q-pa-md">
+          <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -597,34 +647,111 @@ function contarGeozonaPorGrupo(grupoId) {
 }
 
 function guardarGeozona() {
-  items.value.push({
-    id: items.value.length + 1,
-    nombre: nuevaGeozona.value.nombre,
-    direccion: `Radio: ${nuevaGeozona.value.radio}m`,
-    tipo: 'geozona',
-    grupoId: nuevaGeozona.value.grupoId,
-  })
-  nuevaGeozona.value = { nombre: '', radio: 50, grupoId: null, notas: '' }
+  // Si tiene ID, es una edición
+  if (nuevaGeozona.value.id) {
+    const index = items.value.findIndex((i) => i.id === nuevaGeozona.value.id)
+
+    if (index > -1) {
+      items.value[index] = {
+        ...items.value[index],
+        nombre: nuevaGeozona.value.nombre,
+        direccion: `Radio: ${nuevaGeozona.value.radio}m`,
+        grupoId: nuevaGeozona.value.grupoId,
+        notas: nuevaGeozona.value.notas,
+      }
+
+      console.log('✅ Geozona actualizada')
+    }
+  } else {
+    // Es una nueva geozona
+    items.value.push({
+      id: items.value.length + 1,
+      nombre: nuevaGeozona.value.nombre,
+      direccion: `Radio: ${nuevaGeozona.value.radio}m`,
+      tipo: 'geozona',
+      grupoId: nuevaGeozona.value.grupoId,
+      notas: nuevaGeozona.value.notas,
+    })
+
+    console.log('✅ Nueva geozona guardada')
+  }
+
+  // Resetear formulario
+  nuevaGeozona.value = {
+    nombre: '',
+    radio: 50,
+    grupoId: null,
+    notas: '',
+  }
   dialogNuevaGeozona.value = false
 }
-
 function mostrarMenuContextual(item) {
   itemMenu.value = item
   menuContextualVisible.value = true
-}
-
-function editarItem() {
-  console.log('Editar:', itemMenu.value)
 }
 
 function verEnMapa() {
   emit('item-seleccionado', itemMenu.value)
 }
 
+function editarItem() {
+  if (!itemMenu.value) return
+
+  if (itemMenu.value.tipo === 'poi') {
+    // Llenar el formulario con los datos existentes
+    nuevoPOI.value = {
+      id: itemMenu.value.id, // Agregar el ID para saber que estamos editando
+      nombre: itemMenu.value.nombre,
+      direccion: itemMenu.value.direccion,
+      coordenadas: itemMenu.value.coordenadas,
+      grupoId: itemMenu.value.grupoId,
+      notas: itemMenu.value.notas || '',
+    }
+    dialogNuevoPOI.value = true
+  } else if (itemMenu.value.tipo === 'geozona') {
+    // Extraer el radio de la dirección (formato: "Radio: XXXm")
+    const radioMatch = itemMenu.value.direccion.match(/Radio:\s*(\d+)m/)
+    const radio = radioMatch ? parseInt(radioMatch[1]) : 50
+
+    nuevaGeozona.value = {
+      id: itemMenu.value.id,
+      nombre: itemMenu.value.nombre,
+      radio: radio,
+      grupoId: itemMenu.value.grupoId,
+      notas: itemMenu.value.notas || '',
+    }
+    dialogNuevaGeozona.value = true
+  }
+}
+
+// Función para eliminar un item
 function eliminarItem() {
-  const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
-  if (index > -1) {
-    items.value.splice(index, 1)
+  if (!itemMenu.value) return
+
+  // Mostrar confirmación
+  const confirmacion = confirm(`¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`)
+
+  if (confirmacion) {
+    // Buscar el índice del item
+    const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
+
+    if (index > -1) {
+      // Si es un POI, eliminar también su marcador del mapa
+      if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
+        const mapPage = document.querySelector('#map-page')
+        if (mapPage && mapPage._mapaAPI) {
+          mapPage._mapaAPI.eliminarMarcadorPorCoordenadas(
+            itemMenu.value.coordenadas.lat,
+            itemMenu.value.coordenadas.lng,
+          )
+        }
+      }
+
+      // Eliminar el item de la lista
+      items.value.splice(index, 1)
+
+      console.log('✅ Item eliminado:', itemMenu.value.nombre)
+    }
   }
 }
 
@@ -640,68 +767,186 @@ onMounted(() => {
 })
 
 // Función para activar selección en el mapa
+// Función para activar selección en el mapa
 const activarSeleccionMapa = async () => {
-  if (mapaComponent.value) {
-    // Activar modo selección en el mapa
-    mapaComponent.value.activarModoSeleccion()
+  console.log('🔵 1. Iniciando activarSeleccionMapa')
 
-    // Esperar a que el usuario seleccione una ubicación
-    const ubicacion = await esperarSeleccionUbicacion()
+  // 1. CERRAR el diálogo del POI
+  dialogNuevoPOI.value = false
+  console.log('🔵 2. Diálogo cerrado')
 
-    if (ubicacion) {
-      nuevoPOI.value.direccion = ubicacion.direccion
-      nuevoPOI.value.coordenadas = ubicacion.coordenadas
+  // 2. Hacer semi-transparente el drawer de geozonas
+  const componentDialog = document.querySelector('.component-dialog')
+  console.log('🔵 3. componentDialog encontrado:', componentDialog)
+
+  if (componentDialog) {
+    componentDialog.style.opacity = '0.3'
+    componentDialog.style.pointerEvents = 'none'
+  }
+
+  // 3. Esperar un momento
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  console.log('🔵 4. Esperando completado')
+
+  // 4. Buscar el componente del mapa usando la nueva forma
+  const mapPage = document.querySelector('#map-page')
+  console.log('🔵 5. mapPage encontrado:', mapPage)
+  console.log('🔵 6. _mapaAPI:', mapPage?._mapaAPI)
+
+  if (mapPage && mapPage._mapaAPI) {
+    const mapaAPI = mapPage._mapaAPI
+    console.log('🔵 7. Funciones disponibles:', Object.keys(mapaAPI))
+
+    if (mapaAPI.activarModoSeleccion) {
+      console.log('✅ Mapa encontrado correctamente!')
+
+      // Activar modo selección
+      mapaAPI.activarModoSeleccion()
+      console.log('🔵 8. Modo selección activado')
+
+      // Esperar a que el usuario seleccione
+      const ubicacion = await esperarSeleccionUbicacion(mapaAPI)
+      console.log('🔵 9. Ubicación obtenida:', ubicacion)
+
+      // Desactivar modo selección
+      mapaAPI.desactivarModoSeleccion()
+
+      // Si hay ubicación, guardar los datos (SIN modificar el nombre)
+      if (ubicacion) {
+        nuevoPOI.value.direccion = ubicacion.direccion
+        nuevoPOI.value.coordenadas = ubicacion.coordenadas
+        // ❌ QUITAMOS esta línea que auto-llenaba el nombre:
+        // const partes = ubicacion.direccion.split(',')
+        // if (!nuevoPOI.value.nombre) {
+        //   nuevoPOI.value.nombre = partes[0].trim()
+        // }
+      }
+
+      // Restaurar visibilidad del drawer
+      if (componentDialog) {
+        componentDialog.style.opacity = '1'
+        componentDialog.style.pointerEvents = 'auto'
+      }
+
+      // REABRIR el diálogo con los datos ya llenos
+      dialogNuevoPOI.value = true
+    } else {
+      console.error('❌ mapaAPI no tiene las funciones necesarias')
+      if (componentDialog) {
+        componentDialog.style.opacity = '1'
+        componentDialog.style.pointerEvents = 'auto'
+      }
+      alert('El mapa no está disponible (funciones no encontradas)')
     }
   } else {
-    console.warn('Componente del mapa no encontrado')
-    // Fallback: mostrar mensaje al usuario
-    alert('Por favor, asegúrate de que el mapa esté cargado')
+    console.error('❌ No se encontró mapPage._mapaAPI')
+    if (componentDialog) {
+      componentDialog.style.opacity = '1'
+      componentDialog.style.pointerEvents = 'auto'
+    }
+    alert('El mapa no está disponible. Por favor espera a que cargue completamente.')
   }
 }
-
 // Función para esperar la selección del usuario
-const esperarSeleccionUbicacion = () => {
+const esperarSeleccionUbicacion = (mapaAPI) => {
+  console.log('🟢 Esperando selección del usuario...')
   return new Promise((resolve) => {
     const checkInterval = setInterval(() => {
-      if (mapaComponent.value) {
-        const ubicacion = mapaComponent.value.getUbicacionSeleccionada()
-        if (ubicacion) {
-          clearInterval(checkInterval)
-          resolve(ubicacion)
-        }
+      const ubicacion = mapaAPI.getUbicacionSeleccionada()
+      if (ubicacion) {
+        console.log('✅ Ubicación seleccionada!', ubicacion)
+        clearInterval(checkInterval)
+        resolve(ubicacion)
       }
-    }, 500)
+    }, 300)
 
-    // Timeout después de 30 segundos
+    // Timeout después de 60 segundos
     setTimeout(() => {
+      console.log('⏱️ Timeout alcanzado')
       clearInterval(checkInterval)
       resolve(null)
-    }, 30000)
+    }, 60000)
   })
 }
 
 // Cancelar nuevo POI
 const cancelarNuevoPOI = () => {
-  if (mapaComponent.value) {
-    mapaComponent.value.desactivarModoSeleccion()
+  const componentDialog = document.querySelector('.component-dialog')
+  if (componentDialog) {
+    componentDialog.style.opacity = '1'
+    componentDialog.style.pointerEvents = 'auto'
   }
+
+  const mapPage = document.querySelector('#map-page')
+  if (mapPage && mapPage._mapaAPI) {
+    const mapaAPI = mapPage._mapaAPI
+    if (mapaAPI) {
+      mapaAPI.desactivarModoSeleccion()
+      mapaAPI.limpiarMarcadorTemporal() // Limpiar al cancelar
+    }
+  }
+
+  // Resetear formulario
+  nuevoPOI.value = {
+    nombre: '',
+    direccion: '',
+    coordenadas: null,
+    grupoId: null,
+    notas: '',
+  }
+
   dialogNuevoPOI.value = false
 }
 
 // Modificar guardarPOI para incluir coordenadas
 const guardarPOI = () => {
-  if (mapaComponent.value) {
-    mapaComponent.value.desactivarModoSeleccion()
-  }
+  const mapPage = document.querySelector('#map-page')
 
-  items.value.push({
-    id: items.value.length + 1,
-    nombre: nuevoPOI.value.nombre,
-    direccion: nuevoPOI.value.direccion,
-    coordenadas: nuevoPOI.value.coordenadas, // ← Nueva propiedad
-    tipo: 'poi',
-    grupoId: nuevoPOI.value.grupoId,
-  })
+  // Si tiene ID, es una edición
+  if (nuevoPOI.value.id) {
+    const index = items.value.findIndex((i) => i.id === nuevoPOI.value.id)
+
+    if (index > -1) {
+      // Actualizar el item existente
+      items.value[index] = {
+        ...items.value[index],
+        nombre: nuevoPOI.value.nombre,
+        direccion: nuevoPOI.value.direccion,
+        coordenadas: nuevoPOI.value.coordenadas,
+        grupoId: nuevoPOI.value.grupoId,
+        notas: nuevoPOI.value.notas,
+      }
+
+      // Actualizar marcador en el mapa si hay API disponible
+      if (mapPage && mapPage._mapaAPI && nuevoPOI.value.coordenadas) {
+        mapPage._mapaAPI.actualizarMarcador(
+          nuevoPOI.value.coordenadas.lat,
+          nuevoPOI.value.coordenadas.lng,
+          nuevoPOI.value.nombre,
+          nuevoPOI.value.direccion,
+        )
+      }
+
+      console.log('✅ POI actualizado')
+    }
+  } else {
+    // Es un nuevo POI
+    if (mapPage && mapPage._mapaAPI) {
+      mapPage._mapaAPI.confirmarMarcadorTemporal(nuevoPOI.value.nombre)
+    }
+
+    items.value.push({
+      id: items.value.length + 1,
+      nombre: nuevoPOI.value.nombre,
+      direccion: nuevoPOI.value.direccion,
+      coordenadas: nuevoPOI.value.coordenadas,
+      tipo: 'poi',
+      grupoId: nuevoPOI.value.grupoId,
+      notas: nuevoPOI.value.notas,
+    })
+
+    console.log('✅ Nuevo POI guardado')
+  }
 
   // Resetear formulario
   nuevoPOI.value = {

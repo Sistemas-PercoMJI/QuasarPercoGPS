@@ -1,8 +1,6 @@
 <template>
-  <q-page class="full-height">
-    <div id="map" class="full-map">
-      <!-- Selector de estilos -->
-    </div>
+  <q-page id="map-page" class="full-height">
+    <div id="map" class="full-map"></div>
   </q-page>
 </template>
 
@@ -10,16 +8,53 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useMap } from 'src/composables/useMap'
 
-const { initMap, addMarker, cleanup } = useMap()
+const {
+  initMap,
+  addMarker,
+  activarModoSeleccion,
+  desactivarModoSeleccion,
+  getUbicacionSeleccionada,
+  confirmarMarcadorTemporal, // ← Agregar esta
+  limpiarMarcadorTemporal,
+  cleanup,
+  eliminarMarcadorPorCoordenadas, // ← Nueva
+  actualizarMarcador,
+} = useMap()
 
 onMounted(() => {
   initMap('map', [32.504421823945805, -116.9514484543167], 13)
   addMarker(32.504421823945805, -116.9514484543167, {
     popup: '<b>MJ Industrias</b><br>Ubicación principal',
   })
+  const mapPageElement = document.querySelector('#map-page')
+  if (mapPageElement) {
+    mapPageElement._mapaAPI = {
+      activarModoSeleccion,
+      desactivarModoSeleccion,
+      getUbicacionSeleccionada,
+      confirmarMarcadorTemporal,
+      limpiarMarcadorTemporal,
+      eliminarMarcadorPorCoordenadas,
+      actualizarMarcador,
+    }
+    console.log('✅ API del mapa guardada en el elemento DOM')
+  }
+
+  // NUEVO: Forzar redibujado cuando cambia el tamaño de la ventana
+  window.addEventListener('resize', () => {
+    const { map } = useMap()
+    if (map.value) {
+      map.value.invalidateSize()
+    }
+  })
 })
 
 onUnmounted(() => {
+  // Limpiar la referencia
+  const mapPageElement = document.querySelector('#map-page')
+  if (mapPageElement) {
+    delete mapPageElement._mapaAPI
+  }
   cleanup()
 })
 </script>
@@ -38,14 +73,5 @@ onUnmounted(() => {
   bottom: 0;
   width: 100%;
   height: 100%;
-}
-
-.map-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
 }
 </style>
