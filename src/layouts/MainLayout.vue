@@ -669,7 +669,7 @@ const logout = async () => {
   height: 100vh !important;
   border-radius: 0 !important;
   margin-left: 70px;
-  margin-top: 0 !important;
+  margin-top: 26px !important;
   display: flex;
   flex-direction: column;
 
@@ -684,7 +684,7 @@ const logout = async () => {
 
 /* Ajustar posición del dialog para que empiece justo debajo del header */
 :deep(.component-dialog .q-dialog__inner) {
-  padding-top: 50px !important; /* Altura aproximada del header */
+  padding-top: 76px !important; /* Altura aproximada del header */
 }
 
 :deep(.component-dialog .q-card) {
