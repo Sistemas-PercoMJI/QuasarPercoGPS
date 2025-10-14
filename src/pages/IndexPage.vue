@@ -13,8 +13,8 @@ import { useMap } from 'src/composables/useMap'
 const { initMap, addMarker, cleanup } = useMap()
 
 onMounted(() => {
-  initMap('map', [32.0692, -116.6217], 13)
-  addMarker(32.0692, -116.6217, {
+  initMap('map', [32.504421823945805, -116.9514484543167], 13)
+  addMarker(32.504421823945805, -116.9514484543167, {
     popup: '<b>MJ Industrias</b><br>Ubicación principal',
   })
 })

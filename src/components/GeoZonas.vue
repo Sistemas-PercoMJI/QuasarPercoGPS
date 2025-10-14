@@ -288,15 +288,19 @@
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
-          <q-input v-model="nuevoPOI.nombre" label="Nombre del punto" outlined class="q-mb-md">
-            <template v-slot:prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
-
-          <q-input v-model="nuevoPOI.direccion" label="Dirección" outlined class="q-mb-md">
+          <q-input
+            v-model="nuevoPOI.direccion"
+            label="Dirección"
+            outlined
+            class="q-mb-md"
+            readonly
+            @click="activarSeleccionMapa"
+          >
             <template v-slot:prepend>
               <q-icon name="location_on" />
+            </template>
+            <template v-slot:append>
+              <q-icon name="edit_location" class="cursor-pointer" @click="activarSeleccionMapa" />
             </template>
           </q-input>
 
@@ -328,13 +332,13 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
-          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelarNuevoPOI" />
           <q-btn
             unelevated
             label="Guardar"
             color="primary"
             @click="guardarPOI"
-            :disable="!nuevoPOI.nombre"
+            :disable="!nuevoPOI.nombre || !nuevoPOI.direccion"
           />
         </q-card-actions>
       </q-card>
@@ -445,7 +449,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted /*, onUnmounted */ } from 'vue'
 
 const emit = defineEmits(['close', 'item-seleccionado'])
 
@@ -459,6 +463,7 @@ const dialogNuevoPOI = ref(false)
 const dialogNuevaGeozona = ref(false)
 const menuContextualVisible = ref(false)
 const itemMenu = ref(null)
+const mapaComponent = ref(null)
 
 const nuevoPOI = ref({
   nombre: '',
@@ -591,18 +596,6 @@ function contarGeozonaPorGrupo(grupoId) {
   return geozonas.value.filter((g) => g.grupoId === grupoId).length
 }
 
-function guardarPOI() {
-  items.value.push({
-    id: items.value.length + 1,
-    nombre: nuevoPOI.value.nombre,
-    direccion: nuevoPOI.value.direccion || 'Sin dirección',
-    tipo: 'poi',
-    grupoId: nuevoPOI.value.grupoId,
-  })
-  nuevoPOI.value = { nombre: '', direccion: '', grupoId: null, notas: '' }
-  dialogNuevoPOI.value = false
-}
-
 function guardarGeozona() {
   items.value.push({
     id: items.value.length + 1,
@@ -633,6 +626,92 @@ function eliminarItem() {
   if (index > -1) {
     items.value.splice(index, 1)
   }
+}
+
+// Buscar el componente del mapa cuando se monta
+onMounted(() => {
+  // Buscar el componente del mapa en el DOM
+  setTimeout(() => {
+    const mapPage = document.querySelector('#map-page')
+    if (mapPage && mapPage.__vueParentComponent) {
+      mapaComponent.value = mapPage.__vueParentComponent.exposed
+    }
+  }, 1000)
+})
+
+// Función para activar selección en el mapa
+const activarSeleccionMapa = async () => {
+  if (mapaComponent.value) {
+    // Activar modo selección en el mapa
+    mapaComponent.value.activarModoSeleccion()
+
+    // Esperar a que el usuario seleccione una ubicación
+    const ubicacion = await esperarSeleccionUbicacion()
+
+    if (ubicacion) {
+      nuevoPOI.value.direccion = ubicacion.direccion
+      nuevoPOI.value.coordenadas = ubicacion.coordenadas
+    }
+  } else {
+    console.warn('Componente del mapa no encontrado')
+    // Fallback: mostrar mensaje al usuario
+    alert('Por favor, asegúrate de que el mapa esté cargado')
+  }
+}
+
+// Función para esperar la selección del usuario
+const esperarSeleccionUbicacion = () => {
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      if (mapaComponent.value) {
+        const ubicacion = mapaComponent.value.getUbicacionSeleccionada()
+        if (ubicacion) {
+          clearInterval(checkInterval)
+          resolve(ubicacion)
+        }
+      }
+    }, 500)
+
+    // Timeout después de 30 segundos
+    setTimeout(() => {
+      clearInterval(checkInterval)
+      resolve(null)
+    }, 30000)
+  })
+}
+
+// Cancelar nuevo POI
+const cancelarNuevoPOI = () => {
+  if (mapaComponent.value) {
+    mapaComponent.value.desactivarModoSeleccion()
+  }
+  dialogNuevoPOI.value = false
+}
+
+// Modificar guardarPOI para incluir coordenadas
+const guardarPOI = () => {
+  if (mapaComponent.value) {
+    mapaComponent.value.desactivarModoSeleccion()
+  }
+
+  items.value.push({
+    id: items.value.length + 1,
+    nombre: nuevoPOI.value.nombre,
+    direccion: nuevoPOI.value.direccion,
+    coordenadas: nuevoPOI.value.coordenadas, // ← Nueva propiedad
+    tipo: 'poi',
+    grupoId: nuevoPOI.value.grupoId,
+  })
+
+  // Resetear formulario
+  nuevoPOI.value = {
+    nombre: '',
+    direccion: '',
+    coordenadas: null,
+    grupoId: null,
+    notas: '',
+  }
+  dialogNuevoPOI.value = false
 }
 </script>
 
