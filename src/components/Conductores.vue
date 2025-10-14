@@ -4,7 +4,20 @@
     <!-- Header -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Conductores</div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+      <div>
+        <q-btn 
+          flat 
+          dense 
+          round 
+          icon="bug_report" 
+          color="white" 
+          size="sm"
+          @click="diagnosticar"
+        >
+          <q-tooltip>Diagnosticar conexión</q-tooltip>
+        </q-btn>
+        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+      </div>
     </div>
 
     <!-- Selector de todos los conductores -->
@@ -16,6 +29,17 @@
         dense
       />
       <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
+      <q-btn
+        flat
+        dense
+        round
+        icon="person_add"
+        size="sm"
+        class="q-mr-xs"
+        @click="abrirDialogNuevoConductor"
+      >
+        <q-tooltip>Agregar conductor</q-tooltip>
+      </q-btn>
       <q-btn
         flat
         dense
@@ -131,9 +155,17 @@
         </q-item>
 
         <!-- Mensaje si no hay conductores -->
-        <div v-if="conductoresFiltrados.length === 0" class="no-data q-pa-md text-center">
+        <div v-if="conductoresFiltrados.length === 0 && !loading" class="no-data q-pa-md text-center">
           <q-icon name="person_off" size="48px" color="grey-5" />
           <div class="text-grey-6 q-mt-sm">No hay conductores</div>
+          <q-btn 
+            flat 
+            color="primary" 
+            label="Recargar" 
+            icon="refresh" 
+            class="q-mt-md"
+            @click="recargarDatos"
+          />
         </div>
       </q-list>
     </q-scroll-area>
@@ -347,6 +379,54 @@
       </q-card>
     </q-dialog>
 
+    <!-- Dialog: Nuevo Conductor -->
+    <q-dialog v-model="dialogNuevoConductor">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">Nuevo conductor</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none q-gutter-md">
+          <q-input
+            v-model="nuevoConductor.Nombre"
+            label="Nombre completo"
+            outlined
+            dense
+            autofocus
+            :rules="[(val) => !!val || 'El nombre es requerido']"
+          />
+
+          <q-input
+            v-model="nuevoConductor.Usuario"
+            label="Usuario (nombre corto)"
+            outlined
+            dense
+            :rules="[(val) => !!val || 'El usuario es requerido']"
+          />
+
+          <q-input
+            v-model="nuevoConductor.Telefono"
+            label="Teléfono"
+            outlined
+            dense
+            mask="(###) ### ####"
+            placeholder="(664) 123 4567"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn
+            flat
+            label="Crear"
+            color="primary"
+            @click="crearNuevoConductor"
+            :disable="!nuevoConductor.Nombre || !nuevoConductor.Usuario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialog: Ver licencia -->
     <q-dialog v-model="dialogVerLicencia">
       <q-card style="min-width: 400px">
@@ -408,6 +488,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar, date } from 'quasar'
 import { useConductores } from 'src/composables/useConductores.js'
+import { auth, db } from 'src/firebase/firebaseConfig'
+import { collection, getDocs } from 'firebase/firestore'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
@@ -424,6 +506,7 @@ const {
   crearGrupo,
   actualizarGrupo,
   eliminarGrupo,
+  agregarConductor,
   actualizarConductor,
   eliminarConductor,
   agregarConductoresAGrupo,
@@ -439,6 +522,7 @@ const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
+const dialogNuevoConductor = ref(false)
 const dialogDetallesConductor = ref(false)
 const dialogVerLicencia = ref(false)
 const menuGrupoVisible = ref(false)
@@ -451,6 +535,12 @@ const conductoresSeleccionados = ref([])
 const nuevoGrupo = ref({
   Nombre: '',
   ConductoresIds: []
+})
+
+const nuevoConductor = ref({
+  Nombre: '',
+  Usuario: '',
+  Telefono: ''
 })
 
 // Computed
@@ -558,6 +648,88 @@ function cerrarDrawer() {
   emit('close')
 }
 
+async function recargarDatos() {
+  try {
+    console.log('🔄 Recargando datos...')
+    await Promise.all([
+      obtenerConductores(),
+      obtenerGrupos()
+    ])
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Datos recargados correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    console.error('❌ Error al recargar:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al recargar: ' + error.message,
+      icon: 'error'
+    })
+  }
+}
+
+async function diagnosticar() {
+  console.log('🔍 === DIAGNÓSTICO DE CONEXIÓN ===')
+  
+  // Test 1: Auth
+  console.log('1️⃣ Auth inicializado:', auth ? '✅' : '❌')
+  console.log('   Usuario actual:', auth.currentUser)
+  console.log('   Email:', auth.currentUser?.email || 'No autenticado')
+  console.log('   UID:', auth.currentUser?.uid || 'No disponible')
+  
+  // Test 2: Firestore
+  console.log('2️⃣ Firestore inicializado:', db ? '✅' : '❌')
+  console.log('   App ID:', db?.app?.options?.projectId || 'No disponible')
+  
+  // Test 3: Lectura de Conductores
+  try {
+    console.log('3️⃣ Intentando leer colección "Conductores"...')
+    const conductoresRef = collection(db, 'Conductores')
+    const snapshot = await getDocs(conductoresRef)
+    console.log('   ✅ Lectura exitosa!')
+    console.log('   Documentos encontrados:', snapshot.size)
+    snapshot.forEach(doc => {
+      console.log('   📄', doc.id, '→', doc.data())
+    })
+  } catch (error) {
+    console.error('   ❌ Error al leer Conductores:', error)
+    console.error('   Código:', error.code)
+    console.error('   Mensaje:', error.message)
+  }
+  
+  // Test 4: Lectura de Grupos
+  if (auth.currentUser) {
+    try {
+      console.log('4️⃣ Intentando leer grupos del usuario...')
+      const gruposRef = collection(db, 'Usuarios', auth.currentUser.uid, 'GruposConductores')
+      const snapshot = await getDocs(gruposRef)
+      console.log('   ✅ Lectura exitosa!')
+      console.log('   Grupos encontrados:', snapshot.size)
+      snapshot.forEach(doc => {
+        console.log('   📁', doc.id, '→', doc.data())
+      })
+    } catch (error) {
+      console.error('   ❌ Error al leer Grupos:', error)
+      console.error('   Código:', error.code)
+      console.error('   Mensaje:', error.message)
+    }
+  } else {
+    console.log('4️⃣ ⚠️ No se puede leer grupos (usuario no autenticado)')
+  }
+  
+  console.log('🔍 === FIN DEL DIAGNÓSTICO ===')
+  
+  $q.notify({
+    type: 'info',
+    message: 'Diagnóstico completado. Revisa la consola (F12)',
+    icon: 'info',
+    timeout: 3000
+  })
+}
+
 async function actualizarCampo(campo, valor) {
   if (!conductorSeleccionado.value) return
 
@@ -622,6 +794,37 @@ function abrirDialogNuevoGrupo() {
   conductoresSeleccionados.value = []
   busquedaConductoresGrupo.value = ''
   dialogNuevoGrupo.value = true
+}
+
+function abrirDialogNuevoConductor() {
+  nuevoConductor.value = { Nombre: '', Usuario: '', Telefono: '' }
+  dialogNuevoConductor.value = true
+}
+
+async function crearNuevoConductor() {
+  try {
+    await agregarConductor({
+      Nombre: nuevoConductor.value.Nombre,
+      Usuario: nuevoConductor.value.Usuario,
+      Telefono: nuevoConductor.value.Telefono,
+      LicenciaConduccirFoto: '',
+      LicenciaConduccirVFecha: null
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Conductor creado correctamente',
+      icon: 'check_circle'
+    })
+
+    dialogNuevoConductor.value = false
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al crear conductor: ' + error.message,
+      icon: 'error'
+    })
+  }
 }
 
 function toggleConductor(conductorId) {
@@ -778,13 +981,31 @@ async function quitarDeGrupo() {
 // Lifecycle
 onMounted(async () => {
   try {
-    await obtenerConductores()
-    await obtenerGrupos()
+    console.log('🔄 Iniciando carga de datos...')
+    console.log('👤 Usuario actual:', auth.currentUser)
+    
+    await Promise.all([
+      obtenerConductores(),
+      obtenerGrupos()
+    ])
+    
+    console.log('✅ Datos cargados:', {
+      conductores: conductores.value.length,
+      grupos: grupos.value.length
+    })
   } catch (error) {
+    console.error('❌ Error al cargar datos:', error)
+    
     $q.notify({
       type: 'negative',
       message: 'Error al cargar datos: ' + error.message,
-      icon: 'error'
+      icon: 'error',
+      timeout: 5000,
+      actions: [
+        { label: 'Ver detalles', color: 'white', handler: () => {
+          console.error('Detalles del error:', error)
+        }}
+      ]
     })
   }
 })
@@ -900,21 +1121,5 @@ onMounted(async () => {
 .bordered {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-}
-.rounded-borders {
-  border-radius: 4px;
-}
-.scroll {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.full-width {
-  width: 100%;
-}
-.q-pa-md {
-  padding: 16px !important;
-}
-.q-gutter-sm > * {
-  margin-right: 8px;
 }
 </style>
