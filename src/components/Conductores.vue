@@ -4,7 +4,20 @@
     <!-- Header -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Conductores</div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+      <div>
+        <q-btn 
+          flat 
+          dense 
+          round 
+          icon="bug_report" 
+          color="white" 
+          size="sm"
+          @click="diagnosticar"
+        >
+          <q-tooltip>Diagnosticar datos locales</q-tooltip>
+        </q-btn>
+        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+      </div>
     </div>
 
     <!-- Selector de todos los conductores -->
@@ -16,6 +29,17 @@
         dense
       />
       <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
+      <q-btn
+        flat
+        dense
+        round
+        icon="person_add"
+        size="sm"
+        class="q-mr-xs"
+        @click="abrirDialogNuevoConductor"
+      >
+        <q-tooltip>Agregar conductor</q-tooltip>
+      </q-btn>
       <q-btn
         flat
         dense
@@ -131,9 +155,17 @@
         </q-item>
 
         <!-- Mensaje si no hay conductores -->
-        <div v-if="conductoresFiltrados.length === 0" class="no-data q-pa-md text-center">
+        <div v-if="conductoresFiltrados.length === 0 && !loading" class="no-data q-pa-md text-center">
           <q-icon name="person_off" size="48px" color="grey-5" />
           <div class="text-grey-6 q-mt-sm">No hay conductores</div>
+          <q-btn 
+            flat 
+            color="primary" 
+            label="Recargar" 
+            icon="refresh" 
+            class="q-mt-md"
+            @click="recargarDatos"
+          />
         </div>
       </q-list>
     </q-scroll-area>
@@ -347,6 +379,54 @@
       </q-card>
     </q-dialog>
 
+    <!-- Dialog: Nuevo Conductor -->
+    <q-dialog v-model="dialogNuevoConductor">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">Nuevo conductor</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none q-gutter-md">
+          <q-input
+            v-model="nuevoConductor.Nombre"
+            label="Nombre completo"
+            outlined
+            dense
+            autofocus
+            :rules="[(val) => !!val || 'El nombre es requerido']"
+          />
+
+          <q-input
+            v-model="nuevoConductor.Usuario"
+            label="Usuario (nombre corto)"
+            outlined
+            dense
+            :rules="[(val) => !!val || 'El usuario es requerido']"
+          />
+
+          <q-input
+            v-model="nuevoConductor.Telefono"
+            label="Teléfono"
+            outlined
+            dense
+            mask="(###) ### ####"
+            placeholder="(664) 123 4567"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn
+            flat
+            label="Crear"
+            color="primary"
+            @click="crearNuevoConductor"
+            :disable="!nuevoConductor.Nombre || !nuevoConductor.Usuario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialog: Ver licencia -->
     <q-dialog v-model="dialogVerLicencia">
       <q-card style="min-width: 400px">
@@ -357,11 +437,17 @@
         </q-card-section>
 
         <q-card-section>
-          <q-img
-            :src="conductorSeleccionado?.LicenciaConduccirFoto"
-            style="max-height: 500px"
-            fit="contain"
-          />
+          <div v-if="conductorSeleccionado?.LicenciaConduccirFoto" class="text-center">
+            <q-img
+              :src="conductorSeleccionado.LicenciaConduccirFoto"
+              style="max-height: 500px"
+              fit="contain"
+            />
+          </div>
+          <div v-else class="text-center q-pa-lg">
+            <q-icon name="image_not_supported" size="64px" color="grey-4" />
+            <div class="text-grey-6 q-mt-md">No hay licencia cargada</div>
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -393,7 +479,12 @@
           </q-item-section>
           <q-item-section>Ver detalles</q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="quitarDeGrupo">
+        <q-item 
+          clickable 
+          v-close-popup 
+          @click="quitarDeGrupo"
+          v-if="grupoSeleccionado !== 'todos'"
+        >
           <q-item-section avatar>
             <q-icon name="remove_circle" size="xs" color="negative" />
           </q-item-section>
@@ -407,7 +498,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar, date } from 'quasar'
-import { useConductores } from 'src/composables/useConductores.js'
+import { useConductoresLocal as useConductores } from 'src/composables/useConductoresLocal.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
@@ -424,6 +515,7 @@ const {
   crearGrupo,
   actualizarGrupo,
   eliminarGrupo,
+  agregarConductor,
   actualizarConductor,
   eliminarConductor,
   agregarConductoresAGrupo,
@@ -436,9 +528,10 @@ const {
 const todosConductores = ref(true)
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
-const conductorSeleccionado = ref(null)
+const conductorSeleccionado = ref({})
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
+const dialogNuevoConductor = ref(false)
 const dialogDetallesConductor = ref(false)
 const dialogVerLicencia = ref(false)
 const menuGrupoVisible = ref(false)
@@ -451,6 +544,12 @@ const conductoresSeleccionados = ref([])
 const nuevoGrupo = ref({
   Nombre: '',
   ConductoresIds: []
+})
+
+const nuevoConductor = ref({
+  Nombre: '',
+  Usuario: '',
+  Telefono: ''
 })
 
 // Computed
@@ -514,14 +613,14 @@ const conductoresDisponiblesParaGrupo = computed(() => {
 })
 
 const fechaVencimientoFormato = computed(() => {
-  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return '—'
-  const timestamp = conductorSeleccionado.value.LicenciaConduccirVFecha
-  return date.formatDate(timestamp.toDate(), 'DD/MM/YYYY')
+  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return ''
+  const fecha = conductorSeleccionado.value.LicenciaConduccirVFecha
+  return date.formatDate(fecha, 'DD/MM/YYYY')
 })
 
 const esLicenciaVigente = computed(() => {
   if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return false
-  const fechaVencimiento = conductorSeleccionado.value.LicenciaConduccirVFecha.toDate()
+  const fechaVencimiento = new Date(conductorSeleccionado.value.LicenciaConduccirVFecha)
   return fechaVencimiento > new Date()
 })
 
@@ -545,7 +644,7 @@ function filtrarPorGrupo(grupo) {
 function seleccionarConductor(conductor) {
   if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
     dialogDetallesConductor.value = false
-    conductorSeleccionado.value = null
+    conductorSeleccionado.value = {}
     return
   }
 
@@ -558,8 +657,53 @@ function cerrarDrawer() {
   emit('close')
 }
 
+async function recargarDatos() {
+  try {
+    console.log('🔄 Recargando datos locales...')
+    await Promise.all([
+      obtenerConductores(),
+      obtenerGrupos()
+    ])
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Datos recargados correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    console.error('❌ Error al recargar:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al recargar: ' + error.message,
+      icon: 'error'
+    })
+  }
+}
+
+async function diagnosticar() {
+  console.log('🔍 === DIAGNÓSTICO DE DATOS LOCALES ===')
+  console.log('📊 Conductores:', conductores.value.length)
+  conductores.value.forEach(c => {
+    console.log('   👤', c.id, '-', c.Usuario, '-', c.Nombre)
+  })
+  
+  console.log('📁 Grupos:', grupos.value.length)
+  grupos.value.forEach(g => {
+    console.log('   📂', g.id, '-', g.Nombre, '- Conductores:', g.ConductoresIds?.length || 0)
+  })
+  
+  console.log('🔍 === FIN DEL DIAGNÓSTICO ===')
+  
+  $q.notify({
+    type: 'info',
+    message: 'Diagnóstico completado. Revisa la consola (F12)',
+    icon: 'info',
+    timeout: 3000
+  })
+}
+
 async function actualizarCampo(campo, valor) {
-  if (!conductorSeleccionado.value) return
+  if (!conductorSeleccionado.value?.id) return
 
   try {
     await actualizarConductor(conductorSeleccionado.value.id, { [campo]: valor })
@@ -579,10 +723,14 @@ async function actualizarCampo(campo, valor) {
 }
 
 async function actualizarFechaVencimiento(fecha) {
-  if (!conductorSeleccionado.value) return
+  if (!conductorSeleccionado.value?.id) return
 
   try {
-    const fechaTimestamp = date.buildDate({ year: fecha.split('/')[2], month: fecha.split('/')[1], date: fecha.split('/')[0] })
+    const fechaTimestamp = new Date(
+      fecha.split('/')[2], 
+      fecha.split('/')[1] - 1, 
+      fecha.split('/')[0]
+    )
     
     await actualizarConductor(conductorSeleccionado.value.id, {
       LicenciaConduccirVFecha: fechaTimestamp
@@ -622,6 +770,37 @@ function abrirDialogNuevoGrupo() {
   conductoresSeleccionados.value = []
   busquedaConductoresGrupo.value = ''
   dialogNuevoGrupo.value = true
+}
+
+function abrirDialogNuevoConductor() {
+  nuevoConductor.value = { Nombre: '', Usuario: '', Telefono: '' }
+  dialogNuevoConductor.value = true
+}
+
+async function crearNuevoConductor() {
+  try {
+    await agregarConductor({
+      Nombre: nuevoConductor.value.Nombre,
+      Usuario: nuevoConductor.value.Usuario,
+      Telefono: nuevoConductor.value.Telefono,
+      LicenciaConduccirFoto: '',
+      LicenciaConduccirVFecha: null
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Conductor creado correctamente',
+      icon: 'check_circle'
+    })
+
+    dialogNuevoConductor.value = false
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al crear conductor: ' + error.message,
+      icon: 'error'
+    })
+  }
 }
 
 function toggleConductor(conductorId) {
@@ -778,13 +957,25 @@ async function quitarDeGrupo() {
 // Lifecycle
 onMounted(async () => {
   try {
-    await obtenerConductores()
-    await obtenerGrupos()
+    console.log('🔄 Iniciando carga de datos locales...')
+    
+    await Promise.all([
+      obtenerConductores(),
+      obtenerGrupos()
+    ])
+    
+    console.log('✅ Datos cargados:', {
+      conductores: conductores.value.length,
+      grupos: grupos.value.length
+    })
   } catch (error) {
+    console.error('❌ Error al cargar datos:', error)
+    
     $q.notify({
       type: 'negative',
       message: 'Error al cargar datos: ' + error.message,
-      icon: 'error'
+      icon: 'error',
+      timeout: 5000
     })
   }
 })
@@ -900,21 +1091,5 @@ onMounted(async () => {
 .bordered {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-}
-.rounded-borders {
-  border-radius: 4px;
-}
-.scroll {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.full-width {
-  width: 100%;
-}
-.q-pa-md {
-  padding: 16px !important;
-}
-.q-gutter-sm > * {
-  margin-right: 8px;
 }
 </style>
