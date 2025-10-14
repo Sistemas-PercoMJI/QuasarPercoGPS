@@ -23,7 +23,7 @@
         icon="create_new_folder"
         size="sm"
         class="float-right"
-        @click="dialogNuevoGrupo = true"
+        @click="abrirDialogNuevoGrupo"
       >
         <q-tooltip>Crear grupo</q-tooltip>
       </q-btn>
@@ -65,14 +65,14 @@
           :active="grupoSeleccionado === grupo.id"
         >
           <q-item-section avatar>
-            <q-icon name="folder" :color="grupo.color || 'blue-grey'" />
+            <q-icon name="folder" color="blue" />
           </q-item-section>
 
           <q-item-section>
-            <q-item-label>{{ grupo.nombre }}</q-item-label>
-            <q-item-label caption
-              >{{ contarConductoresPorGrupo(grupo.id) }} conductores</q-item-label
-            >
+            <q-item-label>{{ grupo.Nombre }}</q-item-label>
+            <q-item-label caption>
+              {{ contarConductoresPorGrupo(grupo.id) }} conductores
+            </q-item-label>
           </q-item-section>
 
           <q-item-section side>
@@ -91,101 +91,85 @@
 
     <!-- Headers de la tabla -->
     <div class="tabla-header q-px-md">
-      <div class="header-item">Mostrar conductores</div>
-      <div class="header-item text-right">Todo</div>
+      <div class="header-item">Conductores</div>
+      <div class="header-item text-right">{{ conductoresFiltrados.length }}</div>
     </div>
 
     <!-- Lista de conductores -->
-    <q-list class="conductores-list">
-      <q-item
-        v-for="conductor in conductoresFiltrados"
-        :key="conductor.id"
-        clickable
-        v-ripple
-        @click="seleccionarConductor(conductor)"
-        :active="conductorSeleccionado?.id === conductor.id"
-        class="conductor-item"
-      >
-        <q-item-section avatar>
-          <q-avatar :color="getColorGrupo(conductor.grupoId)" text-color="white" size="40px">
-            {{ conductor.iniciales }}
-          </q-avatar>
-        </q-item-section>
+    <q-scroll-area class="conductores-list">
+      <q-list>
+        <q-item
+          v-for="conductor in conductoresFiltrados"
+          :key="conductor.id"
+          clickable
+          v-ripple
+          @click="seleccionarConductor(conductor)"
+          :active="conductorSeleccionado?.id === conductor.id"
+          class="conductor-item"
+        >
+          <q-item-section avatar>
+            <q-avatar color="primary" text-color="white" size="40px">
+              {{ obtenerIniciales(conductor.Usuario || conductor.Nombre) }}
+            </q-avatar>
+          </q-item-section>
 
-        <q-item-section>
-          <q-item-label class="text-weight-medium">{{ conductor.nombre }}</q-item-label>
-          <q-item-label caption class="text-grey-7">{{ conductor.vehiculo }}</q-item-label>
-        </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">{{ conductor.Usuario }}</q-item-label>
+            <q-item-label caption class="text-grey-7">{{ conductor.Telefono }}</q-item-label>
+          </q-item-section>
 
-        <q-item-section side>
-          <q-btn
-            flat
-            dense
-            round
-            icon="more_vert"
-            size="sm"
-            @click.stop="mostrarMenuConductor(conductor)"
-          />
-        </q-item-section>
-      </q-item>
+          <q-item-section side>
+            <q-btn
+              flat
+              dense
+              round
+              icon="more_vert"
+              size="sm"
+              @click.stop="mostrarMenuConductor(conductor)"
+            />
+          </q-item-section>
+        </q-item>
 
-      <!-- Mensaje si no hay conductores -->
-      <div v-if="conductoresFiltrados.length === 0" class="no-data q-pa-md text-center">
-        <q-icon name="person_off" size="48px" color="grey-5" />
-        <div class="text-grey-6 q-mt-sm">No hay conductores</div>
-      </div>
-    </q-list>
+        <!-- Mensaje si no hay conductores -->
+        <div v-if="conductoresFiltrados.length === 0" class="no-data q-pa-md text-center">
+          <q-icon name="person_off" size="48px" color="grey-5" />
+          <div class="text-grey-6 q-mt-sm">No hay conductores</div>
+        </div>
+      </q-list>
+    </q-scroll-area>
+
+    <!-- Loading -->
+    <q-inner-loading :showing="loading">
+      <q-spinner-gears size="50px" color="primary" />
+    </q-inner-loading>
 
     <!-- Dialog: Detalles del Conductor -->
-    <q-dialog v-model="dialogDetallesConductor" seamless position="standard" class="detalle-dialog">
-      <q-card
-        style="
-          position: fixed;
-          left: 350px;
-          top: 0;
-          bottom: 0;
-          width: 400px;
-          margin: 0;
-          border-radius: 0;
-        "
-      >
+    <q-dialog v-model="dialogDetallesConductor" position="right" seamless>
+      <q-card style="width: 400px; max-width: 90vw">
         <!-- Header del card -->
-        <q-card-section
-          style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
-          class="text-white row items-center"
-        >
+        <q-card-section class="bg-gradient text-white row items-center">
           <div class="col">
-            <div class="text-h6">{{ conductorSeleccionado?.nombre }}</div>
+            <div class="text-h6">{{ conductorSeleccionado?.Nombre }}</div>
           </div>
-          <q-btn
-            flat
-            dense
-            round
-            icon="close"
-            @click="dialogDetallesConductor = false"
-            color="white"
-          />
+          <q-btn flat dense round icon="close" @click="dialogDetallesConductor = false" />
         </q-card-section>
 
         <q-separator />
 
         <!-- Contenido -->
-        <q-card-section class="q-pa-md" style="height: calc(100vh - 200px); overflow-y: auto">
-          <!-- Asignación de vehículo -->
+        <q-card-section style="max-height: 60vh" class="scroll">
+          <!-- Nombre completo -->
           <div class="detalle-section">
-            <div class="detalle-label">Nombre del vehículo asignado</div>
-            <div class="detalle-campo">
-              <q-btn
-                flat
-                no-caps
-                color="primary"
-                :label="conductorSeleccionado?.vehiculo || 'Asignar vehículo'"
-                icon-right="add"
-                class="full-width text-left"
-                align="left"
-                @click="dialogAsignarVehiculo = true"
-              />
-            </div>
+            <div class="detalle-label">Nombre completo</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.Nombre }}</div>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Usuario -->
+          <div class="detalle-section">
+            <div class="detalle-label">Usuario</div>
+            <div class="detalle-valor">{{ conductorSeleccionado?.Usuario }}</div>
           </div>
 
           <q-separator class="q-my-md" />
@@ -193,53 +177,81 @@
           <!-- Teléfono -->
           <div class="detalle-section">
             <div class="detalle-label">Teléfono</div>
-            <div class="detalle-valor">{{ conductorSeleccionado?.telefono || '—' }}</div>
+            <q-input
+              v-model="conductorSeleccionado.Telefono"
+              outlined
+              dense
+              @blur="actualizarCampo('Telefono', conductorSeleccionado.Telefono)"
+            />
           </div>
 
           <q-separator class="q-my-md" />
 
-          <!-- Fecha de expiración del carnet -->
+          <!-- Licencia de conducir -->
           <div class="detalle-section">
-            <div class="detalle-label">Fecha de expiración del carnet de conducir</div>
-            <div class="detalle-campo">
-              <q-btn
-                flat
-                no-caps
-                color="grey-7"
-                :label="conductorSeleccionado?.fechaExpiracion || '—'"
-                icon-right="edit"
-                class="full-width text-left"
-                align="left"
-              />
-            </div>
+            <div class="detalle-label">Licencia de conducir</div>
+            <q-btn
+              v-if="conductorSeleccionado?.LicenciaConduccirFoto"
+              outline
+              color="primary"
+              label="Ver licencia"
+              icon="image"
+              class="full-width"
+              @click="verLicencia"
+            />
+            <q-btn
+              v-else
+              outline
+              color="grey"
+              label="Subir licencia"
+              icon="upload"
+              class="full-width"
+              @click="subirLicencia"
+            />
           </div>
 
           <q-separator class="q-my-md" />
 
-          <!-- Notas -->
+          <!-- Fecha de vencimiento -->
           <div class="detalle-section">
-            <div class="detalle-label">Notas</div>
-            <div class="detalle-valor">{{ conductorSeleccionado?.notas || '—' }}</div>
+            <div class="detalle-label">Fecha de vencimiento de licencia</div>
+            <q-input
+              :model-value="fechaVencimientoFormato"
+              outlined
+              dense
+              readonly
+            >
+              <template v-slot:append>
+                <q-icon name="event" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date
+                      :model-value="fechaVencimientoFormato"
+                      mask="DD/MM/YYYY"
+                      @update:model-value="actualizarFechaVencimiento"
+                    >
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                      </div>
+                    </q-date>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+              <template v-slot:after>
+                <q-badge 
+                  :color="esLicenciaVigente ? 'positive' : 'negative'"
+                  :label="esLicenciaVigente ? 'Vigente' : 'Expirada'"
+                />
+              </template>
+            </q-input>
           </div>
         </q-card-section>
 
         <!-- Botones de acción -->
-        <q-card-actions
-          class="q-pa-md q-gutter-sm"
-          style="position: absolute; bottom: 0; left: 0; right: 0; background: white"
-        >
-          <q-btn
-            unelevated
-            color="primary"
-            label="Editar"
-            icon="edit"
-            class="full-width"
-            @click="editarConductor"
-          />
+        <q-card-actions class="q-pa-md q-gutter-sm">
           <q-btn
             outline
             color="negative"
-            label="Borrar"
+            label="Eliminar conductor"
             icon="delete"
             class="full-width"
             @click="confirmarEliminarConductor"
@@ -248,59 +260,76 @@
       </q-card>
     </q-dialog>
 
-    <!-- Dialog: Asignar Vehículo -->
-    <q-dialog v-model="dialogAsignarVehiculo">
-      <q-card style="min-width: 350px">
+    <!-- Dialog: Nuevo Grupo con selección de conductores -->
+    <q-dialog v-model="dialogNuevoGrupo" position="standard">
+      <q-card style="min-width: 500px; max-width: 90vw">
         <q-card-section>
-          <div class="text-h6">Asignar vehículo</div>
+          <div class="text-h6">{{ modoEdicion ? 'Editar grupo' : 'Nuevo grupo' }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-select
-            v-model="vehiculoAsignado"
-            :options="vehiculosDisponibles"
-            label="Seleccionar vehículo"
+          <q-input
+            v-model="nuevoGrupo.Nombre"
+            label="Nombre del grupo"
             outlined
-            emit-value
-            map-options
-            clearable
-          >
-            <template v-slot:prepend>
-              <q-icon name="directions_car" />
-            </template>
-          </q-select>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="grey" v-close-popup />
-          <q-btn flat label="Asignar" color="primary" @click="asignarVehiculoAConductor" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Dialog: Nuevo Grupo -->
-    <q-dialog v-model="dialogNuevoGrupo">
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <div class="text-h6">Nuevo grupo</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none">
-          <q-input v-model="nuevoGrupo.nombre" label="Nombre del grupo" outlined dense autofocus />
+            dense
+            autofocus
+            :rules="[(val) => !!val || 'El nombre es requerido']"
+          />
 
           <div class="q-mt-md">
-            <div class="text-caption q-mb-sm">Color del grupo</div>
-            <div class="color-picker">
-              <q-btn
-                v-for="color in coloresDisponibles"
-                :key="color.value"
-                round
-                :color="color.value"
-                size="sm"
-                class="q-mr-sm q-mb-sm"
-                @click="nuevoGrupo.color = color.value"
-                :outline="nuevoGrupo.color !== color.value"
-              />
+            <div class="text-subtitle2 q-mb-sm">Seleccionar conductores</div>
+            
+            <!-- Búsqueda de conductores -->
+            <q-input
+              v-model="busquedaConductoresGrupo"
+              outlined
+              dense
+              placeholder="Buscar conductor..."
+              class="q-mb-sm"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+
+            <!-- Lista de conductores para seleccionar -->
+            <q-scroll-area style="height: 300px" class="bordered">
+              <q-list>
+                <q-item
+                  v-for="conductor in conductoresDisponiblesParaGrupo"
+                  :key="conductor.id"
+                  tag="label"
+                  v-ripple
+                >
+                  <q-item-section avatar>
+                    <q-checkbox
+                      :model-value="conductoresSeleccionados.includes(conductor.id)"
+                      @update:model-value="toggleConductor(conductor.id)"
+                    />
+                  </q-item-section>
+                  <q-item-section avatar>
+                    <q-avatar color="primary" text-color="white" size="32px">
+                      {{ obtenerIniciales(conductor.Usuario || conductor.Nombre) }}
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ conductor.Usuario }}</q-item-label>
+                    <q-item-label caption>{{ conductor.Nombre }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <div
+                  v-if="conductoresDisponiblesParaGrupo.length === 0"
+                  class="q-pa-md text-center text-grey-6"
+                >
+                  No hay conductores disponibles
+                </div>
+              </q-list>
+            </q-scroll-area>
+
+            <div class="q-mt-sm text-caption text-grey-7">
+              {{ conductoresSeleccionados.length }} conductor(es) seleccionado(s)
             </div>
           </div>
         </q-card-section>
@@ -309,12 +338,31 @@
           <q-btn flat label="Cancelar" color="grey" v-close-popup />
           <q-btn
             flat
-            label="Crear"
+            :label="modoEdicion ? 'Guardar' : 'Crear'"
             color="primary"
-            @click="crearGrupo"
-            :disable="!nuevoGrupo.nombre"
+            @click="guardarGrupo"
+            :disable="!nuevoGrupo.Nombre"
           />
         </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog: Ver licencia -->
+    <q-dialog v-model="dialogVerLicencia">
+      <q-card style="min-width: 400px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Licencia de conducir</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <q-img
+            :src="conductorSeleccionado?.LicenciaConduccirFoto"
+            style="max-height: 500px"
+            fit="contain"
+          />
+        </q-card-section>
       </q-card>
     </q-dialog>
 
@@ -327,7 +375,7 @@
           </q-item-section>
           <q-item-section>Editar</q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="eliminarGrupo">
+        <q-item clickable v-close-popup @click="confirmarEliminarGrupo">
           <q-item-section avatar>
             <q-icon name="delete" size="xs" color="negative" />
           </q-item-section>
@@ -339,17 +387,17 @@
     <!-- Menú contextual para conductores -->
     <q-menu v-model="menuConductorVisible" context-menu>
       <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="asignarGrupo">
-          <q-item-section avatar>
-            <q-icon name="folder" size="xs" />
-          </q-item-section>
-          <q-item-section>Asignar a grupo</q-item-section>
-        </q-item>
         <q-item clickable v-close-popup @click="verDetalles">
           <q-item-section avatar>
             <q-icon name="info" size="xs" />
           </q-item-section>
           <q-item-section>Ver detalles</q-item-section>
+        </q-item>
+        <q-item clickable v-close-popup @click="quitarDeGrupo">
+          <q-item-section avatar>
+            <q-icon name="remove_circle" size="xs" color="negative" />
+          </q-item-section>
+          <q-item-section class="text-negative">Quitar del grupo</q-item-section>
         </q-item>
       </q-list>
     </q-menu>
@@ -357,115 +405,53 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useQuasar } from 'quasar'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar, date } from 'quasar'
+import { useConductores } from 'src/composables/useConductores.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
 
 const $q = useQuasar()
 
-// Estado
+// Composable
+const {
+  conductores,
+  grupos,
+  loading,
+  obtenerConductores,
+  obtenerGrupos,
+  crearGrupo,
+  actualizarGrupo,
+  eliminarGrupo,
+  actualizarConductor,
+  eliminarConductor,
+  agregarConductoresAGrupo,
+  removerConductorDeGrupo,
+  contarConductoresPorGrupo,
+  conductoresPorGrupo
+} = useConductores()
+
+// Estado local
 const todosConductores = ref(true)
 const busqueda = ref('')
+const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
 const dialogDetallesConductor = ref(false)
-const dialogAsignarVehiculo = ref(false)
+const dialogVerLicencia = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
-const vehiculoAsignado = ref(null)
+const modoEdicion = ref(false)
+const conductoresSeleccionados = ref([])
 
 const nuevoGrupo = ref({
-  nombre: '',
-  color: 'blue',
+  Nombre: '',
+  ConductoresIds: []
 })
-
-const coloresDisponibles = [
-  { label: 'Azul', value: 'blue' },
-  { label: 'Verde', value: 'green' },
-  { label: 'Naranja', value: 'orange' },
-  { label: 'Rojo', value: 'red' },
-  { label: 'Púrpura', value: 'purple' },
-  { label: 'Cyan', value: 'cyan' },
-  { label: 'Rosa', value: 'pink' },
-  { label: 'Gris', value: 'blue-grey' },
-]
-
-// Lista de vehículos disponibles (vendrá de Firebase)
-const vehiculosDisponibles = [
-  { label: 'SPRINTER-PANEL-1-HF3500C', value: 'vehiculo1' },
-  { label: 'PERCO TIJ-CRAFTER-UX23465A', value: 'vehiculo2' },
-  { label: 'Camión 001', value: 'vehiculo3' },
-  { label: 'Camión 002', value: 'vehiculo4' },
-  { label: 'Vehículo no asignado', value: null },
-]
-
-// Grupos de conductores
-const grupos = ref([
-  {
-    id: 'grupo1',
-    nombre: 'Flota Principal',
-    color: 'blue',
-  },
-  {
-    id: 'grupo2',
-    nombre: 'Distribución',
-    color: 'green',
-  },
-  {
-    id: 'grupo3',
-    nombre: 'Ventas',
-    color: 'orange',
-  },
-])
-
-// Lista de conductores (ejemplo - vendrán de Firebase)
-const conductores = ref([
-  {
-    id: 1,
-    nombre: 'Antonio Soto',
-    iniciales: 'AS',
-    vehiculo: 'Vehículo no asignado',
-    telefono: '+52 1 663 203 0458',
-    fechaExpiracion: '—',
-    notas: '—',
-    grupoId: null,
-  },
-  {
-    id: 2,
-    nombre: 'BRANDON',
-    iniciales: 'BR',
-    vehiculo: 'SPRINTER-PANEL-1-HF3500C',
-    telefono: '+52 664 123 4567',
-    fechaExpiracion: '15/06/2026',
-    notas: 'Conductor experimentado',
-    grupoId: 'grupo1',
-  },
-  {
-    id: 3,
-    nombre: 'CHRISTOPHER',
-    iniciales: 'CH',
-    vehiculo: 'PERCO TIJ-CRAFTER-UX23465A',
-    telefono: '+52 664 987 6543',
-    fechaExpiracion: '20/12/2025',
-    notas: 'Disponible para rutas largas',
-    grupoId: 'grupo1',
-  },
-  {
-    id: 4,
-    nombre: 'Josue Corona',
-    iniciales: 'JC',
-    vehiculo: 'Vehículo no asignado',
-    telefono: '+52 664 555 1234',
-    fechaExpiracion: '—',
-    notas: '—',
-    grupoId: 'grupo2',
-  },
-])
 
 // Computed
 const totalConductores = computed(() => conductores.value.length)
@@ -474,37 +460,79 @@ const opcionesGrupos = computed(() => {
   const opciones = [{ label: 'Todos', value: 'todos' }]
   grupos.value.forEach((grupo) => {
     opciones.push({
-      label: grupo.nombre,
-      value: grupo.id,
+      label: grupo.Nombre,
+      value: grupo.id
     })
   })
-  opciones.push({ label: 'Sin grupo', value: 'sin-grupo' })
   return opciones
 })
 
 const conductoresFiltrados = computed(() => {
-  let resultado = conductores.value
+  let resultado = []
 
   // Filtrar por grupo
-  if (grupoSeleccionado.value === 'sin-grupo') {
-    resultado = resultado.filter((c) => !c.grupoId)
-  } else if (grupoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter((c) => c.grupoId === grupoSeleccionado.value)
+  if (grupoSeleccionado.value === 'todos') {
+    resultado = conductores.value
+  } else {
+    resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
+    const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
       (c) =>
-        c.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        c.vehiculo.toLowerCase().includes(busqueda.value.toLowerCase()),
+        c.Nombre.toLowerCase().includes(busquedaLower) ||
+        c.Usuario.toLowerCase().includes(busquedaLower) ||
+        c.Telefono.toLowerCase().includes(busquedaLower)
     )
   }
 
   return resultado
 })
 
+const conductoresDisponiblesParaGrupo = computed(() => {
+  let disponibles = conductores.value
+
+  // Si estamos editando, mostrar solo los que NO están en el grupo
+  if (modoEdicion.value && grupoMenu.value) {
+    const idsEnGrupo = grupoMenu.value.ConductoresIds || []
+    disponibles = conductores.value.filter(c => !idsEnGrupo.includes(c.id))
+  }
+
+  // Filtrar por búsqueda
+  if (busquedaConductoresGrupo.value) {
+    const busquedaLower = busquedaConductoresGrupo.value.toLowerCase()
+    disponibles = disponibles.filter(
+      (c) =>
+        c.Nombre.toLowerCase().includes(busquedaLower) ||
+        c.Usuario.toLowerCase().includes(busquedaLower)
+    )
+  }
+
+  return disponibles
+})
+
+const fechaVencimientoFormato = computed(() => {
+  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return '—'
+  const timestamp = conductorSeleccionado.value.LicenciaConduccirVFecha
+  return date.formatDate(timestamp.toDate(), 'DD/MM/YYYY')
+})
+
+const esLicenciaVigente = computed(() => {
+  if (!conductorSeleccionado.value?.LicenciaConduccirVFecha) return false
+  const fechaVencimiento = conductorSeleccionado.value.LicenciaConduccirVFecha.toDate()
+  return fechaVencimiento > new Date()
+})
+
 // Methods
+function obtenerIniciales(nombre) {
+  if (!nombre) return '??'
+  const palabras = nombre.trim().split(' ')
+  if (palabras.length === 1) return palabras[0].substring(0, 2).toUpperCase()
+  return (palabras[0][0] + palabras[1][0]).toUpperCase()
+}
+
 function seleccionarTodos(valor) {
   grupoSeleccionado.value = valor ? 'todos' : grupoSeleccionado.value
 }
@@ -515,16 +543,13 @@ function filtrarPorGrupo(grupo) {
 }
 
 function seleccionarConductor(conductor) {
-  // Si es el mismo conductor, cerrar el dialog
   if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
     dialogDetallesConductor.value = false
     conductorSeleccionado.value = null
     return
   }
 
-  // Si es otro conductor, abrir sus detalles
-  conductorSeleccionado.value = conductor
-  vehiculoAsignado.value = conductor.vehiculo
+  conductorSeleccionado.value = { ...conductor }
   dialogDetallesConductor.value = true
   emit('conductor-seleccionado', conductor)
 }
@@ -533,79 +558,146 @@ function cerrarDrawer() {
   emit('close')
 }
 
-function contarConductoresPorGrupo(grupoId) {
-  return conductores.value.filter((c) => c.grupoId === grupoId).length
-}
+async function actualizarCampo(campo, valor) {
+  if (!conductorSeleccionado.value) return
 
-function getColorGrupo(grupoId) {
-  if (!grupoId) return 'grey'
-  const grupo = grupos.value.find((g) => g.id === grupoId)
-  return grupo ? grupo.color : 'grey'
-}
-
-function asignarVehiculoAConductor() {
-  if (conductorSeleccionado.value) {
-    const conductor = conductores.value.find((c) => c.id === conductorSeleccionado.value.id)
-    if (conductor) {
-      conductor.vehiculo = vehiculoAsignado.value || 'Vehículo no asignado'
-      conductorSeleccionado.value.vehiculo = conductor.vehiculo
-    }
-
+  try {
+    await actualizarConductor(conductorSeleccionado.value.id, { [campo]: valor })
+    
     $q.notify({
       type: 'positive',
-      message: 'Vehículo asignado correctamente',
-      icon: 'check_circle',
+      message: 'Campo actualizado correctamente',
+      icon: 'check_circle'
     })
-
-    dialogAsignarVehiculo.value = false
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al actualizar: ' + error.message,
+      icon: 'error'
+    })
   }
 }
 
-function editarConductor() {
+async function actualizarFechaVencimiento(fecha) {
+  if (!conductorSeleccionado.value) return
+
+  try {
+    const fechaTimestamp = date.buildDate({ year: fecha.split('/')[2], month: fecha.split('/')[1], date: fecha.split('/')[0] })
+    
+    await actualizarConductor(conductorSeleccionado.value.id, {
+      LicenciaConduccirVFecha: fechaTimestamp
+    })
+
+    conductorSeleccionado.value.LicenciaConduccirVFecha = fechaTimestamp
+
+    $q.notify({
+      type: 'positive',
+      message: 'Fecha actualizada correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error'
+    })
+  }
+}
+
+function verLicencia() {
+  dialogVerLicencia.value = true
+}
+
+function subirLicencia() {
   $q.notify({
     type: 'info',
-    message: 'Función de edición en desarrollo',
-    icon: 'info',
+    message: 'Función de subir licencia en desarrollo',
+    icon: 'info'
   })
 }
 
-function confirmarEliminarConductor() {
+function abrirDialogNuevoGrupo() {
+  modoEdicion.value = false
+  nuevoGrupo.value = { Nombre: '', ConductoresIds: [] }
+  conductoresSeleccionados.value = []
+  busquedaConductoresGrupo.value = ''
+  dialogNuevoGrupo.value = true
+}
+
+function toggleConductor(conductorId) {
+  const index = conductoresSeleccionados.value.indexOf(conductorId)
+  if (index > -1) {
+    conductoresSeleccionados.value.splice(index, 1)
+  } else {
+    conductoresSeleccionados.value.push(conductorId)
+  }
+}
+
+async function guardarGrupo() {
+  try {
+    if (modoEdicion.value) {
+      // Actualizar grupo existente
+      await actualizarGrupo(grupoMenu.value.id, {
+        Nombre: nuevoGrupo.value.Nombre
+      })
+
+      // Agregar nuevos conductores
+      if (conductoresSeleccionados.value.length > 0) {
+        await agregarConductoresAGrupo(grupoMenu.value.id, conductoresSeleccionados.value)
+      }
+
+      $q.notify({
+        type: 'positive',
+        message: 'Grupo actualizado correctamente',
+        icon: 'check_circle'
+      })
+    } else {
+      // Crear nuevo grupo
+      await crearGrupo({
+        Nombre: nuevoGrupo.value.Nombre,
+        ConductoresIds: conductoresSeleccionados.value
+      })
+
+      $q.notify({
+        type: 'positive',
+        message: 'Grupo creado correctamente',
+        icon: 'check_circle'
+      })
+    }
+
+    dialogNuevoGrupo.value = false
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error: ' + error.message,
+      icon: 'error'
+    })
+  }
+}
+
+async function confirmarEliminarConductor() {
   $q.dialog({
     title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar al conductor ${conductorSeleccionado.value?.nombre}?`,
+    message: `¿Estás seguro de eliminar al conductor ${conductorSeleccionado.value?.Nombre}?`,
     cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    const index = conductores.value.findIndex((c) => c.id === conductorSeleccionado.value.id)
-    if (index > -1) {
-      conductores.value.splice(index, 1)
+    persistent: true
+  }).onOk(async () => {
+    try {
+      await eliminarConductor(conductorSeleccionado.value.id)
       dialogDetallesConductor.value = false
 
       $q.notify({
         type: 'positive',
         message: 'Conductor eliminado',
-        icon: 'check_circle',
+        icon: 'check_circle'
+      })
+    } catch (error) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar: ' + error.message,
+        icon: 'error'
       })
     }
-  })
-}
-
-function crearGrupo() {
-  const nuevoId = `grupo${grupos.value.length + 1}`
-  grupos.value.push({
-    id: nuevoId,
-    nombre: nuevoGrupo.value.nombre,
-    color: nuevoGrupo.value.color,
-  })
-
-  // Reset form
-  nuevoGrupo.value = { nombre: '', color: 'blue' }
-  dialogNuevoGrupo.value = false
-
-  $q.notify({
-    type: 'positive',
-    message: 'Grupo creado correctamente',
-    icon: 'check_circle',
   })
 }
 
@@ -620,38 +712,82 @@ function mostrarMenuConductor(conductor) {
 }
 
 function editarGrupo() {
-  console.log('Editar grupo:', grupoMenu.value)
-  // Aquí implementarías la lógica de edición
+  modoEdicion.value = true
+  nuevoGrupo.value = { Nombre: grupoMenu.value.Nombre }
+  conductoresSeleccionados.value = []
+  busquedaConductoresGrupo.value = ''
+  dialogNuevoGrupo.value = true
 }
 
-function eliminarGrupo() {
+async function confirmarEliminarGrupo() {
   $q.dialog({
     title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.nombre}?`,
+    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.Nombre}?`,
     cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    const index = grupos.value.findIndex((g) => g.id === grupoMenu.value.id)
-    if (index > -1) {
-      grupos.value.splice(index, 1)
+    persistent: true
+  }).onOk(async () => {
+    try {
+      await eliminarGrupo(grupoMenu.value.id)
 
       $q.notify({
         type: 'positive',
         message: 'Grupo eliminado',
-        icon: 'check_circle',
+        icon: 'check_circle'
+      })
+    } catch (error) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar: ' + error.message,
+        icon: 'error'
       })
     }
   })
 }
 
-function asignarGrupo() {
-  console.log('Asignar grupo a:', conductorMenu.value)
-  // Aquí mostrarías un diálogo para asignar el conductor a un grupo
-}
-
 function verDetalles() {
   seleccionarConductor(conductorMenu.value)
 }
+
+async function quitarDeGrupo() {
+  if (grupoSeleccionado.value === 'todos') {
+    $q.notify({
+      type: 'warning',
+      message: 'Selecciona un grupo primero',
+      icon: 'warning'
+    })
+    return
+  }
+
+  try {
+    await removerConductorDeGrupo(grupoSeleccionado.value, conductorMenu.value.id)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Conductor removido del grupo',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error: ' + error.message,
+      icon: 'error'
+    })
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  try {
+    await obtenerConductores()
+    await obtenerGrupos()
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar datos: ' + error.message,
+      icon: 'error'
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -673,6 +809,10 @@ function verDetalles() {
   min-height: 48px;
 }
 
+.bg-gradient {
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+}
+
 .drawer-header .text-h6 {
   color: white;
   margin: 0;
@@ -680,18 +820,15 @@ function verDetalles() {
   font-weight: 500;
 }
 
-/* Búsqueda */
 .search-input {
   background: white;
 }
 
-/* Grupos */
 .grupos-lista {
   max-height: 200px;
   overflow-y: auto;
 }
 
-/* Tabla header */
 .tabla-header {
   display: flex;
   align-items: center;
@@ -708,7 +845,6 @@ function verDetalles() {
   flex: 1;
 }
 
-/* Lista de conductores */
 .conductores-list {
   flex: 1;
   overflow-y: auto;
@@ -727,24 +863,12 @@ function verDetalles() {
   background-color: #f5f5f5;
 }
 
-/* Sin datos */
 .no-data {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 200px;
-}
-
-/* Color picker */
-.color-picker {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-/* Detalles del conductor */
-.detalle-dialog :deep(.q-dialog__backdrop) {
-  background: transparent !important;
 }
 
 .detalle-section {
@@ -771,5 +895,26 @@ function verDetalles() {
 .detalle-campo .q-btn {
   justify-content: space-between;
   padding: 8px 12px;
+}
+
+.bordered {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+.rounded-borders {
+  border-radius: 4px;
+}
+.scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.full-width {
+  width: 100%;
+}
+.q-pa-md {
+  padding: 16px !important;
+}
+.q-gutter-sm > * {
+  margin-right: 8px;
 }
 </style>
