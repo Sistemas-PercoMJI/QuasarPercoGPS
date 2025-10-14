@@ -100,26 +100,26 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :mini="!drawerExpanded"
-      @mouseenter="drawerExpanded = true"
+      :mini="!drawerExpanded || dialogAbierto"
+      @mouseenter="onDrawerMouseEnter"
       @mouseleave="drawerExpanded = false"
       bordered
       :width="350"
       :mini-width="70"
       class="drawer-custom"
-      :overlay="drawerExpanded"
+      :overlay="drawerExpanded && !dialogAbierto"
       elevated
       mini-to-overlay
     >
       <!-- Header del drawer -->
-      <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded }">
-        <q-avatar :size="drawerExpanded ? '100px' : '40px'" class="q-mb-md">
+      <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded || dialogAbierto }">
+        <q-avatar :size="(drawerExpanded && !dialogAbierto) ? '100px' : '40px'" class="q-mb-md">
           <img
             src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
             alt="Logo"
           />
         </q-avatar>
-        <div v-if="drawerExpanded" class="text-h6 text-weight-bold">Ubicacion de flotas</div>
+        <div v-if="drawerExpanded && !dialogAbierto" class="text-h6 text-weight-bold">Ubicacion de flotas</div>
       </div>
 
       <q-separator class="q-my-md" />
@@ -140,18 +140,18 @@
               <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section v-if="drawerExpanded">
+            <q-item-section v-if="drawerExpanded && !dialogAbierto">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
 
-            <q-item-section side v-if="drawerExpanded">
+            <q-item-section side v-if="drawerExpanded && !dialogAbierto">
               <q-icon name="open_in_new" size="xs" />
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
             <q-tooltip
-              v-if="!drawerExpanded"
+              v-if="!drawerExpanded || dialogAbierto"
               anchor="center right"
               self="center left"
               :offset="[10, 0]"
@@ -173,14 +173,14 @@
               <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section v-if="drawerExpanded">
+            <q-item-section v-if="drawerExpanded && !dialogAbierto">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
             <q-tooltip
-              v-if="!drawerExpanded"
+              v-if="!drawerExpanded || dialogAbierto"
               anchor="center right"
               self="center left"
               :offset="[10, 0]"
@@ -201,18 +201,18 @@
             </q-avatar>
           </q-item-section>
 
-          <q-item-section v-if="drawerExpanded">
+          <q-item-section v-if="drawerExpanded && !dialogAbierto">
             <q-item-label class="text-weight-medium">Configuración</q-item-label>
             <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
           </q-item-section>
 
-          <q-item-section side v-if="drawerExpanded">
+          <q-item-section side v-if="drawerExpanded && !dialogAbierto">
             <q-icon name="expand_less" color="grey-5" />
           </q-item-section>
 
           <!-- Tooltip cuando está minimizado -->
           <q-tooltip
-            v-if="!drawerExpanded"
+            v-if="!drawerExpanded || dialogAbierto"
             anchor="center right"
             self="center left"
             :offset="[10, 0]"
@@ -270,25 +270,76 @@
       </div>
     </q-drawer>
 
-    <!-- Drawer Estado de la Flota -->
-    <q-drawer v-model="estadoFlotaDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <EstadoFlota @close="cerrarEstadoFlota" />
-    </q-drawer>
+    <!-- DIALOGS PARA COMPONENTES - SOLUCIÓN DEFINITIVA -->
+    <!-- Dialog Estado de la Flota -->
+    <q-dialog 
+      v-model="estadoFlotaDrawerOpen" 
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <EstadoFlota @close="cerrarEstadoFlota" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Conductores -->
-    <q-drawer v-model="conductoresDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <Conductores @close="cerrarConductores" />
-    </q-drawer>
+    <!-- Dialog EstadoFlota -->
+    <q-dialog 
+      v-model="estadoFlotaDrawerOpen" 
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <EstadoFlota @close="cerrarEstadoFlota" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Geozonas -->
-    <q-drawer v-model="geozonaDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <GeoZonas @close="cerrarGeozonas" />
-    </q-drawer>
+    <!-- Dialog Conductores -->
+    <q-dialog 
+      v-model="conductoresDrawerOpen" 
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <Conductores @close="cerrarConductores" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Eventos -->
-    <q-drawer v-model="EventosDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <Eventos @close="cerrarEventos" />
-    </q-drawer>
+    <!-- Dialog Geozonas -->
+    <q-dialog 
+      v-model="geozonaDrawerOpen" 
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <GeoZonas @close="cerrarGeozonas" />
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog Eventos -->
+    <q-dialog 
+      v-model="EventosDrawerOpen" 
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <Eventos @close="cerrarEventos" />
+      </q-card>
+    </q-dialog>
 
     <q-page-container>
       <router-view />
@@ -317,6 +368,9 @@ const $q = useQuasar()
 const { notifications } = useNotifications()
 const notificacionesCount = computed(() => notifications.value.length)
 
+// Control de dialogs abiertos
+const dialogAbierto = ref(false)
+
 function cerrarSesionDesdeConfig() {
   logout()
 }
@@ -341,7 +395,7 @@ const linksList = [
     action: 'open-conductores',
   },
   {
-    title: 'GeoZonas',
+    title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
     action: 'open-geozonas',
@@ -384,26 +438,48 @@ watch(leftDrawerOpen, (newVal) => {
   }
 })
 
+// Control de dialogs
+watch([estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen], 
+  ([estado, conductores, geozona, eventos]) => {
+    dialogAbierto.value = estado || conductores || geozona || eventos
+  }
+)
+
+function onDrawerMouseEnter() {
+  if (!dialogAbierto.value) {
+    drawerExpanded.value = true
+  }
+}
+
+function onDialogShow() {
+  dialogAbierto.value = true
+  drawerExpanded.value = false // Forzar que el drawer se quede mini
+}
+
+function onDialogHide() {
+  dialogAbierto.value = false
+}
+
 function handleLinkClick(link) {
   if (link.action === 'logout') {
     logout()
   } else if (link.action === 'open-estado-flota') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     geozonaDrawerOpen.value = true
   } else if (link.action === 'open-eventos') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     EventosDrawerOpen.value = true
   }
 }
 
-// Nueva función para cerrar todos los drawers
-function cerrarTodosLosDrawers() {
+// Nueva función para cerrar todos los dialogs
+function cerrarTodosLosDialogs() {
   estadoFlotaDrawerOpen.value = false
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
@@ -566,5 +642,52 @@ const logout = async () => {
 
 .q-page-container {
   overflow: hidden !important;
+}
+
+/* ESTILOS PARA LOS DIALOGS DE COMPONENTES */
+.component-dialog {
+  z-index: 3000 !important;
+}
+
+:deep(.component-dialog .q-dialog__inner) {
+  align-items: stretch !important;
+  padding: 0 !important;
+  justify-content: flex-start !important;
+}
+
+:deep(.component-dialog .q-dialog__inner > div) {
+  max-height: 100vh !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  max-width: none !important;
+  margin: 0 !important; 
+}
+
+/* NUEVO ESTILO PARA LAS TARJETAS DE COMPONENTES */
+.component-card {
+  width: 350px;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  margin-left: 70px;
+  margin-top: 0 !important;
+  display: flex;
+  flex-direction: column;
+
+}
+
+/* Asegurar que el componente ocupe todo el espacio disponible */
+.component-card :deep(> *) {
+  flex: 1;
+  min-height: 0; /* Importante para flexbox en algunos navegadores */
+  
+}
+
+/* Ajustar posición del dialog para que empiece justo debajo del header */
+:deep(.component-dialog .q-dialog__inner) {
+  padding-top: 50px !important; /* Altura aproximada del header */
+}
+
+:deep(.component-dialog .q-card) {
+  margin-top: 0 !important;
 }
 </style>
