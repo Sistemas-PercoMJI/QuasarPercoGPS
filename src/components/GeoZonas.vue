@@ -773,32 +773,82 @@ function verEnMapa() {
     const mapaAPI = mapPage._mapaAPI
 
     if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
-      // Para POIs: Centrar el mapa en las coordenadas
       const { lat, lng } = itemMenu.value.coordenadas
 
-      // Usar el método de Leaflet para centrar el mapa
-      if (mapaAPI.map && mapaAPI.map.setView) {
-        mapaAPI.map.setView([lat, lng], 18) // 18 es el nivel de zoom
-        console.log(`✅ Mapa centrado en: ${lat}, ${lng}`)
+      // ⭐ 1. LIMPIAR COMPLETAMENTE el marcador anterior
+      if (window.marcadorVerEnMapa) {
+        try {
+          // Desactivar animaciones antes de eliminar
+          if (mapaAPI.map) {
+            mapaAPI.map.options.zoomAnimation = false
+          }
+          // Remover todos los eventos del marcador
+          window.marcadorVerEnMapa.off()
+          // Remover el marcador del mapa
+          mapaAPI.map.removeLayer(window.marcadorVerEnMapa)
+          // Limpiar completamente la referencia
+          window.marcadorVerEnMapa = null
+          console.log('🗑️ Marcador anterior limpiado completamente')
+        } catch (e) {
+          console.log('⚠️ Error al limpiar marcador:', e)
+        }
       }
 
-      // También puedes abrir el popup del marcador si existe
-      // Esto requeriría que guardes una referencia al marcador
-    } else if (itemMenu.value.tipo === 'geozona') {
-      // Para Geozonas: Centrar en una ubicación por defecto o usar geocoding
-      console.log('📍 Geozona seleccionada:', itemMenu.value.nombre)
-      // Aquí podrías implementar geocoding para obtener coordenadas de la dirección
+      // ⭐ 2. ESPERAR a que se complete la limpieza
+      setTimeout(() => {
+        if (mapaAPI.L && mapaAPI.map && !mapaAPI.map._removed) {
+          try {
+            // ⭐ 3. CREAR NUEVO MARCADOR con configuración segura
+            window.marcadorVerEnMapa = mapaAPI.L.marker([lat, lng], {
+              icon: mapaAPI.L.icon({
+                iconUrl:
+                  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                shadowUrl:
+                  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41],
+              }),
+            })
+
+            // ⭐ 4. AGREGAR AL MAPA después de crear
+            window.marcadorVerEnMapa.addTo(mapaAPI.map)
+
+            // ⭐ 5. CONFIGURAR POPUP después de agregar al mapa
+            const popupContent = `
+              <div style="min-width: 200px;">
+                <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
+                <p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
+                  ${itemMenu.value.direccion}
+                </p>
+              </div>
+            `
+
+            window.marcadorVerEnMapa.bindPopup(popupContent)
+            window.marcadorVerEnMapa.openPopup()
+
+            console.log('✅ Marcador creado exitosamente')
+
+            // ⭐ 6. CENTRAR MAPA SIN ANIMACIONES COMPLEJAS
+            mapaAPI.map.setView([lat, lng], 18, {
+              animate: false, // ⭐ DESACTIVAR ANIMACIÓN TEMPORALMENTE
+            })
+
+            // ⭐ 7. REACTIVAR ANIMACIONES DESPUÉS (opcional)
+            setTimeout(() => {
+              if (mapaAPI.map && window.marcadorVerEnMapa) {
+                mapaAPI.map.options.zoomAnimation = true
+              }
+            }, 200)
+          } catch (error) {
+            console.error('❌ Error crítico al crear marcador:', error)
+          }
+        }
+      }, 80) // Pequeño delay para asegurar limpieza
     }
 
-    // Emitir el evento para que el componente padre sepa qué item se seleccionó
     emit('item-seleccionado', itemMenu.value)
-  } else {
-    console.error('❌ No se pudo acceder al mapa')
-    $q.notify({
-      type: 'warning',
-      message: 'No se pudo acceder al mapa',
-      timeout: 2000,
-    })
   }
 }
 
@@ -1225,5 +1275,32 @@ const cancelarNuevoPOI = () => {
   align-items: center;
   justify-content: center;
   min-height: 300px;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Estilos para el marcador */
+:deep(.marcador-destacado) {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>
