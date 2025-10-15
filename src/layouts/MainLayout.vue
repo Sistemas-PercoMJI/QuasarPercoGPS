@@ -691,90 +691,124 @@ function toggleFiltro(filtro) {
 function centrarMapaEn(lat, lng, zoom = 18) {
   console.log('🎯 Intentando centrar mapa en:', { lat, lng, zoom })
 
-  // Verificar que el mapa global existe
-  if (!window.mapaGlobal) {
-    console.error('❌ window.mapaGlobal no está disponible')
-    $q.notify({
-      message: 'El mapa aún no está cargado. Espera un momento.',
-      color: 'warning',
-      icon: 'warning',
-      position: 'top',
-    })
-    return
+  // Función para verificar y esperar por el mapa
+  const esperarMapa = (intentos = 0) => {
+    // Verificar si window.mapaGlobal existe y tiene el mapa
+    if (window.mapaGlobal && window.mapaGlobal.map && window.L) {
+      console.log('✅ Mapa disponible, centrando...')
+      ejecutarCentrado(lat, lng, zoom)
+      return true
+    } else if (intentos < 10) {
+      // Máximo 10 intentos (5 segundos)
+      console.log(`⏳ Esperando mapa... intento ${intentos + 1}`)
+      setTimeout(() => esperarMapa(intentos + 1), 500)
+    } else {
+      console.error('❌ Timeout: Mapa no disponible después de 5 segundos')
+      $q.notify({
+        message: 'El mapa no está disponible. Recarga la página e intenta nuevamente.',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+      return false
+    }
   }
 
-  if (!window.L) {
-    console.error('❌ Leaflet no está disponible')
-    $q.notify({
-      message: 'Error: Librería del mapa no cargada',
-      color: 'negative',
-      icon: 'error',
-      position: 'top',
-    })
-    return
-  }
+  return esperarMapa()
+}
 
+function ejecutarCentrado(lat, lng, zoom) {
   try {
-    const map = window.mapaGlobal
-    console.log('✅ Mapa encontrado, centrando...')
+    // Acceder al mapa a través de la API
+    const map = window.mapaGlobal.map
 
-    // Centrar el mapa con animación suave
-    map.flyTo([lat, lng], zoom, {
-      duration: 2, // 2 segundos de animación
-      easeLinearity: 0.25,
+    console.log('🗺️ Mapa encontrado:', map)
+    console.log('📌 Métodos disponibles:', {
+      flyTo: typeof map.flyTo,
+      setView: typeof map.setView,
+      panTo: typeof map.panTo,
     })
 
-    console.log('✅ Comando flyTo ejecutado')
+    // Verificar métodos disponibles
+    if (map.flyTo && typeof map.flyTo === 'function') {
+      map.flyTo([lat, lng], zoom, {
+        duration: 2,
+        easeLinearity: 0.25,
+      })
+      console.log('✅ flyTo ejecutado')
+    } else if (map.setView && typeof map.setView === 'function') {
+      map.setView([lat, lng], zoom, {
+        animate: true,
+        duration: 1,
+      })
+      console.log('✅ setView ejecutado')
+    } else {
+      console.warn('⚠️ Usando panTo como fallback')
+      map.panTo([lat, lng], { duration: 1 })
+      map.setZoom(zoom)
+    }
 
-    // Pequeño delay para asegurar que el mapa se movió
+    // Agregar marcador después de mover el mapa
     setTimeout(() => {
-      // Remover marcador anterior si existe
-      if (window.marcadorBusqueda) {
-        console.log('🗑️ Removiendo marcador anterior')
-        map.removeLayer(window.marcadorBusqueda)
-        window.marcadorBusqueda = null
-      }
-
-      // Crear nuevo marcador verde
-      console.log('📍 Creando nuevo marcador')
-      window.marcadorBusqueda = window.L.marker([lat, lng], {
-        icon: window.L.icon({
-          iconUrl:
-            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl:
-            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41],
-        }),
-      }).addTo(map)
-
-      // Agregar popup y abrirlo
-      window.marcadorBusqueda.bindPopup('<b>📍 Ubicación buscada</b>').openPopup()
-
-      console.log('✅ Marcador agregado y popup abierto')
-
-      // Remover marcador después de 10 segundos
-      setTimeout(() => {
-        if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-          map.removeLayer(window.marcadorBusqueda)
-          window.marcadorBusqueda = null
-          console.log('🗑️ Marcador removido automáticamente')
-        }
-      }, 10000)
-    }, 500) // Esperar 500ms a que termine la animación de flyTo
+      agregarMarcadorBusqueda(lat, lng)
+    }, 1000)
   } catch (error) {
     console.error('❌ Error al centrar mapa:', error)
     $q.notify({
-      message: `Error al mover el mapa: ${error.message}`,
+      message: `Error: ${error.message}`,
       color: 'negative',
       icon: 'error',
       position: 'top',
     })
   }
 }
+function agregarMarcadorBusqueda(lat, lng) {
+  if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
+    console.warn('⚠️ Mapa no disponible para agregar marcador')
+    return
+  }
 
+  const map = window.mapaGlobal.map
+  const L = window.L
+
+  // Remover marcador anterior
+  if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
+    map.removeLayer(window.marcadorBusqueda)
+  }
+
+  // Crear nuevo marcador
+  try {
+    window.marcadorBusqueda = L.marker([lat, lng], {
+      icon: L.icon({
+        iconUrl:
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    }).addTo(map)
+
+    // Agregar popup
+    window.marcadorBusqueda
+      .bindPopup(`<b>📍 ${busqueda.value || 'Ubicación buscada'}</b>`)
+      .openPopup()
+
+    console.log('✅ Marcador agregado')
+
+    // Remover después de 10 segundos
+    setTimeout(() => {
+      if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
+        map.removeLayer(window.marcadorBusqueda)
+        window.marcadorBusqueda = null
+      }
+    }, 10000)
+  } catch (error) {
+    console.error('❌ Error agregando marcador:', error)
+  }
+}
 function seleccionarResultado(resultado) {
   console.log('🎯 Resultado seleccionado:', resultado)
 
