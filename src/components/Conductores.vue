@@ -231,15 +231,23 @@
               class="full-width"
               @click="verLicencia"
             />
-            <q-btn
-              v-else
-              outline
-              color="grey"
-              label="Subir licencia"
-              icon="upload"
-              class="full-width"
-              @click="subirLicencia"
-            />
+            <div v-else>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                style="display: none"
+                @change="handleFileUpload"
+              />
+              <q-btn
+                outline
+                color="primary"
+                label="Subir licencia"
+                icon="upload"
+                class="full-width"
+                @click="$refs.fileInput.click()"
+              />
+            </div>
           </div>
 
           <q-separator class="q-my-md" />
@@ -521,7 +529,8 @@ const {
   agregarConductoresAGrupo,
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
-  conductoresPorGrupo
+  conductoresPorGrupo,
+  subirFotoLicencia
 } = useConductores()
 
 // Estado local
@@ -540,6 +549,7 @@ const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
 const conductoresSeleccionados = ref([])
+const fileInput = ref(null)
 
 const nuevoGrupo = ref({
   Nombre: '',
@@ -702,6 +712,69 @@ async function diagnosticar() {
   })
 }
 
+async function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (!conductorSeleccionado.value?.id) {
+    $q.notify({
+      type: 'warning',
+      message: 'No hay conductor seleccionado',
+      icon: 'warning'
+    })
+    return
+  }
+
+  // Validar que sea una imagen
+  if (!file.type.startsWith('image/')) {
+    $q.notify({
+      type: 'negative',
+      message: 'Por favor selecciona una imagen válida',
+      icon: 'error'
+    })
+    return
+  }
+
+  // Validar tamaño (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    $q.notify({
+      type: 'negative',
+      message: 'La imagen es muy grande. Máximo 5MB',
+      icon: 'error'
+    })
+    return
+  }
+
+  try {
+    $q.loading.show({
+      message: 'Subiendo licencia...'
+    })
+
+    const fotoBase64 = await subirFotoLicencia(conductorSeleccionado.value.id, file)
+    
+    // Actualizar el conductor seleccionado
+    conductorSeleccionado.value.LicenciaConduccirFoto = fotoBase64
+
+    $q.notify({
+      type: 'positive',
+      message: 'Licencia subida correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error al subir licencia: ' + error.message,
+      icon: 'error'
+    })
+  } finally {
+    $q.loading.hide()
+    // Limpiar el input
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+  }
+}
+
 async function actualizarCampo(campo, valor) {
   if (!conductorSeleccionado.value?.id) return
 
@@ -754,14 +827,6 @@ async function actualizarFechaVencimiento(fecha) {
 
 function verLicencia() {
   dialogVerLicencia.value = true
-}
-
-function subirLicencia() {
-  $q.notify({
-    type: 'info',
-    message: 'Función de subir licencia en desarrollo',
-    icon: 'info'
-  })
 }
 
 function abrirDialogNuevoGrupo() {
@@ -854,20 +919,30 @@ async function guardarGrupo() {
   }
 }
 
-async function confirmarEliminarConductor() {
+function confirmarEliminarConductor() {
   $q.dialog({
     title: 'Confirmar eliminación',
     message: `¿Estás seguro de eliminar al conductor ${conductorSeleccionado.value?.Nombre}?`,
-    cancel: true,
+    cancel: {
+      label: 'Cancelar',
+      color: 'grey',
+      flat: true
+    },
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      flat: true
+    },
     persistent: true
   }).onOk(async () => {
     try {
       await eliminarConductor(conductorSeleccionado.value.id)
       dialogDetallesConductor.value = false
+      conductorSeleccionado.value = {}
 
       $q.notify({
         type: 'positive',
-        message: 'Conductor eliminado',
+        message: 'Conductor eliminado correctamente',
         icon: 'check_circle'
       })
     } catch (error) {
@@ -898,11 +973,20 @@ function editarGrupo() {
   dialogNuevoGrupo.value = true
 }
 
-async function confirmarEliminarGrupo() {
+function confirmarEliminarGrupo() {
   $q.dialog({
     title: 'Confirmar eliminación',
     message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.Nombre}?`,
-    cancel: true,
+    cancel: {
+      label: 'Cancelar',
+      color: 'grey',
+      flat: true
+    },
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      flat: true
+    },
     persistent: true
   }).onOk(async () => {
     try {
@@ -910,7 +994,7 @@ async function confirmarEliminarGrupo() {
 
       $q.notify({
         type: 'positive',
-        message: 'Grupo eliminado',
+        message: 'Grupo eliminado correctamente',
         icon: 'check_circle'
       })
     } catch (error) {
