@@ -791,60 +791,83 @@ function editarItem() {
 }
 
 // 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
+// 🔥 VERSIÓN CORREGIDA CON CONFIRM NATIVO
 const eliminarItem = async () => {
   if (!itemMenu.value) return
 
   try {
-    const confirmacion = await new Promise((resolve) => {
-      $q.dialog({
-        title: 'Confirmar eliminación',
-        message: `¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`,
-        cancel: true,
-        persistent: true,
-      })
-        .onOk(() => resolve(true))
-        .onCancel(() => resolve(false))
-    })
+    // ✅ USAR CONFIRM NATIVO - SIEMPRE FUNCIONA
+    const confirmacion = window.confirm(`¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`)
 
-    if (confirmacion && itemMenu.value.tipo === 'poi') {
+    if (!confirmacion) {
+      console.log('Eliminación cancelada por el usuario')
+      return
+    }
+
+    console.log('✅ Confirmación recibida, eliminando POI...')
+
+    // Mostrar loading (si está disponible)
+    if ($q && $q.loading) {
       $q.loading.show({ message: 'Eliminando POI...' })
+    }
 
-      // Eliminar de Firebase
-      await eliminarPOI(itemMenu.value.id)
+    // Eliminar de Firebase
+    await eliminarPOI(itemMenu.value.id)
+    console.log('✅ POI eliminado de Firebase')
 
-      // Eliminar marcador del mapa
-      if (itemMenu.value.coordenadas) {
-        const mapPage = document.querySelector('#map-page')
-        if (mapPage && mapPage._mapaAPI) {
-          mapPage._mapaAPI.eliminarMarcadorPorCoordenadas(
-            itemMenu.value.coordenadas.lat,
-            itemMenu.value.coordenadas.lng,
-          )
-        }
+    // Eliminar marcador del mapa
+    if (itemMenu.value.coordenadas) {
+      const mapPage = document.querySelector('#map-page')
+      if (mapPage && mapPage._mapaAPI) {
+        mapPage._mapaAPI.eliminarMarcadorPorCoordenadas(
+          itemMenu.value.coordenadas.lat,
+          itemMenu.value.coordenadas.lng,
+        )
+        console.log('✅ Marcador eliminado del mapa')
       }
+    }
 
-      // Eliminar del array local
-      const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
-      if (index > -1) {
-        items.value.splice(index, 1)
-      }
+    // Eliminar del array local
+    const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
+    if (index > -1) {
+      items.value.splice(index, 1)
+      console.log('✅ POI eliminado del array local')
+    }
 
+    // Mostrar notificación de éxito
+    if ($q && $q.notify) {
       $q.notify({
         type: 'positive',
         message: 'POI eliminado correctamente',
         icon: 'delete',
+        timeout: 2000,
       })
+    } else {
+      console.log('✅ POI eliminado correctamente')
     }
+
+    // Cerrar menú contextual
+    menuContextualVisible.value = false
   } catch (err) {
-    console.error('Error al eliminar POI:', err)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al eliminar el POI',
-      caption: err.message,
-      icon: 'error',
-    })
+    console.error('❌ Error al eliminar POI:', err)
+
+    // Mostrar notificación de error
+    if ($q && $q.notify) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al eliminar el POI',
+        caption: err.message,
+        icon: 'error',
+        timeout: 3000,
+      })
+    } else {
+      alert(`Error al eliminar: ${err.message}`)
+    }
   } finally {
-    $q.loading.hide()
+    // Ocultar loading si existe
+    if ($q && $q.loading) {
+      $q.loading.hide()
+    }
   }
 }
 
