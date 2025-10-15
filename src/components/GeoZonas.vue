@@ -288,7 +288,7 @@
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
-          <!-- NUEVO: Input de Nombre -->
+          <!-- Input de Nombre -->
           <q-input
             v-model="nuevoPOI.nombre"
             label="Nombre del punto *"
@@ -301,7 +301,7 @@
             </template>
           </q-input>
 
-          <!-- Input de Dirección (existente) -->
+          <!-- Input de Dirección -->
           <q-input
             v-model="nuevoPOI.direccion"
             label="Dirección *"
@@ -497,11 +497,22 @@
     </q-dialog>
   </div>
 </template>
-
 <script setup>
-import { ref, computed, onMounted /*, onUnmounted */ } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { usePOIs } from 'src/composables/usePOIs'
+import { useQuasar } from 'quasar'
+import { auth } from 'src/firebase/firebaseConfig'
+
+const userId = ref(auth.currentUser?.uid || '')
 
 const emit = defineEmits(['close', 'item-seleccionado'])
+const $q = useQuasar()
+
+// ⚠️ IMPORTANTE: Debes obtener el userId del usuario autenticado
+// Por ejemplo, desde Vuex/Pinia o Firebase Auth
+
+// Usar el composable de POIs
+const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
 
 const vistaActual = ref('poi')
 const itemSeleccionado = ref(null)
@@ -513,13 +524,13 @@ const dialogNuevoPOI = ref(false)
 const dialogNuevaGeozona = ref(false)
 const menuContextualVisible = ref(false)
 const itemMenu = ref(null)
-const mapaComponent = ref(null)
 
 const nuevoPOI = ref({
   nombre: '',
   direccion: '',
   grupoId: null,
   notas: '',
+  coordenadas: null,
 })
 
 const nuevaGeozona = ref({
@@ -535,43 +546,23 @@ const grupos = ref([
   { id: 'grupo3', nombre: 'Oficinas', color: 'orange' },
 ])
 
-const items = ref([
-  {
-    id: 1,
-    nombre: 'A&J PROCESSING',
-    direccion: 'Av. José Murua Martínez, Tijuana',
-    tipo: 'poi',
-    grupoId: 'grupo1',
-  },
-  {
-    id: 2,
-    nombre: 'AGUILAS DEL DESIERTO',
-    direccion: 'Carretera Libre Tecate',
-    tipo: 'poi',
-    grupoId: 'grupo1',
-  },
-  {
-    id: 3,
-    nombre: 'ALBERTO PESQUEIRA',
-    direccion: 'Calle Cite, Municipio de Tijuana',
-    tipo: 'poi',
-    grupoId: null,
-  },
-  {
-    id: 4,
-    nombre: 'ALLIANCE PLANTA 2',
-    direccion: 'Radio: 100m',
-    tipo: 'geozona',
-    grupoId: 'grupo2',
-  },
-  {
-    id: 5,
-    nombre: 'ALLIANSE BLVD 200',
-    direccion: 'Radio: 150m',
-    tipo: 'geozona',
-    grupoId: 'grupo2',
-  },
-])
+const items = ref([])
+
+// Cargar POIs al montar el componente
+onMounted(async () => {
+  try {
+    const poisCargados = await obtenerPOIs()
+    items.value = poisCargados
+    console.log('✅ POIs cargados:', poisCargados.length)
+  } catch (err) {
+    console.error('Error al cargar POIs:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar los puntos de interés',
+      caption: err.message,
+    })
+  }
+})
 
 const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
 const geozonas = computed(() => items.value.filter((i) => i.tipo === 'geozona'))
@@ -646,11 +637,94 @@ function contarGeozonaPorGrupo(grupoId) {
   return geozonas.value.filter((g) => g.grupoId === grupoId).length
 }
 
+// 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
+const guardarPOI = async () => {
+  try {
+    const mapPage = document.querySelector('#map-page')
+
+    // Preparar datos del POI
+    const poiData = {
+      nombre: nuevoPOI.value.nombre,
+      direccion: nuevoPOI.value.direccion,
+      coordenadas: nuevoPOI.value.coordenadas || null,
+      grupoId: nuevoPOI.value.grupoId,
+      notas: nuevoPOI.value.notas || '',
+    }
+
+    if (nuevoPOI.value.id) {
+      // ACTUALIZAR POI EXISTENTE
+      await actualizarPOI(nuevoPOI.value.id, poiData)
+
+      // Actualizar en el array local
+      const index = items.value.findIndex((i) => i.id === nuevoPOI.value.id)
+      if (index > -1) {
+        items.value[index] = {
+          ...items.value[index],
+          ...poiData,
+        }
+      }
+
+      // Actualizar marcador en el mapa
+      if (mapPage && mapPage._mapaAPI && nuevoPOI.value.coordenadas) {
+        mapPage._mapaAPI.actualizarMarcador(
+          nuevoPOI.value.coordenadas.lat,
+          nuevoPOI.value.coordenadas.lng,
+          nuevoPOI.value.nombre,
+          nuevoPOI.value.direccion,
+        )
+      }
+
+      $q.notify({
+        type: 'positive',
+        message: 'POI actualizado correctamente',
+        icon: 'check_circle',
+      })
+    } else {
+      // CREAR NUEVO POI
+      const nuevoId = await crearPOI(poiData)
+
+      // Confirmar marcador temporal en el mapa
+      if (mapPage && mapPage._mapaAPI) {
+        mapPage._mapaAPI.confirmarMarcadorTemporal(nuevoPOI.value.nombre)
+      }
+
+      // Agregar al array local con el ID de Firebase
+      items.value.push({
+        id: nuevoId,
+        tipo: 'poi',
+        ...poiData,
+      })
+
+      $q.notify({
+        type: 'positive',
+        message: 'POI guardado correctamente',
+        icon: 'check_circle',
+      })
+    }
+
+    // Resetear formulario
+    nuevoPOI.value = {
+      nombre: '',
+      direccion: '',
+      coordenadas: null,
+      grupoId: null,
+      notas: '',
+    }
+    dialogNuevoPOI.value = false
+  } catch (err) {
+    console.error('Error al guardar POI:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al guardar el POI',
+      caption: err.message,
+      icon: 'error',
+    })
+  }
+}
+
 function guardarGeozona() {
-  // Si tiene ID, es una edición
   if (nuevaGeozona.value.id) {
     const index = items.value.findIndex((i) => i.id === nuevaGeozona.value.id)
-
     if (index > -1) {
       items.value[index] = {
         ...items.value[index],
@@ -659,11 +733,8 @@ function guardarGeozona() {
         grupoId: nuevaGeozona.value.grupoId,
         notas: nuevaGeozona.value.notas,
       }
-
-      console.log('✅ Geozona actualizada')
     }
   } else {
-    // Es una nueva geozona
     items.value.push({
       id: items.value.length + 1,
       nombre: nuevaGeozona.value.nombre,
@@ -672,11 +743,8 @@ function guardarGeozona() {
       grupoId: nuevaGeozona.value.grupoId,
       notas: nuevaGeozona.value.notas,
     })
-
-    console.log('✅ Nueva geozona guardada')
   }
 
-  // Resetear formulario
   nuevaGeozona.value = {
     nombre: '',
     radio: 50,
@@ -685,6 +753,7 @@ function guardarGeozona() {
   }
   dialogNuevaGeozona.value = false
 }
+
 function mostrarMenuContextual(item) {
   itemMenu.value = item
   menuContextualVisible.value = true
@@ -698,9 +767,8 @@ function editarItem() {
   if (!itemMenu.value) return
 
   if (itemMenu.value.tipo === 'poi') {
-    // Llenar el formulario con los datos existentes
     nuevoPOI.value = {
-      id: itemMenu.value.id, // Agregar el ID para saber que estamos editando
+      id: itemMenu.value.id,
       nombre: itemMenu.value.nombre,
       direccion: itemMenu.value.direccion,
       coordenadas: itemMenu.value.coordenadas,
@@ -709,10 +777,8 @@ function editarItem() {
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
-    // Extraer el radio de la dirección (formato: "Radio: XXXm")
     const radioMatch = itemMenu.value.direccion.match(/Radio:\s*(\d+)m/)
     const radio = radioMatch ? parseInt(radioMatch[1]) : 50
-
     nuevaGeozona.value = {
       id: itemMenu.value.id,
       nombre: itemMenu.value.nombre,
@@ -724,20 +790,30 @@ function editarItem() {
   }
 }
 
-// Función para eliminar un item
-function eliminarItem() {
+// 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
+const eliminarItem = async () => {
   if (!itemMenu.value) return
 
-  // Mostrar confirmación
-  const confirmacion = confirm(`¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`)
+  try {
+    const confirmacion = await new Promise((resolve) => {
+      $q.dialog({
+        title: 'Confirmar eliminación',
+        message: `¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`,
+        cancel: true,
+        persistent: true,
+      })
+        .onOk(() => resolve(true))
+        .onCancel(() => resolve(false))
+    })
 
-  if (confirmacion) {
-    // Buscar el índice del item
-    const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
+    if (confirmacion && itemMenu.value.tipo === 'poi') {
+      $q.loading.show({ message: 'Eliminando POI...' })
 
-    if (index > -1) {
-      // Si es un POI, eliminar también su marcador del mapa
-      if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
+      // Eliminar de Firebase
+      await eliminarPOI(itemMenu.value.id)
+
+      // Eliminar marcador del mapa
+      if (itemMenu.value.coordenadas) {
         const mapPage = document.querySelector('#map-page')
         if (mapPage && mapPage._mapaAPI) {
           mapPage._mapaAPI.eliminarMarcadorPorCoordenadas(
@@ -747,27 +823,31 @@ function eliminarItem() {
         }
       }
 
-      // Eliminar el item de la lista
-      items.value.splice(index, 1)
+      // Eliminar del array local
+      const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
+      if (index > -1) {
+        items.value.splice(index, 1)
+      }
 
-      console.log('✅ Item eliminado:', itemMenu.value.nombre)
+      $q.notify({
+        type: 'positive',
+        message: 'POI eliminado correctamente',
+        icon: 'delete',
+      })
     }
+  } catch (err) {
+    console.error('Error al eliminar POI:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al eliminar el POI',
+      caption: err.message,
+      icon: 'error',
+    })
+  } finally {
+    $q.loading.hide()
   }
 }
 
-// Buscar el componente del mapa cuando se monta
-onMounted(() => {
-  // Buscar el componente del mapa en el DOM
-  setTimeout(() => {
-    const mapPage = document.querySelector('#map-page')
-    if (mapPage && mapPage.__vueParentComponent) {
-      mapaComponent.value = mapPage.__vueParentComponent.exposed
-    }
-  }, 1000)
-})
-
-// Función para activar selección en el mapa
-// Función para activar selección en el mapa
 const activarSeleccionMapa = async () => {
   console.log('🔵 1. Iniciando activarSeleccionMapa')
 
@@ -784,21 +864,36 @@ const activarSeleccionMapa = async () => {
     componentDialog.style.pointerEvents = 'none'
   }
 
-  // 3. Esperar un momento
+  // 3. Esperar un momento para que el drawer se oculte
   await new Promise((resolve) => setTimeout(resolve, 500))
   console.log('🔵 4. Esperando completado')
 
-  // 4. Buscar el componente del mapa usando la nueva forma
-  const mapPage = document.querySelector('#map-page')
-  console.log('🔵 5. mapPage encontrado:', mapPage)
-  console.log('🔵 6. _mapaAPI:', mapPage?._mapaAPI)
+  // 4. FUNCIÓN MEJORADA: Intentar encontrar el mapa con reintentos
+  const esperarMapa = async (intentosMaximos = 10, delay = 500) => {
+    for (let i = 0; i < intentosMaximos; i++) {
+      const mapPage = document.querySelector('#map-page')
 
-  if (mapPage && mapPage._mapaAPI) {
-    const mapaAPI = mapPage._mapaAPI
-    console.log('🔵 7. Funciones disponibles:', Object.keys(mapaAPI))
+      console.log(`🔵 Intento ${i + 1}/${intentosMaximos} - mapPage:`, !!mapPage)
+      console.log(`🔵 Intento ${i + 1}/${intentosMaximos} - _mapaAPI:`, !!mapPage?._mapaAPI)
 
-    if (mapaAPI.activarModoSeleccion) {
-      console.log('✅ Mapa encontrado correctamente!')
+      if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.activarModoSeleccion) {
+        console.log('✅ Mapa encontrado en intento', i + 1)
+        return mapPage._mapaAPI
+      }
+
+      // Esperar antes del siguiente intento
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+
+    return null
+  }
+
+  try {
+    // Intentar obtener el mapa con reintentos
+    const mapaAPI = await esperarMapa()
+
+    if (mapaAPI) {
+      console.log('✅ Mapa disponible, activando modo selección')
 
       // Activar modo selección
       mapaAPI.activarModoSeleccion()
@@ -811,15 +906,10 @@ const activarSeleccionMapa = async () => {
       // Desactivar modo selección
       mapaAPI.desactivarModoSeleccion()
 
-      // Si hay ubicación, guardar los datos (SIN modificar el nombre)
+      // Si hay ubicación, guardar los datos
       if (ubicacion) {
         nuevoPOI.value.direccion = ubicacion.direccion
         nuevoPOI.value.coordenadas = ubicacion.coordenadas
-        // ❌ QUITAMOS esta línea que auto-llenaba el nombre:
-        // const partes = ubicacion.direccion.split(',')
-        // if (!nuevoPOI.value.nombre) {
-        //   nuevoPOI.value.nombre = partes[0].trim()
-        // }
       }
 
       // Restaurar visibilidad del drawer
@@ -831,45 +921,72 @@ const activarSeleccionMapa = async () => {
       // REABRIR el diálogo con los datos ya llenos
       dialogNuevoPOI.value = true
     } else {
-      console.error('❌ mapaAPI no tiene las funciones necesarias')
+      console.error('❌ No se pudo encontrar el mapa después de varios intentos')
+
+      // Restaurar visibilidad del drawer
       if (componentDialog) {
         componentDialog.style.opacity = '1'
         componentDialog.style.pointerEvents = 'auto'
       }
-      alert('El mapa no está disponible (funciones no encontradas)')
+
+      // Mostrar notificación más amigable
+      $q.notify({
+        type: 'warning',
+        message: 'El mapa aún no está listo',
+        caption: 'Por favor, espera unos segundos e intenta de nuevo',
+        timeout: 3000,
+        actions: [
+          {
+            label: 'Reintentar',
+            color: 'white',
+            handler: () => {
+              activarSeleccionMapa()
+            },
+          },
+        ],
+      })
+
+      // Reabrir el diálogo para que el usuario pueda reintentar
+      dialogNuevoPOI.value = true
     }
-  } else {
-    console.error('❌ No se encontró mapPage._mapaAPI')
+  } catch (error) {
+    console.error('❌ Error en activarSeleccionMapa:', error)
+
+    // Restaurar visibilidad del drawer
     if (componentDialog) {
       componentDialog.style.opacity = '1'
       componentDialog.style.pointerEvents = 'auto'
     }
-    alert('El mapa no está disponible. Por favor espera a que cargue completamente.')
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al activar selección de mapa',
+      caption: error.message,
+      icon: 'error',
+    })
+
+    // Reabrir el diálogo
+    dialogNuevoPOI.value = true
   }
 }
-// Función para esperar la selección del usuario
+
 const esperarSeleccionUbicacion = (mapaAPI) => {
-  console.log('🟢 Esperando selección del usuario...')
   return new Promise((resolve) => {
     const checkInterval = setInterval(() => {
       const ubicacion = mapaAPI.getUbicacionSeleccionada()
       if (ubicacion) {
-        console.log('✅ Ubicación seleccionada!', ubicacion)
         clearInterval(checkInterval)
         resolve(ubicacion)
       }
     }, 300)
 
-    // Timeout después de 60 segundos
     setTimeout(() => {
-      console.log('⏱️ Timeout alcanzado')
       clearInterval(checkInterval)
       resolve(null)
     }, 60000)
   })
 }
 
-// Cancelar nuevo POI
 const cancelarNuevoPOI = () => {
   const componentDialog = document.querySelector('.component-dialog')
   if (componentDialog) {
@@ -882,11 +999,10 @@ const cancelarNuevoPOI = () => {
     const mapaAPI = mapPage._mapaAPI
     if (mapaAPI) {
       mapaAPI.desactivarModoSeleccion()
-      mapaAPI.limpiarMarcadorTemporal() // Limpiar al cancelar
+      mapaAPI.limpiarMarcadorTemporal()
     }
   }
 
-  // Resetear formulario
   nuevoPOI.value = {
     nombre: '',
     direccion: '',
@@ -895,71 +1011,9 @@ const cancelarNuevoPOI = () => {
     notas: '',
   }
 
-  dialogNuevoPOI.value = false
-}
-
-// Modificar guardarPOI para incluir coordenadas
-const guardarPOI = () => {
-  const mapPage = document.querySelector('#map-page')
-
-  // Si tiene ID, es una edición
-  if (nuevoPOI.value.id) {
-    const index = items.value.findIndex((i) => i.id === nuevoPOI.value.id)
-
-    if (index > -1) {
-      // Actualizar el item existente
-      items.value[index] = {
-        ...items.value[index],
-        nombre: nuevoPOI.value.nombre,
-        direccion: nuevoPOI.value.direccion,
-        coordenadas: nuevoPOI.value.coordenadas,
-        grupoId: nuevoPOI.value.grupoId,
-        notas: nuevoPOI.value.notas,
-      }
-
-      // Actualizar marcador en el mapa si hay API disponible
-      if (mapPage && mapPage._mapaAPI && nuevoPOI.value.coordenadas) {
-        mapPage._mapaAPI.actualizarMarcador(
-          nuevoPOI.value.coordenadas.lat,
-          nuevoPOI.value.coordenadas.lng,
-          nuevoPOI.value.nombre,
-          nuevoPOI.value.direccion,
-        )
-      }
-
-      console.log('✅ POI actualizado')
-    }
-  } else {
-    // Es un nuevo POI
-    if (mapPage && mapPage._mapaAPI) {
-      mapPage._mapaAPI.confirmarMarcadorTemporal(nuevoPOI.value.nombre)
-    }
-
-    items.value.push({
-      id: items.value.length + 1,
-      nombre: nuevoPOI.value.nombre,
-      direccion: nuevoPOI.value.direccion,
-      coordenadas: nuevoPOI.value.coordenadas,
-      tipo: 'poi',
-      grupoId: nuevoPOI.value.grupoId,
-      notas: nuevoPOI.value.notas,
-    })
-
-    console.log('✅ Nuevo POI guardado')
-  }
-
-  // Resetear formulario
-  nuevoPOI.value = {
-    nombre: '',
-    direccion: '',
-    coordenadas: null,
-    grupoId: null,
-    notas: '',
-  }
   dialogNuevoPOI.value = false
 }
 </script>
-
 <style scoped>
 .geozonas-drawer {
   width: 100%;

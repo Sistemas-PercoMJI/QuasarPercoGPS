@@ -6,9 +6,9 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useMap } from 'src/composables/useMap'
+import { useMap } from 'src/composables/useMap' // ✅ IMPORTACIÓN AQUÍ
 
-const { initMap, addMarker, cleanup, map } = useMap()
+const { initMap, addMarker, cleanup } = useMap()
 const mapaListo = ref(false)
 
 onMounted(async () => {
@@ -28,7 +28,13 @@ onMounted(async () => {
 
       console.log('✅ Mapa completamente listo')
       console.log('✅ window.mapaGlobal disponible:', !!window.mapaGlobal)
-      console.log('✅ window.L disponible:', !!window.L)
+      console.log(
+        '✅ map-page._mapaAPI disponible:',
+        !!document.getElementById('map-page')?._mapaAPI,
+      )
+      if (window.mapaGlobal) {
+        console.log('✅ Funciones disponibles:', Object.keys(window.mapaGlobal))
+      }
     }, 100)
   } catch (error) {
     console.error('❌ Error inicializando mapa:', error)
@@ -39,8 +45,9 @@ onMounted(async () => {
   const handleResize = () => {
     clearTimeout(resizeTimeout)
     resizeTimeout = setTimeout(() => {
-      if (map.value) {
-        map.value.invalidateSize(true)
+      const mapPage = document.getElementById('map-page')
+      if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+        mapPage._mapaAPI.map.invalidateSize(true)
       }
     }, 250)
   }
