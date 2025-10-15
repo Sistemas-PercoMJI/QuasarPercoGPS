@@ -15,32 +15,32 @@ export function useConductoresLocal() {
         Nombre: 'Juan Pérez García',
         Usuario: 'juanpg',
         Telefono: '6641234567',
-        LicenciaConduccirFoto: '',
-        LicenciaConduccirVFecha: new Date('2025-12-31')
+        LicenciaConducirFoto: '',
+        LicenciaConducirVFecha: new Date('2025-12-31')
       },
       {
         id: '2', 
         Nombre: 'María López Hernández',
         Usuario: 'marialh',
         Telefono: '6647654321',
-        LicenciaConduccirFoto: '',
-        LicenciaConduccirVFecha: new Date('2024-06-15')
+        LicenciaConducirFoto: '',
+        LicenciaConducirVFecha: new Date('2024-06-15')
       },
       {
         id: '3',
         Nombre: 'Carlos Rodríguez',
         Usuario: 'carlosr',
         Telefono: '6645558888',
-        LicenciaConduccirFoto: '',
-        LicenciaConduccirVFecha: new Date('2025-08-20')
+        LicenciaConducirFoto: '',
+        LicenciaConducirVFecha: new Date('2025-08-20')
       },
       {
         id: '4',
         Nombre: 'Ana Martínez',
         Usuario: 'anam',
         Telefono: '6642223333',
-        LicenciaConduccirFoto: '',
-        LicenciaConduccirVFecha: new Date('2024-11-30')
+        LicenciaConducirFoto: '',
+        LicenciaConducirVFecha: new Date('2024-11-30')
       }
     ],
     grupos: [
