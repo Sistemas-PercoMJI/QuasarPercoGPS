@@ -760,7 +760,46 @@ function mostrarMenuContextual(item) {
 }
 
 function verEnMapa() {
-  emit('item-seleccionado', itemMenu.value)
+  if (!itemMenu.value) return
+
+  console.log('📍 Ver en mapa:', itemMenu.value)
+
+  // Cerrar el menú contextual
+  menuContextualVisible.value = false
+
+  // Buscar el mapa
+  const mapPage = document.querySelector('#map-page')
+  if (mapPage && mapPage._mapaAPI) {
+    const mapaAPI = mapPage._mapaAPI
+
+    if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
+      // Para POIs: Centrar el mapa en las coordenadas
+      const { lat, lng } = itemMenu.value.coordenadas
+
+      // Usar el método de Leaflet para centrar el mapa
+      if (mapaAPI.map && mapaAPI.map.setView) {
+        mapaAPI.map.setView([lat, lng], 18) // 18 es el nivel de zoom
+        console.log(`✅ Mapa centrado en: ${lat}, ${lng}`)
+      }
+
+      // También puedes abrir el popup del marcador si existe
+      // Esto requeriría que guardes una referencia al marcador
+    } else if (itemMenu.value.tipo === 'geozona') {
+      // Para Geozonas: Centrar en una ubicación por defecto o usar geocoding
+      console.log('📍 Geozona seleccionada:', itemMenu.value.nombre)
+      // Aquí podrías implementar geocoding para obtener coordenadas de la dirección
+    }
+
+    // Emitir el evento para que el componente padre sepa qué item se seleccionó
+    emit('item-seleccionado', itemMenu.value)
+  } else {
+    console.error('❌ No se pudo acceder al mapa')
+    $q.notify({
+      type: 'warning',
+      message: 'No se pudo acceder al mapa',
+      timeout: 2000,
+    })
+  }
 }
 
 function editarItem() {
