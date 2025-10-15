@@ -498,7 +498,7 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -524,6 +524,7 @@ const dialogNuevoPOI = ref(false)
 const dialogNuevaGeozona = ref(false)
 const menuContextualVisible = ref(false)
 const itemMenu = ref(null)
+const marcadorActivo = ref(null);
 
 const nuevoPOI = ref({
   nombre: '',
@@ -563,6 +564,19 @@ onMounted(async () => {
     })
   }
 })
+
+// Añade este hook al final de tu <script setup>
+onUnmounted(() => {
+  if (marcadorActivo.value) {
+    // Buscamos el mapa de nuevo para eliminar la capa
+    const mapPage = document.querySelector('#map-page');
+    if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+      mapPage._mapaAPI.map.removeLayer(marcadorActivo.value);
+      console.log('🗑️ Marcador activo eliminado al desmontar el componente.');
+    }
+    marcadorActivo.value = null;
+  }
+});
 
 const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
 const geozonas = computed(() => items.value.filter((i) => i.tipo === 'geozona'))
@@ -760,95 +774,81 @@ function mostrarMenuContextual(item) {
 }
 
 function verEnMapa() {
-  if (!itemMenu.value) return
+  if (!itemMenu.value) return;
 
-  console.log('📍 Ver en mapa:', itemMenu.value)
+  console.log('📍 Ver en mapa:', itemMenu.value);
 
   // Cerrar el menú contextual
-  menuContextualVisible.value = false
+  menuContextualVisible.value = false;
 
   // Buscar el mapa
-  const mapPage = document.querySelector('#map-page')
-  if (mapPage && mapPage._mapaAPI) {
-    const mapaAPI = mapPage._mapaAPI
+  const mapPage = document.querySelector('#map-page');
+  if (!mapPage || !mapPage._mapaAPI) {
+    console.error('❌ No se encontró la API del mapa.');
+    return;
+  }
 
-    if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
-      const { lat, lng } = itemMenu.value.coordenadas
+  const mapaAPI = mapPage._mapaAPI;
 
-      // ⭐ 1. LIMPIAR COMPLETAMENTE el marcador anterior
-      if (window.marcadorVerEnMapa) {
-        try {
-          // Desactivar animaciones antes de eliminar
-          if (mapaAPI.map) {
-            mapaAPI.map.options.zoomAnimation = false
-          }
-          // Remover todos los eventos del marcador
-          window.marcadorVerEnMapa.off()
-          // Remover el marcador del mapa
-          mapaAPI.map.removeLayer(window.marcadorVerEnMapa)
-          // Limpiar completamente la referencia
-          window.marcadorVerEnMapa = null
-          console.log('🗑️ Marcador anterior limpiado completamente')
-        } catch (e) {
-          console.log('⚠️ Error al limpiar marcador:', e)
-        }
-      }
+  // Asegurarnos de que es un POI y que tiene coordenadas
+  if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
+    // ⭐ CORRECCIÓN AQUÍ: Desestructurar desde .coordenadas
+    const { lat, lng } = itemMenu.value.coordenadas;
 
-      // ⭐ 2. ESPERAR a que se complete la limpieza
-      setTimeout(() => {
-        if (mapaAPI.L && mapaAPI.map && !mapaAPI.map._removed) {
-          try {
-            // ⭐ 3. CREAR NUEVO MARCADOR con configuración segura
-            window.marcadorVerEnMapa = mapaAPI.L.marker([lat, lng], {
-              icon: mapaAPI.L.icon({
-                iconUrl:
-                  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-                shadowUrl:
-                  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41],
-              }),
-            })
-
-            // ⭐ 4. AGREGAR AL MAPA después de crear
-            window.marcadorVerEnMapa.addTo(mapaAPI.map)
-
-            // ⭐ 5. CONFIGURAR POPUP después de agregar al mapa
-            const popupContent = `
-<div style="min-width: 200px;">
-<b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
-<p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
-${itemMenu.value.direccion}
-</p>
-</div>
-`
-
-            window.marcadorVerEnMapa.bindPopup(popupContent)
-            window.marcadorVerEnMapa.openPopup()
-
-            console.log('✅ Marcador creado exitosamente')
-
-            // ⭐ 6. CENTRAR MAPA SIN ANIMACIONES COMPLEJAS
-            mapaAPI.map.setView([lat, lng], 18, {
-              animate: false, // ⭐ DESACTIVAR ANIMACIÓN TEMPORALMENTE
-            })
-
-            // ⭐ 7. REACTIVAR ANIMACIONES DESPUÉS (opcional)
-            setTimeout(() => {
-              if (mapaAPI.map && window.marcadorVerEnMapa) {
-                mapaAPI.map.options.zoomAnimation = true
-              }
-            }, 200)
-          } catch (error) {
-            console.error('❌ Error crítico al crear marcador:', error)
-          }
-        }
-      }, 80) // Pequeño delay para asegurar limpieza
+    // ⭐ NUEVO: Añadir una validación de seguridad
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      console.error('❌ Coordenadas inválidas:', itemMenu.value.coordenadas);
+      $q.notify({
+        type: 'negative',
+        message: 'Este punto de interés no tiene coordenadas válidas.',
+      });
+      return;
     }
 
-    emit('item-seleccionado', itemMenu.value)
+    const popupContent = `
+      <div style="min-width: 200px;">
+        <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
+        <p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
+          ${itemMenu.value.direccion}
+        </p>
+      </div>
+    `;
+
+    // ⭐ LÓGICA PRINCIPAL: ACTUALIZAR O CREAR
+    if (marcadorActivo.value) {
+      // Si el marcador ya existe, solo actualizamos su posición y popup
+      console.log('🔄 Actualizando marcador existente...');
+      marcadorActivo.value.setLatLng([lat, lng]);
+      marcadorActivo.value.setPopupContent(popupContent);
+    } else {
+      // Si es la primera vez, lo creamos
+      console.log('✨ Creando nuevo marcador activo...');
+      marcadorActivo.value = mapaAPI.L.marker([lat, lng], {
+        icon: mapaAPI.L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+      }).addTo(mapaAPI.map);
+
+      marcadorActivo.value.bindPopup(popupContent);
+    }
+
+    // Abrir el popup y centrar el mapa
+    marcadorActivo.value.openPopup();
+    mapaAPI.map.setView([lat, lng], 18);
+
+    emit('item-seleccionado', itemMenu.value);
+  } else {
+    // Caso en que no es un POI o no tiene coordenadas
+    console.warn('⚠️ El item seleccionado no es un POI o no tiene coordenadas.');
+    $q.notify({
+      type: 'warning',
+      message: 'No se puede mostrar este elemento en el mapa.',
+    });
   }
 }
 
