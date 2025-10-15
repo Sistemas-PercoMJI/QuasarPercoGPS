@@ -4,20 +4,146 @@
       <q-toolbar class="toolbar-custom">
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
-        <!-- Búsqueda - Más grande y a la izquierda -->
+        <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
+            ref="searchInput"
             v-model="busqueda"
             outlined
-            placeholder="Buscar vehículos, conductores..."
+            placeholder="Buscar dirección, vehículo, conductor..."
             class="search-input"
             bg-color="white"
             dense
+            @keyup.enter="buscar"
+            @focus="onFocus"
+            @blur="() => setTimeout(() => (mostrarSugerencias = false), 200)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
             </template>
+
+            <template v-slot:append>
+              <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
+              <q-btn flat dense round icon="tune" @click="mostrarFiltros = !mostrarFiltros">
+                <q-tooltip>Filtros</q-tooltip>
+              </q-btn>
+            </template>
           </q-input>
+
+          <!-- Panel de Filtros -->
+          <q-slide-transition>
+            <div v-show="mostrarFiltros" class="filtros-panel">
+              <q-chip
+                v-for="filtro in filtrosDisponibles"
+                :key="filtro.value"
+                :outline="!filtrosActivos.includes(filtro.value)"
+                :color="filtro.color"
+                text-color="white"
+                clickable
+                @click="toggleFiltro(filtro.value)"
+                size="sm"
+              >
+                <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
+                {{ filtro.label }}
+              </q-chip>
+            </div>
+          </q-slide-transition>
+
+          <!-- Sugerencias de búsqueda - OPTIMIZADO -->
+          <q-menu
+            v-model="mostrarSugerencias"
+            fit
+            :offset="[0, 8]"
+            class="sugerencias-menu"
+            persistent
+          >
+            <q-list style="min-width: 500px; max-height: 400px" class="scroll">
+              <!-- Mientras escribe -->
+              <div
+                v-if="busqueda && resultadosBusqueda.length === 0 && buscando"
+                class="q-pa-md text-center text-grey-6"
+              >
+                <q-spinner color="primary" size="24px" />
+                <div class="q-mt-sm text-caption">Buscando...</div>
+              </div>
+
+              <!-- Sin resultados -->
+              <div
+                v-else-if="busqueda && resultadosBusqueda.length === 0 && !buscando"
+                class="q-pa-md text-center text-grey-6"
+              >
+                <q-icon name="search_off" size="48px" />
+                <div class="q-mt-sm">No se encontraron resultados</div>
+              </div>
+
+              <!-- Resultados agrupados por tipo -->
+              <template v-else-if="resultadosBusqueda.length > 0">
+                <div v-for="(grupo, tipo) in resultadosAgrupados" :key="tipo">
+                  <!-- Header del grupo -->
+                  <q-item-label header class="text-weight-bold text-primary">
+                    <q-icon :name="getIconoTipo(tipo)" size="18px" class="q-mr-xs" />
+                    {{ getTituloTipo(tipo) }} ({{ grupo.length }})
+                  </q-item-label>
+
+                  <!-- Items del grupo -->
+                  <q-item
+                    v-for="resultado in grupo"
+                    :key="resultado.id"
+                    clickable
+                    v-ripple
+                    @click="seleccionarResultado(resultado)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar :color="getColorTipo(tipo)" text-color="white" size="40px">
+                        <q-icon :name="getIconoTipo(tipo)" />
+                      </q-avatar>
+                    </q-item-section>
+
+                    <q-item-section>
+                      <q-item-label>{{ resultado.nombre }}</q-item-label>
+                      <q-item-label caption>{{ resultado.detalle }}</q-item-label>
+                    </q-item-section>
+
+                    <q-item-section side>
+                      <q-icon name="chevron_right" color="grey-5" />
+                    </q-item-section>
+                  </q-item>
+
+                  <q-separator v-if="Object.keys(resultadosAgrupados).length > 1" />
+                </div>
+              </template>
+
+              <!-- Búsquedas recientes (cuando no hay texto) -->
+              <template v-else-if="!busqueda && busquedasRecientes.length > 0">
+                <q-item-label header>
+                  <q-icon name="history" class="q-mr-xs" />
+                  Búsquedas recientes
+                </q-item-label>
+                <q-item
+                  v-for="(reciente, index) in busquedasRecientes"
+                  :key="index"
+                  clickable
+                  v-ripple
+                  @click="seleccionarBusquedaReciente(reciente)"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="history" color="grey-6" />
+                  </q-item-section>
+                  <q-item-section>{{ reciente }}</q-item-section>
+                  <q-item-section side>
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="close"
+                      size="sm"
+                      @click.stop="eliminarReciente(index)"
+                    />
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-list>
+          </q-menu>
         </div>
 
         <q-space />
@@ -100,26 +226,28 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :mini="!drawerExpanded"
-      @mouseenter="drawerExpanded = true"
-      @mouseleave="drawerExpanded = false"
+      :mini="!drawerExpanded || dialogAbierto"
+      @mouseenter="onDrawerMouseEnter"
+      @mouseleave="onDrawerMouseLeave"
       bordered
       :width="350"
       :mini-width="70"
       class="drawer-custom"
-      :overlay="drawerExpanded"
+      :overlay="drawerExpanded && !dialogAbierto"
       elevated
       mini-to-overlay
     >
       <!-- Header del drawer -->
-      <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded }">
-        <q-avatar :size="drawerExpanded ? '100px' : '40px'" class="q-mb-md">
+      <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded || dialogAbierto }">
+        <q-avatar :size="drawerExpanded && !dialogAbierto ? '100px' : '40px'" class="q-mb-md">
           <img
             src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
             alt="Logo"
           />
         </q-avatar>
-        <div v-if="drawerExpanded" class="text-h6 text-weight-bold">Ubicacion de flotas</div>
+        <div v-if="drawerExpanded && !dialogAbierto" class="text-h6 text-weight-bold">
+          Ubicacion de flotas
+        </div>
       </div>
 
       <q-separator class="q-my-md" />
@@ -140,18 +268,18 @@
               <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section v-if="drawerExpanded">
+            <q-item-section v-if="drawerExpanded && !dialogAbierto">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
 
-            <q-item-section side v-if="drawerExpanded">
+            <q-item-section side v-if="drawerExpanded && !dialogAbierto">
               <q-icon name="open_in_new" size="xs" />
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
             <q-tooltip
-              v-if="!drawerExpanded"
+              v-if="!drawerExpanded || dialogAbierto"
               anchor="center right"
               self="center left"
               :offset="[10, 0]"
@@ -173,14 +301,14 @@
               <q-icon :name="link.icon" size="24px" />
             </q-item-section>
 
-            <q-item-section v-if="drawerExpanded">
+            <q-item-section v-if="drawerExpanded && !dialogAbierto">
               <q-item-label>{{ link.title }}</q-item-label>
               <q-item-label caption>{{ link.caption }}</q-item-label>
             </q-item-section>
 
             <!-- Tooltip cuando está minimizado -->
             <q-tooltip
-              v-if="!drawerExpanded"
+              v-if="!drawerExpanded || dialogAbierto"
               anchor="center right"
               self="center left"
               :offset="[10, 0]"
@@ -201,18 +329,18 @@
             </q-avatar>
           </q-item-section>
 
-          <q-item-section v-if="drawerExpanded">
+          <q-item-section v-if="drawerExpanded && !dialogAbierto">
             <q-item-label class="text-weight-medium">Configuración</q-item-label>
             <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
           </q-item-section>
 
-          <q-item-section side v-if="drawerExpanded">
+          <q-item-section side v-if="drawerExpanded && !dialogAbierto">
             <q-icon name="expand_less" color="grey-5" />
           </q-item-section>
 
           <!-- Tooltip cuando está minimizado -->
           <q-tooltip
-            v-if="!drawerExpanded"
+            v-if="!drawerExpanded || dialogAbierto"
             anchor="center right"
             self="center left"
             :offset="[10, 0]"
@@ -270,25 +398,76 @@
       </div>
     </q-drawer>
 
-    <!-- Drawer Estado de la Flota -->
-    <q-drawer v-model="estadoFlotaDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <EstadoFlota @close="cerrarEstadoFlota" />
-    </q-drawer>
+    <!-- DIALOGS PARA COMPONENTES - SOLUCIÓN DEFINITIVA -->
+    <!-- Dialog Estado de la Flota -->
+    <q-dialog
+      v-model="estadoFlotaDrawerOpen"
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <EstadoFlota @close="cerrarEstadoFlota" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Conductores -->
-    <q-drawer v-model="conductoresDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <Conductores @close="cerrarConductores" />
-    </q-drawer>
+    <!-- Dialog EstadoFlota -->
+    <q-dialog
+      v-model="estadoFlotaDrawerOpen"
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <EstadoFlota @close="cerrarEstadoFlota" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Geozonas -->
-    <q-drawer v-model="geozonaDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <GeoZonas @close="cerrarGeozonas" />
-    </q-drawer>
+    <!-- Dialog Conductores -->
+    <q-dialog
+      v-model="conductoresDrawerOpen"
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <Conductores @close="cerrarConductores" />
+      </q-card>
+    </q-dialog>
 
-    <!-- Drawer Eventos -->
-    <q-drawer v-model="EventosDrawerOpen" side="left" bordered :width="350" overlay elevated>
-      <Eventos @close="cerrarEventos" />
-    </q-drawer>
+    <!-- Dialog Geozonas -->
+    <q-dialog
+      v-model="geozonaDrawerOpen"
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <GeoZonas @close="cerrarGeozonas" />
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialog Eventos -->
+    <q-dialog
+      v-model="EventosDrawerOpen"
+      position="left"
+      seamless
+      class="component-dialog"
+      @show="onDialogShow"
+      @hide="onDialogHide"
+    >
+      <q-card class="component-card">
+        <Eventos @close="cerrarEventos" />
+      </q-card>
+    </q-dialog>
 
     <q-page-container>
       <router-view />
@@ -297,8 +476,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signOut } from 'firebase/auth'
@@ -310,12 +489,459 @@ import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 
 const router = useRouter()
-const route = useRoute()
 const $q = useQuasar()
 
 // NOTIFICACIONES
 const { notifications } = useNotifications()
 const notificacionesCount = computed(() => notifications.value.length)
+
+// Control de dialogs abiertos
+const dialogAbierto = ref(false)
+
+// ========== BUSCADOR OPTIMIZADO - CORREGIDO ==========
+const busqueda = ref('')
+const mostrarSugerencias = ref(false)
+const mostrarFiltros = ref(false)
+const buscando = ref(false)
+const resultadosBusqueda = ref([])
+const busquedasRecientes = ref([])
+const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
+const searchInput = ref(null) // Referencia ya la tienes
+
+const filtrosDisponibles = [
+  { label: 'Direcciones', value: 'direccion', icon: 'place', color: 'blue' },
+  { label: 'Vehículos', value: 'vehiculo', icon: 'directions_car', color: 'green' },
+  { label: 'Conductores', value: 'conductor', icon: 'person', color: 'orange' },
+  { label: 'POIs', value: 'poi', icon: 'location_on', color: 'red' },
+  { label: 'Geozonas', value: 'geozona', icon: 'layers', color: 'purple' },
+]
+
+// Agrupar resultados por tipo
+const resultadosAgrupados = computed(() => {
+  const grupos = {}
+  resultadosBusqueda.value.forEach((resultado) => {
+    if (!grupos[resultado.tipo]) {
+      grupos[resultado.tipo] = []
+    }
+    grupos[resultado.tipo].push(resultado)
+  })
+  return grupos
+})
+
+// ⚡ WATCH OPTIMIZADO - SOLO UNO
+let timeoutBusqueda = null
+
+watch(busqueda, (newVal) => {
+  // Limpiar timeout anterior
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+
+  // Si está vacío, limpiar todo SIN TOCAR mostrarSugerencias
+  if (!newVal) {
+    resultadosBusqueda.value = []
+    buscando.value = false
+    // NO tocar mostrarSugerencias aquí
+    return
+  }
+
+  // Para texto corto, mostrar recientes
+  if (newVal.length < 3) {
+    resultadosBusqueda.value = []
+    buscando.value = false
+    return
+  }
+
+  // Debounce para búsqueda
+  timeoutBusqueda = setTimeout(() => {
+    realizarBusqueda(newVal)
+  }, 500) // Reducido a 500ms para mejor UX
+})
+
+// 🔍 FUNCIÓN DE BÚSQUEDA SIMPLIFICADA
+async function realizarBusqueda(termino) {
+  if (busqueda.value !== termino) return
+
+  buscando.value = true
+  const promesas = []
+
+  if (filtrosActivos.value.includes('direccion')) {
+    promesas.push(buscarDirecciones(termino))
+  }
+  if (filtrosActivos.value.includes('vehiculo')) {
+    promesas.push(buscarVehiculos(termino))
+  }
+  if (filtrosActivos.value.includes('conductor')) {
+    promesas.push(buscarConductores(termino))
+  }
+  if (filtrosActivos.value.includes('poi')) {
+    promesas.push(buscarPOIs())
+  }
+  if (filtrosActivos.value.includes('geozona')) {
+    promesas.push(buscarGeozonas())
+  }
+
+  try {
+    const resultadosArray = await Promise.all(promesas)
+
+    if (busqueda.value !== termino) return
+
+    const resultados = resultadosArray.flat().filter((r) => r !== undefined)
+
+    resultadosBusqueda.value = resultados
+  } catch (error) {
+    console.error('Error en búsqueda:', error)
+    resultadosBusqueda.value = []
+  } finally {
+    buscando.value = false
+  }
+}
+
+// 📍 BÚSQUEDA DE DIRECCIONES
+async function buscarDirecciones(termino) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
+      {
+        headers: {
+          'User-Agent': 'MJ GPS App/1.0',
+        },
+      },
+    )
+
+    if (!response.ok) throw new Error('Error en la respuesta')
+    const data = await response.json()
+
+    return data.map((lugar) => ({
+      id: `dir-${lugar.place_id}`,
+      tipo: 'direccion',
+      nombre: lugar.display_name.split(',')[0],
+      detalle: lugar.display_name,
+      lat: parseFloat(lugar.lat),
+      lng: parseFloat(lugar.lon),
+    }))
+  } catch (error) {
+    console.error('Error buscando direcciones:', error)
+    return []
+  }
+}
+async function buscarVehiculos() {
+  // TODO: Implementar cuando tengas vehículos en Firebase
+  console.log('Búsqueda de vehículos pendiente de implementar')
+  return []
+}
+
+// 👤 BÚSQUEDA DE CONDUCTORES - Placeholder
+async function buscarConductores() {
+  // TODO: Implementar cuando tengas conductores en Firebase
+  console.log('Búsqueda de conductores pendiente de implementar')
+  return []
+}
+
+// 📌 BÚSQUEDA DE POIs - Placeholder
+async function buscarPOIs() {
+  // TODO: Implementar cuando tengas POIs en Firebase
+  console.log('Búsqueda de POIs pendiente de implementar')
+  return []
+}
+
+// 🗺️ BÚSQUEDA DE GEOZONAS - Placeholder
+async function buscarGeozonas() {
+  // TODO: Implementar cuando tengas geozonas en Firebase
+  console.log('Búsqueda de geozonas pendiente de implementar')
+  return []
+}
+// 🔧 FUNCIONES DE EVENTOS - SIMPLIFICADAS
+function onFocus() {
+  mostrarSugerencias.value = true
+}
+
+// ❌ ELIMINAR onBusquedaChange completamente - causa el bug
+
+function limpiarBusqueda() {
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+  busqueda.value = ''
+  resultadosBusqueda.value = []
+  mostrarSugerencias.value = false
+  buscando.value = false
+}
+
+function seleccionarBusquedaReciente(reciente) {
+  busqueda.value = reciente
+  mostrarSugerencias.value = true
+  if (reciente.length >= 3) {
+    realizarBusqueda(reciente)
+  }
+}
+
+function toggleFiltro(filtro) {
+  const index = filtrosActivos.value.indexOf(filtro)
+  if (index > -1) {
+    filtrosActivos.value.splice(index, 1)
+  } else {
+    filtrosActivos.value.push(filtro)
+  }
+
+  if (busqueda.value && busqueda.value.length >= 3) {
+    realizarBusqueda(busqueda.value)
+  }
+}
+function centrarMapaEn(lat, lng, zoom = 18) {
+  console.log('🎯 Intentando centrar mapa en:', { lat, lng, zoom })
+
+  // Función para verificar y esperar por el mapa
+  const esperarMapa = (intentos = 0) => {
+    // Verificar si window.mapaGlobal existe y tiene el mapa
+    if (window.mapaGlobal && window.mapaGlobal.map && window.L) {
+      console.log('✅ Mapa disponible, centrando...')
+      ejecutarCentrado(lat, lng, zoom)
+      return true
+    } else if (intentos < 10) {
+      // Máximo 10 intentos (5 segundos)
+      console.log(`⏳ Esperando mapa... intento ${intentos + 1}`)
+      setTimeout(() => esperarMapa(intentos + 1), 500)
+    } else {
+      console.error('❌ Timeout: Mapa no disponible después de 5 segundos')
+      $q.notify({
+        message: 'El mapa no está disponible. Recarga la página e intenta nuevamente.',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+      return false
+    }
+  }
+
+  return esperarMapa()
+}
+
+function ejecutarCentrado(lat, lng, zoom) {
+  try {
+    // Acceder al mapa a través de la API
+    const map = window.mapaGlobal.map
+
+    console.log('🗺️ Mapa encontrado:', map)
+    console.log('📌 Métodos disponibles:', {
+      flyTo: typeof map.flyTo,
+      setView: typeof map.setView,
+      panTo: typeof map.panTo,
+    })
+
+    // Verificar métodos disponibles
+    if (map.flyTo && typeof map.flyTo === 'function') {
+      map.flyTo([lat, lng], zoom, {
+        duration: 2,
+        easeLinearity: 0.25,
+      })
+      console.log('✅ flyTo ejecutado')
+    } else if (map.setView && typeof map.setView === 'function') {
+      map.setView([lat, lng], zoom, {
+        animate: true,
+        duration: 1,
+      })
+      console.log('✅ setView ejecutado')
+    } else {
+      console.warn('⚠️ Usando panTo como fallback')
+      map.panTo([lat, lng], { duration: 1 })
+      map.setZoom(zoom)
+    }
+
+    // Agregar marcador después de mover el mapa
+    setTimeout(() => {
+      agregarMarcadorBusqueda(lat, lng)
+    }, 1000)
+  } catch (error) {
+    console.error('❌ Error al centrar mapa:', error)
+    $q.notify({
+      message: `Error: ${error.message}`,
+      color: 'negative',
+      icon: 'error',
+      position: 'top',
+    })
+  }
+}
+function agregarMarcadorBusqueda(lat, lng) {
+  if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
+    console.warn('⚠️ Mapa no disponible para agregar marcador')
+    return
+  }
+
+  const map = window.mapaGlobal.map
+  const L = window.L
+
+  // Remover marcador anterior
+  if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
+    map.removeLayer(window.marcadorBusqueda)
+  }
+
+  // Crear nuevo marcador
+  try {
+    window.marcadorBusqueda = L.marker([lat, lng], {
+      icon: L.icon({
+        iconUrl:
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    }).addTo(map)
+
+    // Agregar popup
+    window.marcadorBusqueda
+      .bindPopup(`<b>📍 ${busqueda.value || 'Ubicación buscada'}</b>`)
+      .openPopup()
+
+    console.log('✅ Marcador agregado')
+
+    // Remover después de 10 segundos
+    setTimeout(() => {
+      if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
+        map.removeLayer(window.marcadorBusqueda)
+        window.marcadorBusqueda = null
+      }
+    }, 10000)
+  } catch (error) {
+    console.error('❌ Error agregando marcador:', error)
+  }
+}
+function seleccionarResultado(resultado) {
+  console.log('🎯 Resultado seleccionado:', resultado)
+
+  // Guardar en búsquedas recientes
+  if (busqueda.value && !busquedasRecientes.value.includes(busqueda.value)) {
+    busquedasRecientes.value.unshift(busqueda.value)
+    if (busquedasRecientes.value.length > 5) {
+      busquedasRecientes.value.pop()
+    }
+  }
+
+  // Cerrar sugerencias y limpiar
+  mostrarSugerencias.value = false
+  const resultadoTemp = { ...resultado }
+  busqueda.value = ''
+  resultadosBusqueda.value = []
+
+  // Acción según el tipo
+  if (resultadoTemp.tipo === 'direccion') {
+    console.log('📍 Procesando dirección:', resultadoTemp.lat, resultadoTemp.lng)
+
+    // Verificar que tenemos coordenadas válidas
+    if (resultadoTemp.lat && resultadoTemp.lng) {
+      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
+
+      $q.notify({
+        message: `📍 Mostrando: ${resultadoTemp.nombre}`,
+        color: 'positive',
+        icon: 'place',
+        position: 'top',
+        timeout: 3000,
+      })
+    } else {
+      console.error('❌ Coordenadas inválidas:', resultadoTemp)
+      $q.notify({
+        message: 'Error: Ubicación sin coordenadas válidas',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+      })
+    }
+  } else if (resultadoTemp.tipo === 'vehiculo') {
+    console.log('🚗 Abriendo estado de flota')
+    estadoFlotaDrawerOpen.value = true
+    $q.notify({
+      message: `🚗 Vehículo: ${resultadoTemp.nombre}`,
+      color: 'positive',
+      icon: 'directions_car',
+      position: 'top',
+    })
+  } else if (resultadoTemp.tipo === 'conductor') {
+    console.log('👤 Abriendo conductores')
+    conductoresDrawerOpen.value = true
+    $q.notify({
+      message: `👤 Conductor: ${resultadoTemp.nombre}`,
+      color: 'positive',
+      icon: 'person',
+      position: 'top',
+    })
+  } else if (resultadoTemp.tipo === 'poi') {
+    console.log('📌 Procesando POI')
+    // Si el POI tiene coordenadas, centrar mapa
+    if (resultadoTemp.lat && resultadoTemp.lng) {
+      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
+    }
+    geozonaDrawerOpen.value = true
+    $q.notify({
+      message: `📌 POI: ${resultadoTemp.nombre}`,
+      color: 'positive',
+      icon: 'location_on',
+      position: 'top',
+    })
+  } else if (resultadoTemp.tipo === 'geozona') {
+    console.log('🗺️ Abriendo geozonas')
+    geozonaDrawerOpen.value = true
+    $q.notify({
+      message: `🗺️ Geozona: ${resultadoTemp.nombre}`,
+      color: 'positive',
+      icon: 'layers',
+      position: 'top',
+    })
+  }
+}
+
+function eliminarReciente(index) {
+  busquedasRecientes.value.splice(index, 1)
+}
+
+function buscar() {
+  if (busqueda.value && busqueda.value.length >= 3) {
+    realizarBusqueda(busqueda.value)
+  }
+}
+
+// Helper functions sin cambios
+function getIconoTipo(tipo) {
+  const iconos = {
+    direccion: 'place',
+    vehiculo: 'directions_car',
+    conductor: 'person',
+    poi: 'location_on',
+    geozona: 'layers',
+  }
+  return iconos[tipo] || 'search'
+}
+
+function getTituloTipo(tipo) {
+  const titulos = {
+    direccion: 'Direcciones',
+    vehiculo: 'Vehículos',
+    conductor: 'Conductores',
+    poi: 'Puntos de Interés',
+    geozona: 'Geozonas',
+  }
+  return titulos[tipo] || tipo
+}
+
+function getColorTipo(tipo) {
+  const colores = {
+    direccion: 'blue',
+    vehiculo: 'green',
+    conductor: 'orange',
+    poi: 'red',
+    geozona: 'purple',
+  }
+  return colores[tipo] || 'grey'
+}
+
+onUnmounted(() => {
+  if (timeoutBusqueda) {
+    clearTimeout(timeoutBusqueda)
+  }
+})
 
 function cerrarSesionDesdeConfig() {
   logout()
@@ -341,7 +967,7 @@ const linksList = [
     action: 'open-conductores',
   },
   {
-    title: 'GeoZonas',
+    title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
     action: 'open-geozonas',
@@ -369,12 +995,17 @@ const EventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
-  () => route.path,
-  () => {
-    leftDrawerOpen.value = true
-    drawerExpanded.value = false // Resetear a mini cuando cambias de página
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
+  ([estado, conductores, geozona, eventos]) => {
+    const algunDialogAbierto = estado || conductores || geozona || eventos
+    dialogAbierto.value = algunDialogAbierto
+
+    // Si algún dialog está abierto, forzar drawer mini
+    if (algunDialogAbierto) {
+      drawerExpanded.value = false
+    }
   },
-  { immediate: true },
+  { immediate: true }, // Agregar immediate
 )
 
 // Watch adicional por si algo intenta cerrarlo
@@ -384,26 +1015,68 @@ watch(leftDrawerOpen, (newVal) => {
   }
 })
 
+// Control de dialogs
+watch(
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
+  ([estado, conductores, geozona, eventos]) => {
+    dialogAbierto.value = estado || conductores || geozona || eventos
+  },
+)
+
+function onDrawerMouseEnter() {
+  // Verificar explícitamente cada dialog
+  if (
+    !estadoFlotaDrawerOpen.value &&
+    !conductoresDrawerOpen.value &&
+    !geozonaDrawerOpen.value &&
+    !EventosDrawerOpen.value
+  ) {
+    drawerExpanded.value = true
+  }
+}
+
+function onDrawerMouseLeave() {
+  // Solo contraer si NO hay dialogs abiertos
+  if (
+    !estadoFlotaDrawerOpen.value &&
+    !conductoresDrawerOpen.value &&
+    !geozonaDrawerOpen.value &&
+    !EventosDrawerOpen.value
+  ) {
+    drawerExpanded.value = false
+  }
+}
+
+function onDialogShow() {
+  dialogAbierto.value = true
+  drawerExpanded.value = false // Ya lo tienes, bien!
+}
+
+function onDialogHide() {
+  dialogAbierto.value = false
+  drawerExpanded.value = false // Agregar esto para asegurar
+}
+
 function handleLinkClick(link) {
   if (link.action === 'logout') {
     logout()
   } else if (link.action === 'open-estado-flota') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     geozonaDrawerOpen.value = true
   } else if (link.action === 'open-eventos') {
-    cerrarTodosLosDrawers()
+    cerrarTodosLosDialogs()
     EventosDrawerOpen.value = true
   }
 }
 
-// Nueva función para cerrar todos los drawers
-function cerrarTodosLosDrawers() {
+// Nueva función para cerrar todos los dialogs
+function cerrarTodosLosDialogs() {
   estadoFlotaDrawerOpen.value = false
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
@@ -562,5 +1235,74 @@ const logout = async () => {
   max-width: 60vw; /* <-- Ancho máximo en pantallas pequeñas */
   margin-left: 24px;
   border-radius: 500px;
+}
+
+.q-page-container {
+  overflow: hidden !important;
+}
+
+/* ESTILOS PARA LOS DIALOGS DE COMPONENTES */
+.component-dialog {
+  z-index: 3000 !important;
+}
+
+:deep(.component-dialog .q-dialog__inner) {
+  align-items: stretch !important;
+  padding: 0 !important;
+  justify-content: flex-start !important;
+}
+
+:deep(.component-dialog .q-dialog__inner > div) {
+  max-height: 100vh !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* NUEVO ESTILO PARA LAS TARJETAS DE COMPONENTES Ya de modifico */
+.component-card {
+  width: 350px;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  margin-left: 70px;
+  margin-top: 26px !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Asegurar que el componente ocupe todo el espacio disponible */
+.component-card :deep(> *) {
+  flex: 1;
+  min-height: 0; /* Importante para flexbox en algunos navegadores */
+}
+
+/* Ajustar posición del dialog para que empiece justo debajo del header */
+:deep(.component-dialog .q-dialog__inner) {
+  padding-top: 76px !important; /* Altura aproximada del header */
+}
+
+:deep(.component-dialog .q-card) {
+  margin-top: 0 !important;
+}
+
+/* Nuevos estilos para el buscador */
+.filtros-panel {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 8px;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 1000;
+}
+
+.sugerencias-menu {
+  z-index: 9999 !important;
 }
 </style>

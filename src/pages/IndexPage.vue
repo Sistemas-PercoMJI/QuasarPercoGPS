@@ -1,13 +1,89 @@
 <template>
-  <q-page class="flex flex-center">
-    <img
-      alt="Logo Perco"
-      src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
-      style="width: 200px; height: 200px"
-    />
+  <q-page id="map-page" class="full-height">
+    <div id="map" class="full-map"></div>
   </q-page>
 </template>
 
 <script setup>
-//juas juas juas
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useMap } from 'src/composables/useMap' // ✅ IMPORTACIÓN AQUÍ
+
+const { initMap, addMarker, cleanup } = useMap()
+const mapaListo = ref(false)
+
+onMounted(async () => {
+  try {
+    console.log('🗺️ Iniciando mapa Mapbox satelital...')
+
+    // Inicializar mapa
+    await initMap('map', [32.504421823945805, -116.9514484543167], 13)
+
+    // Pequeño delay para asegurar que el mapa esté completamente renderizado
+    setTimeout(() => {
+      addMarker(32.504421823945805, -116.9514484543167, {
+        popup: '<b>MJ Industrias</b><br>Ubicación principal',
+      })
+
+      mapaListo.value = true
+
+      console.log('✅ Mapa completamente listo')
+      console.log('✅ window.mapaGlobal disponible:', !!window.mapaGlobal)
+      console.log(
+        '✅ map-page._mapaAPI disponible:',
+        !!document.getElementById('map-page')?._mapaAPI,
+      )
+      if (window.mapaGlobal) {
+        console.log('✅ Funciones disponibles:', Object.keys(window.mapaGlobal))
+      }
+    }, 100)
+  } catch (error) {
+    console.error('❌ Error inicializando mapa:', error)
+  }
+
+  // Redibujado optimizado del mapa
+  let resizeTimeout
+  const handleResize = () => {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = setTimeout(() => {
+      const mapPage = document.getElementById('map-page')
+      if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+        mapPage._mapaAPI.map.invalidateSize(true)
+      }
+    }, 250)
+  }
+
+  window.addEventListener('resize', handleResize)
+
+  // Guardar referencia para limpiar después
+  window._resizeHandler = handleResize
+})
+
+onUnmounted(() => {
+  // Limpiar event listener
+  if (window._resizeHandler) {
+    window.removeEventListener('resize', window._resizeHandler)
+    delete window._resizeHandler
+  }
+
+  cleanup()
+
+  console.log('🧹 IndexPage desmontado, mapa limpiado')
+})
 </script>
+
+<style scoped>
+.full-height {
+  height: 100%;
+  overflow: hidden;
+}
+
+.full-map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
