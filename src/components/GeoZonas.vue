@@ -551,6 +551,9 @@ const items = ref([])
 // Cargar POIs al montar el componente
 onMounted(async () => {
   try {
+    // Inicializar array de marcadores
+    window.marcadoresEnMapa = []
+
     const poisCargados = await obtenerPOIs()
     items.value = poisCargados
     console.log('✅ POIs cargados:', poisCargados.length)
@@ -612,10 +615,12 @@ const opcionesGruposSelect = computed(() => {
 function cambiarVista(vista) {
   vistaActual.value = vista
   itemSeleccionado.value = null
+  limpiarTodosLosMarcadores()
 }
 
 function cerrarDrawer() {
   emit('close')
+  limpiarTodosLosMarcadores()
 }
 
 function seleccionarItem(item) {
@@ -763,11 +768,8 @@ function verEnMapa() {
   if (!itemMenu.value) return
 
   console.log('📍 Ver en mapa:', itemMenu.value)
-
-  // Cerrar el menú contextual
   menuContextualVisible.value = false
 
-  // Buscar el mapa
   const mapPage = document.querySelector('#map-page')
   if (mapPage && mapPage._mapaAPI) {
     const mapaAPI = mapPage._mapaAPI
@@ -775,81 +777,137 @@ function verEnMapa() {
     if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
       const { lat, lng } = itemMenu.value.coordenadas
 
-      // ⭐ 1. LIMPIAR COMPLETAMENTE el marcador anterior
-      if (window.marcadorVerEnMapa) {
-        try {
-          // Desactivar animaciones antes de eliminar
-          if (mapaAPI.map) {
-            mapaAPI.map.options.zoomAnimation = false
-          }
-          // Remover todos los eventos del marcador
-          window.marcadorVerEnMapa.off()
-          // Remover el marcador del mapa
-          mapaAPI.map.removeLayer(window.marcadorVerEnMapa)
-          // Limpiar completamente la referencia
-          window.marcadorVerEnMapa = null
-          console.log('🗑️ Marcador anterior limpiado completamente')
-        } catch (e) {
-          console.log('⚠️ Error al limpiar marcador:', e)
-        }
+      // ⭐ SOLUCIÓN COMPLETA - Manejo seguro de marcadores
+      limpiarTodosLosMarcadores()
+      // 1. Guardar referencia del mapa
+      const mapa = mapaAPI.map
+      if (!mapa || mapa._removed) {
+        console.error('❌ El mapa no está disponible')
+        return
       }
 
-      // ⭐ 2. ESPERAR a que se complete la limpieza
-      setTimeout(() => {
-        if (mapaAPI.L && mapaAPI.map && !mapaAPI.map._removed) {
+      // 2. Limpiar marcadores anteriores de forma SEGURA
+      if (window.marcadoresEnMapa) {
+        limpiarTodosLosMarcadores()
+        window.marcadoresEnMapa.forEach((marcador) => {
           try {
-            // ⭐ 3. CREAR NUEVO MARCADOR con configuración segura
-            window.marcadorVerEnMapa = mapaAPI.L.marker([lat, lng], {
-              icon: mapaAPI.L.icon({
-                iconUrl:
-                  'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-                shadowUrl:
-                  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41],
-              }),
-            })
-
-            // ⭐ 4. AGREGAR AL MAPA después de crear
-            window.marcadorVerEnMapa.addTo(mapaAPI.map)
-
-            // ⭐ 5. CONFIGURAR POPUP después de agregar al mapa
-            const popupContent = `
-              <div style="min-width: 200px;">
-                <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
-                <p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
-                  ${itemMenu.value.direccion}
-                </p>
-              </div>
-            `
-
-            window.marcadorVerEnMapa.bindPopup(popupContent)
-            window.marcadorVerEnMapa.openPopup()
-
-            console.log('✅ Marcador creado exitosamente')
-
-            // ⭐ 6. CENTRAR MAPA SIN ANIMACIONES COMPLEJAS
-            mapaAPI.map.setView([lat, lng], 18, {
-              animate: false, // ⭐ DESACTIVAR ANIMACIÓN TEMPORALMENTE
-            })
-
-            // ⭐ 7. REACTIVAR ANIMACIONES DESPUÉS (opcional)
-            setTimeout(() => {
-              if (mapaAPI.map && window.marcadorVerEnMapa) {
-                mapaAPI.map.options.zoomAnimation = true
-              }
-            }, 200)
-          } catch (error) {
-            console.error('❌ Error crítico al crear marcador:', error)
+            if (marcador && typeof marcador.remove === 'function') {
+              marcador.remove()
+            }
+          } catch (e) {
+            console.warn('⚠️ Error limpiando marcador:', e)
           }
-        }
-      }, 80) // Pequeño delay para asegurar limpieza
+        })
+      }
+
+      // 3. Inicializar array de marcadores
+      window.marcadoresEnMapa = window.marcadoresEnMapa || []
+
+      // 4. Crear nuevo marcador con configuración segura
+      try {
+        const iconoVerde = mapaAPI.L.icon({
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        })
+
+        const nuevoMarcador = mapaAPI.L.marker([lat, lng], {
+          icon: iconoVerde,
+        }).addTo(mapa)
+
+        const popupHTML = `
+          <div style="min-width: 200px;">
+            <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
+            <p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
+              ${itemMenu.value.direccion}
+            </p>
+          </div>
+        `
+
+        nuevoMarcador.bindPopup(popupHTML)
+
+        // 5. Agregar a la colección global
+        window.marcadoresEnMapa.push(nuevoMarcador)
+
+        // 6. Configurar evento para limpiar cuando se cierre el popup
+        nuevoMarcador.on('popupclose', function () {
+          setTimeout(() => {
+            try {
+              if (this && typeof this.remove === 'function') {
+                this.remove()
+                // Remover de la colección
+                const index = window.marcadoresEnMapa.indexOf(this)
+                if (index > -1) {
+                  window.marcadoresEnMapa.splice(index, 1)
+                }
+              }
+            } catch (e) {
+              console.warn('Error limpiando marcador al cerrar popup:', e)
+            }
+          }, 1000)
+        })
+
+        // 7. Centrar el mapa de forma segura
+        mapa.setView([lat, lng], 18, {
+          animate: true,
+          duration: 0.5,
+        })
+
+        // 8. Abrir popup después de un breve delay
+        setTimeout(() => {
+          if (nuevoMarcador && !nuevoMarcador._popup._isOpen) {
+            nuevoMarcador.openPopup()
+          }
+        }, 500)
+
+        console.log('✅ Marcador agregado correctamente')
+      } catch (error) {
+        console.error('❌ Error creando marcador:', error)
+      }
     }
 
     emit('item-seleccionado', itemMenu.value)
   }
+}
+function limpiarTodosLosMarcadores() {
+  console.log('🧹 Limpiando todos los marcadores...')
+
+  // Limpiar array de marcadores
+  if (window.marcadoresEnMapa && Array.isArray(window.marcadoresEnMapa)) {
+    console.log(`🗑️ Eliminando ${window.marcadoresEnMapa.length} marcadores...`)
+
+    window.marcadoresEnMapa.forEach((marcador, index) => {
+      try {
+        if (marcador && typeof marcador.remove === 'function') {
+          marcador.remove()
+          console.log(`✅ Marcador ${index} eliminado`)
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error limpiando marcador ${index}:`, e)
+      }
+    })
+    window.marcadoresEnMapa = []
+  }
+
+  // Limpiar referencia antigua
+  if (window.marcadorVerEnMapa) {
+    try {
+      if (typeof window.marcadorVerEnMapa.remove === 'function') {
+        window.marcadorVerEnMapa.remove()
+        console.log('✅ Marcador antiguo eliminado')
+      }
+      window.marcadorVerEnMapa = null
+    } catch (e) {
+      console.warn('⚠️ Error limpiando marcador antiguo:', e)
+    }
+  }
+
+  console.log('✅ Limpieza de marcadores completada')
 }
 
 function editarItem() {
@@ -950,6 +1008,7 @@ const eliminarItem = async () => {
         timeout: 3000,
       })
     } else {
+      limpiarTodosLosMarcadores
       alert(`Error al eliminar: ${err.message}`)
     }
   } finally {
