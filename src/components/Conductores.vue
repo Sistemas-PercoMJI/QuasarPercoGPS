@@ -207,19 +207,15 @@
 
           <q-separator class="q-my-md" />
 
-          <!-- Unidad asignada -->
+          <!-- Código de licencia de conducir -->
           <div class="detalle-section">
-            <div class="detalle-label">Unidad asignada</div>
-            <q-select
-              v-model="conductorEditando.UnidadAsignada"
-              :options="opcionesUnidades"
+            <div class="detalle-label">Código de licencia de conducir</div>
+            <q-input
+              v-model="conductorEditando.LicenciaConducirCodigo"
               outlined
               dense
-              emit-value
-              map-options
-              clearable
-              label="Seleccionar unidad"
-              @update:model-value="asignarUnidadAConductor"
+              placeholder="Ej: A1234567"
+              @blur="actualizarCampo('LicenciaConducirCodigo', conductorEditando.LicenciaConducirCodigo)"
             />
           </div>
 
@@ -272,6 +268,97 @@
                 />
               </template>
             </q-input>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Unidad asignada -->
+          <div class="detalle-section">
+            <div class="detalle-label">Unidad asignada</div>
+            <q-select
+              v-model="conductorEditando.UnidadAsignada"
+              :options="opcionesUnidades"
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
+              label="Seleccionar unidad"
+              @update:model-value="asignarUnidadAConductor"
+            />
+          </div>
+
+          <!-- Información de la unidad asignada -->
+          <div v-if="unidadAsignadaData" class="q-mt-md">
+            <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
+            
+            <q-separator class="q-my-md" />
+
+            <!-- Seguro de la unidad -->
+            <div class="detalle-section">
+              <div class="detalle-label">Código de seguro</div>
+              <q-input
+                :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
+                outlined
+                dense
+                readonly
+              />
+            </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- Fecha de vencimiento del seguro -->
+            <div class="detalle-section">
+              <div class="detalle-label">Vencimiento del seguro</div>
+              <q-input
+                :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
+                outlined
+                dense
+                readonly
+              >
+                <template v-slot:after>
+                  <q-badge 
+                    v-if="unidadAsignadaData.SeguroUnidadFecha"
+                    :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                    :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                  />
+                </template>
+              </q-input>
+            </div>
+
+            <q-separator class="q-my-md" />
+
+            <!-- Tarjeta de circulación -->
+            <div class="detalle-section">
+              <div class="detalle-label">Código de tarjeta de circulación</div>
+              <q-input
+                :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
+                outlined
+                dense
+                readonly
+              />
+            </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- Fecha de vencimiento de tarjeta de circulación -->
+            <div class="detalle-section">
+              <div class="detalle-label">Vencimiento de tarjeta de circulación</div>
+              <q-input
+                :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
+                outlined
+                dense
+                readonly
+              >
+                <template v-slot:after>
+                  <q-badge 
+                    v-if="unidadAsignadaData.TargetaCirculacionFecha"
+                    :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                    :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                  />
+                </template>
+              </q-input>
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -618,6 +705,64 @@ const esLicenciaVigente = computed(() => {
     fechaVencimiento = conductorEditando.value.LicenciaConducirFecha.toDate()
   } else {
     fechaVencimiento = new Date(conductorEditando.value.LicenciaConducirFecha)
+  }
+  
+  return fechaVencimiento > new Date()
+})
+
+// Computed para la unidad asignada
+const unidadAsignadaData = computed(() => {
+  if (!conductorEditando.value?.UnidadAsignada) return null
+  return obtenerUnidadDeConductor(conductorEditando.value.id)
+})
+
+const seguroUnidadFechaFormato = computed(() => {
+  if (!unidadAsignadaData.value?.SeguroUnidadFecha) return ''
+  
+  let fecha
+  if (unidadAsignadaData.value.SeguroUnidadFecha.toDate) {
+    fecha = unidadAsignadaData.value.SeguroUnidadFecha.toDate()
+  } else {
+    fecha = new Date(unidadAsignadaData.value.SeguroUnidadFecha)
+  }
+  
+  return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const esSeguroUnidadVigente = computed(() => {
+  if (!unidadAsignadaData.value?.SeguroUnidadFecha) return false
+  
+  let fechaVencimiento
+  if (unidadAsignadaData.value.SeguroUnidadFecha.toDate) {
+    fechaVencimiento = unidadAsignadaData.value.SeguroUnidadFecha.toDate()
+  } else {
+    fechaVencimiento = new Date(unidadAsignadaData.value.SeguroUnidadFecha)
+  }
+  
+  return fechaVencimiento > new Date()
+})
+
+const tarjetaCirculacionFechaFormato = computed(() => {
+  if (!unidadAsignadaData.value?.TargetaCirculacionFecha) return ''
+  
+  let fecha
+  if (unidadAsignadaData.value.TargetaCirculacionFecha.toDate) {
+    fecha = unidadAsignadaData.value.TargetaCirculacionFecha.toDate()
+  } else {
+    fecha = new Date(unidadAsignadaData.value.TargetaCirculacionFecha)
+  }
+  
+  return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const esTarjetaCirculacionVigente = computed(() => {
+  if (!unidadAsignadaData.value?.TargetaCirculacionFecha) return false
+  
+  let fechaVencimiento
+  if (unidadAsignadaData.value.TargetaCirculacionFecha.toDate) {
+    fechaVencimiento = unidadAsignadaData.value.TargetaCirculacionFecha.toDate()
+  } else {
+    fechaVencimiento = new Date(unidadAsignadaData.value.TargetaCirculacionFecha)
   }
   
   return fechaVencimiento > new Date()
