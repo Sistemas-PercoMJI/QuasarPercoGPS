@@ -20,22 +20,14 @@
       </div>
     </div>
 
-    <!-- Selector de todos los conductores -->
-    <div class="q-pa-sm q-px-md">
-      <q-checkbox
-        v-model="todosConductores"
-        label="Todos los conductores"
-        @update:model-value="seleccionarTodos"
-        dense
-      />
-      <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
+    <!-- Botones de acción - Solo en la parte superior -->
+    <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px;">
       <q-btn
         flat
         dense
         round
         icon="person_add"
         size="sm"
-        class="q-mr-xs"
         @click="abrirDialogNuevoConductor"
       >
         <q-tooltip>Agregar conductor</q-tooltip>
@@ -46,7 +38,6 @@
         round
         icon="create_new_folder"
         size="sm"
-        class="float-right"
         @click="abrirDialogNuevoGrupo"
       >
         <q-tooltip>Crear grupo</q-tooltip>
@@ -62,19 +53,8 @@
       </q-input>
     </div>
 
-    <!-- Filtro por grupo -->
-    <div class="q-px-md q-pb-sm">
-      <q-select
-        v-model="grupoSeleccionado"
-        outlined
-        dense
-        :options="opcionesGrupos"
-        label="Mostrar conductores"
-        emit-value
-        map-options
-        class="filter-select"
-      />
-    </div>
+    <!-- Filtro por grupo - ELIMINADO porque no se necesita -->
+    <!-- Los grupos se seleccionan haciendo clic en la lista de carpetas -->
 
     <!-- Lista de grupos (tipo carpetas) -->
     <div class="grupos-lista q-px-md q-pb-sm" v-if="gruposConductores.length > 0">
@@ -106,7 +86,7 @@
               round
               icon="more_vert"
               size="sm"
-              @click.stop="mostrarMenuGrupo(grupo)"
+              @click.stop="mostrarMenuGrupo($event, grupo)"
             />
           </q-item-section>
         </q-item>
@@ -159,7 +139,7 @@
               round
               icon="more_vert"
               size="sm"
-              @click.stop="mostrarMenuConductor(conductor)"
+              @click.stop="mostrarMenuConductor($event, conductor)"
             />
           </q-item-section>
         </q-item>
@@ -167,14 +147,14 @@
         <!-- Mensaje si no hay conductores -->
         <div v-if="conductoresFiltrados.length === 0 && !loading" class="no-data q-pa-md text-center">
           <q-icon name="person_off" size="48px" color="grey-5" />
-          <div class="text-grey-6 q-mt-sm">No hay conductores</div>
+          <div class="text-grey-6 q-mt-sm">No hay conductores en este grupo</div>
           <q-btn 
             flat 
             color="primary" 
-            label="Recargar" 
-            icon="refresh" 
+            label="Ver todos" 
+            icon="folder_open" 
             class="q-mt-md"
-            @click="recargarDatos"
+            @click="verTodosConductores"
           />
         </div>
       </q-list>
@@ -227,29 +207,24 @@
 
           <q-separator class="q-my-md" />
 
-          <!-- Unidad asignada -->
+          <!-- Código de licencia de conducir -->
           <div class="detalle-section">
-            <div class="detalle-label">Unidad asignada</div>
-            <q-select
-              v-model="conductorEditando.UnidadAsignada"
-              :options="opcionesUnidades"
+            <div class="detalle-label">Código de licencia de conducir</div>
+            <q-input
+              v-model="conductorEditando.LicenciaConducirCodigo"
               outlined
               dense
-              emit-value
-              map-options
-              clearable
-              label="Seleccionar unidad"
-              @update:model-value="asignarUnidadAConductor"
+              placeholder="Ej: A1234567"
+              @blur="actualizarCampo('LicenciaConducirCodigo', conductorEditando.LicenciaConducirCodigo)"
             />
           </div>
 
           <q-separator class="q-my-md" />
 
-          <!-- Licencia de conducir -->
-          <div class="detalle-section">
+          <!-- Licencia de conducir - SOLO VISUALIZACIÓN -->
+          <div class="detalle-section" v-if="conductorEditando?.LicenciaConducirFoto">
             <div class="detalle-label">Licencia de conducir</div>
             <q-btn
-              v-if="conductorEditando?.LicenciaConducirFoto"
               outline
               color="primary"
               label="Ver licencia"
@@ -257,26 +232,9 @@
               class="full-width"
               @click="verLicencia"
             />
-            <div v-else>
-              <input
-                ref="fileInput"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="handleFileUpload"
-              />
-              <q-btn
-                outline
-                color="primary"
-                label="Subir licencia"
-                icon="upload"
-                class="full-width"
-                @click="$refs.fileInput.click()"
-              />
-            </div>
           </div>
 
-          <q-separator class="q-my-md" />
+          <q-separator class="q-my-md" v-if="conductorEditando?.LicenciaConducirFoto" />
 
           <!-- Fecha de vencimiento -->
           <div class="detalle-section">
@@ -311,19 +269,98 @@
               </template>
             </q-input>
           </div>
-        </q-card-section>
 
-        <!-- Botones de acción -->
-        <q-card-actions class="q-pa-md q-gutter-sm">
-          <q-btn
-            outline
-            color="negative"
-            label="Eliminar conductor"
-            icon="delete"
-            class="full-width"
-            @click="confirmarEliminarConductor"
-          />
-        </q-card-actions>
+          <q-separator class="q-my-md" />
+
+          <!-- Unidad asignada -->
+          <div class="detalle-section">
+            <div class="detalle-label">Unidad asignada</div>
+            <q-select
+              v-model="conductorEditando.UnidadAsignada"
+              :options="opcionesUnidades"
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
+              label="Seleccionar unidad"
+              @update:model-value="asignarUnidadAConductor"
+            />
+          </div>
+
+          <!-- Información de la unidad asignada -->
+          <div v-if="unidadAsignadaData" class="q-mt-md">
+            <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
+            
+            <q-separator class="q-my-md" />
+
+            <!-- Seguro de la unidad -->
+            <div class="detalle-section">
+              <div class="detalle-label">Código de seguro</div>
+              <q-input
+                :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
+                outlined
+                dense
+                readonly
+              />
+            </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- Fecha de vencimiento del seguro -->
+            <div class="detalle-section">
+              <div class="detalle-label">Vencimiento del seguro</div>
+              <q-input
+                :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
+                outlined
+                dense
+                readonly
+              >
+                <template v-slot:after>
+                  <q-badge 
+                    v-if="unidadAsignadaData.SeguroUnidadFecha"
+                    :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                    :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                  />
+                </template>
+              </q-input>
+            </div>
+
+            <q-separator class="q-my-md" />
+
+            <!-- Tarjeta de circulación -->
+            <div class="detalle-section">
+              <div class="detalle-label">Código de tarjeta de circulación</div>
+              <q-input
+                :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
+                outlined
+                dense
+                readonly
+              />
+            </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- Fecha de vencimiento de tarjeta de circulación -->
+            <div class="detalle-section">
+              <div class="detalle-label">Vencimiento de tarjeta de circulación</div>
+              <q-input
+                :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
+                outlined
+                dense
+                readonly
+              >
+                <template v-slot:after>
+                  <q-badge 
+                    v-if="unidadAsignadaData.TargetaCirculacionFecha"
+                    :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                    :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                  />
+                </template>
+              </q-input>
+            </div>
+          </div>
+        </q-card-section>
       </q-card>
     </q-dialog>
 
@@ -480,7 +517,13 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu v-model="menuGrupoVisible" context-menu>
+    <q-menu 
+      v-model="menuGrupoVisible" 
+      :target="menuGrupoTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 5]"
+    >
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="editarGrupo">
           <q-item-section avatar>
@@ -498,7 +541,13 @@
     </q-menu>
 
     <!-- Menú contextual para conductores -->
-    <q-menu v-model="menuConductorVisible" context-menu>
+    <q-menu 
+      v-model="menuConductorVisible"
+      :target="menuConductorTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 5]"
+    >
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="verDetalles">
           <q-item-section avatar>
@@ -524,13 +573,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useQuasar, date } from 'quasar'
+import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
-
-const $q = useQuasar()
 
 // Composable de Firebase
 const {
@@ -548,18 +595,15 @@ const {
   eliminarGrupo,
   agregarConductor,
   actualizarConductor,
-  eliminarConductor,
-  agregarConductoresAGrupo,
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-  subirFotoLicencia,
   asignarUnidad,
   obtenerUnidadDeConductor
 } = useConductoresFirebase()
 
 // Estado local
-const todosConductores = ref(true)
+const todosConductores = ref(false)
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
@@ -571,11 +615,12 @@ const dialogDetallesConductor = ref(false)
 const dialogVerLicencia = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
+const menuGrupoTarget = ref(null)
+const menuConductorTarget = ref(null)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
 const conductoresSeleccionados = ref([])
-const fileInput = ref(null)
 
 // Listeners de Firebase
 let unsubscribeConductores = null
@@ -592,19 +637,6 @@ const nuevoConductor = ref({
 })
 
 // Computed
-const totalConductores = computed(() => conductores.value.length)
-
-const opcionesGrupos = computed(() => {
-  const opciones = [{ label: 'Todos', value: 'todos' }]
-  gruposConductores.value.forEach((grupo) => {
-    opciones.push({
-      label: grupo.Nombre,
-      value: grupo.id
-    })
-  })
-  return opciones
-})
-
 const opcionesUnidades = computed(() => {
   return unidades.value.map(u => ({
     label: u.Unidad,
@@ -617,7 +649,7 @@ const conductoresFiltrados = computed(() => {
 
   // Filtrar por grupo
   if (grupoSeleccionado.value === 'todos') {
-    resultado = conductores.value
+    resultado = []
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
@@ -637,13 +669,6 @@ const conductoresFiltrados = computed(() => {
 
 const conductoresDisponiblesParaGrupo = computed(() => {
   let disponibles = conductores.value
-
-  // Si estamos editando, mostrar todos los conductores
-  // pero marcar los que ya están en el grupo
-  if (modoEdicion.value && grupoMenu.value) {
-    // Mostrar todos los conductores
-    disponibles = conductores.value
-  }
 
   // Filtrar por búsqueda
   if (busquedaConductoresGrupo.value) {
@@ -685,6 +710,64 @@ const esLicenciaVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
+// Computed para la unidad asignada
+const unidadAsignadaData = computed(() => {
+  if (!conductorEditando.value?.UnidadAsignada) return null
+  return obtenerUnidadDeConductor(conductorEditando.value.id)
+})
+
+const seguroUnidadFechaFormato = computed(() => {
+  if (!unidadAsignadaData.value?.SeguroUnidadFecha) return ''
+  
+  let fecha
+  if (unidadAsignadaData.value.SeguroUnidadFecha.toDate) {
+    fecha = unidadAsignadaData.value.SeguroUnidadFecha.toDate()
+  } else {
+    fecha = new Date(unidadAsignadaData.value.SeguroUnidadFecha)
+  }
+  
+  return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const esSeguroUnidadVigente = computed(() => {
+  if (!unidadAsignadaData.value?.SeguroUnidadFecha) return false
+  
+  let fechaVencimiento
+  if (unidadAsignadaData.value.SeguroUnidadFecha.toDate) {
+    fechaVencimiento = unidadAsignadaData.value.SeguroUnidadFecha.toDate()
+  } else {
+    fechaVencimiento = new Date(unidadAsignadaData.value.SeguroUnidadFecha)
+  }
+  
+  return fechaVencimiento > new Date()
+})
+
+const tarjetaCirculacionFechaFormato = computed(() => {
+  if (!unidadAsignadaData.value?.TargetaCirculacionFecha) return ''
+  
+  let fecha
+  if (unidadAsignadaData.value.TargetaCirculacionFecha.toDate) {
+    fecha = unidadAsignadaData.value.TargetaCirculacionFecha.toDate()
+  } else {
+    fecha = new Date(unidadAsignadaData.value.TargetaCirculacionFecha)
+  }
+  
+  return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const esTarjetaCirculacionVigente = computed(() => {
+  if (!unidadAsignadaData.value?.TargetaCirculacionFecha) return false
+  
+  let fechaVencimiento
+  if (unidadAsignadaData.value.TargetaCirculacionFecha.toDate) {
+    fechaVencimiento = unidadAsignadaData.value.TargetaCirculacionFecha.toDate()
+  } else {
+    fechaVencimiento = new Date(unidadAsignadaData.value.TargetaCirculacionFecha)
+  }
+  
+  return fechaVencimiento > new Date()
+})
+
 // Methods
 function obtenerIniciales(nombre) {
   if (!nombre) return '??'
@@ -693,13 +776,14 @@ function obtenerIniciales(nombre) {
   return (palabras[0][0] + (palabras[1]?.[0] || '')).toUpperCase()
 }
 
-function seleccionarTodos(valor) {
-  grupoSeleccionado.value = valor ? 'todos' : grupoSeleccionado.value
-}
-
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   todosConductores.value = false
+}
+
+function verTodosConductores() {
+  grupoSeleccionado.value = 'todos'
+  todosConductores.value = true
 }
 
 function seleccionarConductor(conductor) {
@@ -728,14 +812,14 @@ async function recargarDatos() {
       obtenerGruposConductores()
     ])
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Datos recargados correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
     console.error('Error al recargar:', error)
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al recargar: ' + error.message,
       icon: 'error'
@@ -747,82 +831,19 @@ async function sincronizarDatos() {
   await recargarDatos()
 }
 
-async function handleFileUpload(event) {
-  const file = event.target.files[0]
-  if (!file) return
-
-  if (!conductorEditando.value?.id) {
-    $q.notify({
-      type: 'warning',
-      message: 'No hay conductor seleccionado',
-      icon: 'warning'
-    })
-    return
-  }
-
-  // Validar que sea una imagen
-  if (!file.type.startsWith('image/')) {
-    $q.notify({
-      type: 'negative',
-      message: 'Por favor selecciona una imagen válida',
-      icon: 'error'
-    })
-    return
-  }
-
-  // Validar tamaño (max 5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    $q.notify({
-      type: 'negative',
-      message: 'La imagen es muy grande. Máximo 5MB',
-      icon: 'error'
-    })
-    return
-  }
-
-  try {
-    $q.loading.show({
-      message: 'Subiendo licencia...'
-    })
-
-    const fotoURL = await subirFotoLicencia(conductorEditando.value.id, file)
-    
-    // Actualizar el conductor editando
-    conductorEditando.value.LicenciaConducirFoto = fotoURL
-
-    $q.notify({
-      type: 'positive',
-      message: 'Licencia subida correctamente',
-      icon: 'check_circle'
-    })
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: 'Error al subir licencia: ' + error.message,
-      icon: 'error'
-    })
-  } finally {
-    $q.loading.hide()
-    // Limpiar el input
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
-  }
-}
-
 async function actualizarCampo(campo, valor) {
   if (!conductorEditando.value?.id) return
 
   try {
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Campo actualizado correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
       icon: 'error'
@@ -843,13 +864,13 @@ async function actualizarFechaVencimiento(fecha) {
 
     conductorEditando.value.LicenciaConducirFecha = fechaDate
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Fecha actualizada correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al actualizar fecha: ' + error.message,
       icon: 'error'
@@ -863,13 +884,13 @@ async function asignarUnidadAConductor(unidadId) {
   try {
     await asignarUnidad(conductorEditando.value.id, unidadId)
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Unidad asignada correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al asignar unidad: ' + error.message,
       icon: 'error'
@@ -903,7 +924,7 @@ async function crearNuevoConductor() {
       LicenciaConducirFecha: null
     })
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Conductor creado correctamente',
       icon: 'check_circle'
@@ -911,7 +932,7 @@ async function crearNuevoConductor() {
 
     dialogNuevoConductor.value = false
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al crear conductor: ' + error.message,
       icon: 'error'
@@ -930,18 +951,14 @@ function toggleConductor(conductorId) {
 
 async function guardarGrupo() {
   try {
-    if (modoEdicion.value) {
+    if (modoEdicion.value && grupoMenu.value) {
       // Actualizar grupo existente
       await actualizarGrupo(grupoMenu.value.id, {
-        Nombre: nuevoGrupo.value.Nombre
+        Nombre: nuevoGrupo.value.Nombre,
+        ConductoresIds: conductoresSeleccionados.value
       })
 
-      // Agregar nuevos conductores si hay seleccionados
-      if (conductoresSeleccionados.value.length > 0) {
-        await agregarConductoresAGrupo(grupoMenu.value.id, conductoresSeleccionados.value)
-      }
-
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Grupo actualizado correctamente',
         icon: 'check_circle'
@@ -953,7 +970,7 @@ async function guardarGrupo() {
         ConductoresIds: conductoresSeleccionados.value
       })
 
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Grupo creado correctamente',
         icon: 'check_circle'
@@ -962,7 +979,8 @@ async function guardarGrupo() {
 
     dialogNuevoGrupo.value = false
   } catch (error) {
-    $q.notify({
+    console.error('Error al guardar grupo:', error)
+    Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error'
@@ -970,49 +988,14 @@ async function guardarGrupo() {
   }
 }
 
-function confirmarEliminarConductor() {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar al conductor ${conductorEditando.value?.Nombre}?`,
-    cancel: {
-      label: 'Cancelar',
-      color: 'grey',
-      flat: true
-    },
-    ok: {
-      label: 'Eliminar',
-      color: 'negative',
-      flat: true
-    },
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await eliminarConductor(conductorEditando.value.id)
-      dialogDetallesConductor.value = false
-      conductorSeleccionado.value = null
-      conductorEditando.value = {}
-
-      $q.notify({
-        type: 'positive',
-        message: 'Conductor eliminado correctamente',
-        icon: 'check_circle'
-      })
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar: ' + error.message,
-        icon: 'error'
-      })
-    }
-  })
-}
-
-function mostrarMenuGrupo(grupo) {
+function mostrarMenuGrupo(event, grupo) {
+  menuGrupoTarget.value = event.target
   grupoMenu.value = grupo
   menuGrupoVisible.value = true
 }
 
-function mostrarMenuConductor(conductor) {
+function mostrarMenuConductor(event, conductor) {
+  menuConductorTarget.value = event.target
   conductorMenu.value = conductor
   menuConductorVisible.value = true
 }
@@ -1026,44 +1009,30 @@ function editarGrupo() {
   dialogNuevoGrupo.value = true
 }
 
-function confirmarEliminarGrupo() {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.Nombre}?`,
-    cancel: {
-      label: 'Cancelar',
-      color: 'grey',
-      flat: true
-    },
-    ok: {
-      label: 'Eliminar',
-      color: 'negative',
-      flat: true
-    },
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await eliminarGrupo(grupoMenu.value.id)
+async function confirmarEliminarGrupo() {
+  try {
+    // Eliminar directamente sin confirmación
+    await eliminarGrupo(grupoMenu.value.id)
 
-      // Si estábamos viendo este grupo, cambiar a "todos"
-      if (grupoSeleccionado.value === grupoMenu.value.id) {
-        grupoSeleccionado.value = 'todos'
-        todosConductores.value = true
-      }
-
-      $q.notify({
-        type: 'positive',
-        message: 'Grupo eliminado correctamente',
-        icon: 'check_circle'
-      })
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar: ' + error.message,
-        icon: 'error'
-      })
+    // Si estábamos viendo este grupo, cambiar a "todos"
+    if (grupoSeleccionado.value === grupoMenu.value.id) {
+      grupoSeleccionado.value = 'todos'
+      todosConductores.value = false
     }
-  })
+
+    Notify.create({
+      type: 'positive',
+      message: 'Grupo eliminado correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    console.error('Error al eliminar grupo:', error)
+    Notify.create({
+      type: 'negative',
+      message: 'Error al eliminar: ' + error.message,
+      icon: 'error'
+    })
+  }
 }
 
 function verDetalles() {
@@ -1072,7 +1041,7 @@ function verDetalles() {
 
 async function quitarDeGrupo() {
   if (grupoSeleccionado.value === 'todos') {
-    $q.notify({
+    Notify.create({
       type: 'warning',
       message: 'Selecciona un grupo primero',
       icon: 'warning'
@@ -1083,13 +1052,13 @@ async function quitarDeGrupo() {
   try {
     await removerConductorDeGrupo(grupoSeleccionado.value, conductorMenu.value.id)
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Conductor removido del grupo',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error'
@@ -1121,7 +1090,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('❌ Error al conectar con Firebase:', error)
     
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al conectar con Firebase: ' + error.message,
       icon: 'error',

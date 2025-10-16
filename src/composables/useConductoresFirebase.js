@@ -19,7 +19,7 @@ import {
   getDownloadURL,
   deleteObject 
 } from 'firebase/storage'
-import { db, storage, auth } from 'src/firebase/firebaseConfig' // Ajusta la ruta según tu configuración
+import { db, storage, auth } from 'src/firebase/firebaseConfig'
 
 export function useConductoresFirebase() {
   // Estado reactivo
@@ -129,51 +129,55 @@ export function useConductoresFirebase() {
 
   // Eliminar conductor
   const eliminarConductor = async (conductorId) => {
-  loading.value = true
-  error.value = null
-  try {
-    // 1. Obtener los datos del conductor para encontrar la URL de la foto
-    const conductorDocRef = doc(conductoresRef, conductorId)
-    const conductorSnap = await getDoc(conductorDocRef)
+    loading.value = true
+    error.value = null
+    try {
+      // 1. Obtener los datos del conductor para encontrar la URL de la foto
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
 
-    if (!conductorSnap.exists()) {
-      throw new Error('El conductor no existe.')
-    }
-
-    const conductorData = conductorSnap.data()
-
-    // 2. Eliminar la foto de licencia de Storage si existe
-    if (conductorData.LicenciaConducirFoto) {
-      const fotoRef = storageRef(storage, conductorData.LicenciaConducirFoto)
-      await deleteObject(fotoRef) // <-- ¡AQUÍ USAMOS deleteObject!
-      console.log('Foto de licencia eliminada de Storage.')
-    }
-
-    // 3. Eliminar al conductor de todos los grupos donde esté asignado
-    const grupos = await obtenerGruposConductores()
-    for (const grupo of grupos) {
-      if (grupo.ConductoresIds?.includes(conductorId)) {
-        await removerConductorDeGrupo(grupo.id, conductorId)
+      if (!conductorSnap.exists()) {
+        throw new Error('El conductor no existe.')
       }
+
+      const conductorData = conductorSnap.data()
+
+      // 2. Eliminar la foto de licencia de Storage si existe
+      if (conductorData.LicenciaConducirFoto) {
+        try {
+          const fotoRef = storageRef(storage, conductorData.LicenciaConducirFoto)
+          await deleteObject(fotoRef)
+          console.log('Foto de licencia eliminada de Storage.')
+        } catch (storageError) {
+          console.warn('Error al eliminar foto (puede que ya no exista):', storageError)
+        }
+      }
+
+      // 3. Eliminar al conductor de todos los grupos donde esté asignado
+      const grupos = await obtenerGruposConductores()
+      for (const grupo of grupos) {
+        if (grupo.ConductoresIds?.includes(conductorId)) {
+          await removerConductorDeGrupo(grupo.id, conductorId)
+        }
+      }
+
+      // 4. Eliminar el documento del conductor de Firestore
+      await deleteDoc(conductorDocRef)
+
+      // 5. Actualizar el estado local de forma eficiente (sin recargar todo)
+      conductores.value = conductores.value.filter(c => c.id !== conductorId)
+
+      console.log('Conductor eliminado correctamente.')
+      return true
+
+    } catch (err) {
+      console.error('Error al eliminar conductor:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
     }
-
-    // 4. Eliminar el documento del conductor de Firestore
-    await deleteDoc(conductorDocRef)
-
-    // 5. Actualizar el estado local de forma eficiente (sin recargar todo)
-    conductores.value = conductores.value.filter(c => c.id !== conductorId)
-
-    console.log('Conductor eliminado correctamente.')
-    return true
-
-  } catch (err) {
-    console.error('Error al eliminar conductor:', err)
-    error.value = err.message
-    throw err
-  } finally {
-    loading.value = false
   }
-}
 
   // Subir foto de licencia
   const subirFotoLicencia = async (conductorId, file) => {
@@ -317,11 +321,27 @@ export function useConductoresFirebase() {
     try {
       const gruposRef = getGruposRef()
       const docRef = doc(gruposRef, grupoId)
-      await updateDoc(docRef, {
+      
+      // Preparar datos para actualizar
+      const updateData = {
         ...data,
         updatedAt: Timestamp.now()
-      })
-      await obtenerGruposConductores()
+      }
+      
+      await updateDoc(docRef, updateData)
+      
+      // Actualizar el estado local inmediatamente
+      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      if (grupoIndex !== -1) {
+        gruposConductores.value[grupoIndex] = {
+          ...gruposConductores.value[grupoIndex],
+          ...updateData,
+          id: grupoId
+        }
+      }
+      
+      console.log('Grupo actualizado correctamente')
+      return true
     } catch (err) {
       console.error('Error al actualizar grupo:', err)
       error.value = err.message
@@ -338,7 +358,12 @@ export function useConductoresFirebase() {
     try {
       const gruposRef = getGruposRef()
       await deleteDoc(doc(gruposRef, grupoId))
-      await obtenerGruposConductores()
+      
+      // Actualizar el estado local inmediatamente
+      gruposConductores.value = gruposConductores.value.filter(g => g.id !== grupoId)
+      
+      console.log('Grupo eliminado correctamente')
+      return true
     } catch (err) {
       console.error('Error al eliminar grupo:', err)
       error.value = err.message
@@ -369,7 +394,13 @@ export function useConductoresFirebase() {
         updatedAt: Timestamp.now()
       })
       
-      await obtenerGruposConductores()
+      // Actualizar el estado local inmediatamente
+      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      if (grupoIndex !== -1) {
+        gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
+      }
+      
+      return true
     } catch (err) {
       console.error('Error al agregar conductores a grupo:', err)
       error.value = err.message
@@ -381,7 +412,6 @@ export function useConductoresFirebase() {
 
   // Remover conductor de grupo
   const removerConductorDeGrupo = async (grupoId, conductorId) => {
-    loading.value = true
     error.value = null
     try {
       const gruposRef = getGruposRef()
@@ -400,13 +430,18 @@ export function useConductoresFirebase() {
         updatedAt: Timestamp.now()
       })
       
-      await obtenerGruposConductores()
+      // Actualizar el estado local inmediatamente
+      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      if (grupoIndex !== -1) {
+        gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
+      }
+      
+      console.log('Conductor removido del grupo correctamente')
+      return true
     } catch (err) {
       console.error('Error al remover conductor de grupo:', err)
       error.value = err.message
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
