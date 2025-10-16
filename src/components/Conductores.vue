@@ -485,16 +485,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue'
-import { date } from 'quasar'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
-
-// Obtener instancia de Quasar correctamente
-const instance = getCurrentInstance()
-const $q = instance.appContext.config.globalProperties.$q
 
 // Composable de Firebase
 const {
@@ -671,14 +667,14 @@ async function recargarDatos() {
       obtenerGruposConductores()
     ])
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Datos recargados correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
     console.error('Error al recargar:', error)
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al recargar: ' + error.message,
       icon: 'error'
@@ -696,13 +692,13 @@ async function actualizarCampo(campo, valor) {
   try {
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Campo actualizado correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
       icon: 'error'
@@ -723,13 +719,13 @@ async function actualizarFechaVencimiento(fecha) {
 
     conductorEditando.value.LicenciaConducirFecha = fechaDate
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Fecha actualizada correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al actualizar fecha: ' + error.message,
       icon: 'error'
@@ -743,13 +739,13 @@ async function asignarUnidadAConductor(unidadId) {
   try {
     await asignarUnidad(conductorEditando.value.id, unidadId)
     
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Unidad asignada correctamente',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al asignar unidad: ' + error.message,
       icon: 'error'
@@ -783,7 +779,7 @@ async function crearNuevoConductor() {
       LicenciaConducirFecha: null
     })
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Conductor creado correctamente',
       icon: 'check_circle'
@@ -791,7 +787,7 @@ async function crearNuevoConductor() {
 
     dialogNuevoConductor.value = false
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al crear conductor: ' + error.message,
       icon: 'error'
@@ -817,7 +813,7 @@ async function guardarGrupo() {
         ConductoresIds: conductoresSeleccionados.value
       })
 
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Grupo actualizado correctamente',
         icon: 'check_circle'
@@ -829,7 +825,7 @@ async function guardarGrupo() {
         ConductoresIds: conductoresSeleccionados.value
       })
 
-      $q.notify({
+      Notify.create({
         type: 'positive',
         message: 'Grupo creado correctamente',
         icon: 'check_circle'
@@ -839,7 +835,7 @@ async function guardarGrupo() {
     dialogNuevoGrupo.value = false
   } catch (error) {
     console.error('Error al guardar grupo:', error)
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error'
@@ -868,44 +864,30 @@ function editarGrupo() {
   dialogNuevoGrupo.value = true
 }
 
-function confirmarEliminarGrupo() {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar el grupo "${grupoMenu.value?.Nombre}"? Los conductores no se eliminarán, solo el grupo.`,
-    cancel: {
-      label: 'Cancelar',
-      color: 'grey',
-      flat: true
-    },
-    ok: {
-      label: 'Eliminar',
-      color: 'negative',
-      flat: true
-    },
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await eliminarGrupo(grupoMenu.value.id)
+async function confirmarEliminarGrupo() {
+  try {
+    // Eliminar directamente sin confirmación
+    await eliminarGrupo(grupoMenu.value.id)
 
-      // Si estábamos viendo este grupo, cambiar a "todos"
-      if (grupoSeleccionado.value === grupoMenu.value.id) {
-        grupoSeleccionado.value = 'todos'
-        todosConductores.value = false
-      }
-
-      $q.notify({
-        type: 'positive',
-        message: 'Grupo eliminado correctamente',
-        icon: 'check_circle'
-      })
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar: ' + error.message,
-        icon: 'error'
-      })
+    // Si estábamos viendo este grupo, cambiar a "todos"
+    if (grupoSeleccionado.value === grupoMenu.value.id) {
+      grupoSeleccionado.value = 'todos'
+      todosConductores.value = false
     }
-  })
+
+    Notify.create({
+      type: 'positive',
+      message: 'Grupo eliminado correctamente',
+      icon: 'check_circle'
+    })
+  } catch (error) {
+    console.error('Error al eliminar grupo:', error)
+    Notify.create({
+      type: 'negative',
+      message: 'Error al eliminar: ' + error.message,
+      icon: 'error'
+    })
+  }
 }
 
 function verDetalles() {
@@ -914,7 +896,7 @@ function verDetalles() {
 
 async function quitarDeGrupo() {
   if (grupoSeleccionado.value === 'todos') {
-    $q.notify({
+    Notify.create({
       type: 'warning',
       message: 'Selecciona un grupo primero',
       icon: 'warning'
@@ -925,13 +907,13 @@ async function quitarDeGrupo() {
   try {
     await removerConductorDeGrupo(grupoSeleccionado.value, conductorMenu.value.id)
 
-    $q.notify({
+    Notify.create({
       type: 'positive',
       message: 'Conductor removido del grupo',
       icon: 'check_circle'
     })
   } catch (error) {
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error'
@@ -963,7 +945,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('❌ Error al conectar con Firebase:', error)
     
-    $q.notify({
+    Notify.create({
       type: 'negative',
       message: 'Error al conectar con Firebase: ' + error.message,
       icon: 'error',
