@@ -8,7 +8,6 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  // where,
   orderBy,
 } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
@@ -18,13 +17,12 @@ export function useGeozonas(userId) {
   const loading = ref(false)
   const error = ref(null)
 
-  // Obtener todas las geozonas del usuario
+  // ✅ MODIFICAR ESTA FUNCIÓN
   const obtenerGeozonas = async () => {
     loading.value = true
     error.value = null
 
     try {
-      // CORRECCIÓN: Usar la subcolección de Geozonas dentro del documento del usuario
       const q = query(
         collection(db, 'Usuarios', userId, 'Geozonas'),
         orderBy('fechaCreacion', 'desc'),
@@ -34,13 +32,22 @@ export function useGeozonas(userId) {
       const geozonasData = []
 
       querySnapshot.forEach((doc) => {
-        geozonasData.push({
-          id: doc.id,
-          ...doc.data(),
-        })
+        const data = doc.data()
+
+        // ✅ CORRECCIÓN: Hacer el spread PRIMERO, luego sobrescribir
+        const geozona = {
+          ...data, // ← Primero todas las propiedades de Firebase
+          id: doc.id, // ← Agregar el ID
+          tipoGeozona: data.tipo, // ← Preservar el tipo original (circular/poligono)
+          tipo: 'geozona', // ← Sobrescribir con el tipo correcto para filtros
+        }
+
+        console.log('📦 Geozona transformada:', geozona)
+        geozonasData.push(geozona)
       })
 
       geozonas.value = geozonasData
+      console.log('✅ Geozonas transformadas:', geozonasData)
       return geozonasData
     } catch (err) {
       console.error('Error al obtener geozonas:', err)
@@ -51,7 +58,7 @@ export function useGeozonas(userId) {
     }
   }
 
-  // Crear una nueva geozona
+  // ✅ TAMBIÉN MODIFICAR crearGeozona para que guarde correctamente
   const crearGeozona = async (geozonaData) => {
     loading.value = true
     error.value = null
@@ -62,14 +69,18 @@ export function useGeozonas(userId) {
         fechaCreacion: new Date(),
       }
 
-      // CORRECCIÓN: Usar la subcolección de Geozonas dentro del documento del usuario
       const docRef = await addDoc(collection(db, 'Usuarios', userId, 'Geozonas'), dataConUsuario)
 
-      // Agregar la nueva geozona al array local
-      geozonas.value.unshift({
-        id: docRef.id,
-        ...dataConUsuario,
-      })
+      // ✅ CORRECCIÓN: Estructura correcta al agregar localmente
+      const nuevaGeozona = {
+        ...dataConUsuario, // ← Primero el spread
+        id: docRef.id, // ← Agregar ID
+        tipoGeozona: dataConUsuario.tipo, // ← Preservar tipo original
+        tipo: 'geozona', // ← Sobrescribir con el tipo correcto
+      }
+
+      geozonas.value.unshift(nuevaGeozona)
+      console.log('✅ Nueva geozona agregada localmente:', nuevaGeozona)
 
       return docRef.id
     } catch (err) {
@@ -81,13 +92,11 @@ export function useGeozonas(userId) {
     }
   }
 
-  // Actualizar una geozona existente
   const actualizarGeozona = async (id, geozonaData) => {
     loading.value = true
     error.value = null
 
     try {
-      // CORRECCIÓN: Usar la subcolección de Geozonas dentro del documento del usuario
       const geozonaRef = doc(db, 'Usuarios', userId, 'Geozonas', id)
       await updateDoc(geozonaRef, geozonaData)
 
@@ -97,6 +106,8 @@ export function useGeozonas(userId) {
         geozonas.value[index] = {
           ...geozonas.value[index],
           ...geozonaData,
+          tipo: 'geozona', // ✅ NUEVO: Mantener el tipo
+          tipoGeozona: geozonaData.tipo || geozonas.value[index].tipoGeozona, // ✅ NUEVO
         }
       }
 
@@ -110,16 +121,13 @@ export function useGeozonas(userId) {
     }
   }
 
-  // Eliminar una geozona
   const eliminarGeozona = async (id) => {
     loading.value = true
     error.value = null
 
     try {
-      // CORRECCIÓN: Usar la subcolección de Geozonas dentro del documento del usuario
       await deleteDoc(doc(db, 'Usuarios', userId, 'Geozonas', id))
 
-      // Eliminar la geozona del array local
       geozonas.value = geozonas.value.filter((g) => g.id !== id)
 
       return true

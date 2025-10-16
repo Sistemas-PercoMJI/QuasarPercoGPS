@@ -7,15 +7,15 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  //query,
+  //orderBy,
   serverTimestamp,
 } from 'firebase/firestore'
 
 export function usePOIs(userId) {
+  const pois = ref([])
   const loading = ref(false)
   const error = ref(null)
-
-  // Referencia a la subcolección POIS
-  const poisRef = collection(db, 'Usuarios', userId, 'POIS')
 
   // Crear nuevo POI
   const crearPOI = async (poiData) => {
@@ -23,18 +23,35 @@ export function usePOIs(userId) {
     error.value = null
 
     try {
-      const docRef = await addDoc(poisRef, {
+      console.log('📝 Creando POI para userId:', userId)
+      console.log('📝 Datos del POI:', poiData)
+
+      const dataConUsuario = {
         ...poiData,
-        tipo: 'poi',
+        fechaCreacion: new Date(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      })
+      }
 
-      console.log('✅ POI guardado con ID:', docRef.id)
+      const docRef = await addDoc(collection(db, 'Usuarios', userId, 'POIS'), dataConUsuario)
+
+      console.log('✅ POI creado con ID:', docRef.id)
+
+      const nuevoPOI = {
+        ...dataConUsuario,
+        id: docRef.id,
+        tipo: 'poi',
+      }
+
+      pois.value.unshift(nuevoPOI)
+      console.log('✅ Nuevo POI agregado localmente:', nuevoPOI)
+
       return docRef.id
     } catch (err) {
+      console.error('❌ Error al crear POI:', err)
+      console.error('❌ Código:', err.code)
+      console.error('❌ Mensaje:', err.message)
       error.value = err.message
-      console.error('❌ Error al guardar POI:', err)
       throw err
     } finally {
       loading.value = false
@@ -47,20 +64,52 @@ export function usePOIs(userId) {
     error.value = null
 
     try {
-      const querySnapshot = await getDocs(poisRef)
-      const pois = []
+      console.log('🔍 Obteniendo POIs para userId:', userId)
+      console.log('🔍 Ruta completa: Usuarios/', userId, '/POIS')
 
-      querySnapshot.forEach((doc) => {
-        pois.push({
-          id: doc.id,
-          ...doc.data(),
-        })
+      // Intentar primero sin orderBy para verificar si hay datos
+      const collectionRef = collection(db, 'Usuarios', userId, 'POIS')
+      const querySnapshot = await getDocs(collectionRef)
+
+      console.log('📦 Total de documentos POI encontrados:', querySnapshot.size)
+
+      if (querySnapshot.empty) {
+        console.warn('⚠️ No se encontraron POIs en la base de datos')
+        pois.value = []
+        return []
+      }
+
+      const poisData = []
+
+      querySnapshot.forEach((documento) => {
+        const data = documento.data()
+        console.log('📄 Documento POI:', documento.id, data)
+
+        const poi = {
+          ...data,
+          id: documento.id,
+          tipo: 'poi',
+        }
+
+        poisData.push(poi)
       })
 
-      return pois
+      // Ordenar manualmente por fechaCreacion si existe
+      poisData.sort((a, b) => {
+        if (a.fechaCreacion && b.fechaCreacion) {
+          return b.fechaCreacion - a.fechaCreacion
+        }
+        return 0
+      })
+
+      pois.value = poisData
+      console.log('✅ POIs transformados y ordenados:', poisData)
+      return poisData
     } catch (err) {
-      error.value = err.message
       console.error('❌ Error al obtener POIs:', err)
+      console.error('❌ Código:', err.code)
+      console.error('❌ Mensaje:', err.message)
+      error.value = err.message
       throw err
     } finally {
       loading.value = false
@@ -79,10 +128,20 @@ export function usePOIs(userId) {
         updatedAt: serverTimestamp(),
       })
 
+      const index = pois.value.findIndex((p) => p.id === poiId)
+      if (index !== -1) {
+        pois.value[index] = {
+          ...pois.value[index],
+          ...poiData,
+          tipo: 'poi',
+        }
+      }
+
       console.log('✅ POI actualizado:', poiId)
+      return true
     } catch (err) {
-      error.value = err.message
       console.error('❌ Error al actualizar POI:', err)
+      error.value = err.message
       throw err
     } finally {
       loading.value = false
@@ -98,10 +157,13 @@ export function usePOIs(userId) {
       const poiDoc = doc(db, 'Usuarios', userId, 'POIS', poiId)
       await deleteDoc(poiDoc)
 
+      pois.value = pois.value.filter((p) => p.id !== poiId)
+
       console.log('✅ POI eliminado:', poiId)
+      return true
     } catch (err) {
-      error.value = err.message
       console.error('❌ Error al eliminar POI:', err)
+      error.value = err.message
       throw err
     } finally {
       loading.value = false
@@ -109,6 +171,7 @@ export function usePOIs(userId) {
   }
 
   return {
+    pois,
     loading,
     error,
     crearPOI,

@@ -246,7 +246,7 @@
                 <div class="text-caption text-grey-7">
                   <q-icon name="straighten" size="14px" />
                   {{
-                    geozona.tipo === 'poligono'
+                    geozona.tipoGeozona === 'poligono'
                       ? `${geozona.puntos.length} puntos`
                       : `Radio: ${geozona.radio}m`
                   }}
@@ -761,7 +761,18 @@ onUnmounted(() => {
 })
 
 const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
-const geozonas = computed(() => items.value.filter((i) => i.tipo === 'geozona'))
+const geozonas = computed(() => {
+  const resultado = items.value.filter((i) => i.tipo === 'geozona')
+  console.log('🔍 DEBUG geozonas computed:')
+  console.log('  - items.value total:', items.value.length)
+  console.log('  - items.value:', items.value)
+  console.log('  - geozonas filtradas:', resultado)
+  console.log(
+    '  - tipos encontrados:',
+    items.value.map((i) => ({ id: i.id, tipo: i.tipo, tipoGeozona: i.tipoGeozona })),
+  )
+  return resultado
+})
 const totalPOIs = computed(() => pois.value.length)
 const totalGeozonas = computed(() => geozonas.value.length)
 const gruposPOI = computed(() => grupos.value.length)
@@ -784,16 +795,25 @@ const poisFiltrados = computed(() => {
 
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
+  console.log('🔍 DEBUG geozonasFiltradas:')
+  console.log('  - geozonas.value:', geozonas.value)
+  console.log('  - grupoSeleccionadoGZ:', grupoSeleccionadoGZ.value)
+  console.log('  - busquedaGeozona:', busquedaGeozona.value)
+
   if (grupoSeleccionadoGZ.value) {
     resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
+    console.log('  - después de filtrar por grupo:', resultado)
   }
   if (busquedaGeozona.value) {
     resultado = resultado.filter(
       (g) =>
-        g.nombre.toLowerCase().includes(busquedaGeozona.value.toLowerCase()) ||
-        g.direccion.toLowerCase().includes(busquedaGeozona.value.toLowerCase()),
+        g.nombre?.toLowerCase().includes(busquedaGeozona.value.toLowerCase()) ||
+        g.direccion?.toLowerCase().includes(busquedaGeozona.value.toLowerCase()),
     )
+    console.log('  - después de filtrar por búsqueda:', resultado)
   }
+
+  console.log('  - RESULTADO FINAL:', resultado)
   return resultado
 })
 
@@ -1273,7 +1293,7 @@ const guardarGeozona = async () => {
     // Preparar datos de la geozona
     const geozonaData = {
       nombre: nuevaGeozona.value.nombre,
-      tipo: nuevaGeozona.value.tipo,
+      tipo: nuevaGeozona.value.tipo, // ✅ MANTENER: esto es 'circular' o 'poligono' y es correcto
       grupoId: nuevaGeozona.value.grupoId,
       notas: nuevaGeozona.value.notas || '',
     }
@@ -1291,16 +1311,16 @@ const guardarGeozona = async () => {
       // ACTUALIZAR GEOZONA EXISTENTE
       await actualizarGeozona(nuevaGeozona.value.id, geozonaData)
 
-      // Actualizar en el array local
       const index = items.value.findIndex((i) => i.id === nuevaGeozona.value.id)
       if (index > -1) {
         items.value[index] = {
           ...items.value[index],
           ...geozonaData,
+          tipo: 'geozona', // ✅ NUEVO: Mantener tipo correcto
+          tipoGeozona: geozonaData.tipo, // ✅ NUEVO
         }
       }
 
-      // Actualizar geozona en el mapa
       if (mapPage && mapPage._mapaAPI) {
         if (nuevaGeozona.value.tipo === 'circular') {
           mapPage._mapaAPI.actualizarCirculo(
@@ -1327,7 +1347,6 @@ const guardarGeozona = async () => {
       // CREAR NUEVA GEOZONA
       const nuevoId = await crearGeozona(geozonaData)
 
-      // Confirmar geozona temporal en el mapa
       if (mapPage && mapPage._mapaAPI) {
         if (nuevaGeozona.value.tipo === 'circular') {
           mapPage._mapaAPI.confirmarCirculoTemporal(nuevaGeozona.value.nombre)
@@ -1336,10 +1355,11 @@ const guardarGeozona = async () => {
         }
       }
 
-      // Agregar al array local con el ID de Firebase
+      // ✅ NUEVO: Agregar con estructura correcta
       items.value.push({
         id: nuevoId,
         tipo: 'geozona',
+        tipoGeozona: geozonaData.tipo,
         ...geozonaData,
       })
 
@@ -1350,7 +1370,6 @@ const guardarGeozona = async () => {
       })
     }
 
-    // Resetear formulario
     nuevaGeozona.value = {
       nombre: '',
       tipo: null,
@@ -1379,25 +1398,48 @@ function mostrarMenuContextual(item) {
 }
 
 function verEnMapa() {
+  console.group('🔍 DEBUG verEnMapa')
+  console.log('itemMenu.value completo:', itemMenu.value)
+  console.log('tipo:', itemMenu.value?.tipo)
+  console.log('coordenadas:', itemMenu.value?.coordenadas)
+  console.log('¿Es POI?', itemMenu.value?.tipo === 'poi')
+  console.log('¿Es Geozona?', itemMenu.value?.tipo === 'geozona')
+  console.groupEnd()
   if (!itemMenu.value) return
 
   console.log('📍 Ver en mapa:', itemMenu.value)
+  console.log('📍 Tipo de item:', itemMenu.value.tipo)
+  console.log('📍 Coordenadas:', itemMenu.value.coordenadas)
 
-  // Cerrar el menú contextual
   menuContextualVisible.value = false
 
-  // Buscar el mapa
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
     console.error('❌ No se encontró la API del mapa.')
+    $q.notify({
+      type: 'negative',
+      message: 'No se pudo acceder al mapa',
+      icon: 'error',
+    })
     return
   }
 
   const mapaAPI = mapPage._mapaAPI
 
-  // Verificar si es un POI o una geozona
-  if (itemMenu.value.tipo === 'poi' && itemMenu.value.coordenadas) {
-    // Lógica para POIs (código existente)
+  // ✅ VERIFICAR: Comprobar si es POI
+  if (itemMenu.value.tipo === 'poi') {
+    console.log('✅ Es un POI, mostrando en mapa...')
+
+    if (!itemMenu.value.coordenadas) {
+      console.error('❌ El POI no tiene coordenadas:', itemMenu.value)
+      $q.notify({
+        type: 'negative',
+        message: 'Este punto no tiene coordenadas válidas.',
+        icon: 'error',
+      })
+      return
+    }
+
     const { lat, lng } = itemMenu.value.coordenadas
 
     if (typeof lat !== 'number' || typeof lng !== 'number') {
@@ -1409,6 +1451,8 @@ function verEnMapa() {
       return
     }
 
+    console.log('📍 Centrando mapa en:', lat, lng)
+
     const popupContent = `
       <div style="min-width: 200px;">
         <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
@@ -1418,31 +1462,43 @@ function verEnMapa() {
       </div>
     `
 
+    // Eliminar marcador anterior si existe
     if (marcadorActivo.value) {
-      marcadorActivo.value.setLatLng([lat, lng])
-      marcadorActivo.value.setPopupContent(popupContent)
-    } else {
-      marcadorActivo.value = mapaAPI.L.marker([lat, lng], {
-        icon: mapaAPI.L.icon({
-          iconUrl:
-            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl:
-            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41],
-        }),
-      }).addTo(mapaAPI.map)
-
-      marcadorActivo.value.bindPopup(popupContent)
+      console.log('🗑️ Eliminando marcador anterior')
+      mapaAPI.map.removeLayer(marcadorActivo.value)
+      marcadorActivo.value = null
     }
 
+    // Crear nuevo marcador
+    marcadorActivo.value = mapaAPI.L.marker([lat, lng], {
+      icon: mapaAPI.L.icon({
+        iconUrl:
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    }).addTo(mapaAPI.map)
+
+    marcadorActivo.value.bindPopup(popupContent)
     marcadorActivo.value.openPopup()
+
+    // Centrar el mapa
     mapaAPI.map.setView([lat, lng], 18)
+    console.log('✅ Mapa centrado correctamente')
   } else if (itemMenu.value.tipo === 'geozona') {
-    // Lógica para geozonas
-    if (itemMenu.value.tipo === 'circular' && itemMenu.value.centro) {
+    console.log('✅ Es una geozona, mostrando en mapa...')
+
+    // Eliminar polígono/círculo anterior si existe
+    if (poligonoActivo.value) {
+      console.log('🗑️ Eliminando geozona anterior')
+      mapaAPI.map.removeLayer(poligonoActivo.value)
+      poligonoActivo.value = null
+    }
+
+    if (itemMenu.value.tipoGeozona === 'circular' && itemMenu.value.centro) {
       // Geozona circular
       const { lat, lng } = itemMenu.value.centro
 
@@ -1455,12 +1511,8 @@ function verEnMapa() {
         return
       }
 
-      // Eliminar círculo anterior si existe
-      if (poligonoActivo.value) {
-        mapaAPI.map.removeLayer(poligonoActivo.value)
-      }
+      console.log('🔵 Mostrando geozona circular en:', lat, lng, 'radio:', itemMenu.value.radio)
 
-      // Crear nuevo círculo
       poligonoActivo.value = mapaAPI.L.circle([lat, lng], {
         radius: itemMenu.value.radio,
         color: '#3388ff',
@@ -1468,31 +1520,27 @@ function verEnMapa() {
         fillOpacity: 0.2,
       }).addTo(mapaAPI.map)
 
-      // Centrar el mapa en la geozona
       mapaAPI.map.setView([lat, lng], 16)
+      console.log('✅ Geozona circular mostrada')
     } else if (
-      itemMenu.value.tipo === 'poligono' &&
+      itemMenu.value.tipoGeozona === 'poligono' &&
       itemMenu.value.puntos &&
       itemMenu.value.puntos.length > 0
     ) {
       // Geozona poligonal
+      console.log('🔷 Mostrando geozona poligonal con', itemMenu.value.puntos.length, 'puntos')
+
       const puntos = itemMenu.value.puntos.map((p) => [p.lat, p.lng])
 
-      // Eliminar polígono anterior si existe
-      if (poligonoActivo.value) {
-        mapaAPI.map.removeLayer(poligonoActivo.value)
-      }
-
-      // Crear nuevo polígono
       poligonoActivo.value = mapaAPI.L.polygon(puntos, {
         color: '#3388ff',
         fillColor: '#3388ff',
         fillOpacity: 0.2,
       }).addTo(mapaAPI.map)
 
-      // Centrar el mapa en el polígono
-      const bounds = mapaAPI.latLngBounds(puntos)
+      const bounds = mapaAPI.L.latLngBounds(puntos)
       mapaAPI.map.fitBounds(bounds)
+      console.log('✅ Geozona poligonal mostrada')
     } else {
       console.warn('⚠️ La geozona seleccionada no tiene datos válidos.')
       $q.notify({
@@ -1501,6 +1549,13 @@ function verEnMapa() {
       })
       return
     }
+  } else {
+    console.error('❌ Tipo de item desconocido:', itemMenu.value.tipo)
+    $q.notify({
+      type: 'warning',
+      message: 'No se reconoce el tipo de ubicación.',
+    })
+    return
   }
 
   emit('item-seleccionado', itemMenu.value)
@@ -1520,22 +1575,23 @@ function editarItem() {
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
-    if (itemMenu.value.tipo === 'circular') {
+    // ✅ CAMBIAR: usar tipoGeozona
+    if (itemMenu.value.tipoGeozona === 'circular') {
       nuevaGeozona.value = {
         id: itemMenu.value.id,
         nombre: itemMenu.value.nombre,
-        tipo: 'circular',
+        tipo: 'circular', // ✅ MANTENER: esto es para el formulario
         direccion: itemMenu.value.direccion,
         centro: itemMenu.value.centro,
         radio: itemMenu.value.radio,
         grupoId: itemMenu.value.grupoId,
         notas: itemMenu.value.notas || '',
       }
-    } else if (itemMenu.value.tipo === 'poligono') {
+    } else if (itemMenu.value.tipoGeozona === 'poligono') {
       nuevaGeozona.value = {
         id: itemMenu.value.id,
         nombre: itemMenu.value.nombre,
-        tipo: 'poligono',
+        tipo: 'poligono', // ✅ MANTENER: esto es para el formulario
         direccion: itemMenu.value.direccion,
         puntos: itemMenu.value.puntos,
         grupoId: itemMenu.value.grupoId,
@@ -1545,7 +1601,6 @@ function editarItem() {
     dialogNuevaGeozona.value = true
   }
 }
-
 const eliminarItem = async () => {
   if (!itemMenu.value) return
 
@@ -1582,22 +1637,20 @@ const eliminarItem = async () => {
         }
       }
     } else if (itemMenu.value.tipo === 'geozona') {
-      // Eliminar Geozona de Firebase
       await eliminarGeozona(itemMenu.value.id)
       console.log('✅ Geozona eliminada de Firebase')
 
-      // Eliminar geozona del mapa
       const mapPage = document.querySelector('#map-page')
       if (mapPage && mapPage._mapaAPI) {
-        if (itemMenu.value.tipo === 'circular') {
+        // ✅ CAMBIAR: usar tipoGeozona
+        if (itemMenu.value.tipoGeozona === 'circular') {
           mapPage._mapaAPI.eliminarCirculo(itemMenu.value.id)
-        } else if (itemMenu.value.tipo === 'poligono') {
+        } else if (itemMenu.value.tipoGeozona === 'poligono') {
           mapPage._mapaAPI.eliminarPoligono(itemMenu.value.id)
         }
         console.log('✅ Geozona eliminada del mapa')
       }
     }
-
     // Eliminar del array local
     const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
     if (index > -1) {
