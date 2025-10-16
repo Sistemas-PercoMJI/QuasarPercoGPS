@@ -20,22 +20,14 @@
       </div>
     </div>
 
-    <!-- Selector de todos los conductores -->
-    <div class="q-pa-sm q-px-md">
-      <q-checkbox
-        v-model="todosConductores"
-        label="Todos los conductores"
-        @update:model-value="seleccionarTodos"
-        dense
-      />
-      <span class="text-grey-7 q-ml-sm">{{ totalConductores }}</span>
+    <!-- Botones de acción - Solo en la parte superior -->
+    <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px;">
       <q-btn
         flat
         dense
         round
         icon="person_add"
         size="sm"
-        class="q-mr-xs"
         @click="abrirDialogNuevoConductor"
       >
         <q-tooltip>Agregar conductor</q-tooltip>
@@ -46,7 +38,6 @@
         round
         icon="create_new_folder"
         size="sm"
-        class="float-right"
         @click="abrirDialogNuevoGrupo"
       >
         <q-tooltip>Crear grupo</q-tooltip>
@@ -62,19 +53,8 @@
       </q-input>
     </div>
 
-    <!-- Filtro por grupo -->
-    <div class="q-px-md q-pb-sm">
-      <q-select
-        v-model="grupoSeleccionado"
-        outlined
-        dense
-        :options="opcionesGrupos"
-        label="Mostrar conductores"
-        emit-value
-        map-options
-        class="filter-select"
-      />
-    </div>
+    <!-- Filtro por grupo - ELIMINADO porque no se necesita -->
+    <!-- Los grupos se seleccionan haciendo clic en la lista de carpetas -->
 
     <!-- Lista de grupos (tipo carpetas) -->
     <div class="grupos-lista q-px-md q-pb-sm" v-if="gruposConductores.length > 0">
@@ -106,7 +86,7 @@
               round
               icon="more_vert"
               size="sm"
-              @click.stop="mostrarMenuGrupo(grupo)"
+              @click.stop="mostrarMenuGrupo($event, grupo)"
             />
           </q-item-section>
         </q-item>
@@ -159,7 +139,7 @@
               round
               icon="more_vert"
               size="sm"
-              @click.stop="mostrarMenuConductor(conductor)"
+              @click.stop="mostrarMenuConductor($event, conductor)"
             />
           </q-item-section>
         </q-item>
@@ -167,14 +147,14 @@
         <!-- Mensaje si no hay conductores -->
         <div v-if="conductoresFiltrados.length === 0 && !loading" class="no-data q-pa-md text-center">
           <q-icon name="person_off" size="48px" color="grey-5" />
-          <div class="text-grey-6 q-mt-sm">No hay conductores</div>
+          <div class="text-grey-6 q-mt-sm">No hay conductores en este grupo</div>
           <q-btn 
             flat 
             color="primary" 
-            label="Recargar" 
-            icon="refresh" 
+            label="Ver todos" 
+            icon="folder_open" 
             class="q-mt-md"
-            @click="recargarDatos"
+            @click="verTodosConductores"
           />
         </div>
       </q-list>
@@ -245,11 +225,10 @@
 
           <q-separator class="q-my-md" />
 
-          <!-- Licencia de conducir -->
-          <div class="detalle-section">
+          <!-- Licencia de conducir - SOLO VISUALIZACIÓN -->
+          <div class="detalle-section" v-if="conductorEditando?.LicenciaConducirFoto">
             <div class="detalle-label">Licencia de conducir</div>
             <q-btn
-              v-if="conductorEditando?.LicenciaConducirFoto"
               outline
               color="primary"
               label="Ver licencia"
@@ -257,26 +236,9 @@
               class="full-width"
               @click="verLicencia"
             />
-            <div v-else>
-              <input
-                ref="fileInput"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="handleFileUpload"
-              />
-              <q-btn
-                outline
-                color="primary"
-                label="Subir licencia"
-                icon="upload"
-                class="full-width"
-                @click="$refs.fileInput.click()"
-              />
-            </div>
           </div>
 
-          <q-separator class="q-my-md" />
+          <q-separator class="q-my-md" v-if="conductorEditando?.LicenciaConducirFoto" />
 
           <!-- Fecha de vencimiento -->
           <div class="detalle-section">
@@ -312,18 +274,6 @@
             </q-input>
           </div>
         </q-card-section>
-
-        <!-- Botones de acción -->
-        <q-card-actions class="q-pa-md q-gutter-sm">
-          <q-btn
-            outline
-            color="negative"
-            label="Eliminar conductor"
-            icon="delete"
-            class="full-width"
-            @click="confirmarEliminarConductor"
-          />
-        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -480,7 +430,13 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu v-model="menuGrupoVisible" context-menu>
+    <q-menu 
+      v-model="menuGrupoVisible" 
+      :target="menuGrupoTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 5]"
+    >
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="editarGrupo">
           <q-item-section avatar>
@@ -498,7 +454,13 @@
     </q-menu>
 
     <!-- Menú contextual para conductores -->
-    <q-menu v-model="menuConductorVisible" context-menu>
+    <q-menu 
+      v-model="menuConductorVisible"
+      :target="menuConductorTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 5]"
+    >
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="verDetalles">
           <q-item-section avatar>
@@ -523,14 +485,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useQuasar, date } from 'quasar'
+import { ref, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue'
+import { date } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
 
-const $q = useQuasar()
+// Obtener instancia de Quasar correctamente
+const instance = getCurrentInstance()
+const $q = instance.appContext.config.globalProperties.$q
 
 // Composable de Firebase
 const {
@@ -548,18 +512,15 @@ const {
   eliminarGrupo,
   agregarConductor,
   actualizarConductor,
-  eliminarConductor,
-  agregarConductoresAGrupo,
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-  subirFotoLicencia,
   asignarUnidad,
   obtenerUnidadDeConductor
 } = useConductoresFirebase()
 
 // Estado local
-const todosConductores = ref(true)
+const todosConductores = ref(false)
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
@@ -571,11 +532,12 @@ const dialogDetallesConductor = ref(false)
 const dialogVerLicencia = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
+const menuGrupoTarget = ref(null)
+const menuConductorTarget = ref(null)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
 const conductoresSeleccionados = ref([])
-const fileInput = ref(null)
 
 // Listeners de Firebase
 let unsubscribeConductores = null
@@ -592,19 +554,6 @@ const nuevoConductor = ref({
 })
 
 // Computed
-const totalConductores = computed(() => conductores.value.length)
-
-const opcionesGrupos = computed(() => {
-  const opciones = [{ label: 'Todos', value: 'todos' }]
-  gruposConductores.value.forEach((grupo) => {
-    opciones.push({
-      label: grupo.Nombre,
-      value: grupo.id
-    })
-  })
-  return opciones
-})
-
 const opcionesUnidades = computed(() => {
   return unidades.value.map(u => ({
     label: u.Unidad,
@@ -617,7 +566,7 @@ const conductoresFiltrados = computed(() => {
 
   // Filtrar por grupo
   if (grupoSeleccionado.value === 'todos') {
-    resultado = conductores.value
+    resultado = []
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
@@ -637,13 +586,6 @@ const conductoresFiltrados = computed(() => {
 
 const conductoresDisponiblesParaGrupo = computed(() => {
   let disponibles = conductores.value
-
-  // Si estamos editando, mostrar todos los conductores
-  // pero marcar los que ya están en el grupo
-  if (modoEdicion.value && grupoMenu.value) {
-    // Mostrar todos los conductores
-    disponibles = conductores.value
-  }
 
   // Filtrar por búsqueda
   if (busquedaConductoresGrupo.value) {
@@ -693,13 +635,14 @@ function obtenerIniciales(nombre) {
   return (palabras[0][0] + (palabras[1]?.[0] || '')).toUpperCase()
 }
 
-function seleccionarTodos(valor) {
-  grupoSeleccionado.value = valor ? 'todos' : grupoSeleccionado.value
-}
-
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   todosConductores.value = false
+}
+
+function verTodosConductores() {
+  grupoSeleccionado.value = 'todos'
+  todosConductores.value = true
 }
 
 function seleccionarConductor(conductor) {
@@ -745,69 +688,6 @@ async function recargarDatos() {
 
 async function sincronizarDatos() {
   await recargarDatos()
-}
-
-async function handleFileUpload(event) {
-  const file = event.target.files[0]
-  if (!file) return
-
-  if (!conductorEditando.value?.id) {
-    $q.notify({
-      type: 'warning',
-      message: 'No hay conductor seleccionado',
-      icon: 'warning'
-    })
-    return
-  }
-
-  // Validar que sea una imagen
-  if (!file.type.startsWith('image/')) {
-    $q.notify({
-      type: 'negative',
-      message: 'Por favor selecciona una imagen válida',
-      icon: 'error'
-    })
-    return
-  }
-
-  // Validar tamaño (max 5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    $q.notify({
-      type: 'negative',
-      message: 'La imagen es muy grande. Máximo 5MB',
-      icon: 'error'
-    })
-    return
-  }
-
-  try {
-    $q.loading.show({
-      message: 'Subiendo licencia...'
-    })
-
-    const fotoURL = await subirFotoLicencia(conductorEditando.value.id, file)
-    
-    // Actualizar el conductor editando
-    conductorEditando.value.LicenciaConducirFoto = fotoURL
-
-    $q.notify({
-      type: 'positive',
-      message: 'Licencia subida correctamente',
-      icon: 'check_circle'
-    })
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: 'Error al subir licencia: ' + error.message,
-      icon: 'error'
-    })
-  } finally {
-    $q.loading.hide()
-    // Limpiar el input
-    if (fileInput.value) {
-      fileInput.value.value = ''
-    }
-  }
 }
 
 async function actualizarCampo(campo, valor) {
@@ -930,16 +810,12 @@ function toggleConductor(conductorId) {
 
 async function guardarGrupo() {
   try {
-    if (modoEdicion.value) {
+    if (modoEdicion.value && grupoMenu.value) {
       // Actualizar grupo existente
       await actualizarGrupo(grupoMenu.value.id, {
-        Nombre: nuevoGrupo.value.Nombre
+        Nombre: nuevoGrupo.value.Nombre,
+        ConductoresIds: conductoresSeleccionados.value
       })
-
-      // Agregar nuevos conductores si hay seleccionados
-      if (conductoresSeleccionados.value.length > 0) {
-        await agregarConductoresAGrupo(grupoMenu.value.id, conductoresSeleccionados.value)
-      }
 
       $q.notify({
         type: 'positive',
@@ -962,6 +838,7 @@ async function guardarGrupo() {
 
     dialogNuevoGrupo.value = false
   } catch (error) {
+    console.error('Error al guardar grupo:', error)
     $q.notify({
       type: 'negative',
       message: 'Error: ' + error.message,
@@ -970,49 +847,14 @@ async function guardarGrupo() {
   }
 }
 
-function confirmarEliminarConductor() {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar al conductor ${conductorEditando.value?.Nombre}?`,
-    cancel: {
-      label: 'Cancelar',
-      color: 'grey',
-      flat: true
-    },
-    ok: {
-      label: 'Eliminar',
-      color: 'negative',
-      flat: true
-    },
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await eliminarConductor(conductorEditando.value.id)
-      dialogDetallesConductor.value = false
-      conductorSeleccionado.value = null
-      conductorEditando.value = {}
-
-      $q.notify({
-        type: 'positive',
-        message: 'Conductor eliminado correctamente',
-        icon: 'check_circle'
-      })
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar: ' + error.message,
-        icon: 'error'
-      })
-    }
-  })
-}
-
-function mostrarMenuGrupo(grupo) {
+function mostrarMenuGrupo(event, grupo) {
+  menuGrupoTarget.value = event.target
   grupoMenu.value = grupo
   menuGrupoVisible.value = true
 }
 
-function mostrarMenuConductor(conductor) {
+function mostrarMenuConductor(event, conductor) {
+  menuConductorTarget.value = event.target
   conductorMenu.value = conductor
   menuConductorVisible.value = true
 }
@@ -1029,7 +871,7 @@ function editarGrupo() {
 function confirmarEliminarGrupo() {
   $q.dialog({
     title: 'Confirmar eliminación',
-    message: `¿Estás seguro de eliminar el grupo ${grupoMenu.value?.Nombre}?`,
+    message: `¿Estás seguro de eliminar el grupo "${grupoMenu.value?.Nombre}"? Los conductores no se eliminarán, solo el grupo.`,
     cancel: {
       label: 'Cancelar',
       color: 'grey',
@@ -1048,7 +890,7 @@ function confirmarEliminarGrupo() {
       // Si estábamos viendo este grupo, cambiar a "todos"
       if (grupoSeleccionado.value === grupoMenu.value.id) {
         grupoSeleccionado.value = 'todos'
-        todosConductores.value = true
+        todosConductores.value = false
       }
 
       $q.notify({
