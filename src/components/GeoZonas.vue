@@ -115,12 +115,27 @@
             flat
             bordered
             class="poi-card q-mb-md"
-            :class="{ 'poi-selected': itemSeleccionado?.id === poi.id }"
+            :class="{ 
+              'poi-selected': itemSeleccionado?.id === poi.id,
+              'seleccionado-desde-mapa': ubicacionSeleccionadaDesdeMapa === poi.id
+            }"
+            :data-ubicacion-id="poi.id"
             @click="seleccionarItem(poi)"
           >
             <q-card-section class="row items-center q-pa-md">
               <q-avatar size="48px" :color="getColorGrupo(poi.grupoId)" text-color="white">
                 <q-icon name="place" size="28px" />
+                <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
+                <q-badge 
+                  v-if="tieneEventosAsignados(poi.id, 'poi')" 
+                  floating 
+                  color="deep-orange" 
+                  rounded
+                  class="evento-badge"
+                >
+                  <q-icon name="notifications_active" size="12px" />
+                  {{ contarEventos(poi.id, 'poi') }}
+                </q-badge>
               </q-avatar>
 
               <div class="col q-ml-md">
@@ -234,12 +249,27 @@
             flat
             bordered
             class="geozona-card q-mb-md"
-            :class="{ 'geozona-selected': itemSeleccionado?.id === geozona.id }"
+            :class="{ 
+              'geozona-selected': itemSeleccionado?.id === geozona.id,
+              'seleccionado-desde-mapa': ubicacionSeleccionadaDesdeMapa === geozona.id
+            }"
+            :data-ubicacion-id="geozona.id"
             @click="seleccionarItem(geozona)"
           >
             <q-card-section class="row items-center q-pa-md">
               <q-avatar size="48px" :color="getColorGrupo(geozona.grupoId)" text-color="white">
                 <q-icon name="layers" size="28px" />
+                <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
+                <q-badge 
+                  v-if="tieneEventosAsignados(geozona.id, 'geozona')" 
+                  floating 
+                  color="deep-orange" 
+                  rounded
+                  class="evento-badge"
+                >
+                  <q-icon name="notifications_active" size="12px" />
+                  {{ contarEventos(geozona.id, 'geozona') }}
+                </q-badge>
               </q-avatar>
 
               <div class="col q-ml-md">
@@ -649,6 +679,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
+// 🆕 NUEVO: Importar composable de eventos
+import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 
@@ -663,6 +695,13 @@ const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.val
 const { crearGeozona, obtenerGeozonas, actualizarGeozona, eliminarGeozona } = useGeozonas(
   userId.value,
 )
+
+// 🆕 NUEVO: Cargar eventos para mostrar badges
+const { obtenerEventos } = useEventos(userId.value)
+const eventosActivos = ref([])
+
+// 🆕 NUEVO: Variable para controlar la selección desde el mapa
+const ubicacionSeleccionadaDesdeMapa = ref(null)
 
 // Estados reactivos
 const vistaActual = ref('poi')
@@ -707,6 +746,106 @@ const grupos = ref([
 ])
 
 const items = ref([])
+
+// 🆕 Computed para saber qué ubicaciones tienen eventos
+const ubicacionesConEventos = computed(() => {
+  const set = new Set()
+  
+  eventosActivos.value.forEach(evento => {
+    if (evento.condiciones && evento.condiciones.length > 0) {
+      evento.condiciones.forEach(condicion => {
+        if (condicion.ubicacionId) {
+          const tipo = condicion.tipo === 'POI' ? 'poi' : 'geozona'
+          set.add(`${tipo}-${condicion.ubicacionId}`)
+        }
+      })
+    }
+  })
+  
+  return set
+})
+
+// 🆕 Función para verificar si una ubicación tiene eventos
+function tieneEventosAsignados(ubicacionId, tipo) {
+  return ubicacionesConEventos.value.has(`${tipo}-${ubicacionId}`)
+}
+
+// 🆕 Función para contar eventos de una ubicación
+function contarEventos(ubicacionId, tipo) {
+  let count = 0
+  eventosActivos.value.forEach(evento => {
+    if (evento.condiciones) {
+      evento.condiciones.forEach(condicion => {
+        if (condicion.ubicacionId === ubicacionId && 
+            ((tipo === 'poi' && condicion.tipo === 'POI') || 
+             (tipo === 'geozona' && condicion.tipo === 'Geozona'))) {
+          count++
+        }
+      })
+    }
+  })
+  return count
+}
+
+// 🆕 NUEVO: Función para manejar selección desde el mapa
+function seleccionarUbicacionDesdeMapa(ubicacion) {
+  console.log('🗺️ Ubicación seleccionada desde mapa:', ubicacion)
+  
+  // Buscar la ubicación en nuestros items
+  const itemEncontrado = items.value.find(item => 
+    (item.tipo === 'poi' && item.id === ubicacion.poiId) ||
+    (item.tipo === 'geozona' && item.id === ubicacion.geozonaId)
+  )
+  
+  if (itemEncontrado) {
+    console.log('✅ Ubicación encontrada:', itemEncontrado)
+    
+    // Cambiar a la vista correcta
+    if (itemEncontrado.tipo === 'poi') {
+      vistaActual.value = 'poi'
+    } else if (itemEncontrado.tipo === 'geozona') {
+      vistaActual.value = 'geozona'
+    }
+    
+    // Marcar como seleccionada
+    ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
+    
+    // Seleccionar el item
+    seleccionarItem(itemEncontrado)
+    
+    // Hacer scroll hasta el elemento
+    setTimeout(() => {
+      const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
+      if (elemento) {
+        elemento.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+      }
+    }, 300)
+    
+    // Limpiar la selección después de 3 segundos
+    setTimeout(() => {
+      ubicacionSeleccionadaDesdeMapa.value = null
+    }, 3000)
+    
+    // Notificar al usuario
+    $q.notify({
+      type: 'positive',
+      message: `Ubicación "${itemEncontrado.nombre}" seleccionada`,
+      icon: 'place',
+      timeout: 2000,
+      position: 'top'
+    })
+  } else {
+    console.warn('⚠️ No se encontró la ubicación:', ubicacion)
+    $q.notify({
+      type: 'warning',
+      message: 'No se encontró la ubicación seleccionada',
+      icon: 'warning'
+    })
+  }
+}
 
 // Computed properties
 const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
@@ -1831,15 +1970,21 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
 // Hooks de ciclo de vida
 onMounted(async () => {
   try {
-    // Cargar POIs existentes
-    const poisCargados = await obtenerPOIs()
-    items.value = poisCargados
-    console.log('✅ POIs cargados:', poisCargados.length)
+    // Cargar POIs, Geozonas Y EVENTOS en paralelo
+    const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
+      obtenerPOIs(),
+      obtenerGeozonas(),
+      obtenerEventos(), // 🆕 NUEVO
+    ])
 
-    // Cargar Geozonas existentes
-    const geozonasCargadas = await obtenerGeozonas()
-    items.value = [...items.value, ...geozonasCargadas]
-    console.log('✅ Geozonas cargadas:', geozonasCargadas.length)
+    items.value = [...poisCargados, ...geozonasCargadas]
+    eventosActivos.value = eventosCargados.filter(e => e.activo) // 🆕 Solo eventos activos
+
+    console.log('✅ Datos cargados:', {
+      pois: poisCargados.length,
+      geozonas: geozonasCargadas.length,
+      eventos: eventosCargados.length, // 🆕 NUEVO
+    })
   } catch (err) {
     console.error('Error al cargar datos:', err)
     $q.notify({
@@ -1848,6 +1993,12 @@ onMounted(async () => {
       caption: err.message,
     })
   }
+  
+  // 🆕 ESCUCHAR EVENTOS DE SELECCIÓN DESDE EL MAPA
+  window.addEventListener('seleccionarUbicacionDesdeMapa', (event) => {
+    seleccionarUbicacionDesdeMapa(event.detail)
+  })
+  
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
@@ -1870,7 +2021,8 @@ onUnmounted(() => {
     poligonoActivo.value = null
   }
 
-  // ✅ NUEVO: Limpiar evento del botón
+  // 🆕 LIMPIAR EVENTOS
+  window.removeEventListener('seleccionarUbicacionDesdeMapa', seleccionarUbicacionDesdeMapa)
   window.removeEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
@@ -1994,6 +2146,7 @@ const redibujarMapa = () => {
 .lista-scroll {
   flex: 1;
   height: 100%;
+  scroll-behavior: smooth;
 }
 
 .poi-card,
@@ -2055,6 +2208,60 @@ const redibujarMapa = () => {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* 🆕 ESTILOS PARA BADGES DE EVENTOS MÁS VISIBLES */
+.evento-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 6px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  animation: pulse-badge 2s infinite;
+  border: 2px solid white;
+}
+
+@keyframes pulse-badge {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 2px 12px rgba(255, 87, 34, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  }
+}
+
+/* 🆕 ESTILOS PARA ELEMENTO SELECCIONADO DESDE MAPA */
+.poi-card.seleccionado-desde-mapa,
+.geozona-card.seleccionado-desde-mapa {
+  border: 2px solid #ff6b35;
+  background: linear-gradient(135deg, #fff5f2 0%, #ffe8e0 100%);
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+  animation: highlight-selected 0.6s ease-out;
+}
+
+@keyframes highlight-selected {
+  0% {
+    transform: scale(0.98);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 </style>
