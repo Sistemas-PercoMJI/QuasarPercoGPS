@@ -354,7 +354,8 @@
     </q-dialog>
 
     <!-- Menú Contextual para cada evento -->
-    <q-menu v-model="menuContextualVisible" context-menu>
+    <!-- Menú Contextual para cada evento -->
+    <q-menu v-model="menuContextualVisible" touch-position>
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="editarEvento">
           <q-item-section avatar>
