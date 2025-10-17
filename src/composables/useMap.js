@@ -146,7 +146,7 @@ export function useMap() {
 
     // Crear nuevo círculo temporal con radio por defecto
     circuloTemporal.value = L.circle([lat, lng], {
-      radius: 100, // Radio por defecto de 100 metros
+      radius: 100,
       color: '#3388ff',
       fillColor: '#3388ff',
       fillOpacity: 0.2,
@@ -155,13 +155,19 @@ export function useMap() {
 
     // Obtener dirección (reverse geocoding simple)
     obtenerDireccion(lat, lng).then((direccionObtenida) => {
-      // Renombrado para evitar conflicto
       ubicacionSeleccionada.value = {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
       }
 
       console.log('📍 Centro de geozona circular seleccionado:', ubicacionSeleccionada.value)
+
+      // ✅ NUEVO: Mostrar botón flotante
+      window.dispatchEvent(
+        new CustomEvent('mostrarBotonConfirmarGeozona', {
+          detail: { mostrar: true },
+        }),
+      )
     })
   }
 
@@ -205,6 +211,15 @@ export function useMap() {
 
     console.log('📍 Punto agregado al polígono:', { lat, lng })
     console.log('📍 Total de puntos:', puntosPoligono.value.length)
+
+    // ✅ NUEVO: Mostrar botón flotante si ya hay al menos 3 puntos
+    if (puntosPoligono.value.length >= 3) {
+      window.dispatchEvent(
+        new CustomEvent('mostrarBotonConfirmarGeozona', {
+          detail: { mostrar: true },
+        }),
+      )
+    }
   }
 
   // Obtener dirección desde coordenadas
