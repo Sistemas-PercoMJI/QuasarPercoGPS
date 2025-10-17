@@ -9,6 +9,27 @@
       </div>
     </div>
 
+    <!-- 🐛 DEBUG: Info temporal -->
+    <div v-if="pois.length === 0 && geozonas.length === 0" class="q-pa-md bg-warning text-white">
+      <div class="text-subtitle2">⚠️ No hay ubicaciones cargadas</div>
+      <div class="text-caption">POIs: {{ pois.length }} | Geozonas: {{ geozonas.length }}</div>
+      <div class="text-caption">UserId: {{ userId }}</div>
+      <q-btn 
+        flat 
+        dense 
+        label="Recargar datos" 
+        icon="refresh" 
+        color="white"
+        @click="recargarDatos"
+        class="q-mt-sm"
+      />
+    </div>
+
+    <!-- ✅ INFO: Datos cargados -->
+    <div v-else-if="pois.length > 0 || geozonas.length > 0" class="q-pa-sm bg-positive text-white text-caption">
+      ✅ Datos cargados: {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
+    </div>
+
     <!-- Stats cards -->
     <div class="stats-cards q-pa-md">
       <div class="stat-card">
@@ -35,7 +56,7 @@
         icon="add"
         label="Nuevo evento"
         class="full-width"
-        @click="dialogNuevoEvento = true"
+        @click="abrirDialogoNuevo"
       />
     </div>
 
@@ -73,6 +94,13 @@
     <!-- Lista de eventos -->
     <q-scroll-area class="lista-scroll">
       <div class="q-pa-md">
+        <!-- Loading -->
+        <div v-if="loading" class="no-data">
+          <q-spinner color="primary" size="48px" />
+          <div class="text-grey-6 q-mt-md">Cargando eventos...</div>
+        </div>
+
+        <!-- Lista de eventos -->
         <q-card
           v-for="evento in eventosFiltrados"
           :key="evento.id"
@@ -83,15 +111,15 @@
           @click="seleccionarEvento(evento)"
         >
           <q-card-section class="row items-center q-pa-md">
-            <q-avatar size="48px" :color="getColorTipoEvento(evento.tipo)" text-color="white">
-              <q-icon :name="getIconoTipoEvento(evento.tipo)" size="28px" />
+            <q-avatar size="48px" :color="getColorTipoEvento(evento)" text-color="white">
+              <q-icon :name="getIconoTipoEvento(evento)" size="28px" />
             </q-avatar>
 
             <div class="col q-ml-md">
               <div class="text-subtitle1 text-weight-medium">{{ evento.nombre }}</div>
               <div class="text-caption text-grey-7">
                 <q-icon name="location_on" size="14px" />
-                {{ evento.geozona }}
+                {{ obtenerNombreGeozona(evento) }}
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
                 <q-badge
@@ -104,7 +132,7 @@
             <div class="column items-end">
               <q-toggle
                 :model-value="evento.activo"
-                @update:model-value="toggleEvento(evento)"
+                @update:model-value="toggleEventoEstado(evento)"
                 color="positive"
                 @click.stop
               />
@@ -120,7 +148,7 @@
           </q-card-section>
         </q-card>
 
-        <div v-if="eventosFiltrados.length === 0" class="no-data">
+        <div v-if="!loading && eventosFiltrados.length === 0" class="no-data">
           <q-icon name="notifications_off" size="64px" color="grey-4" />
           <div class="text-grey-6 q-mt-md">No se encontraron eventos</div>
         </div>
@@ -134,18 +162,29 @@
         <q-card-section class="dialog-header-full bg-primary text-white">
           <div class="row items-center">
             <div class="col">
-              <div class="text-h6">Crear Nuevo Evento</div>
-              <div class="text-caption">Estado de evento "ON"</div>
+              <div class="text-h6">{{ modoEdicion ? 'Editar Evento' : 'Crear Nuevo Evento' }}</div>
+              <div class="text-caption">
+                Estado de evento {{ nuevoEvento.activo ? 'ON' : 'OFF' }}
+              </div>
             </div>
             <q-toggle v-model="nuevoEvento.activo" color="white" keep-color size="lg" />
-            <q-btn flat dense round icon="close" v-close-popup color="white" class="q-ml-md" />
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              v-close-popup
+              color="white"
+              class="q-ml-md"
+              @click="cancelarFormulario"
+            />
           </div>
         </q-card-section>
 
         <!-- Contenido del formulario -->
         <q-card-section class="scroll-content q-pa-lg">
           <div class="form-container">
-            <!-- Nombre del evento -->
+            <!-- Información básica -->
             <div class="form-section">
               <div class="section-title">Información básica</div>
               <q-input
@@ -153,6 +192,7 @@
                 label="Nombre del Evento"
                 outlined
                 class="q-mb-md"
+                :rules="[(val) => !!val || 'El nombre es requerido']"
               />
 
               <q-input
@@ -170,7 +210,11 @@
                 <q-icon name="schedule" size="24px" color="primary" class="q-mr-sm" />
                 Condición de tiempo
               </div>
-              <q-toggle v-model="nuevoEvento.condicionTiempo" label="Apagado" color="positive" />
+              <q-toggle
+                v-model="nuevoEvento.condicionTiempo"
+                :label="nuevoEvento.condicionTiempo ? 'Activado' : 'Desactivado'"
+                color="positive"
+              />
             </div>
 
             <!-- Condición geográfica -->
@@ -204,7 +248,7 @@
                       <q-select
                         v-model="condicion.tipo"
                         :options="opcionesCondicion"
-                        label="Condición"
+                        label="Tipo de ubicación"
                         outlined
                         dense
                         emit-value
@@ -215,7 +259,7 @@
                       <q-select
                         v-model="condicion.activacion"
                         :options="opcionesActivacion"
-                        label="Activar cuando el vehículo está"
+                        label="Activar cuando"
                         outlined
                         dense
                         emit-value
@@ -225,18 +269,27 @@
                   </div>
 
                   <q-select
-                    v-model="condicion.geozona"
-                    :options="opcionesGeozonas"
-                    label="Geozona"
+                    v-model="condicion.ubicacionId"
+                    :options="opcionesUbicaciones"
+                    label="Seleccionar ubicación"
                     outlined
                     dense
                     emit-value
                     map-options
                     class="q-mt-md"
-                    hint="Selecciona una geozona o POI"
+                    :hint="opcionesUbicaciones.length === 0 ? 'No hay ubicaciones disponibles. Crea POIs o Geozonas primero.' : `Selecciona ${condicion.tipo === 'POI' ? 'un punto de interés' : 'una geozona'}`"
+                    :disable="opcionesUbicaciones.length === 0"
                   >
                     <template v-slot:prepend>
-                      <q-icon name="layers" />
+                      <q-icon :name="condicion.tipo === 'POI' ? 'place' : 'layers'" />
+                    </template>
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          <q-item-label>No hay {{ condicion.tipo === 'POI' ? 'POIs' : 'Geozonas' }} disponibles</q-item-label>
+                          <q-item-label caption>Crea algunas ubicaciones primero</q-item-label>
+                        </q-item-section>
+                      </q-item>
                     </template>
                   </q-select>
                 </div>
@@ -276,26 +329,33 @@
                 {{ patronCriterios }}
               </div>
               <div class="text-caption text-grey-6 q-mt-sm">
-                Las condiciones se evalúan con operador AND (todas deben cumplirse)
+                {{ descripcionPatron }}
               </div>
             </div>
 
             <!-- Activación de alerta -->
             <div class="form-section">
-              <div class="section-title">Activación de alerta</div>
+              <div class="section-title">
+                <q-icon name="notifications" size="24px" color="primary" class="q-mr-sm" />
+                Activación de alerta
+              </div>
               <q-select
                 v-model="nuevoEvento.activacionAlerta"
                 :options="opcionesActivacionAlerta"
-                label="Activación de alerta"
+                label="¿Cuándo notificar?"
                 outlined
                 emit-value
                 map-options
+                hint="Define la frecuencia de las notificaciones"
               />
             </div>
 
             <!-- Aplicación del evento -->
             <div class="form-section">
-              <div class="section-title">Aplicación del evento</div>
+              <div class="section-title">
+                <q-icon name="event" size="24px" color="primary" class="q-mr-sm" />
+                Aplicación del evento
+              </div>
               <q-option-group
                 v-model="nuevoEvento.aplicacion"
                 :options="opcionesAplicacion"
@@ -304,11 +364,20 @@
 
               <!-- Horario si se selecciona "A los días y horas establecidos" -->
               <div v-if="nuevoEvento.aplicacion === 'horario'" class="q-mt-md">
-                <q-input label="Días de la semana" outlined readonly hint="Selecciona los días">
-                  <template v-slot:append>
-                    <q-icon name="calendar_today" class="cursor-pointer" />
+                <q-select
+                  v-model="nuevoEvento.diasSemana"
+                  :options="opcionesDiasSemana"
+                  label="Días de la semana"
+                  outlined
+                  multiple
+                  emit-value
+                  map-options
+                  hint="Selecciona los días en que estará activo"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="calendar_today" />
                   </template>
-                </q-input>
+                </q-select>
 
                 <div class="row q-col-gutter-md q-mt-md">
                   <div class="col-6">
@@ -330,14 +399,22 @@
 
         <!-- Botones de acción -->
         <q-card-actions class="dialog-actions q-pa-lg bg-grey-1">
-          <q-btn flat label="Cerrar" color="grey-7" v-close-popup size="md" />
+          <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            v-close-popup
+            size="md"
+            @click="cancelarFormulario"
+          />
           <q-space />
           <q-btn
             unelevated
-            label="Crear"
+            :label="modoEdicion ? 'Actualizar' : 'Crear'"
             color="primary"
             @click="guardarEvento"
-            :disable="!nuevoEvento.nombre"
+            :disable="!esFormularioValido"
+            :loading="loading"
             size="md"
             class="q-px-lg"
           />
@@ -355,7 +432,7 @@
           <q-item-section>Editar</q-item-section>
         </q-item>
 
-        <q-item clickable v-close-popup @click="duplicarEvento">
+        <q-item clickable v-close-popup @click="duplicarEventoSeleccionado">
           <q-item-section avatar>
             <q-icon name="content_copy" color="blue" />
           </q-item-section>
@@ -364,7 +441,7 @@
 
         <q-separator />
 
-        <q-item clickable v-close-popup @click="eliminarEvento">
+        <q-item clickable v-close-popup @click="eliminarEventoSeleccionado">
           <q-item-section avatar>
             <q-icon name="delete" color="negative" />
           </q-item-section>
@@ -376,9 +453,32 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
+import { auth } from 'src/firebase/firebaseConfig'
+import { useEventos } from 'src/composables/useEventos'
+import { usePOIs } from 'src/composables/usePOIs'
+import { useGeozonas } from 'src/composables/useGeozonas'
 
+const $q = useQuasar()
 const emit = defineEmits(['close', 'evento-seleccionado'])
+
+// Auth
+const userId = ref(auth.currentUser?.uid || '')
+
+// Composables
+const {
+  loading,
+  crearEvento,
+  obtenerEventos,
+  actualizarEvento,
+  eliminarEvento,
+  toggleEvento,
+  duplicarEvento,
+} = useEventos(userId.value)
+
+const { obtenerPOIs } = usePOIs(userId.value)
+const { obtenerGeozonas } = useGeozonas(userId.value)
 
 // Estado
 const busqueda = ref('')
@@ -387,6 +487,12 @@ const eventoSeleccionado = ref(null)
 const dialogNuevoEvento = ref(false)
 const menuContextualVisible = ref(false)
 const eventoMenu = ref(null)
+const modoEdicion = ref(false)
+
+// Datos cargados desde Firebase
+const eventos = ref([])
+const pois = ref([])
+const geozonas = ref([])
 
 // Formulario nuevo evento
 const nuevoEvento = ref({
@@ -396,19 +502,122 @@ const nuevoEvento = ref({
   condicionTiempo: false,
   condiciones: [
     {
-      tipo: 'Geocerca',
-      activacion: 'Dentro',
-      geozona: null,
+      tipo: 'POI',
+      activacion: 'Entrada',
+      ubicacionId: null,
     },
   ],
-  operadoresLogicos: [], // Array de operadores entre condiciones
+  operadoresLogicos: [],
   activacionAlerta: 'Al inicio',
   aplicacion: 'siempre',
+  diasSemana: [],
   horaInicio: '',
   horaFin: '',
 })
 
-// Computed para el patrón de criterios
+// Opciones
+const opcionesFiltro = [
+  { label: 'Todos', value: 'todos' },
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
+]
+
+const opcionesCondicion = [
+  { label: 'Punto de Interés (POI)', value: 'POI' },
+  { label: 'Geozona', value: 'Geozona' },
+]
+
+const opcionesActivacion = [
+  { label: 'Entrada', value: 'Entrada' },
+  { label: 'Salida', value: 'Salida' },
+  { label: 'Dentro', value: 'Dentro' },
+  { label: 'Fuera', value: 'Fuera' },
+]
+
+const opcionesActivacionAlerta = [
+  { label: 'Al inicio (primera vez)', value: 'Al inicio' },
+  { label: 'Cada vez que ocurra', value: 'Cada vez' },
+  { label: 'Una vez al día', value: 'Una vez al día' },
+]
+
+const opcionesAplicacion = [
+  { label: 'Siempre activo', value: 'siempre' },
+  { label: 'A los días y horas establecidos', value: 'horario' },
+]
+
+const opcionesDiasSemana = [
+  { label: 'Lunes', value: 1 },
+  { label: 'Martes', value: 2 },
+  { label: 'Miércoles', value: 3 },
+  { label: 'Jueves', value: 4 },
+  { label: 'Viernes', value: 5 },
+  { label: 'Sábado', value: 6 },
+  { label: 'Domingo', value: 0 },
+]
+
+// Computed
+const totalEventos = computed(() => eventos.value.filter((e) => e.activo).length)
+const eventosInactivos = computed(() => eventos.value.filter((e) => !e.activo).length)
+
+const eventosFiltrados = computed(() => {
+  let resultado = eventos.value
+
+  if (filtroEstado.value === 'activos') {
+    resultado = resultado.filter((e) => e.activo)
+  } else if (filtroEstado.value === 'inactivos') {
+    resultado = resultado.filter((e) => !e.activo)
+  }
+
+  if (busqueda.value) {
+    resultado = resultado.filter(
+      (e) =>
+        e.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        obtenerNombreGeozona(e).toLowerCase().includes(busqueda.value.toLowerCase())
+    )
+  }
+
+  return resultado
+})
+
+const opcionesUbicaciones = computed(() => {
+  // Obtener todas las condiciones y sus tipos
+  const tipos = nuevoEvento.value.condiciones.map(c => c.tipo)
+  
+  // Si todas las condiciones son del mismo tipo, filtrar por ese tipo
+  const primerTipo = tipos[0]
+  const todosMismoTipo = tipos.every(t => t === primerTipo)
+  
+  if (!todosMismoTipo) {
+    // Si hay tipos mixtos, mostrar todas las ubicaciones
+    const todasOpciones = [
+      ...pois.value.map((poi) => ({
+        label: `📍 ${poi.nombre}`,
+        value: poi.id,
+        tipo: 'POI'
+      })),
+      ...geozonas.value.map((gz) => ({
+        label: `🗺️ ${gz.nombre}`,
+        value: gz.id,
+        tipo: 'Geozona'
+      }))
+    ]
+    return todasOpciones
+  }
+  
+  // Si todas son del mismo tipo, filtrar
+  if (primerTipo === 'POI') {
+    return pois.value.map((poi) => ({
+      label: poi.nombre,
+      value: poi.id,
+    }))
+  } else {
+    return geozonas.value.map((gz) => ({
+      label: gz.nombre,
+      value: gz.id,
+    }))
+  }
+})
+
 const patronCriterios = computed(() => {
   if (nuevoEvento.value.condiciones.length === 1) {
     return 'A'
@@ -425,107 +634,37 @@ const patronCriterios = computed(() => {
   return patron
 })
 
-// Opciones
-const opcionesFiltro = [
-  { label: 'Todos', value: 'todos' },
-  { label: 'Activos', value: 'activos' },
-  { label: 'Inactivos', value: 'inactivos' },
-]
-
-const opcionesCondicion = [
-  { label: 'Geocerca', value: 'Geocerca' },
-  { label: 'Velocidad', value: 'Velocidad' },
-  { label: 'Tiempo', value: 'Tiempo' },
-]
-
-const opcionesActivacion = [
-  { label: 'Dentro', value: 'Dentro' },
-  { label: 'Fuera', value: 'Fuera' },
-  { label: 'Entrada', value: 'Entrada' },
-  { label: 'Salida', value: 'Salida' },
-]
-
-const opcionesGeozonas = [
-  { label: 'A&J PROCESSING "MURUA"', value: 'geozona1' },
-  { label: 'AGUILAS DEL DESIERTO', value: 'geozona2' },
-  { label: 'ALBERTO PESQUEIRA', value: 'geozona3' },
-  { label: 'ALLIANCE PLANTA 2', value: 'geozona4' },
-]
-
-const opcionesActivacionAlerta = [
-  { label: 'Al inicio', value: 'Al inicio' },
-  { label: 'Cada vez', value: 'Cada vez' },
-  { label: 'Una vez al día', value: 'Una vez al día' },
-]
-
-const opcionesAplicacion = [
-  { label: 'Siempre', value: 'siempre' },
-  { label: 'A los días y horas establecidos', value: 'horario' },
-]
-
-// Datos de ejemplo
-const eventos = ref([
-  {
-    id: 1,
-    nombre: 'SALIDA OPTI-SOURCE',
-    geozona: 'OPTI-SOURCE',
-    tipo: 'salida',
-    activo: true,
-  },
-  {
-    id: 2,
-    nombre: 'ENTRADA OPTI-SOURCE',
-    geozona: 'OPTI-SOURCE',
-    tipo: 'entrada',
-    activo: true,
-  },
-  {
-    id: 3,
-    nombre: 'SALIDA CESPT ROSARITO',
-    geozona: 'CESPT ROSARITO',
-    tipo: 'salida',
-    activo: true,
-  },
-  {
-    id: 4,
-    nombre: 'ENTRADA CESPT ROSARITO',
-    geozona: 'CESPT ROSARITO',
-    tipo: 'entrada',
-    activo: true,
-  },
-  {
-    id: 5,
-    nombre: 'SALIDA CESPT REFORMA',
-    geozona: 'CESPT REFORMA',
-    tipo: 'salida',
-    activo: false,
-  },
-])
-
-// Computed
-const totalEventos = computed(() => eventos.value.filter((e) => e.activo).length)
-const eventosInactivos = computed(() => eventos.value.filter((e) => !e.activo).length)
-
-const eventosFiltrados = computed(() => {
-  let resultado = eventos.value
-
-  // Filtrar por estado
-  if (filtroEstado.value === 'activos') {
-    resultado = resultado.filter((e) => e.activo)
-  } else if (filtroEstado.value === 'inactivos') {
-    resultado = resultado.filter((e) => !e.activo)
+const descripcionPatron = computed(() => {
+  const numCondiciones = nuevoEvento.value.condiciones.length
+  if (numCondiciones === 1) {
+    return 'Se activará cuando se cumpla la condición A'
   }
 
-  // Filtrar por búsqueda
-  if (busqueda.value) {
-    resultado = resultado.filter(
-      (e) =>
-        e.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        e.geozona.toLowerCase().includes(busqueda.value.toLowerCase()),
-    )
+  const tieneAND = nuevoEvento.value.operadoresLogicos.includes('AND')
+  const tieneOR = nuevoEvento.value.operadoresLogicos.includes('OR')
+
+  if (tieneAND && !tieneOR) {
+    return 'Se activará cuando se cumplan TODAS las condiciones'
+  } else if (tieneOR && !tieneAND) {
+    return 'Se activará cuando se cumpla AL MENOS UNA condición'
+  } else {
+    return 'Se activará según el patrón de operadores lógicos definido'
+  }
+})
+
+const esFormularioValido = computed(() => {
+  if (!nuevoEvento.value.nombre) return false
+
+  for (const condicion of nuevoEvento.value.condiciones) {
+    if (!condicion.ubicacionId) return false
   }
 
-  return resultado
+  if (nuevoEvento.value.aplicacion === 'horario') {
+    if (nuevoEvento.value.diasSemana.length === 0) return false
+    if (!nuevoEvento.value.horaInicio || !nuevoEvento.value.horaFin) return false
+  }
+
+  return true
 })
 
 // Methods
@@ -538,36 +677,70 @@ function seleccionarEvento(evento) {
   emit('evento-seleccionado', evento)
 }
 
-function getColorTipoEvento(tipo) {
-  return tipo === 'entrada' ? 'positive' : 'warning'
+function getColorTipoEvento(evento) {
+  if (!evento.condiciones || evento.condiciones.length === 0) return 'grey'
+
+  const primerActivacion = evento.condiciones[0].activacion
+  return primerActivacion === 'Entrada' || primerActivacion === 'Dentro' ? 'positive' : 'warning'
 }
 
-function getIconoTipoEvento(tipo) {
-  return tipo === 'entrada' ? 'login' : 'logout'
+function getIconoTipoEvento(evento) {
+  if (!evento.condiciones || evento.condiciones.length === 0) return 'notifications'
+
+  const primerActivacion = evento.condiciones[0].activacion
+  return primerActivacion === 'Entrada' || primerActivacion === 'Dentro' ? 'login' : 'logout'
 }
 
-function toggleEvento(evento) {
-  evento.activo = !evento.activo
+function obtenerNombreGeozona(evento) {
+  if (!evento.condiciones || evento.condiciones.length === 0) return 'Sin ubicación'
+
+  const primeraCondicion = evento.condiciones[0]
+
+  if (primeraCondicion.tipo === 'POI') {
+    const poi = pois.value.find((p) => p.id === primeraCondicion.ubicacionId)
+    return poi ? poi.nombre : 'POI no encontrado'
+  } else {
+    const geozona = geozonas.value.find((g) => g.id === primeraCondicion.ubicacionId)
+    return geozona ? geozona.nombre : 'Geozona no encontrada'
+  }
 }
 
-// Agregar nueva condición
+async function toggleEventoEstado(evento) {
+  try {
+    await toggleEvento(evento.id, !evento.activo)
+    evento.activo = !evento.activo
+
+    if ($q && $q.notify) {
+      $q.notify({
+        type: 'positive',
+        message: `Evento ${evento.activo ? 'activado' : 'desactivado'}`,
+        icon: evento.activo ? 'notifications_active' : 'notifications_off',
+      })
+    }
+  } catch (err) {
+    if ($q && $q.notify) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al cambiar el estado del evento',
+        caption: err.message,
+      })
+    }
+  }
+}
+
 function agregarCondicion() {
   nuevoEvento.value.condiciones.push({
-    tipo: 'Geocerca',
-    activacion: 'Dentro',
-    geozona: null,
+    tipo: 'POI',
+    activacion: 'Entrada',
+    ubicacionId: null,
   })
-
-  // Agregar operador por defecto (AND)
   nuevoEvento.value.operadoresLogicos.push('AND')
 }
 
-// Eliminar condición
 function eliminarCondicion(index) {
   if (nuevoEvento.value.condiciones.length > 1) {
     nuevoEvento.value.condiciones.splice(index, 1)
 
-    // Ajustar operadores lógicos
     if (index < nuevoEvento.value.operadoresLogicos.length) {
       nuevoEvento.value.operadoresLogicos.splice(index, 1)
     } else if (nuevoEvento.value.operadoresLogicos.length > 0) {
@@ -576,23 +749,13 @@ function eliminarCondicion(index) {
   }
 }
 
-function guardarEvento() {
-  eventos.value.push({
-    id: eventos.value.length + 1,
-    nombre: nuevoEvento.value.nombre,
-    geozona:
-      nuevoEvento.value.condiciones[0]?.geozona ||
-      opcionesGeozonas.find((g) => g.value === nuevoEvento.value.condiciones[0]?.geozona)?.label ||
-      'Sin geozona',
-    tipo:
-      nuevoEvento.value.condiciones[0]?.activacion === 'Entrada' ||
-      nuevoEvento.value.condiciones[0]?.activacion === 'Dentro'
-        ? 'entrada'
-        : 'salida',
-    activo: nuevoEvento.value.activo,
-  })
+function abrirDialogoNuevo() {
+  modoEdicion.value = false
+  resetearFormulario()
+  dialogNuevoEvento.value = true
+}
 
-  // Reset form
+function resetearFormulario() {
   nuevoEvento.value = {
     nombre: '',
     descripcion: '',
@@ -600,19 +763,90 @@ function guardarEvento() {
     condicionTiempo: false,
     condiciones: [
       {
-        tipo: 'Geocerca',
-        activacion: 'Dentro',
-        geozona: null,
+        tipo: 'POI',
+        activacion: 'Entrada',
+        ubicacionId: null,
       },
     ],
     operadoresLogicos: [],
     activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
+    diasSemana: [],
     horaInicio: '',
     horaFin: '',
   }
+}
 
-  dialogNuevoEvento.value = false
+function cancelarFormulario() {
+  resetearFormulario()
+  modoEdicion.value = false
+}
+
+async function guardarEvento() {
+  try {
+    const eventoData = {
+      nombre: nuevoEvento.value.nombre,
+      descripcion: nuevoEvento.value.descripcion,
+      activo: nuevoEvento.value.activo,
+      condicionTiempo: nuevoEvento.value.condicionTiempo,
+      condiciones: nuevoEvento.value.condiciones,
+      operadoresLogicos: nuevoEvento.value.operadoresLogicos,
+      activacionAlerta: nuevoEvento.value.activacionAlerta,
+      aplicacion: nuevoEvento.value.aplicacion,
+      diasSemana: nuevoEvento.value.diasSemana,
+      horaInicio: nuevoEvento.value.horaInicio,
+      horaFin: nuevoEvento.value.horaFin,
+    }
+
+    if (modoEdicion.value && nuevoEvento.value.id) {
+      await actualizarEvento(nuevoEvento.value.id, eventoData)
+
+      const index = eventos.value.findIndex((e) => e.id === nuevoEvento.value.id)
+      if (index > -1) {
+        eventos.value[index] = {
+          ...eventos.value[index],
+          ...eventoData,
+        }
+      }
+
+      if ($q && $q.notify) {
+        $q.notify({
+          type: 'positive',
+          message: 'Evento actualizado correctamente',
+          icon: 'check_circle',
+        })
+      }
+    } else {
+      const nuevoId = await crearEvento(eventoData)
+
+      eventos.value.unshift({
+        id: nuevoId,
+        ...eventoData,
+      })
+
+      if ($q && $q.notify) {
+        $q.notify({
+          type: 'positive',
+          message: 'Evento creado correctamente',
+          icon: 'check_circle',
+        })
+      }
+    }
+
+    resetearFormulario()
+    dialogNuevoEvento.value = false
+    modoEdicion.value = false
+  } catch (err) {
+    console.error('Error al guardar evento:', err)
+    if ($q && $q.notify) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al guardar el evento',
+        caption: err.message,
+        icon: 'error',
+      })
+    }
+  }
 }
 
 function mostrarMenuContextual(evento) {
@@ -621,23 +855,155 @@ function mostrarMenuContextual(evento) {
 }
 
 function editarEvento() {
-  console.log('Editar:', eventoMenu.value)
+  if (!eventoMenu.value) return
+
+  modoEdicion.value = true
+  nuevoEvento.value = {
+    id: eventoMenu.value.id,
+    nombre: eventoMenu.value.nombre,
+    descripcion: eventoMenu.value.descripcion || '',
+    activo: eventoMenu.value.activo,
+    condicionTiempo: eventoMenu.value.condicionTiempo || false,
+    condiciones: eventoMenu.value.condiciones || [
+      {
+        tipo: 'POI',
+        activacion: 'Entrada',
+        ubicacionId: null,
+      },
+    ],
+    operadoresLogicos: eventoMenu.value.operadoresLogicos || [],
+    activacionAlerta: eventoMenu.value.activacionAlerta || 'Al inicio',
+    aplicacion: eventoMenu.value.aplicacion || 'siempre',
+    diasSemana: eventoMenu.value.diasSemana || [],
+    horaInicio: eventoMenu.value.horaInicio || '',
+    horaFin: eventoMenu.value.horaFin || '',
+  }
+
+  dialogNuevoEvento.value = true
 }
 
-function duplicarEvento() {
-  const eventoDuplicado = {
-    ...eventoMenu.value,
-    id: eventos.value.length + 1,
-    nombre: `${eventoMenu.value.nombre} (Copia)`,
+async function duplicarEventoSeleccionado() {
+  if (!eventoMenu.value) return
+
+  try {
+    const nuevoId = await duplicarEvento(eventoMenu.value)
+
+    eventos.value.unshift({
+      ...eventoMenu.value,
+      id: nuevoId,
+      nombre: `${eventoMenu.value.nombre} (Copia)`,
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Evento duplicado correctamente',
+      icon: 'content_copy',
+    })
+  } catch (err) {
+    console.error('Error al duplicar evento:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al duplicar el evento',
+      caption: err.message,
+      icon: 'error',
+    })
   }
-  eventos.value.push(eventoDuplicado)
 }
 
-function eliminarEvento() {
-  const index = eventos.value.findIndex((e) => e.id === eventoMenu.value.id)
-  if (index > -1) {
-    eventos.value.splice(index, 1)
+async function eliminarEventoSeleccionado() {
+  if (!eventoMenu.value) return
+
+  const confirmacion = window.confirm(
+    `¿Estás seguro de eliminar el evento "${eventoMenu.value.nombre}"?`
+  )
+
+  if (!confirmacion) return
+
+  try {
+    await eliminarEvento(eventoMenu.value.id)
+
+    const index = eventos.value.findIndex((e) => e.id === eventoMenu.value.id)
+    if (index > -1) {
+      eventos.value.splice(index, 1)
+    }
+
+    $q.notify({
+      type: 'positive',
+      message: 'Evento eliminado correctamente',
+      icon: 'delete',
+    })
+  } catch (err) {
+    console.error('Error al eliminar evento:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al eliminar el evento',
+      caption: err.message,
+      icon: 'error',
+    })
   }
+}
+
+// Cargar datos al montar el componente
+onMounted(async () => {
+  await cargarDatos()
+})
+
+// Función para cargar/recargar datos
+async function cargarDatos() {
+  try {
+    console.log('🔄 Iniciando carga de datos...')
+    console.log('👤 UserId:', userId.value)
+    
+    // CORRECCIÓN: Verificar que $q existe antes de usarlo
+    if ($q && $q.loading) {
+      $q.loading.show({ message: 'Cargando datos...' })
+    }
+
+    // Cargar POIs, Geozonas y Eventos en paralelo
+    const [eventosData, poisData, geozonasDa] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas(),
+    ])
+
+    eventos.value = eventosData
+    pois.value = poisData
+    geozonas.value = geozonasDa
+
+    console.log('✅ Datos cargados correctamente:')
+    console.log('  📊 Eventos:', eventosData.length, eventosData)
+    console.log('  📍 POIs:', poisData.length, poisData)
+    console.log('  🗺️ Geozonas:', geozonasDa.length, geozonasDa)
+    
+    if (poisData.length === 0 && geozonasDa.length === 0) {
+      if ($q && $q.notify) {
+        $q.notify({
+          type: 'warning',
+          message: 'No hay POIs ni Geozonas creados',
+          caption: 'Crea primero algunas ubicaciones antes de crear eventos',
+          timeout: 5000,
+        })
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error al cargar datos:', err)
+    if ($q && $q.notify) {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al cargar los datos',
+        caption: err.message,
+      })
+    }
+  } finally {
+    if ($q && $q.loading) {
+      $q.loading.hide()
+    }
+  }
+}
+
+// Función para recargar datos manualmente
+async function recargarDatos() {
+  await cargarDatos()
 }
 </script>
 

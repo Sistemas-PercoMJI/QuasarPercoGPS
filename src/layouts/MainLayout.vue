@@ -457,7 +457,7 @@
 
     <!-- Dialog Eventos -->
     <q-dialog
-      v-model="EventosDrawerOpen"
+      v-model="eventosDrawerOpen"
       position="left"
       seamless
       class="component-dialog"
@@ -991,11 +991,11 @@ const drawerExpanded = ref(false) // Controla la expansión al hover
 const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
-const EventosDrawerOpen = ref(false)
+const eventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
-  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, eventosDrawerOpen],
   ([estado, conductores, geozona, eventos]) => {
     const algunDialogAbierto = estado || conductores || geozona || eventos
     dialogAbierto.value = algunDialogAbierto
@@ -1017,7 +1017,7 @@ watch(leftDrawerOpen, (newVal) => {
 
 // Control de dialogs
 watch(
-  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, EventosDrawerOpen],
+  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, eventosDrawerOpen],
   ([estado, conductores, geozona, eventos]) => {
     dialogAbierto.value = estado || conductores || geozona || eventos
   },
@@ -1029,7 +1029,7 @@ function onDrawerMouseEnter() {
     !estadoFlotaDrawerOpen.value &&
     !conductoresDrawerOpen.value &&
     !geozonaDrawerOpen.value &&
-    !EventosDrawerOpen.value
+    !eventosDrawerOpen.value
   ) {
     drawerExpanded.value = true
   }
@@ -1041,7 +1041,7 @@ function onDrawerMouseLeave() {
     !estadoFlotaDrawerOpen.value &&
     !conductoresDrawerOpen.value &&
     !geozonaDrawerOpen.value &&
-    !EventosDrawerOpen.value
+    !eventosDrawerOpen.value
   ) {
     drawerExpanded.value = false
   }
@@ -1071,7 +1071,7 @@ function handleLinkClick(link) {
     geozonaDrawerOpen.value = true
   } else if (link.action === 'open-eventos') {
     cerrarTodosLosDialogs()
-    EventosDrawerOpen.value = true
+    eventosDrawerOpen.value = true
   }
 }
 
@@ -1080,7 +1080,7 @@ function cerrarTodosLosDialogs() {
   estadoFlotaDrawerOpen.value = false
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
-  EventosDrawerOpen.value = false
+  eventosDrawerOpen.value = false
 }
 
 function cerrarEstadoFlota() {
@@ -1096,7 +1096,7 @@ function cerrarGeozonas() {
 }
 
 function cerrarEventos() {
-  EventosDrawerOpen.value = false
+  eventosDrawerOpen.value = false
 }
 
 const logout = async () => {
