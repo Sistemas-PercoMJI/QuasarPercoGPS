@@ -1,86 +1,73 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
-  <div class="eventos-drawer">
-    <!-- Header moderno -->
+  <div class="eventos-drawer-compact">
+    <!-- Header compacto -->
     <div class="drawer-header">
-      <div class="header-content">
-        <div class="text-h6 text-weight-medium">Eventos</div>
-        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
-      </div>
+      <div class="text-h6 text-weight-medium">Eventos</div>
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
     </div>
 
-    <!-- 🐛 DEBUG: Info temporal -->
-    <div v-if="pois.length === 0 && geozonas.length === 0" class="q-pa-md bg-warning text-white">
-      <div class="text-subtitle2">⚠️ No hay ubicaciones cargadas</div>
-      <div class="text-caption">POIs: {{ pois.length }} | Geozonas: {{ geozonas.length }}</div>
-      <div class="text-caption">UserId: {{ userId }}</div>
-      <q-btn 
-        flat 
-        dense 
-        label="Recargar datos" 
-        icon="refresh" 
+    <!-- 🐛 DEBUG: Info temporal - ACTUALIZADO -->
+    <div
+      v-if="pois.length === 0 && geozonas.length === 0"
+      class="q-pa-sm bg-warning text-white text-caption"
+    >
+      <div>⚠️ No hay ubicaciones cargadas</div>
+      <div>POIs: {{ pois.length }} | Geozonas: {{ geozonas.length }}</div>
+      <q-btn
+        flat
+        dense
+        label="Recargar"
+        icon="refresh"
         color="white"
-        @click="recargarDatos"
-        class="q-mt-sm"
+        @click="cargarDatos"
+        class="q-mt-xs"
+        size="sm"
       />
     </div>
 
-    <!-- ✅ INFO: Datos cargados -->
-    <div v-else-if="pois.length > 0 || geozonas.length > 0" class="q-pa-sm bg-positive text-white text-caption">
-      ✅ Datos cargados: {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
+    <!-- ✅ INFO: Datos cargados - COMPACTO -->
+    <div
+      v-else-if="pois.length > 0 || geozonas.length > 0"
+      class="q-pa-xs bg-positive text-white text-caption text-center"
+    >
+      ✅ {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
     </div>
 
-    <!-- Stats cards -->
-    <div class="stats-cards q-pa-md">
-      <div class="stat-card">
-        <q-icon name="notifications_active" size="24px" color="primary" />
-        <div class="stat-info">
-          <div class="stat-number">{{ totalEventos }}</div>
-          <div class="stat-label">Eventos Activos</div>
-        </div>
+    <!-- Stats compactas -->
+    <div class="stats-grid q-px-md q-pt-sm q-pb-md">
+      <div class="stat-item">
+        <q-icon name="notifications_active" size="18px" color="positive" />
+        <span class="stat-number">{{ totalEventos }}</span>
+        <span class="stat-label">Activos</span>
       </div>
-      <div class="stat-card">
-        <q-icon name="notifications_off" size="24px" color="grey" />
-        <div class="stat-info">
-          <div class="stat-number">{{ eventosInactivos }}</div>
-          <div class="stat-label">Inactivos</div>
-        </div>
+      <div class="stat-item">
+        <q-icon name="notifications_off" size="18px" color="grey" />
+        <span class="stat-number">{{ eventosInactivos }}</span>
+        <span class="stat-label">Inactivos</span>
       </div>
     </div>
 
-    <!-- Botón nuevo evento -->
-    <div class="q-px-md q-pb-md">
+    <!-- Barra de acciones compacta -->
+    <div class="acciones-row q-px-md q-pb-sm">
       <q-btn
         unelevated
         color="primary"
         icon="add"
-        label="Nuevo evento"
-        class="full-width"
+        label="Nuevo"
+        dense
+        class="btn-nuevo"
         @click="abrirDialogoNuevo"
       />
-    </div>
-
-    <!-- Búsqueda -->
-    <div class="q-px-md q-pb-md">
-      <q-input
-        v-model="busqueda"
-        outlined
-        dense
-        placeholder="Buscar eventos..."
-        class="modern-search"
-      >
+      <q-input v-model="busqueda" outlined dense placeholder="Buscar..." class="search-compact">
         <template v-slot:prepend>
-          <q-icon name="search" color="grey-6" />
-        </template>
-        <template v-slot:append v-if="busqueda">
-          <q-icon name="close" class="cursor-pointer" @click="busqueda = ''" />
+          <q-icon name="search" size="16px" />
         </template>
       </q-input>
     </div>
 
-    <!-- Filtro por estado -->
-    <div class="q-px-md q-pb-md">
-      <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">FILTRAR POR ESTADO</div>
+    <!-- Filtro compacto -->
+    <div class="q-px-md q-pb-sm">
       <q-select
         v-model="filtroEstado"
         :options="opcionesFiltro"
@@ -88,52 +75,52 @@
         dense
         emit-value
         map-options
+        class="filtro-compact"
       />
     </div>
 
-    <!-- Lista de eventos -->
-    <q-scroll-area class="lista-scroll">
-      <div class="q-pa-md">
+    <!-- Lista compacta de eventos -->
+    <q-scroll-area class="lista-scroll-compact">
+      <div class="q-pa-sm">
         <!-- Loading -->
-        <div v-if="loading" class="no-data">
-          <q-spinner color="primary" size="48px" />
-          <div class="text-grey-6 q-mt-md">Cargando eventos...</div>
+        <div v-if="loading" class="loading-compact">
+          <q-spinner color="primary" size="32px" />
+          <div class="text-grey-6 q-mt-sm">Cargando...</div>
         </div>
 
-        <!-- Lista de eventos -->
-        <q-card
+        <!-- Eventos -->
+        <q-item
           v-for="evento in eventosFiltrados"
           :key="evento.id"
-          flat
-          bordered
-          class="evento-card q-mb-md"
+          clickable
+          v-ripple
+          class="evento-item"
           :class="{ 'evento-selected': eventoSeleccionado?.id === evento.id }"
           @click="seleccionarEvento(evento)"
         >
-          <q-card-section class="row items-center q-pa-md">
-            <q-avatar size="48px" :color="getColorTipoEvento(evento)" text-color="white">
-              <q-icon :name="getIconoTipoEvento(evento)" size="28px" />
+          <q-item-section avatar>
+            <q-avatar size="36px" :color="getColorTipoEvento(evento)" text-color="white">
+              <q-icon :name="getIconoTipoEvento(evento)" size="18px" />
             </q-avatar>
+          </q-item-section>
 
-            <div class="col q-ml-md">
-              <div class="text-subtitle1 text-weight-medium">{{ evento.nombre }}</div>
-              <div class="text-caption text-grey-7">
-                <q-icon name="location_on" size="14px" />
-                {{ obtenerNombreGeozona(evento) }}
-              </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
-                <q-badge
-                  :color="evento.activo ? 'positive' : 'grey'"
-                  :label="evento.activo ? 'Activo' : 'Inactivo'"
-                />
-              </div>
-            </div>
+          <q-item-section>
+            <q-item-label class="text-weight-medium evento-nombre">{{
+              evento.nombre
+            }}</q-item-label>
+            <q-item-label caption class="evento-ubicacion">
+              <q-icon name="location_on" size="12px" />
+              {{ obtenerNombreGeozona(evento) }}
+            </q-item-label>
+          </q-item-section>
 
-            <div class="column items-end">
+          <q-item-section side>
+            <div class="evento-actions">
               <q-toggle
                 :model-value="evento.activo"
                 @update:model-value="toggleEventoEstado(evento)"
                 color="positive"
+                dense
                 @click.stop
               />
               <q-btn
@@ -145,296 +132,240 @@
                 @click.stop="mostrarMenuContextual(evento)"
               />
             </div>
-          </q-card-section>
-        </q-card>
+          </q-item-section>
+        </q-item>
 
-        <div v-if="!loading && eventosFiltrados.length === 0" class="no-data">
-          <q-icon name="notifications_off" size="64px" color="grey-4" />
-          <div class="text-grey-6 q-mt-md">No se encontraron eventos</div>
+        <!-- Sin resultados -->
+        <div v-if="!loading && eventosFiltrados.length === 0" class="no-data-compact">
+          <q-icon name="notifications_off" size="48px" color="grey-4" />
+          <div class="text-grey-6 q-mt-sm">No hay eventos</div>
         </div>
       </div>
     </q-scroll-area>
 
-    <!-- Dialog: Nuevo Evento -->
-    <q-dialog v-model="dialogNuevoEvento" persistent maximized transition-show="slide-up">
-      <q-card class="modern-dialog-full">
-        <!-- Header del dialog -->
-        <q-card-section class="dialog-header-full bg-primary text-white">
-          <div class="row items-center">
-            <div class="col">
-              <div class="text-h6">{{ modoEdicion ? 'Editar Evento' : 'Crear Nuevo Evento' }}</div>
-              <div class="text-caption">
-                Estado de evento {{ nuevoEvento.activo ? 'ON' : 'OFF' }}
-              </div>
-            </div>
-            <q-toggle v-model="nuevoEvento.activo" color="white" keep-color size="lg" />
-            <q-btn
-              flat
-              dense
-              round
-              icon="close"
-              v-close-popup
-              color="white"
-              class="q-ml-md"
-              @click="cancelarFormulario"
-            />
-          </div>
+    <!-- El resto del template (dialog y menú) se mantiene igual -->
+    <!-- Diálogo para Crear/Editar Evento -->
+    <!-- Diálogo para Crear/Editar Evento -->
+    <q-dialog
+      v-model="dialogNuevoEvento"
+      persistent
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card class="dialog-evento" style="width: 600px; max-width: 90vw">
+        <!-- Header del Diálogo -->
+        <q-card-section class="row items-center q-pb-none bg-primary text-white">
+          <div class="text-h6">{{ modoEdicion ? 'Editar Evento' : 'Nuevo Evento' }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup @click="cancelarFormulario" />
         </q-card-section>
 
-        <!-- Contenido del formulario -->
-        <q-card-section class="scroll-content q-pa-lg">
-          <div class="form-container">
-            <!-- Información básica -->
-            <div class="form-section">
-              <div class="section-title">Información básica</div>
-              <q-input
-                v-model="nuevoEvento.nombre"
-                label="Nombre del Evento"
-                outlined
-                class="q-mb-md"
-                :rules="[(val) => !!val || 'El nombre es requerido']"
-              />
+        <!-- Cuerpo del Formulario -->
+        <q-card-section class="scroll" style="max-height: 70vh">
+          <div class="q-gutter-md">
+            <!-- Nombre y Descripción -->
+            <q-input
+              v-model="nuevoEvento.nombre"
+              label="Nombre del evento *"
+              outlined
+              maxlength="100"
+              :rules="[(val) => !!val || 'El nombre es obligatorio']"
+            />
+            <q-input
+              v-model="nuevoEvento.descripcion"
+              label="Descripción (opcional)"
+              outlined
+              type="textarea"
+              rows="2"
+            />
 
-              <q-input
-                v-model="nuevoEvento.descripcion"
-                label="Descripción"
-                type="textarea"
-                outlined
-                rows="3"
-              />
-            </div>
-
-            <!-- Condición de tiempo -->
-            <div class="form-section">
-              <div class="section-title">
-                <q-icon name="schedule" size="24px" color="primary" class="q-mr-sm" />
-                Condición de tiempo
-              </div>
-              <q-toggle
-                v-model="nuevoEvento.condicionTiempo"
-                :label="nuevoEvento.condicionTiempo ? 'Activado' : 'Desactivado'"
-                color="positive"
-              />
-            </div>
-
-            <!-- Condición geográfica -->
-            <div class="form-section">
-              <div class="section-title">
-                <q-icon name="place" size="24px" color="primary" class="q-mr-sm" />
-                Condición geográfica
-              </div>
-
-              <!-- Lista de condiciones -->
-              <div v-for="(condicion, index) in nuevoEvento.condiciones" :key="index">
-                <div class="condicion-item q-mb-md">
-                  <div class="condicion-header">
-                    <q-badge color="primary" :label="String.fromCharCode(65 + index)" />
-                    <q-btn
-                      v-if="nuevoEvento.condiciones.length > 1"
-                      flat
-                      dense
-                      round
-                      icon="close"
-                      size="sm"
-                      color="negative"
-                      @click="eliminarCondicion(index)"
-                    >
-                      <q-tooltip>Eliminar condición</q-tooltip>
-                    </q-btn>
-                  </div>
-
-                  <div class="row q-col-gutter-md q-mt-sm">
-                    <div class="col-6">
-                      <q-select
-                        v-model="condicion.tipo"
-                        :options="opcionesCondicion"
-                        label="Tipo de ubicación"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                      />
-                    </div>
-                    <div class="col-6">
-                      <q-select
-                        v-model="condicion.activacion"
-                        :options="opcionesActivacion"
-                        label="Activar cuando"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                      />
-                    </div>
-                  </div>
-
-                  <q-select
-                    v-model="condicion.ubicacionId"
-                    :options="opcionesUbicaciones"
-                    label="Seleccionar ubicación"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                    class="q-mt-md"
-                    :hint="opcionesUbicaciones.length === 0 ? 'No hay ubicaciones disponibles. Crea POIs o Geozonas primero.' : `Selecciona ${condicion.tipo === 'POI' ? 'un punto de interés' : 'una geozona'}`"
-                    :disable="opcionesUbicaciones.length === 0"
-                  >
-                    <template v-slot:prepend>
-                      <q-icon :name="condicion.tipo === 'POI' ? 'place' : 'layers'" />
-                    </template>
-                    <template v-slot:no-option>
-                      <q-item>
-                        <q-item-section class="text-grey">
-                          <q-item-label>No hay {{ condicion.tipo === 'POI' ? 'POIs' : 'Geozonas' }} disponibles</q-item-label>
-                          <q-item-label caption>Crea algunas ubicaciones primero</q-item-label>
-                        </q-item-section>
-                      </q-item>
-                    </template>
-                  </q-select>
-                </div>
-
-                <!-- Operador lógico entre condiciones -->
-                <div
-                  v-if="index < nuevoEvento.condiciones.length - 1"
-                  class="operador-logico q-my-md"
-                >
-                  <q-btn-toggle
-                    v-model="nuevoEvento.operadoresLogicos[index]"
-                    toggle-color="primary"
-                    :options="[
-                      { label: 'Y (AND)', value: 'AND' },
-                      { label: 'O (OR)', value: 'OR' },
-                    ]"
-                    unelevated
-                    class="operador-toggle"
-                  />
-                </div>
-              </div>
-
-              <q-btn
-                flat
-                color="primary"
-                icon="add"
-                label="Añadir condición"
-                @click="agregarCondicion"
-                class="q-mt-md"
-              />
-            </div>
-
-            <!-- Patrón de criterios -->
-            <div class="form-section">
-              <div class="section-title">Patrón de criterios</div>
-              <div class="patron-box">
-                {{ patronCriterios }}
-              </div>
-              <div class="text-caption text-grey-6 q-mt-sm">
-                {{ descripcionPatron }}
-              </div>
-            </div>
-
-            <!-- Activación de alerta -->
-            <div class="form-section">
-              <div class="section-title">
-                <q-icon name="notifications" size="24px" color="primary" class="q-mr-sm" />
-                Activación de alerta
-              </div>
-              <q-select
-                v-model="nuevoEvento.activacionAlerta"
-                :options="opcionesActivacionAlerta"
-                label="¿Cuándo notificar?"
-                outlined
-                emit-value
-                map-options
-                hint="Define la frecuencia de las notificaciones"
-              />
-            </div>
-
-            <!-- Aplicación del evento -->
-            <div class="form-section">
-              <div class="section-title">
-                <q-icon name="event" size="24px" color="primary" class="q-mr-sm" />
-                Aplicación del evento
-              </div>
-              <q-option-group
-                v-model="nuevoEvento.aplicacion"
-                :options="opcionesAplicacion"
-                color="primary"
-              />
-
-              <!-- Horario si se selecciona "A los días y horas establecidos" -->
-              <div v-if="nuevoEvento.aplicacion === 'horario'" class="q-mt-md">
+            <!-- Condiciones de Activación -->
+            <q-separator />
+            <div class="text-subtitle2 q-mt-sm">Condiciones de Activación</div>
+            <div v-for="(condicion, index) in nuevoEvento.condiciones" :key="index" class="q-mb-md">
+              <div class="row q-gutter-sm items-center">
                 <q-select
-                  v-model="nuevoEvento.diasSemana"
-                  :options="opcionesDiasSemana"
-                  label="Días de la semana"
+                  v-model="condicion.tipo"
+                  :options="opcionesCondicion"
+                  label="Tipo"
                   outlined
-                  multiple
+                  dense
+                  class="col"
                   emit-value
                   map-options
-                  hint="Selecciona los días en que estará activo"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="calendar_today" />
-                  </template>
-                </q-select>
+                />
+                <q-select
+                  v-model="condicion.activacion"
+                  :options="opcionesActivacion"
+                  label="Activación"
+                  outlined
+                  dense
+                  class="col"
+                  emit-value
+                  map-options
+                />
+                <q-select
+                  v-model="condicion.ubicacionId"
+                  :options="opcionesUbicaciones"
+                  label="Ubicación"
+                  outlined
+                  dense
+                  class="col-12"
+                  emit-value
+                  map-options
+                  clearable
+                />
+                <q-btn
+                  v-if="nuevoEvento.condiciones.length > 1"
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="negative"
+                  @click="eliminarCondicion(index)"
+                  class="q-ml-sm"
+                />
+              </div>
+              <!-- Operador Lógico entre condiciones -->
+              <div v-if="index < nuevoEvento.condiciones.length - 1" class="q-mt-sm q-ml-sm">
+                <q-btn-toggle
+                  v-model="nuevoEvento.operadoresLogicos[index]"
+                  :options="[
+                    { label: 'Y (AND)', value: 'AND' },
+                    { label: 'O (OR)', value: 'OR' },
+                  ]"
+                  unelevated
+                  dense
+                  toggle-color="primary"
+                />
+              </div>
+            </div>
 
-                <div class="row q-col-gutter-md q-mt-md">
-                  <div class="col-6">
-                    <q-input
-                      v-model="nuevoEvento.horaInicio"
-                      label="Hora inicio"
-                      outlined
-                      type="time"
-                    />
-                  </div>
-                  <div class="col-6">
-                    <q-input v-model="nuevoEvento.horaFin" label="Hora fin" outlined type="time" />
-                  </div>
-                </div>
+            <!-- Botón para agregar más condiciones -->
+            <q-btn
+              flat
+              icon="add_circle"
+              label="Agregar otra condición"
+              color="primary"
+              @click="agregarCondicion"
+            />
+
+            <!-- Resumen del Patrón Lógico -->
+            <q-card flat bordered class="bg-blue-grey-1">
+              <q-card-section class="q-pa-sm">
+                <div class="text-caption text-grey-7">Patrón de criterios:</div>
+                <div class="text-weight-bold">{{ patronCriterios }}</div>
+                <div class="text-caption text-grey-6 q-mt-xs">{{ descripcionPatron }}</div>
+              </q-card-section>
+            </q-card>
+
+            <!-- Opciones de Alerta y Aplicación -->
+            <q-separator class="q-mt-md" />
+            <div class="text-subtitle2 q-mt-sm">Opciones de Alerta</div>
+            <q-select
+              v-model="nuevoEvento.activacionAlerta"
+              :options="opcionesActivacionAlerta"
+              label="Frecuencia de alerta"
+              outlined
+              emit-value
+              map-options
+            />
+
+            <q-toggle
+              v-model="nuevoEvento.condicionTiempo"
+              label="Aplicar condiciones de tiempo"
+              color="primary"
+            />
+
+            <q-select
+              v-model="nuevoEvento.aplicacion"
+              :options="opcionesAplicacion"
+              label="Aplicación del evento"
+              outlined
+              emit-value
+              map-options
+            />
+
+            <!-- Configuración de Horario -->
+            <div v-if="nuevoEvento.aplicacion === 'horario'" class="q-gutter-sm q-mt-md">
+              <div class="text-subtitle2">Días y Horas</div>
+              <q-select
+                v-model="nuevoEvento.diasSemana"
+                :options="opcionesDiasSemana"
+                label="Días de la semana"
+                outlined
+                multiple
+                emit-value
+                map-options
+                use-chips
+              />
+              <div class="row q-gutter-sm">
+                <q-input
+                  v-model="nuevoEvento.horaInicio"
+                  label="Hora de inicio"
+                  outlined
+                  dense
+                  class="col"
+                  mask="time"
+                  :rules="['time']"
+                >
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="nuevoEvento.horaInicio" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+                <q-input
+                  v-model="nuevoEvento.horaFin"
+                  label="Hora de fin"
+                  outlined
+                  dense
+                  class="col"
+                  mask="time"
+                  :rules="['time']"
+                >
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="nuevoEvento.horaFin" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
               </div>
             </div>
           </div>
         </q-card-section>
 
-        <!-- Botones de acción -->
-        <q-card-actions class="dialog-actions q-pa-lg bg-grey-1">
+        <!-- Footer del Diálogo -->
+        <q-card-actions align="right" class="bg-grey-2">
+          <q-btn flat label="Cancelar" @click="cancelarFormulario" v-close-popup />
           <q-btn
-            flat
-            label="Cancelar"
-            color="grey-7"
-            v-close-popup
-            size="md"
-            @click="cancelarFormulario"
-          />
-          <q-space />
-          <q-btn
-            unelevated
-            :label="modoEdicion ? 'Actualizar' : 'Crear'"
             color="primary"
+            label="Guardar"
             @click="guardarEvento"
             :disable="!esFormularioValido"
             :loading="loading"
-            size="md"
-            class="q-px-lg"
           />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- Menú contextual -->
+    <!-- Menú Contextual para cada evento -->
     <q-menu v-model="menuContextualVisible" context-menu>
-      <q-list style="min-width: 180px">
+      <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="editarEvento">
           <q-item-section avatar>
-            <q-icon name="edit" color="primary" />
+            <q-icon name="edit" />
           </q-item-section>
           <q-item-section>Editar</q-item-section>
         </q-item>
 
         <q-item clickable v-close-popup @click="duplicarEventoSeleccionado">
           <q-item-section avatar>
-            <q-icon name="content_copy" color="blue" />
+            <q-icon name="content_copy" />
           </q-item-section>
           <q-item-section>Duplicar</q-item-section>
         </q-item>
@@ -515,7 +446,7 @@ const nuevoEvento = ref({
   horaFin: '',
 })
 
-// Opciones
+// Opciones (mantener igual)
 const opcionesFiltro = [
   { label: 'Todos', value: 'todos' },
   { label: 'Activos', value: 'activos' },
@@ -555,7 +486,7 @@ const opcionesDiasSemana = [
   { label: 'Domingo', value: 0 },
 ]
 
-// Computed
+// Computed (mantener igual)
 const totalEventos = computed(() => eventos.value.filter((e) => e.activo).length)
 const eventosInactivos = computed(() => eventos.value.filter((e) => !e.activo).length)
 
@@ -572,7 +503,7 @@ const eventosFiltrados = computed(() => {
     resultado = resultado.filter(
       (e) =>
         e.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        obtenerNombreGeozona(e).toLowerCase().includes(busqueda.value.toLowerCase())
+        obtenerNombreGeozona(e).toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -580,31 +511,26 @@ const eventosFiltrados = computed(() => {
 })
 
 const opcionesUbicaciones = computed(() => {
-  // Obtener todas las condiciones y sus tipos
-  const tipos = nuevoEvento.value.condiciones.map(c => c.tipo)
-  
-  // Si todas las condiciones son del mismo tipo, filtrar por ese tipo
+  const tipos = nuevoEvento.value.condiciones.map((c) => c.tipo)
   const primerTipo = tipos[0]
-  const todosMismoTipo = tipos.every(t => t === primerTipo)
-  
+  const todosMismoTipo = tipos.every((t) => t === primerTipo)
+
   if (!todosMismoTipo) {
-    // Si hay tipos mixtos, mostrar todas las ubicaciones
     const todasOpciones = [
       ...pois.value.map((poi) => ({
         label: `📍 ${poi.nombre}`,
         value: poi.id,
-        tipo: 'POI'
+        tipo: 'POI',
       })),
       ...geozonas.value.map((gz) => ({
         label: `🗺️ ${gz.nombre}`,
         value: gz.id,
-        tipo: 'Geozona'
-      }))
+        tipo: 'Geozona',
+      })),
     ]
     return todasOpciones
   }
-  
-  // Si todas son del mismo tipo, filtrar
+
   if (primerTipo === 'POI') {
     return pois.value.map((poi) => ({
       label: poi.nombre,
@@ -679,21 +605,18 @@ function seleccionarEvento(evento) {
 
 function getColorTipoEvento(evento) {
   if (!evento.condiciones || evento.condiciones.length === 0) return 'grey'
-
   const primerActivacion = evento.condiciones[0].activacion
   return primerActivacion === 'Entrada' || primerActivacion === 'Dentro' ? 'positive' : 'warning'
 }
 
 function getIconoTipoEvento(evento) {
   if (!evento.condiciones || evento.condiciones.length === 0) return 'notifications'
-
   const primerActivacion = evento.condiciones[0].activacion
   return primerActivacion === 'Entrada' || primerActivacion === 'Dentro' ? 'login' : 'logout'
 }
 
 function obtenerNombreGeozona(evento) {
   if (!evento.condiciones || evento.condiciones.length === 0) return 'Sin ubicación'
-
   const primeraCondicion = evento.condiciones[0]
 
   if (primeraCondicion.tipo === 'POI') {
@@ -740,7 +663,6 @@ function agregarCondicion() {
 function eliminarCondicion(index) {
   if (nuevoEvento.value.condiciones.length > 1) {
     nuevoEvento.value.condiciones.splice(index, 1)
-
     if (index < nuevoEvento.value.operadoresLogicos.length) {
       nuevoEvento.value.operadoresLogicos.splice(index, 1)
     } else if (nuevoEvento.value.operadoresLogicos.length > 0) {
@@ -800,15 +722,10 @@ async function guardarEvento() {
 
     if (modoEdicion.value && nuevoEvento.value.id) {
       await actualizarEvento(nuevoEvento.value.id, eventoData)
-
       const index = eventos.value.findIndex((e) => e.id === nuevoEvento.value.id)
       if (index > -1) {
-        eventos.value[index] = {
-          ...eventos.value[index],
-          ...eventoData,
-        }
+        eventos.value[index] = { ...eventos.value[index], ...eventoData }
       }
-
       if ($q && $q.notify) {
         $q.notify({
           type: 'positive',
@@ -818,12 +735,7 @@ async function guardarEvento() {
       }
     } else {
       const nuevoId = await crearEvento(eventoData)
-
-      eventos.value.unshift({
-        id: nuevoId,
-        ...eventoData,
-      })
-
+      eventos.value.unshift({ id: nuevoId, ...eventoData })
       if ($q && $q.notify) {
         $q.notify({
           type: 'positive',
@@ -856,7 +768,6 @@ function mostrarMenuContextual(evento) {
 
 function editarEvento() {
   if (!eventoMenu.value) return
-
   modoEdicion.value = true
   nuevoEvento.value = {
     id: eventoMenu.value.id,
@@ -878,22 +789,18 @@ function editarEvento() {
     horaInicio: eventoMenu.value.horaInicio || '',
     horaFin: eventoMenu.value.horaFin || '',
   }
-
   dialogNuevoEvento.value = true
 }
 
 async function duplicarEventoSeleccionado() {
   if (!eventoMenu.value) return
-
   try {
     const nuevoId = await duplicarEvento(eventoMenu.value)
-
     eventos.value.unshift({
       ...eventoMenu.value,
       id: nuevoId,
       nombre: `${eventoMenu.value.nombre} (Copia)`,
     })
-
     $q.notify({
       type: 'positive',
       message: 'Evento duplicado correctamente',
@@ -912,21 +819,16 @@ async function duplicarEventoSeleccionado() {
 
 async function eliminarEventoSeleccionado() {
   if (!eventoMenu.value) return
-
   const confirmacion = window.confirm(
-    `¿Estás seguro de eliminar el evento "${eventoMenu.value.nombre}"?`
+    `¿Estás seguro de eliminar el evento "${eventoMenu.value.nombre}"?`,
   )
-
   if (!confirmacion) return
-
   try {
     await eliminarEvento(eventoMenu.value.id)
-
     const index = eventos.value.findIndex((e) => e.id === eventoMenu.value.id)
     if (index > -1) {
       eventos.value.splice(index, 1)
     }
-
     $q.notify({
       type: 'positive',
       message: 'Evento eliminado correctamente',
@@ -948,18 +850,16 @@ onMounted(async () => {
   await cargarDatos()
 })
 
-// Función para cargar/recargar datos
+// SOLUCIÓN: Usamos solo cargarDatos y eliminamos recargarDatos
 async function cargarDatos() {
   try {
     console.log('🔄 Iniciando carga de datos...')
     console.log('👤 UserId:', userId.value)
-    
-    // CORRECCIÓN: Verificar que $q existe antes de usarlo
+
     if ($q && $q.loading) {
       $q.loading.show({ message: 'Cargando datos...' })
     }
 
-    // Cargar POIs, Geozonas y Eventos en paralelo
     const [eventosData, poisData, geozonasDa] = await Promise.all([
       obtenerEventos(),
       obtenerPOIs(),
@@ -971,10 +871,10 @@ async function cargarDatos() {
     geozonas.value = geozonasDa
 
     console.log('✅ Datos cargados correctamente:')
-    console.log('  📊 Eventos:', eventosData.length, eventosData)
-    console.log('  📍 POIs:', poisData.length, poisData)
-    console.log('  🗺️ Geozonas:', geozonasDa.length, geozonasDa)
-    
+    console.log('  📊 Eventos:', eventosData.length)
+    console.log('  📍 POIs:', poisData.length)
+    console.log('  🗺️ Geozonas:', geozonasDa.length)
+
     if (poisData.length === 0 && geozonasDa.length === 0) {
       if ($q && $q.notify) {
         $q.notify({
@@ -1001,184 +901,162 @@ async function cargarDatos() {
   }
 }
 
-// Función para recargar datos manualmente
-async function recargarDatos() {
-  await cargarDatos()
-}
+// ELIMINADO: La función recargarDatos ya no existe, usamos cargarDatos directamente
 </script>
 
 <style scoped>
-.eventos-drawer {
+/* Los estilos se mantienen igual que en la versión anterior */
+.eventos-drawer-compact {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: white;
 }
 
 .drawer-header {
-  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-  color: white;
-  padding: 0;
-}
-
-.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+  color: white;
+  min-height: 48px;
 }
 
-.header-content .text-h6 {
+.drawer-header .text-h6 {
   color: white;
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.stats-cards {
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
+.stat-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.stat-info {
-  flex: 1;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
 }
 
 .stat-number {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
   color: #2c3e50;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   color: #7f8c8d;
-  margin-top: 4px;
 }
 
-.modern-search {
+.acciones-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-nuevo {
+  min-width: 80px;
+  font-size: 12px;
+}
+
+.search-compact {
+  flex: 1;
   background: white;
-  border-radius: 12px;
 }
 
-.lista-scroll {
+.search-compact :deep(.q-field__control) {
+  min-height: 32px;
+}
+
+.filtro-compact :deep(.q-field__control) {
+  min-height: 32px;
+}
+
+.lista-scroll-compact {
   flex: 1;
   height: 100%;
 }
 
-.evento-card {
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  background: white;
+.evento-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px 12px;
+  min-height: 60px;
 }
 
-.evento-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+.evento-item.q-item--active {
+  background-color: #e3f2fd;
+}
+
+.evento-item:hover {
+  background-color: #f5f5f5;
 }
 
 .evento-selected {
-  border: 2px solid #4facfe;
-  background: #f0f9ff;
+  background-color: #e3f2fd;
+  border-left: 3px solid #1976d2;
 }
 
-.no-data {
+.evento-nombre {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.evento-ubicacion {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.evento-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-compact {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
+  padding: 40px 20px;
 }
 
-/* Dialog fullscreen */
-.modern-dialog-full {
+.no-data-compact {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #9e9e9e;
 }
 
-.dialog-header-full {
-  padding: 24px;
-  flex-shrink: 0;
+/* Estilos para el diálogo de eventos */
+.dialog-evento {
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-.scroll-content {
-  flex: 1;
+.dialog-evento .q-card__section {
+  padding: 16px;
+}
+
+.dialog-evento .q-card__section.scroll {
   overflow-y: auto;
 }
 
-.form-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.form-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-}
-
-.condicion-item {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.condicion-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.patron-box {
-  background: #f5f5f5;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #666;
-}
-
-.operador-logico {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.operador-toggle {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.dialog-actions {
-  flex-shrink: 0;
-  border-top: 1px solid #e0e0e0;
+.dialog-evento .q-card__actions {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
 }
 </style>
