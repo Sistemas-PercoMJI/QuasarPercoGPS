@@ -1175,6 +1175,35 @@ const guardarPOI = async () => {
         ...poiData,
       })
 
+      if (mapPage && mapPage._mapaAPI && poiData.coordenadas) {
+        const { lat, lng } = poiData.coordenadas
+
+        const popupContent = `
+    <div style="min-width: 150px;">
+      <b style="font-size: 14px;">📍 ${poiData.nombre}</b>
+      <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+        ${poiData.direccion}
+      </p>
+    </div>
+  `
+
+        const marker = mapPage._mapaAPI.L.marker([lat, lng], {
+          icon: mapPage._mapaAPI.L.icon({
+            iconUrl:
+              'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl:
+              'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41],
+          }),
+        }).addTo(mapPage._mapaAPI.map)
+
+        marker.bindPopup(popupContent)
+        console.log('✅ Nuevo POI dibujado en el mapa')
+      } //condicion para que se marquen los pois
+
       $q.notify({
         type: 'positive',
         message: 'POI guardado correctamente',
@@ -1209,15 +1238,39 @@ function abrirDialogGeozona() {
 
 // Función para cancelar la creación de una nueva geozona
 function cancelarNuevaGeozona() {
-  // Limpiar el mapa si hay elementos temporales
   const mapPage = document.querySelector('#map-page')
+
   if (mapPage && mapPage._mapaAPI) {
+    console.log('🧹 Limpiando mapa al cancelar...')
+
+    // Desactivar modos de selección
+    mapPage._mapaAPI.desactivarModoSeleccion()
+
+    // Limpiar capas temporales
     if (nuevaGeozona.value.tipo === 'poligono') {
       mapPage._mapaAPI.limpiarPoligonoTemporal()
     } else if (nuevaGeozona.value.tipo === 'circular') {
       mapPage._mapaAPI.limpiarCirculoTemporal()
     }
   }
+
+  // ✅ NUEVO: Restaurar el drawer
+  const componentDialog = document.querySelector('.component-dialog')
+  if (componentDialog) {
+    componentDialog.style.opacity = '1'
+    componentDialog.style.pointerEvents = 'auto'
+  }
+
+  // ✅ NUEVO: Ocultar botón flotante
+  window.dispatchEvent(
+    new CustomEvent('mostrarBotonConfirmarGeozona', {
+      detail: { mostrar: false },
+    }),
+  )
+
+  // ✅ NUEVO: Resetear modos locales
+  modoSeleccionGeozonaCircular.value = false
+  modoSeleccionGeozonaPoligonal.value = false
 
   // Resetear formulario
   nuevaGeozona.value = {
@@ -1230,6 +1283,8 @@ function cancelarNuevaGeozona() {
     puntos: [],
     centro: null,
   }
+
+  console.log('✅ Cancelación completada y mapa limpiado')
 }
 
 // Función para activar la selección de geozona circular en el mapa
@@ -1438,7 +1493,7 @@ const guardarGeozona = async () => {
     // Preparar datos de la geozona
     const geozonaData = {
       nombre: nuevaGeozona.value.nombre,
-      tipo: nuevaGeozona.value.tipo, // Este es 'circular' o 'poligono'
+      tipo: nuevaGeozona.value.tipo,
       grupoId: nuevaGeozona.value.grupoId,
       notas: nuevaGeozona.value.notas || '',
     }
@@ -1453,17 +1508,16 @@ const guardarGeozona = async () => {
     }
 
     if (nuevaGeozona.value.id) {
-      // ============ ACTUALIZAR GEOZONA EXISTENTE ============
+      // ACTUALIZAR GEOZONA EXISTENTE
       await actualizarGeozona(nuevaGeozona.value.id, geozonaData)
 
       const index = items.value.findIndex((i) => i.id === nuevaGeozona.value.id)
       if (index > -1) {
-        // ✅ CORRECCIÓN: Mantener la estructura correcta
         items.value[index] = {
-          ...geozonaData, // ← Primero los datos
-          id: nuevaGeozona.value.id, // ← Luego el ID
-          tipoGeozona: geozonaData.tipo, // ← Preservar tipo original
-          tipo: 'geozona', // ← Sobrescribir con el tipo correcto
+          ...geozonaData,
+          id: nuevaGeozona.value.id,
+          tipoGeozona: geozonaData.tipo,
+          tipo: 'geozona',
         }
       }
 
@@ -1490,7 +1544,7 @@ const guardarGeozona = async () => {
         icon: 'check_circle',
       })
     } else {
-      // ============ CREAR NUEVA GEOZONA ============
+      // CREAR NUEVA GEOZONA
       console.log('📝 Creando nueva geozona...')
       const nuevoId = await crearGeozona(geozonaData)
       console.log('✅ Geozona creada con ID:', nuevoId)
@@ -1503,19 +1557,62 @@ const guardarGeozona = async () => {
         }
       }
 
-      // ✅ CORRECCIÓN: Estructura correcta al agregar
       const nuevaGeozonaParaItems = {
-        ...geozonaData, // ← Primero los datos de Firebase
-        id: nuevoId, // ← Agregar ID
-        tipoGeozona: geozonaData.tipo, // ← Preservar tipo original (circular/poligono)
-        tipo: 'geozona', // ← Sobrescribir con tipo para filtros
-        fechaCreacion: new Date(), // ← Agregar fecha
+        ...geozonaData,
+        id: nuevoId,
+        tipoGeozona: geozonaData.tipo,
+        tipo: 'geozona',
+        fechaCreacion: new Date(),
       }
 
       console.log('📦 Agregando geozona a items.value:', nuevaGeozonaParaItems)
 
-      // ✅ USAR unshift en lugar de push para que aparezca primero
       items.value.unshift(nuevaGeozonaParaItems)
+
+      if (mapPage && mapPage._mapaAPI) {
+        if (nuevaGeozona.value.tipo === 'circular' && nuevaGeozona.value.centro) {
+          const { lat, lng } = nuevaGeozona.value.centro
+
+          const circle = mapPage._mapaAPI.L.circle([lat, lng], {
+            radius: nuevaGeozona.value.radio,
+            color: '#FF6B6B',
+            fillColor: '#FF6B6B',
+            fillOpacity: 0.15,
+            weight: 2,
+          }).addTo(mapPage._mapaAPI.map)
+
+          circle.bindPopup(`
+      <div style="min-width: 150px;">
+        <b style="font-size: 14px;">🔵 ${nuevaGeozona.value.nombre}</b>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+          Radio: ${nuevaGeozona.value.radio}m
+        </p>
+      </div>
+    `)
+
+          console.log('✅ Nueva geozona circular dibujada en el mapa')
+        } else if (nuevaGeozona.value.tipo === 'poligono' && nuevaGeozona.value.puntos) {
+          const puntos = nuevaGeozona.value.puntos.map((p) => [p.lat, p.lng])
+
+          const polygon = mapPage._mapaAPI.L.polygon(puntos, {
+            color: '#4ECDC4',
+            fillColor: '#4ECDC4',
+            fillOpacity: 0.15,
+            weight: 2,
+          }).addTo(mapPage._mapaAPI.map)
+
+          polygon.bindPopup(`
+      <div style="min-width: 150px;">
+        <b style="font-size: 14px;">🔷 ${nuevaGeozona.value.nombre}</b>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+          ${nuevaGeozona.value.puntos.length} puntos
+        </p>
+      </div>
+    `)
+
+          console.log('✅ Nueva geozona poligonal dibujada en el mapa')
+        }
+      }
 
       console.log('📊 items.value después de agregar:', items.value.length)
       console.log('📊 Geozonas en items:', items.value.filter((i) => i.tipo === 'geozona').length)
@@ -1526,6 +1623,41 @@ const guardarGeozona = async () => {
         icon: 'check_circle',
       })
     }
+
+    // ✅ NUEVO: Limpiar TODO después de guardar
+    if (mapPage && mapPage._mapaAPI) {
+      console.log('🧹 Limpiando mapa después de guardar...')
+
+      // Desactivar modos de selección
+      mapPage._mapaAPI.desactivarModoSeleccion()
+
+      // Limpiar capas temporales según el tipo
+      if (nuevaGeozona.value.tipo === 'circular') {
+        mapPage._mapaAPI.limpiarCirculoTemporal()
+      } else if (nuevaGeozona.value.tipo === 'poligono') {
+        mapPage._mapaAPI.limpiarPoligonoTemporal()
+      }
+
+      console.log('✅ Mapa limpiado correctamente')
+    }
+
+    // ✅ NUEVO: Restaurar el drawer completamente
+    const componentDialog = document.querySelector('.component-dialog')
+    if (componentDialog) {
+      componentDialog.style.opacity = '1'
+      componentDialog.style.pointerEvents = 'auto'
+    }
+
+    // ✅ NUEVO: Ocultar botón flotante
+    window.dispatchEvent(
+      new CustomEvent('mostrarBotonConfirmarGeozona', {
+        detail: { mostrar: false },
+      }),
+    )
+
+    // ✅ NUEVO: Resetear modos locales
+    modoSeleccionGeozonaCircular.value = false
+    modoSeleccionGeozonaPoligonal.value = false
 
     // Resetear formulario
     nuevaGeozona.value = {
@@ -1541,7 +1673,7 @@ const guardarGeozona = async () => {
 
     dialogNuevaGeozona.value = false
 
-    console.log('✅ Geozona guardada y diálogo cerrado')
+    console.log('✅ Geozona guardada y todo limpiado')
   } catch (err) {
     console.error('❌ Error al guardar geozona:', err)
     $q.notify({
@@ -1767,6 +1899,101 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
   console.log('✅ Diálogo reabierto con datos:', nuevaGeozona.value)
 }
 
+// Función para dibujar todos los POIs y Geozonas en el mapa
+const dibujarTodosEnMapa = () => {
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    console.warn('⚠️ Mapa no disponible para dibujar items')
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+
+  console.log('🎨 Dibujando todos los items en el mapa...')
+
+  // Dibujar POIs
+  items.value
+    .filter((i) => i.tipo === 'poi' && i.coordenadas)
+    .forEach((poi) => {
+      const { lat, lng } = poi.coordenadas
+
+      const popupContent = `
+        <div style="min-width: 150px;">
+          <b style="font-size: 14px;">📍 ${poi.nombre}</b>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+            ${poi.direccion}
+          </p>
+        </div>
+      `
+
+      const marker = mapaAPI.L.marker([lat, lng], {
+        icon: mapaAPI.L.icon({
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+      }).addTo(mapaAPI.map)
+
+      marker.bindPopup(popupContent)
+
+      console.log('📍 POI dibujado:', poi.nombre)
+    })
+
+  // Dibujar Geozonas
+  items.value
+    .filter((i) => i.tipo === 'geozona')
+    .forEach((geozona) => {
+      if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+        const { lat, lng } = geozona.centro
+
+        const circle = mapaAPI.L.circle([lat, lng], {
+          radius: geozona.radio,
+          color: '#FF6B6B',
+          fillColor: '#FF6B6B',
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(mapaAPI.map)
+
+        circle.bindPopup(`
+          <div style="min-width: 150px;">
+            <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+              Radio: ${geozona.radio}m
+            </p>
+          </div>
+        `)
+
+        console.log('🔵 Geozona circular dibujada:', geozona.nombre)
+      } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+        const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
+
+        const polygon = mapaAPI.L.polygon(puntos, {
+          color: '#4ECDC4',
+          fillColor: '#4ECDC4',
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(mapaAPI.map)
+
+        polygon.bindPopup(`
+          <div style="min-width: 150px;">
+            <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+              ${geozona.puntos.length} puntos
+            </p>
+          </div>
+        `)
+
+        console.log('🔷 Geozona poligonal dibujada:', geozona.nombre)
+      }
+    })
+
+  console.log('✅ Todos los items dibujados en el mapa')
+}
 // Hooks de ciclo de vida
 onMounted(async () => {
   try {
@@ -1779,6 +2006,11 @@ onMounted(async () => {
     const geozonasCargadas = await obtenerGeozonas()
     items.value = [...items.value, ...geozonasCargadas]
     console.log('✅ Geozonas cargadas:', geozonasCargadas.length)
+
+    // ✅ NUEVO: Esperar un poco y dibujar todo en el mapa
+    setTimeout(() => {
+      dibujarTodosEnMapa()
+    }, 1000) // Dar tiempo a que el mapa esté completamente listo
   } catch (err) {
     console.error('Error al cargar datos:', err)
     $q.notify({
@@ -1787,6 +2019,8 @@ onMounted(async () => {
       caption: err.message,
     })
   }
+
+  // Event listener para el botón flotante
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 

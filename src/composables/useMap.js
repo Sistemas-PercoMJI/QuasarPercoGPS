@@ -44,15 +44,24 @@ export function useMap() {
     return true
   }
 
-  // Función para desactivar modo selección (para POIs)
+  // Función para desactivar modo selección (TODOS los modos)
   const desactivarModoSeleccion = () => {
     if (!map.value) return
 
+    // Desactivar TODOS los modos
     modoSeleccionActivo.value = false
-    map.value.getContainer().style.cursor = ''
-    map.value.off('click', onMapClick)
+    modoSeleccionGeozonaCircular.value = false
+    modoSeleccionGeozonaPoligonal.value = false
 
-    console.log('❌ Modo selección desactivado')
+    // Restaurar cursor normal
+    map.value.getContainer().style.cursor = ''
+
+    // Remover TODOS los eventos de clic
+    map.value.off('click', onMapClick)
+    map.value.off('click', onMapClickGeozonaCircular)
+    map.value.off('click', onMapClickGeozonaPoligonal)
+
+    console.log('❌ Todos los modos de selección desactivados')
   }
 
   // Función para activar modo selección de geozona circular
