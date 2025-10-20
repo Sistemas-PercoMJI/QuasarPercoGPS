@@ -779,40 +779,40 @@ function centrarMapaEn(lat, lng, zoom = 18) {
   return esperarMapa()
 }
 
+// En MainLayout.vue
+
+let busquedaEnProgreso = ref(false)
+
 function ejecutarCentrado(lat, lng, zoom) {
   try {
     const map = window.mapaGlobal.map
-    console.log('🗺️ Mapa encontrado:', map)
+    if (!map) {
+      console.error('❌ Mapa no disponible')
+      return
+    }
 
-    // ⚡ IMPORTANTE: Limpiar ANTES de cualquier animación
-    limpiarMarcadorBusquedaTemporal()
+    // Si ya hay una búsqueda en progreso, la ignoramos para evitar solapamientos
+    if (busquedaEnProgreso.value) {
+      console.log('⏳ Búsqueda ya en progreso, ignorando...')
+      return
+    }
 
-    // ⚡ Dar un pequeño tiempo para que se complete la limpieza
+    busquedaEnProgreso.value = true
+
+    // Mover el mapa de forma instantánea
+    map.setView([lat, lng], zoom, {
+      animate: false,
+      duration: 0,
+    })
+    console.log('✅ setView ejecutado sin animación')
+
+    // Actualizar o crear el marcador
+    actualizarMarcadorBusqueda(lat, lng)
+
+    // Marcar que la búsqueda ha terminado
     setTimeout(() => {
-      // Mover el mapa
-      if (map.flyTo && typeof map.flyTo === 'function') {
-        map.flyTo([lat, lng], zoom, {
-          duration: 1.5,
-          easeLinearity: 0.25,
-        })
-        console.log('✅ flyTo ejecutado')
-      } else if (map.setView && typeof map.setView === 'function') {
-        map.setView([lat, lng], zoom, {
-          animate: true,
-          duration: 1,
-        })
-        console.log('✅ setView ejecutado')
-      } else {
-        console.warn('⚠️ Usando panTo como fallback')
-        map.panTo([lat, lng], { duration: 1 })
-        map.setZoom(zoom)
-      }
-
-      // Esperar a que termine la animación antes de agregar nuevo marcador
-      setTimeout(() => {
-        agregarMarcadorBusqueda(lat, lng)
-      }, 2000)
-    }, 100) // ⚡ Esperar 100ms después de limpiar
+      busquedaEnProgreso.value = false
+    }, 300) // Un pequeño retraso para evitar clics múltiples
   } catch (error) {
     console.error('❌ Error al centrar mapa:', error)
     $q.notify({
@@ -821,141 +821,60 @@ function ejecutarCentrado(lat, lng, zoom) {
       icon: 'error',
       position: 'top',
     })
+    busquedaEnProgreso.value = false
   }
 }
 
-function agregarMarcadorBusqueda(lat, lng) {
+function actualizarMarcadorBusqueda(lat, lng) {
   if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
-    console.warn('⚠️ Mapa no disponible para agregar marcador')
+    console.warn('⚠️ Mapa no disponible para actualizar marcador')
     return
   }
 
   const map = window.mapaGlobal.map
   const L = window.L
 
-  // Doble verificación de limpieza
-  limpiarMarcadorBusquedaTemporal()
-
   try {
-    // Crear marcador CON zoomAnimation deshabilitada
-    window.marcadorBusqueda = L.marker([lat, lng], {
-      icon: L.icon({
-        iconUrl:
-          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      }),
-      zoomAnimation: false, // ⚡ CLAVE: Deshabilitar animación de zoom
-      markerZoomAnimation: false, // ⚡ CLAVE: Deshabilitar animación del marcador
-    }).addTo(map)
+    // Si el marcador no existe, créalo
+    if (!window.marcadorBusqueda) {
+      window.marcadorBusqueda = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+        riseOnHover: true,
+      }).addTo(map)
 
-    // Agregar popup simple SIN animaciones
-    window.marcadorBusqueda.bindPopup(`<b>📍 Ubicación buscada</b>`, {
-      closeButton: true,
-      autoClose: false,
-      closeOnClick: false,
-      closeOnEscapeKey: true,
-      autoPan: false, // ⚡ No mover el mapa automáticamente
-    })
+      // Vincular el popup solo una vez
+      window.marcadorBusqueda.bindPopup(`<b>📍 Ubicación buscada</b>`, {
+        closeButton: true,
+        autoClose: false,
+        closeOnClick: false,
+        closeOnEscapeKey: true,
+        autoPan: true, // Permitir que el mapa se mueva para mostrar el popup
+      })
 
-    console.log('✅ Marcador agregado (sin animación de zoom)')
-
-    // Abrir popup después de un breve delay
-    setTimeout(() => {
-      if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-        window.marcadorBusqueda.openPopup()
-      }
-    }, 300)
-
-    // Auto-remover después de 15 segundos
-    if (window.marcadorBusquedaTimeout) {
-      clearTimeout(window.marcadorBusquedaTimeout)
+      console.log('✅ Marcador creado y añadido al mapa')
+    } else {
+      // Si ya existe, solo actualiza su posición
+      window.marcadorBusqueda.setLatLng([lat, lng])
+      console.log('✅ Posición del marcador actualizada')
     }
-    window.marcadorBusquedaTimeout = setTimeout(() => {
-      limpiarMarcadorBusquedaTemporal()
-    }, 15000)
+
+    // Abrir popup
+    window.marcadorBusqueda.openPopup()
   } catch (error) {
-    console.error('❌ Error agregando marcador:', error)
+    console.error('❌ Error al actualizar marcador:', error)
   }
 }
 
-function limpiarMarcadorBusquedaTemporal() {
-  // Limpiar timeout
-  if (window.marcadorBusquedaTimeout) {
-    clearTimeout(window.marcadorBusquedaTimeout)
-    window.marcadorBusquedaTimeout = null
-  }
-
-  // Remover marcador de forma ultra segura
-  if (window.marcadorBusqueda) {
-    try {
-      const map = window.mapaGlobal?.map
-
-      if (map) {
-        // ⚡ CRÍTICO: Remover TODOS los event listeners del marcador ANTES de eliminarlo
-        try {
-          if (window.marcadorBusqueda.off) {
-            window.marcadorBusqueda.off() // Remover todos los eventos del marcador
-          }
-          // También remover eventos específicos del mapa relacionados con este marcador
-          if (map.off) {
-            map.off('zoomstart zoomend zoom move', null, window.marcadorBusqueda)
-          }
-        } catch (e) {
-          console.warn('⚠️ Error removiendo event listeners:', e)
-        }
-
-        // Paso 1: Cerrar popup si está abierto
-        try {
-          if (window.marcadorBusqueda.isPopupOpen && window.marcadorBusqueda.isPopupOpen()) {
-            window.marcadorBusqueda.closePopup()
-          }
-        } catch {
-          // Ignorar errores al cerrar popup
-        }
-
-        // Paso 2: Desvincular popup
-        try {
-          if (window.marcadorBusqueda.getPopup) {
-            const popup = window.marcadorBusqueda.getPopup()
-            if (popup && popup.off) {
-              popup.off() // Remover eventos del popup también
-            }
-          }
-          if (window.marcadorBusqueda.unbindPopup) {
-            window.marcadorBusqueda.unbindPopup()
-          }
-        } catch {
-          // Ignorar errores al desvincular
-        }
-
-        // Paso 3: Remover del mapa usando remove() en lugar de removeLayer()
-        try {
-          if (window.marcadorBusqueda.remove) {
-            window.marcadorBusqueda.remove() // ⚡ Esto limpia mejor que removeLayer
-          } else if (map.removeLayer) {
-            map.removeLayer(window.marcadorBusqueda)
-          }
-        } catch {
-          // Ignorar errores al remover
-        }
-      }
-
-      window.marcadorBusqueda = null
-      console.log('🗑️ Marcador temporal removido completamente')
-    } catch (error) {
-      console.error('⚠️ Error limpiando marcador (no crítico):', error)
-      window.marcadorBusqueda = null
-    }
-  }
-
-  // Limpiar cualquier referencia global adicional
-  window.marcadorBusquedaPopupEstabaCerrado = null
-}
-
+// Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
   console.log('🎯 Resultado seleccionado:', resultado)
 
@@ -973,23 +892,26 @@ function seleccionarResultado(resultado) {
   busqueda.value = ''
   resultadosBusqueda.value = []
 
+  // Procesar el resultado
+  procesarResultado(resultadoTemp)
+}
+
+function procesarResultado(resultado) {
   // Acción según el tipo
-  if (resultadoTemp.tipo === 'direccion') {
-    console.log('📍 Procesando dirección:', resultadoTemp.lat, resultadoTemp.lng)
+  if (resultado.tipo === 'direccion') {
+    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
 
-    // Verificar que tenemos coordenadas válidas
-    if (resultadoTemp.lat && resultadoTemp.lng) {
-      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
-
+    if (resultado.lat && resultado.lng) {
+      centrarMapaEn(resultado.lat, resultado.lng)
       $q.notify({
-        message: `📍 Mostrando: ${resultadoTemp.nombre}`,
+        message: `📍 Mostrando: ${resultado.nombre}`,
         color: 'positive',
         icon: 'place',
         position: 'top',
         timeout: 3000,
       })
     } else {
-      console.error('❌ Coordenadas inválidas:', resultadoTemp)
+      console.error('❌ Coordenadas inválidas:', resultado)
       $q.notify({
         message: 'Error: Ubicación sin coordenadas válidas',
         color: 'negative',
@@ -997,42 +919,41 @@ function seleccionarResultado(resultado) {
         position: 'top',
       })
     }
-  } else if (resultadoTemp.tipo === 'vehiculo') {
+  } else if (resultado.tipo === 'vehiculo') {
     console.log('🚗 Abriendo estado de flota')
     estadoFlotaDrawerOpen.value = true
     $q.notify({
-      message: `🚗 Vehículo: ${resultadoTemp.nombre}`,
+      message: `🚗 Vehículo: ${resultado.nombre}`,
       color: 'positive',
       icon: 'directions_car',
       position: 'top',
     })
-  } else if (resultadoTemp.tipo === 'conductor') {
+  } else if (resultado.tipo === 'conductor') {
     console.log('👤 Abriendo conductores')
     conductoresDrawerOpen.value = true
     $q.notify({
-      message: `👤 Conductor: ${resultadoTemp.nombre}`,
+      message: `👤 Conductor: ${resultado.nombre}`,
       color: 'positive',
       icon: 'person',
       position: 'top',
     })
-  } else if (resultadoTemp.tipo === 'poi') {
+  } else if (resultado.tipo === 'poi') {
     console.log('📌 Procesando POI')
-    // Si el POI tiene coordenadas, centrar mapa
-    if (resultadoTemp.lat && resultadoTemp.lng) {
-      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
+    if (resultado.lat && resultado.lng) {
+      centrarMapaEn(resultado.lat, resultado.lng)
     }
     geozonaDrawerOpen.value = true
     $q.notify({
-      message: `📌 POI: ${resultadoTemp.nombre}`,
+      message: `📌 POI: ${resultado.nombre}`,
       color: 'positive',
       icon: 'location_on',
       position: 'top',
     })
-  } else if (resultadoTemp.tipo === 'geozona') {
+  } else if (resultado.tipo === 'geozona') {
     console.log('🗺️ Abriendo geozonas')
     geozonaDrawerOpen.value = true
     $q.notify({
-      message: `🗺️ Geozona: ${resultadoTemp.nombre}`,
+      message: `🗺️ Geozona: ${resultado.nombre}`,
       color: 'positive',
       icon: 'layers',
       position: 'top',
