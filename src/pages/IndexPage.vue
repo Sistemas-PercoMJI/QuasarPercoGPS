@@ -135,12 +135,41 @@ const dibujarTodosEnMapa = async () => {
         const tieneEventos = cantidadEventos > 0
 
         const popupContent = `
-          <div style="min-width: 150px;">
+          <div style="min-width: 180px;">
             <b style="font-size: 14px;">📍 ${poi.nombre}</b>
             ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               ${poi.direccion}
             </p>
+            <button 
+              onclick="window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
+                detail: {
+                  poiId: '${poi.id}',
+                  geozonaId: null,
+                  tipo: 'poi',
+                  nombre: '${poi.nombre.replace(/'/g, "\\'")}',
+                  coordenadas: ${JSON.stringify(poi.coordenadas)},
+                  direccion: '${poi.direccion.replace(/'/g, "\\'")}'
+                }
+              })); window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'));"
+              style="
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              📍 Ver detalles
+            </button>
           </div>
         `
 
@@ -155,21 +184,9 @@ const dibujarTodosEnMapa = async () => {
 
         marker.bindPopup(popupContent)
 
+        // 🆕 NO abrir drawer automáticamente, solo al presionar el botón
         marker.on('click', () => {
           console.log('🖱️ Clic en POI:', poi.nombre)
-          
-          window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
-            detail: {
-              poiId: poi.id,
-              geozonaId: null,
-              tipo: 'poi',
-              nombre: poi.nombre,
-              coordenadas: poi.coordenadas,
-              direccion: poi.direccion
-            }
-          }))
-          
-          window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'))
         })
 
         console.log(`📍 POI dibujado: ${poi.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
@@ -189,89 +206,292 @@ const dibujarTodosEnMapa = async () => {
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
 
-        // 🆕 Cambiar color si tiene eventos
-        const color = tieneEventos ? '#ff5722' : '#FF6B6B'
-        const fillColor = tieneEventos ? '#ff5722' : '#FF6B6B'
+        // Color normal para geozonas sin eventos
+        const color = '#FF6B6B'
+        const fillColor = '#FF6B6B'
 
         const circle = mapaAPI.L.circle([lat, lng], {
           radius: geozona.radio,
           color: color,
           fillColor: fillColor,
-          fillOpacity: tieneEventos ? 0.25 : 0.15,
-          weight: tieneEventos ? 3 : 2,
-          className: tieneEventos ? 'geozona-con-eventos' : ''
+          fillOpacity: 0.15,
+          weight: 2,
         }).addTo(mapaAPI.map)
 
-        circle.bindPopup(`
-          <div style="min-width: 150px;">
-            <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              Radio: ${geozona.radio}m
-            </p>
-          </div>
-        `)
+        // 🆕 SOLO mostrar popup si NO tiene eventos
+        if (!tieneEventos) {
+          circle.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                Radio: ${geozona.radio}m
+              </p>
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
+                  detail: {
+                    poiId: null,
+                    geozonaId: '${geozona.id}',
+                    tipo: 'geozona',
+                    nombre: '${geozona.nombre}',
+                    tipoGeozona: '${geozona.tipoGeozona}',
+                    centro: ${JSON.stringify(geozona.centro)},
+                    radio: ${geozona.radio}
+                  }
+                })); window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'));"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
 
-        circle.on('click', () => {
-          console.log('🖱️ Clic en Geozona Circular:', geozona.nombre)
-          
-          window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
-            detail: {
-              poiId: null,
-              geozonaId: geozona.id,
-              tipo: 'geozona',
-              nombre: geozona.nombre,
-              tipoGeozona: geozona.tipoGeozona,
-              centro: geozona.centro,
-              radio: geozona.radio
-            }
-          }))
-          
-          window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'))
-        })
+          circle.on('click', () => {
+            console.log('🖱️ Clic en Geozona Circular:', geozona.nombre)
+          })
+        } else {
+          // Si tiene eventos, NO mostrar popup en el círculo (solo en el marcador)
+          circle.on('click', () => {
+            console.log('🖱️ Clic en geozona con eventos - usar el marcador')
+          })
+        }
+
+        // 🆕 Si tiene eventos, agregar marcador en el centro con badge
+        if (tieneEventos) {
+          const markerIcono = mapaAPI.L.divIcon({
+            className: 'geozona-marker-badge',
+            html: `
+              <div style="
+                background: #ff5722;
+                color: white;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                font-weight: bold;
+                border: 3px solid white;
+                box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+                animation: pulse-badge-geozona 2s infinite;
+              ">
+                ${cantidadEventos}
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          })
+
+          const marcadorEvento = mapaAPI.L.marker([lat, lng], {
+            icon: markerIcono,
+            zIndexOffset: 1000
+          }).addTo(mapaAPI.map)
+
+          // 🆕 POPUP MEJORADO con botón de ver detalles
+          marcadorEvento.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
+              <span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">${cantidadEventos} evento${cantidadEventos > 1 ? 's' : ''}</span>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                Geozona Circular - Radio: ${geozona.radio}m
+              </p>
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
+                  detail: {
+                    poiId: null,
+                    geozonaId: '${geozona.id}',
+                    tipo: 'geozona',
+                    nombre: '${geozona.nombre}',
+                    tipoGeozona: '${geozona.tipoGeozona}',
+                    centro: ${JSON.stringify(geozona.centro)},
+                    radio: ${geozona.radio}
+                  }
+                })); window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'));"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
+
+          marcadorEvento.on('click', () => {
+            console.log('🖱️ Clic en marcador de geozona con eventos:', geozona.nombre)
+          })
+        }
 
         console.log(`🔵 Geozona circular dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
 
-        // 🆕 Cambiar color si tiene eventos
-        const color = tieneEventos ? '#ff5722' : '#4ECDC4'
-        const fillColor = tieneEventos ? '#ff5722' : '#4ECDC4'
+        // Color normal para geozonas sin eventos
+        const color = '#4ECDC4'
+        const fillColor = '#4ECDC4'
 
         const polygon = mapaAPI.L.polygon(puntos, {
           color: color,
           fillColor: fillColor,
-          fillOpacity: tieneEventos ? 0.25 : 0.15,
-          weight: tieneEventos ? 3 : 2,
-          className: tieneEventos ? 'geozona-con-eventos' : ''
+          fillOpacity: 0.15,
+          weight: 2,
         }).addTo(mapaAPI.map)
 
-        polygon.bindPopup(`
-          <div style="min-width: 150px;">
-            <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              ${geozona.puntos.length} puntos
-            </p>
-          </div>
-        `)
+        // 🆕 SOLO mostrar popup si NO tiene eventos
+        if (!tieneEventos) {
+          polygon.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                ${geozona.puntos.length} puntos
+              </p>
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
+                  detail: {
+                    poiId: null,
+                    geozonaId: '${geozona.id}',
+                    tipo: 'geozona',
+                    nombre: '${geozona.nombre}',
+                    tipoGeozona: '${geozona.tipoGeozona}',
+                    puntos: ${JSON.stringify(geozona.puntos)}
+                  }
+                })); window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'));"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
 
-        polygon.on('click', () => {
-          console.log('🖱️ Clic en Geozona Poligonal:', geozona.nombre)
-          
-          window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
-            detail: {
-              poiId: null,
-              geozonaId: geozona.id,
-              tipo: 'geozona',
-              nombre: geozona.nombre,
-              tipoGeozona: geozona.tipoGeozona,
-              puntos: geozona.puntos
-            }
-          }))
-          
-          window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'))
-        })
+          polygon.on('click', () => {
+            console.log('🖱️ Clic en Geozona Poligonal:', geozona.nombre)
+          })
+        } else {
+          // Si tiene eventos, NO mostrar popup en el polígono (solo en el marcador)
+          polygon.on('click', () => {
+            console.log('🖱️ Clic en geozona con eventos - usar el marcador')
+          })
+        }
+
+        // 🆕 Si tiene eventos, agregar marcador en el centro del polígono con badge
+        if (tieneEventos) {
+          // Calcular el centroide del polígono
+          const bounds = mapaAPI.L.latLngBounds(puntos)
+          const centro = bounds.getCenter()
+
+          const markerIcono = mapaAPI.L.divIcon({
+            className: 'geozona-marker-badge',
+            html: `
+              <div style="
+                background: #ff5722;
+                color: white;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                font-weight: bold;
+                border: 3px solid white;
+                box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+                animation: pulse-badge-geozona 2s infinite;
+              ">
+                ${cantidadEventos}
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          })
+
+          const marcadorEvento = mapaAPI.L.marker(centro, {
+            icon: markerIcono,
+            zIndexOffset: 1000
+          }).addTo(mapaAPI.map)
+
+          // 🆕 POPUP MEJORADO con botón de ver detalles
+          marcadorEvento.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
+              <span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">${cantidadEventos} evento${cantidadEventos > 1 ? 's' : ''}</span>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                Geozona Poligonal - ${geozona.puntos.length} puntos
+              </p>
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('seleccionarUbicacionDesdeMapa', {
+                  detail: {
+                    poiId: null,
+                    geozonaId: '${geozona.id}',
+                    tipo: 'geozona',
+                    nombre: '${geozona.nombre}',
+                    tipoGeozona: '${geozona.tipoGeozona}',
+                    puntos: ${JSON.stringify(geozona.puntos)}
+                  }
+                })); window.dispatchEvent(new CustomEvent('abrirDrawerGeozonas'));"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
+
+          marcadorEvento.on('click', () => {
+            console.log('🖱️ Clic en marcador de geozona con eventos:', geozona.nombre)
+          })
+        }
 
         console.log(`🔷 Geozona poligonal dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
       }
@@ -426,7 +646,13 @@ const confirmarYVolverADialogo = () => {
   border: none !important;
 }
 
-/* 🆕 ANIMACIÓN PARA EL BADGE */
+/* 🆕 ESTILOS PARA BADGE DE GEOZONA */
+:deep(.geozona-marker-badge) {
+  background: none !important;
+  border: none !important;
+}
+
+/* 🆕 ANIMACIÓN PARA EL BADGE DE POI */
 @keyframes pulse-badge {
   0%, 100% {
     transform: scale(1);
@@ -438,19 +664,15 @@ const confirmarYVolverADialogo = () => {
   }
 }
 
-/* 🆕 ESTILOS PARA GEOZONAS CON EVENTOS */
-:deep(.geozona-con-eventos) {
-  animation: pulse-geozona 2s infinite;
-}
-
-@keyframes pulse-geozona {
+/* 🆕 ANIMACIÓN PARA EL BADGE DE GEOZONA */
+@keyframes pulse-badge-geozona {
   0%, 100% {
-    stroke-width: 3;
-    stroke-opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
   }
   50% {
-    stroke-width: 4;
-    stroke-opacity: 0.8;
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.8);
   }
 }
 </style>
