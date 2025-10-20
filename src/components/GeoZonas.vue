@@ -676,17 +676,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+// MODIFICAR esta línea existente:
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 // 🆕 NUEVO: Importar composable de eventos
 import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
+import { useEventBus } from 'src/composables/useEventBus.js'
 
 const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado'])
 const $q = useQuasar()
+// 🆕 AGREGAR esta línea
+const { eventBus, resetAbrirGeozonas } = useEventBus()
 
 // Usar el composable de POIs
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
@@ -1596,6 +1600,8 @@ function eliminarPuntoPoligono(index) {
   }
 }
 
+
+
 // Función para guardar la geozona
 const guardarGeozona = async () => {
   try {
@@ -1966,6 +1972,74 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
   console.log('✅ Diálogo reabierto con datos:', nuevaGeozona.value)
 }
 
+// 🆕 NUEVO WATCH: Escuchar cuando se selecciona desde el mapa vía EventBus
+watch(
+  () => eventBus.value.abrirGeozonasConPOI,
+  (evento) => {
+    if (evento && evento.poi) {
+      console.log('🎯 GeoZonas: Recibido POI/Geozona desde mapa:', evento.poi)
+      
+      const ubicacion = evento.poi
+      
+      // Determinar si es POI o Geozona
+      if (ubicacion.coordenadas && !ubicacion.tipoGeozona) {
+        // Es un POI
+        vistaActual.value = 'poi'
+        ubicacionSeleccionadaDesdeMapa.value = ubicacion.id
+        
+        const poiEncontrado = items.value.find(item => item.id === ubicacion.id && item.tipo === 'poi')
+        if (poiEncontrado) {
+          seleccionarItem(poiEncontrado)
+          
+          setTimeout(() => {
+            const elemento = document.querySelector(`[data-ubicacion-id="${ubicacion.id}"]`)
+            if (elemento) {
+              elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              elemento.classList.add('flash-highlight')
+              setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+            }
+          }, 300)
+        }
+      } else if (ubicacion.tipoGeozona) {
+        // Es una Geozona
+        vistaActual.value = 'geozona'
+        ubicacionSeleccionadaDesdeMapa.value = ubicacion.id
+        
+        const geozonaEncontrada = items.value.find(item => item.id === ubicacion.id && item.tipo === 'geozona')
+        if (geozonaEncontrada) {
+          seleccionarItem(geozonaEncontrada)
+          
+          setTimeout(() => {
+            const elemento = document.querySelector(`[data-ubicacion-id="${ubicacion.id}"]`)
+            if (elemento) {
+              elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              elemento.classList.add('flash-highlight')
+              setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+            }
+          }, 300)
+        }
+      }
+      
+      // Notificar al usuario
+      $q.notify({
+        type: 'positive',
+        message: `📍 ${ubicacion.nombre}`,
+        caption: ubicacion.direccion || (ubicacion.tipoGeozona ? `Geozona ${ubicacion.tipoGeozona}` : ''),
+        icon: 'place',
+        timeout: 2500,
+        position: 'top'
+      })
+      
+      // Limpiar después de 4 segundos
+      setTimeout(() => {
+        ubicacionSeleccionadaDesdeMapa.value = null
+        resetAbrirGeozonas()
+      }, 4000)
+    }
+  },
+  { deep: true }
+)
+
 // Hooks de ciclo de vida
 onMounted(async () => {
   try {
@@ -2029,7 +2103,10 @@ const redibujarMapa = () => {
   // Emitir evento para que IndexPage redibuje todo
   window.dispatchEvent(new CustomEvent('redibujarMapa'))
 }
+
+
 </script>
+
 
 <style scoped>
 .geozonas-drawer {
