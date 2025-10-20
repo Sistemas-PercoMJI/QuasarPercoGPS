@@ -23,6 +23,6 @@
     },
     "lib": ["esnext", "dom"]
   },
-  "include": ["src/**/*"],
+  "include": ["src", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
   "exclude": ["dist", "node_modules", ".quasar"]
 }

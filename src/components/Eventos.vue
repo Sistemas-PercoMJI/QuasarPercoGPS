@@ -595,6 +595,12 @@ const esFormularioValido = computed(() => {
 })
 
 // Methods
+
+const redibujarMapa = () => {
+  // Emitir evento para que IndexPage redibuje todo
+  window.dispatchEvent(new CustomEvent('redibujarMapa'))
+  console.log('🔄 Solicitando redibujado del mapa...')
+}
 function cerrarDrawer() {
   emit('close')
 }
@@ -633,6 +639,8 @@ async function toggleEventoEstado(evento) {
   try {
     await toggleEvento(evento.id, !evento.activo)
     evento.activo = !evento.activo
+
+    redibujarMapa()
 
     if ($q && $q.notify) {
       $q.notify({
@@ -749,6 +757,7 @@ async function guardarEvento() {
     resetearFormulario()
     dialogNuevoEvento.value = false
     modoEdicion.value = false
+    redibujarMapa()
   } catch (err) {
     console.error('Error al guardar evento:', err)
     if ($q && $q.notify) {
@@ -802,6 +811,7 @@ async function duplicarEventoSeleccionado() {
       id: nuevoId,
       nombre: `${eventoMenu.value.nombre} (Copia)`,
     })
+    redibujarMapa()
     $q.notify({
       type: 'positive',
       message: 'Evento duplicado correctamente',
@@ -830,6 +840,7 @@ async function eliminarEventoSeleccionado() {
     if (index > -1) {
       eventos.value.splice(index, 1)
     }
+    redibujarMapa()
     $q.notify({
       type: 'positive',
       message: 'Evento eliminado correctamente',
