@@ -784,32 +784,35 @@ function ejecutarCentrado(lat, lng, zoom) {
     const map = window.mapaGlobal.map
     console.log('🗺️ Mapa encontrado:', map)
 
-    // Limpiar marcador anterior completamente
+    // ⚡ IMPORTANTE: Limpiar ANTES de cualquier animación
     limpiarMarcadorBusquedaTemporal()
 
-    // Mover el mapa SIN agregar marcador todavía
-    if (map.flyTo && typeof map.flyTo === 'function') {
-      map.flyTo([lat, lng], zoom, {
-        duration: 1.5,
-        easeLinearity: 0.25,
-      })
-      console.log('✅ flyTo ejecutado')
-    } else if (map.setView && typeof map.setView === 'function') {
-      map.setView([lat, lng], zoom, {
-        animate: true,
-        duration: 1,
-      })
-      console.log('✅ setView ejecutado')
-    } else {
-      console.warn('⚠️ Usando panTo como fallback')
-      map.panTo([lat, lng], { duration: 1 })
-      map.setZoom(zoom)
-    }
-
-    // Esperar a que termine completamente la animación antes de agregar marcador
+    // ⚡ Dar un pequeño tiempo para que se complete la limpieza
     setTimeout(() => {
-      agregarMarcadorBusqueda(lat, lng)
-    }, 2000) // Aumentado a 2 segundos para asegurar que termine
+      // Mover el mapa
+      if (map.flyTo && typeof map.flyTo === 'function') {
+        map.flyTo([lat, lng], zoom, {
+          duration: 1.5,
+          easeLinearity: 0.25,
+        })
+        console.log('✅ flyTo ejecutado')
+      } else if (map.setView && typeof map.setView === 'function') {
+        map.setView([lat, lng], zoom, {
+          animate: true,
+          duration: 1,
+        })
+        console.log('✅ setView ejecutado')
+      } else {
+        console.warn('⚠️ Usando panTo como fallback')
+        map.panTo([lat, lng], { duration: 1 })
+        map.setZoom(zoom)
+      }
+
+      // Esperar a que termine la animación antes de agregar nuevo marcador
+      setTimeout(() => {
+        agregarMarcadorBusqueda(lat, lng)
+      }, 2000)
+    }, 100) // ⚡ Esperar 100ms después de limpiar
   } catch (error) {
     console.error('❌ Error al centrar mapa:', error)
     $q.notify({
@@ -892,6 +895,19 @@ function limpiarMarcadorBusquedaTemporal() {
       const map = window.mapaGlobal?.map
 
       if (map) {
+        // ⚡ CRÍTICO: Remover TODOS los event listeners del marcador ANTES de eliminarlo
+        try {
+          if (window.marcadorBusqueda.off) {
+            window.marcadorBusqueda.off() // Remover todos los eventos del marcador
+          }
+          // También remover eventos específicos del mapa relacionados con este marcador
+          if (map.off) {
+            map.off('zoomstart zoomend zoom move', null, window.marcadorBusqueda)
+          }
+        } catch (e) {
+          console.warn('⚠️ Error removiendo event listeners:', e)
+        }
+
         // Paso 1: Cerrar popup si está abierto
         try {
           if (window.marcadorBusqueda.isPopupOpen && window.marcadorBusqueda.isPopupOpen()) {
@@ -903,6 +919,12 @@ function limpiarMarcadorBusquedaTemporal() {
 
         // Paso 2: Desvincular popup
         try {
+          if (window.marcadorBusqueda.getPopup) {
+            const popup = window.marcadorBusqueda.getPopup()
+            if (popup && popup.off) {
+              popup.off() // Remover eventos del popup también
+            }
+          }
           if (window.marcadorBusqueda.unbindPopup) {
             window.marcadorBusqueda.unbindPopup()
           }
@@ -910,9 +932,11 @@ function limpiarMarcadorBusquedaTemporal() {
           // Ignorar errores al desvincular
         }
 
-        // Paso 3: Remover del mapa
+        // Paso 3: Remover del mapa usando remove() en lugar de removeLayer()
         try {
-          if (map.removeLayer) {
+          if (window.marcadorBusqueda.remove) {
+            window.marcadorBusqueda.remove() // ⚡ Esto limpia mejor que removeLayer
+          } else if (map.removeLayer) {
             map.removeLayer(window.marcadorBusqueda)
           }
         } catch {
@@ -921,7 +945,7 @@ function limpiarMarcadorBusquedaTemporal() {
       }
 
       window.marcadorBusqueda = null
-      console.log('🗑️ Marcador temporal removido de forma segura')
+      console.log('🗑️ Marcador temporal removido completamente')
     } catch (error) {
       console.error('⚠️ Error limpiando marcador (no crítico):', error)
       window.marcadorBusqueda = null
