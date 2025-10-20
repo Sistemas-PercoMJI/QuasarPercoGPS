@@ -490,7 +490,6 @@ import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 
-
 const router = useRouter()
 const $q = useQuasar()
 const { eventBus } = useEventBus()
@@ -575,7 +574,7 @@ watch(
       }, 100)
     }
   },
-  { deep: true }
+  { deep: true },
 )
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
@@ -782,20 +781,16 @@ function centrarMapaEn(lat, lng, zoom = 18) {
 
 function ejecutarCentrado(lat, lng, zoom) {
   try {
-    // Acceder al mapa a través de la API
     const map = window.mapaGlobal.map
-
     console.log('🗺️ Mapa encontrado:', map)
-    console.log('📌 Métodos disponibles:', {
-      flyTo: typeof map.flyTo,
-      setView: typeof map.setView,
-      panTo: typeof map.panTo,
-    })
 
-    // Verificar métodos disponibles
+    // Limpiar marcador anterior completamente
+    limpiarMarcadorBusquedaTemporal()
+
+    // Mover el mapa SIN agregar marcador todavía
     if (map.flyTo && typeof map.flyTo === 'function') {
       map.flyTo([lat, lng], zoom, {
-        duration: 2,
+        duration: 1.5,
         easeLinearity: 0.25,
       })
       console.log('✅ flyTo ejecutado')
@@ -811,10 +806,10 @@ function ejecutarCentrado(lat, lng, zoom) {
       map.setZoom(zoom)
     }
 
-    // Agregar marcador después de mover el mapa
+    // Esperar a que termine completamente la animación antes de agregar marcador
     setTimeout(() => {
       agregarMarcadorBusqueda(lat, lng)
-    }, 1000)
+    }, 2000) // Aumentado a 2 segundos para asegurar que termine
   } catch (error) {
     console.error('❌ Error al centrar mapa:', error)
     $q.notify({
@@ -825,6 +820,7 @@ function ejecutarCentrado(lat, lng, zoom) {
     })
   }
 }
+
 function agregarMarcadorBusqueda(lat, lng) {
   if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
     console.warn('⚠️ Mapa no disponible para agregar marcador')
@@ -834,13 +830,11 @@ function agregarMarcadorBusqueda(lat, lng) {
   const map = window.mapaGlobal.map
   const L = window.L
 
-  // Remover marcador anterior
-  if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-    map.removeLayer(window.marcadorBusqueda)
-  }
+  // Doble verificación de limpieza
+  limpiarMarcadorBusquedaTemporal()
 
-  // Crear nuevo marcador
   try {
+    // Crear marcador CON zoomAnimation deshabilitada
     window.marcadorBusqueda = L.marker([lat, lng], {
       icon: L.icon({
         iconUrl:
@@ -851,26 +845,93 @@ function agregarMarcadorBusqueda(lat, lng) {
         popupAnchor: [1, -34],
         shadowSize: [41, 41],
       }),
+      zoomAnimation: false, // ⚡ CLAVE: Deshabilitar animación de zoom
+      markerZoomAnimation: false, // ⚡ CLAVE: Deshabilitar animación del marcador
     }).addTo(map)
 
-    // Agregar popup
-    window.marcadorBusqueda
-      .bindPopup(`<b>📍 ${busqueda.value || 'Ubicación buscada'}</b>`)
-      .openPopup()
+    // Agregar popup simple SIN animaciones
+    window.marcadorBusqueda.bindPopup(`<b>📍 Ubicación buscada</b>`, {
+      closeButton: true,
+      autoClose: false,
+      closeOnClick: false,
+      closeOnEscapeKey: true,
+      autoPan: false, // ⚡ No mover el mapa automáticamente
+    })
 
-    console.log('✅ Marcador agregado')
+    console.log('✅ Marcador agregado (sin animación de zoom)')
 
-    // Remover después de 10 segundos
+    // Abrir popup después de un breve delay
     setTimeout(() => {
       if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-        map.removeLayer(window.marcadorBusqueda)
-        window.marcadorBusqueda = null
+        window.marcadorBusqueda.openPopup()
       }
-    }, 10000)
+    }, 300)
+
+    // Auto-remover después de 15 segundos
+    if (window.marcadorBusquedaTimeout) {
+      clearTimeout(window.marcadorBusquedaTimeout)
+    }
+    window.marcadorBusquedaTimeout = setTimeout(() => {
+      limpiarMarcadorBusquedaTemporal()
+    }, 15000)
   } catch (error) {
     console.error('❌ Error agregando marcador:', error)
   }
 }
+
+function limpiarMarcadorBusquedaTemporal() {
+  // Limpiar timeout
+  if (window.marcadorBusquedaTimeout) {
+    clearTimeout(window.marcadorBusquedaTimeout)
+    window.marcadorBusquedaTimeout = null
+  }
+
+  // Remover marcador de forma ultra segura
+  if (window.marcadorBusqueda) {
+    try {
+      const map = window.mapaGlobal?.map
+
+      if (map) {
+        // Paso 1: Cerrar popup si está abierto
+        try {
+          if (window.marcadorBusqueda.isPopupOpen && window.marcadorBusqueda.isPopupOpen()) {
+            window.marcadorBusqueda.closePopup()
+          }
+        } catch {
+          // Ignorar errores al cerrar popup
+        }
+
+        // Paso 2: Desvincular popup
+        try {
+          if (window.marcadorBusqueda.unbindPopup) {
+            window.marcadorBusqueda.unbindPopup()
+          }
+        } catch {
+          // Ignorar errores al desvincular
+        }
+
+        // Paso 3: Remover del mapa
+        try {
+          if (map.removeLayer) {
+            map.removeLayer(window.marcadorBusqueda)
+          }
+        } catch {
+          // Ignorar errores al remover
+        }
+      }
+
+      window.marcadorBusqueda = null
+      console.log('🗑️ Marcador temporal removido de forma segura')
+    } catch (error) {
+      console.error('⚠️ Error limpiando marcador (no crítico):', error)
+      window.marcadorBusqueda = null
+    }
+  }
+
+  // Limpiar cualquier referencia global adicional
+  window.marcadorBusquedaPopupEstabaCerrado = null
+}
+
 function seleccionarResultado(resultado) {
   console.log('🎯 Resultado seleccionado:', resultado)
 
