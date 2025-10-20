@@ -86,6 +86,7 @@
                     </q-item-label>
 
                     <!-- Items del grupo -->
+                    <!-- Items del grupo -->
                     <q-item
                       v-for="resultado in grupo"
                       :key="resultado.id"
@@ -100,8 +101,10 @@
                       </q-item-section>
 
                       <q-item-section>
-                        <q-item-label>{{ resultado.nombre }}</q-item-label>
-                        <q-item-label caption>{{ resultado.detalle }}</q-item-label>
+                        <q-item-label class="text-black">{{ resultado.nombre }}</q-item-label>
+                        <q-item-label caption class="text-grey-7">{{
+                          resultado.detalle
+                        }}</q-item-label>
                       </q-item-section>
 
                       <q-item-section side>
