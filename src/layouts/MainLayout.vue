@@ -489,6 +489,7 @@ import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
+import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -509,6 +510,25 @@ const resultadosBusqueda = ref([])
 const busquedasRecientes = ref([])
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
 const searchInput = ref(null)
+
+//conductores
+const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
+  useConductoresFirebase()
+
+const conductoresCargados = ref(false)
+
+// Función para cargar datos de conductores si no están cargados
+const cargarDatosConductores = async () => {
+  if (!conductoresCargados.value) {
+    try {
+      await Promise.all([obtenerConductores(), obtenerGruposConductores()])
+      conductoresCargados.value = true
+      console.log('✅ Datos de conductores cargados para búsqueda')
+    } catch (error) {
+      console.error('❌ Error al cargar datos de conductores:', error)
+    }
+  }
+}
 
 const filtrosDisponibles = [
   { label: 'Direcciones', value: 'direccion', icon: 'place', color: 'blue' },
@@ -680,11 +700,45 @@ async function buscarVehiculos(termino) {
   return []
 }
 
-// 👤 BÚSQUEDA DE CONDUCTORES - Placeholder
+// 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
 async function buscarConductores(termino) {
-  console.log('👤 Buscando conductores para:', termino)
-  // TODO: Implementar cuando tengas conductores en Firebase
-  return []
+  try {
+    console.log('👤 Buscando conductores para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosConductores()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    // Buscar en todos los grupos
+    for (const grupo of gruposConductores.value) {
+      const conductoresDelGrupo = conductoresPorGrupo(grupo.id) || []
+
+      for (const conductor of conductoresDelGrupo) {
+        if (
+          conductor.Nombre?.toLowerCase().includes(terminoLower) ||
+          conductor.Telefono?.toLowerCase().includes(terminoLower)
+        ) {
+          resultados.push({
+            id: `conductor-${conductor.id}`,
+            tipo: 'conductor',
+            nombre: conductor.Nombre,
+            detalle: `${grupo.Nombre} - ${conductor.Telefono || 'Sin teléfono'}`,
+            conductorId: conductor.id,
+            grupoId: grupo.id,
+            grupoNombre: grupo.Nombre,
+          })
+        }
+      }
+    }
+
+    console.log('👤 Conductores encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando conductores:', error)
+    return []
+  }
 }
 
 // 📌 BÚSQUEDA DE POIs - Placeholder
@@ -929,8 +983,17 @@ function procesarResultado(resultado) {
       position: 'top',
     })
   } else if (resultado.tipo === 'conductor') {
-    console.log('👤 Abriendo conductores')
+    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
+
+    // Abrir el drawer de conductores
     conductoresDrawerOpen.value = true
+
+    // Guardar la información del conductor seleccionado para que el componente Conductores.vue la use
+    eventBus.value.conductorSeleccionado = {
+      id: resultado.conductorId,
+      grupoId: resultado.grupoId,
+    }
+
     $q.notify({
       message: `👤 Conductor: ${resultado.nombre}`,
       color: 'positive',
