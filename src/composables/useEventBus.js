@@ -1,13 +1,9 @@
 // src/composables/useEventBus.js
-// Event Bus para comunicación entre componentes
+// Estado compartido para comunicación entre componentes
 
 import { ref } from 'vue'
-import { EventBus } from 'quasar'
 
-// Crear una instancia de EventBus de Quasar
-const eventBus = ref(new EventBus())
-
-// Estado compartido para otros casos de uso
+// Estado compartido reactivo
 const estadoCompartido = ref({
   abrirGeozonasConPOI: null,
   abrirEstadoFlotaConVehiculo: null,
@@ -15,28 +11,13 @@ const estadoCompartido = ref({
 })
 
 export function useEventBus() {
-  // Función para emitir evento de ver detalles
-  const emitirVerDetalles = (data) => {
-    console.log('🚀 Emitiendo evento ver-detalles:', data)
-    eventBus.value.emit('ver-detalles', data)
-  }
-
-  // Función para abrir GeoZonas con un POI específico
-  const abrirGeozonasConPOI = (poi) => {
-    console.log('📍 Abriendo GeoZonas con POI:', poi)
-    
-    // Actualizar estado compartido
+  // Función para abrir GeoZonas con un POI/Geozona específico
+  const abrirGeozonasConPOI = (item) => {
+    console.log('📍 Guardando en estado compartido para abrir GeoZonas con:', item)
     estadoCompartido.value.abrirGeozonasConPOI = {
-      poi,
+      item, // Renombrado de 'poi' a 'item' para mayor claridad
       timestamp: Date.now()
     }
-    
-    // Emitir evento usando el EventBus
-    emitirVerDetalles({
-      tipo: poi.coordenadas && !poi.tipoGeozona ? 'poi' : 'geozona',
-      id: poi.id,
-      datos: poi
-    })
   }
 
   // Función para abrir Estado Flota con un vehículo específico
@@ -55,7 +36,7 @@ export function useEventBus() {
     }
   }
 
-  // Funciones para resetear
+  // Funciones para resetear el estado
   const resetAbrirGeozonas = () => {
     estadoCompartido.value.abrirGeozonasConPOI = null
   }
@@ -69,9 +50,7 @@ export function useEventBus() {
   }
 
   return {
-    eventBus,
-    estadoCompartido,
-    emitirVerDetalles,
+    estadoCompartido, // Exponemos el estado directamente
     abrirGeozonasConPOI,
     abrirEstadoFlotaConVehiculo,
     abrirConductoresConConductor,

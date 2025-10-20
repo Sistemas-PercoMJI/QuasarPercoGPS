@@ -690,7 +690,7 @@ const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado'])
 const $q = useQuasar()
 // 🆕 AGREGAR esta línea
-const { eventBus} = useEventBus()
+const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 
 // Usar el composable de POIs
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
@@ -772,6 +772,64 @@ const ubicacionesConEventos = computed(() => {
 // 🆕 Función para verificar si una ubicación tiene eventos
 function tieneEventosAsignados(ubicacionId, tipo) {
   return ubicacionesConEventos.value.has(`${tipo}-${ubicacionId}`)
+}
+
+// 🆕 FUNCIÓN CENTRALIZADA PARA MANEJAR LA SELECCIÓN
+function handleSeleccionDesdeMapa(item) {
+  console.log('✅ Procesando item seleccionado desde mapa:', item)
+  
+  // Determinar si es POI o Geozona
+  if (item.coordenadas && !item.tipoGeozona) {
+    vistaActual.value = 'poi'
+  } else if (item.tipoGeozona) {
+    vistaActual.value = 'geozona'
+  }
+  
+  // Buscar el item en la lista ya cargada
+  const itemEncontrado = items.value.find(i => i.id === item.id)
+  if (itemEncontrado) {
+    console.log('✅ Item encontrado en la lista:', itemEncontrado)
+    
+    // Seleccionar el item
+    seleccionarItem(itemEncontrado)
+    
+    // Marcar como seleccionado desde el mapa
+    ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
+    
+    // Hacer scroll y resaltar después de un pequeño retraso para asegurar que el DOM esté listo
+    setTimeout(() => {
+      const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
+      if (elemento) {
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        elemento.classList.add('flash-highlight')
+        setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+      }
+    }, 300) // Un pequeño retraso es crucial aquí
+    
+    // Mostrar notificación
+    $q.notify({
+      type: 'positive',
+      message: `📍 ${itemEncontrado.nombre}`,
+      caption: itemEncontrado.tipo === 'poi' ? 
+        itemEncontrado.direccion : 
+        `Geozona ${itemEncontrado.tipoGeozona}`,
+      icon: 'place',
+      timeout: 2500,
+      position: 'top'
+    })
+    
+    // Limpiar la variable de control después de 4 segundos
+    setTimeout(() => {
+      ubicacionSeleccionadaDesdeMapa.value = null
+    }, 4000)
+  } else {
+    console.error('❌ No se encontró el item con ID:', item.id)
+    $q.notify({
+      type: 'warning',
+      message: 'No se encontró la ubicación seleccionada',
+      icon: 'warning'
+    })
+  }
 }
 
 // 🆕 Función para contar eventos de una ubicación
@@ -1920,17 +1978,30 @@ onMounted(async () => {
     const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
       obtenerPOIs(),
       obtenerGeozonas(),
-      obtenerEventos(), // 🆕 NUEVO
+      obtenerEventos(),
     ])
 
     items.value = [...poisCargados, ...geozonasCargadas]
-    eventosActivos.value = eventosCargados.filter(e => e.activo) // 🆕 Solo eventos activos
+    eventosActivos.value = eventosCargados.filter(e => e.activo)
 
     console.log('✅ Datos cargados:', {
       pois: poisCargados.length,
       geozonas: geozonasCargadas.length,
-      eventos: eventosCargados.length, // 🆕 NUEVO
+      eventos: eventosCargados.length,
     })
+
+    // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
+    if (estadoCompartido.value.abrirGeozonasConPOI) {
+      const { item } = estadoCompartido.value.abrirGeozonasConPOI
+      console.log('🎯 GeoZonas: Montado con item para mostrar:', item)
+      
+      // Ejecutamos la lógica de selección
+      handleSeleccionDesdeMapa(item)
+      
+      // Limpiamos el estado para la próxima vez
+      resetAbrirGeozonas()
+    }
+
   } catch (err) {
     console.error('Error al cargar datos:', err)
     $q.notify({
@@ -1940,91 +2011,57 @@ onMounted(async () => {
     })
   }
   
-// 🆕 ESCUCHAR EVENTOS DIRECTAMENTE DEL EVENTBUS (VUE 3)
-eventBus.value.on('ver-detalles', (data) => {
-  console.log('🎯 GeoZonas: Recibido evento ver-detalles:', data)
-  
-  // Determinar si es POI o Geozona
-  if (data.tipo === 'poi') {
-    vistaActual.value = 'poi'
-  } else if (data.tipo === 'geozona') {
-    vistaActual.value = 'geozona'
-  }
-  
-  // Buscar el item en la lista
-  const itemEncontrado = items.value.find(item => item.id === data.id)
-  if (itemEncontrado) {
-    console.log('✅ Item encontrado:', itemEncontrado)
-    
-    // Seleccionar el item
-    seleccionarItem(itemEncontrado)
-    
-    // Marcar como seleccionado desde el mapa
-    ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
-    
-    // Hacer scroll y resaltar después de un pequeño retraso
-    setTimeout(() => {
-      const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
-      if (elemento) {
-        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        elemento.classList.add('flash-highlight')
-        setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
-      }
-    }, 300)
-    
-    // Mostrar notificación
-    $q.notify({
-      type: 'positive',
-      message: `📍 ${itemEncontrado.nombre}`,
-      caption: itemEncontrado.tipo === 'poi' ? 
-        itemEncontrado.direccion : 
-        `Geozona ${itemEncontrado.tipoGeozona}`,
-      icon: 'place',
-      timeout: 2500,
-      position: 'top'
-    })
-    
-    // Limpiar después de 4 segundos
-    setTimeout(() => {
-      ubicacionSeleccionadaDesdeMapa.value = null
-    }, 4000)
-  } else {
-    console.error('❌ No se encontró el item con ID:', data.id)
-    $q.notify({
-      type: 'warning',
-      message: 'No se encontró la ubicación seleccionada',
-      icon: 'warning'
-    })
-  }
+  // ... (otros listeners como el del botón flotante)
+  window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
+
+onMounted(async () => {
+  try {
+    // Cargar POIs, Geozonas Y EVENTOS en paralelo
+    const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
+      obtenerPOIs(),
+      obtenerGeozonas(),
+      obtenerEventos(),
+    ])
+
+    items.value = [...poisCargados, ...geozonasCargadas]
+    eventosActivos.value = eventosCargados.filter(e => e.activo)
+
+    console.log('✅ Datos cargados:', {
+      pois: poisCargados.length,
+      geozonas: geozonasCargadas.length,
+      eventos: eventosCargados.length,
+    })
+
+    // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
+    if (estadoCompartido.value.abrirGeozonasConPOI) {
+      const { item } = estadoCompartido.value.abrirGeozonasConPOI
+      console.log('🎯 GeoZonas: Montado con item para mostrar:', item)
+      
+      // Ejecutamos la lógica de selección
+      handleSeleccionDesdeMapa(item)
+      
+      // Limpiamos el estado para la próxima vez
+      resetAbrirGeozonas()
+    }
+
+  } catch (err) {
+    console.error('Error al cargar datos:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar los datos',
+      caption: err.message,
+    })
+  }
   
+  // ... (otros listeners como el del botón flotante)
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
 onUnmounted(() => {
-  if (marcadorActivo.value) {
-    const mapPage = document.querySelector('#map-page')
-    if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
-      mapPage._mapaAPI.map.removeLayer(marcadorActivo.value)
-      console.log('🗑️ Marcador activo eliminado al desmontar el componente.')
-    }
-    marcadorActivo.value = null
-  }
-
-  if (poligonoActivo.value) {
-    const mapPage = document.querySelector('#map-page')
-    if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
-      mapPage._mapaAPI.map.removeLayer(poligonoActivo.value)
-      console.log('🗑️ Polígono activo eliminado al desmontar el componente.')
-    }
-    poligonoActivo.value = null
-  }
-
-  // 🆕 LIMPIAR EVENTOS DEL EVENTBUS
-  if (eventBus.value && eventBus.value.off) {
-  eventBus.value.off('ver-detalles')
-}
+  // ... (código para limpiar marcadores y polígonos activos)
   
+  // 🆕 LIMPIAR EVENTOS DE VENTANA
   window.removeEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 

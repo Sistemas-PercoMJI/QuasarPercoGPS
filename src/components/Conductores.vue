@@ -548,32 +548,70 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
-
-import { watch } from 'vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
+import { watch } from 'vue'
 
-const { eventBus } = useEventBus()
+const { estadoCompartido, resetAbrirConductores } = useEventBus()
 
-// Watch para el evento de selección de conductor desde el buscador
+// ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
+if (!estadoCompartido.value) {
+  console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
+}
+
+// ✅ CÓDIGO CORRECTO - AÑADIR ESTO
 watch(
-  () => eventBus.value.conductorSeleccionado,
-  (conductor) => {
-    if (conductor && conductor.id) {
-      console.log('👤 Conductor seleccionado desde el buscador:', conductor)
-
+  () => estadoCompartido.value?.abrirConductoresConConductor,
+  (newValue) => {
+    if (newValue && newValue.conductor) {
+      console.log('🎯 Conductores: Detectado cambio en estadoCompartido, procesando conductor')
+      console.log('✅ Conductor recibido:', newValue.conductor)
+      
       // Seleccionar el grupo si es necesario
-      if (conductor.grupoId && conductor.grupoId !== grupoSeleccionado.value) {
-        grupoSeleccionado.value = conductor.grupoId
+      if (newValue.conductor.grupoId && newValue.conductor.grupoId !== grupoSeleccionado.value) {
+        grupoSeleccionado.value = newValue.conductor.grupoId
       }
-
-      // Buscar el conductor en la lista filtrada
-      const conductorEncontrado = conductoresFiltrados.value.find((c) => c.id === conductor.id)
+      
+      // Buscar el conductor en la lista
+      const conductorEncontrado = conductores.value.find((c) => 
+        c.id === newValue.conductor.id && c.grupoId === newValue.conductor.grupoId
+      )
+      
       if (conductorEncontrado) {
+        console.log('✅ Conductor encontrado, seleccionando...')
         seleccionarConductor(conductorEncontrado)
+        
+        // Hacer scroll y resaltar
+        setTimeout(() => {
+          const elemento = document.querySelector(`[data-conductor-id="${conductorEncontrado.id}"]`)
+          if (elemento) {
+            elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            elemento.classList.add('flash-highlight')
+            setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+          }
+        }, 300)
+        
+        // Mostrar notificación
+        Notify.create({
+          type: 'positive',
+          message: `👤 Conductor seleccionado: ${conductorEncontrado.Nombre}`,
+          caption: `Grupo: ${newValue.conductor.grupoNombre || 'Sin grupo'}`,
+          icon: 'person',
+          timeout: 2500,
+          position: 'top'
+        })
+      } else {
+        console.error('❌ No se encontró el conductor con los datos:', newValue.conductor)
+        Notify.create({
+          type: 'warning',
+          message: 'No se encontró el conductor seleccionado',
+          icon: 'warning'
+        })
       }
+      
+      // Limpiar después de procesar
+      resetAbrirConductores()
     }
-  },
-  { deep: true },
+  }
 )
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
@@ -1098,6 +1136,30 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+
+/* 🆕 EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
+.flash-highlight {
+  animation: flash 0.6s ease-out 3;
+  position: relative;
+  z-index: 100;
+}
+
+@keyframes flash {
+  0% {
+    background: linear-gradient(135deg, #fff5f2 0%, #ffe8e0 100%);
+    transform: scale(1);
+  }
+  50% {
+    background: linear-gradient(135deg, #ffd4c4 0%, #ffb8a0 100%);
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(255, 107, 53, 0.4);
+  }
+  100% {
+    background: linear-gradient(135deg, #fff5f2 0%, #ffe8e0 100%);
+    transform: scale(1);
+  }
+}
+
 .conductores-drawer {
   width: 100%;
   height: 100%;

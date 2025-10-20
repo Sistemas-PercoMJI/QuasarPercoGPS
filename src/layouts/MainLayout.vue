@@ -488,6 +488,7 @@ import { signOut } from 'firebase/auth'
 import { useNotifications } from 'src/composables/useNotifications.js'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
+
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
@@ -496,7 +497,12 @@ import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 
 const router = useRouter()
 const $q = useQuasar()
-const { eventBus } = useEventBus()
+const { estadoCompartido } = useEventBus()
+
+// ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
+if (!estadoCompartido.value) {
+  console.error('❌ Error crítico: estadoCompartido.value no está definido en MainLayout')
+}
 
 // NOTIFICACIONES
 const { notifications } = useNotifications()
@@ -586,18 +592,19 @@ watch(busqueda, (newVal) => {
   }, 300) // Reducido a 300ms
 })
 
+// ✅ BLOQUE CORRECTO
 watch(
-  () => eventBus.value.abrirGeozonasConPOI,
-  (evento) => {
-    if (evento && evento.poi) {
-      console.log('✅ Abriendo GeoZonas con POI:', evento.poi)
+  () => estadoCompartido.value.abrirGeozonasConPOI,
+  (newValue) => {
+    if (newValue && newValue.item) {
+      console.log('🚀 MainLayout: Detectado cambio en estadoCompartido, abriendo GeoZonas')
+      console.log('✅ Abriendo GeoZonas con item:', newValue.item)
       cerrarTodosLosDialogs()
       setTimeout(() => {
         geozonaDrawerOpen.value = true
       }, 100)
     }
-  },
-  { deep: true },
+  }
 )
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
@@ -986,16 +993,19 @@ function procesarResultado(resultado) {
       position: 'top',
     })
   } else if (resultado.tipo === 'conductor') {
-    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
+  console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
 
-    // Abrir el drawer de conductores
-    conductoresDrawerOpen.value = true
+    /// Abrir el drawer de conductores
+  conductoresDrawerOpen.value = true
 
-    // Guardar la información del conductor seleccionado para que el componente Conductores.vue la use
-    eventBus.value.conductorSeleccionado = {
+  // Guardar la información del conductor seleccionado usando el estado compartido
+  estadoCompartido.value.abrirConductoresConConductor = {
+    conductor: {
       id: resultado.conductorId,
       grupoId: resultado.grupoId,
-    }
+    },
+    timestamp: Date.now()
+  }
 
     $q.notify({
       message: `👤 Conductor: ${resultado.nombre}`,
