@@ -488,9 +488,12 @@ import Conductores from 'src/components/Conductores.vue'
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
+import { useEventBus } from 'src/composables/useEventBus.js'
+
 
 const router = useRouter()
 const $q = useQuasar()
+const { eventBus } = useEventBus()
 
 // NOTIFICACIONES
 const { notifications } = useNotifications()
@@ -560,6 +563,20 @@ watch(busqueda, (newVal) => {
     realizarBusqueda(newVal)
   }, 300) // Reducido a 300ms
 })
+
+watch(
+  () => eventBus.value.abrirGeozonasConPOI,
+  (evento) => {
+    if (evento && evento.poi) {
+      console.log('✅ Abriendo GeoZonas con POI:', evento.poi)
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+      }, 100)
+    }
+  },
+  { deep: true }
+)
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
 async function realizarBusqueda(termino) {

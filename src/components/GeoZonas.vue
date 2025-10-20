@@ -788,10 +788,10 @@ function contarEventos(ubicacionId, tipo) {
 }
 
 // 🆕 NUEVO: Función para manejar selección desde el mapa
-function seleccionarUbicacionDesdeMapa(ubicacion) {
+function seleccionarUbicacionDesdeMapa(event) {
+  const ubicacion = event.detail
   console.log('🗺️ Ubicación seleccionada desde mapa:', ubicacion)
   
-  // Buscar la ubicación en nuestros items
   const itemEncontrado = items.value.find(item => 
     (item.tipo === 'poi' && item.id === ubicacion.poiId) ||
     (item.tipo === 'geozona' && item.id === ubicacion.geozonaId)
@@ -800,20 +800,15 @@ function seleccionarUbicacionDesdeMapa(ubicacion) {
   if (itemEncontrado) {
     console.log('✅ Ubicación encontrada:', itemEncontrado)
     
-    // Cambiar a la vista correcta
     if (itemEncontrado.tipo === 'poi') {
       vistaActual.value = 'poi'
     } else if (itemEncontrado.tipo === 'geozona') {
       vistaActual.value = 'geozona'
     }
     
-    // Marcar como seleccionada
     ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
-    
-    // Seleccionar el item
     seleccionarItem(itemEncontrado)
     
-    // Hacer scroll hasta el elemento
     setTimeout(() => {
       const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
       if (elemento) {
@@ -821,27 +816,31 @@ function seleccionarUbicacionDesdeMapa(ubicacion) {
           behavior: 'smooth', 
           block: 'center' 
         })
+        
+        elemento.classList.add('flash-highlight')
+        setTimeout(() => {
+          elemento.classList.remove('flash-highlight')
+        }, 2000)
       }
-    }, 300)
+    }, 500)
     
-    // Limpiar la selección después de 3 segundos
     setTimeout(() => {
       ubicacionSeleccionadaDesdeMapa.value = null
-    }, 3000)
+    }, 4000)
     
-    // Notificar al usuario
     $q.notify({
       type: 'positive',
-      message: `Ubicación "${itemEncontrado.nombre}" seleccionada`,
+      message: `📍 ${itemEncontrado.nombre}`,
+      caption: itemEncontrado.tipo === 'poi' ? itemEncontrado.direccion : `${itemEncontrado.tipoGeozona === 'circular' ? 'Geozona Circular' : 'Geozona Poligonal'}`,
       icon: 'place',
-      timeout: 2000,
+      timeout: 2500,
       position: 'top'
     })
   } else {
     console.warn('⚠️ No se encontró la ubicación:', ubicacion)
     $q.notify({
       type: 'warning',
-      message: 'No se encontró la ubicación seleccionada',
+      message: 'Ubicación no encontrada',
       icon: 'warning'
     })
   }
@@ -2239,6 +2238,29 @@ const redibujarMapa = () => {
   100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba(255, 87, 34, 0.4);
+  }
+}
+
+/* 🆕 EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
+.flash-highlight {
+  animation: flash 0.6s ease-out 3;
+  position: relative;
+  z-index: 100;
+}
+
+@keyframes flash {
+  0% {
+    background: linear-gradient(135deg, #fff5f2 0%, #ffe8e0 100%);
+    transform: scale(1);
+  }
+  50% {
+    background: linear-gradient(135deg, #ffd4c4 0%, #ffb8a0 100%);
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(255, 107, 53, 0.4);
+  }
+  100% {
+    background: linear-gradient(135deg, #fff5f2 0%, #ffe8e0 100%);
+    transform: scale(1);
   }
 }
 
