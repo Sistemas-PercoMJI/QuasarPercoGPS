@@ -1008,7 +1008,13 @@ function getColorTipo(tipo) {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
+
 onUnmounted(() => {
+  if (window.marcadorBusqueda && window.marcadorBusqueda.remove) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
+    console.log('🗑️ Marcador de búsqueda eliminado al desmontar.')
+  }
   document.removeEventListener('click', handleClickOutside)
   if (timeoutBusqueda) {
     clearTimeout(timeoutBusqueda)
