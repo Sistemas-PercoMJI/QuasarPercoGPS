@@ -2,26 +2,46 @@
 // Event Bus para comunicación entre componentes
 
 import { ref } from 'vue'
+import { EventBus } from 'quasar'
 
-// Estado compartido
-const eventBus = ref({
+// Crear una instancia de EventBus de Quasar
+const eventBus = ref(new EventBus())
+
+// Estado compartido para otros casos de uso
+const estadoCompartido = ref({
   abrirGeozonasConPOI: null,
   abrirEstadoFlotaConVehiculo: null,
   abrirConductoresConConductor: null,
 })
 
 export function useEventBus() {
+  // Función para emitir evento de ver detalles
+  const emitirVerDetalles = (data) => {
+    console.log('🚀 Emitiendo evento ver-detalles:', data)
+    eventBus.value.emit('ver-detalles', data)
+  }
+
   // Función para abrir GeoZonas con un POI específico
   const abrirGeozonasConPOI = (poi) => {
-    eventBus.value.abrirGeozonasConPOI = {
+    console.log('📍 Abriendo GeoZonas con POI:', poi)
+    
+    // Actualizar estado compartido
+    estadoCompartido.value.abrirGeozonasConPOI = {
       poi,
       timestamp: Date.now()
     }
+    
+    // Emitir evento usando el EventBus
+    emitirVerDetalles({
+      tipo: poi.coordenadas && !poi.tipoGeozona ? 'poi' : 'geozona',
+      id: poi.id,
+      datos: poi
+    })
   }
 
   // Función para abrir Estado Flota con un vehículo específico
   const abrirEstadoFlotaConVehiculo = (vehiculo) => {
-    eventBus.value.abrirEstadoFlotaConVehiculo = {
+    estadoCompartido.value.abrirEstadoFlotaConVehiculo = {
       vehiculo,
       timestamp: Date.now()
     }
@@ -29,27 +49,29 @@ export function useEventBus() {
 
   // Función para abrir Conductores con un conductor específico
   const abrirConductoresConConductor = (conductor) => {
-    eventBus.value.abrirConductoresConConductor = {
+    estadoCompartido.value.abrirConductoresConConductor = {
       conductor,
       timestamp: Date.now()
     }
   }
 
-  // Reset
+  // Funciones para resetear
   const resetAbrirGeozonas = () => {
-    eventBus.value.abrirGeozonasConPOI = null
+    estadoCompartido.value.abrirGeozonasConPOI = null
   }
 
   const resetAbrirEstadoFlota = () => {
-    eventBus.value.abrirEstadoFlotaConVehiculo = null
+    estadoCompartido.value.abrirEstadoFlotaConVehiculo = null
   }
 
   const resetAbrirConductores = () => {
-    eventBus.value.abrirConductoresConConductor = null
+    estadoCompartido.value.abrirConductoresConConductor = null
   }
 
   return {
     eventBus,
+    estadoCompartido,
+    emitirVerDetalles,
     abrirGeozonasConPOI,
     abrirEstadoFlotaConVehiculo,
     abrirConductoresConConductor,

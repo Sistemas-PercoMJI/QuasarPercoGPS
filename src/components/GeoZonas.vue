@@ -677,7 +677,7 @@
 
 <script setup>
 // MODIFICAR esta línea existente:
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted} from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 // 🆕 NUEVO: Importar composable de eventos
@@ -690,7 +690,7 @@ const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado'])
 const $q = useQuasar()
 // 🆕 AGREGAR esta línea
-const { eventBus, resetAbrirGeozonas } = useEventBus()
+const { eventBus} = useEventBus()
 
 // Usar el composable de POIs
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
@@ -789,65 +789,6 @@ function contarEventos(ubicacionId, tipo) {
     }
   })
   return count
-}
-
-// 🆕 NUEVO: Función para manejar selección desde el mapa
-function seleccionarUbicacionDesdeMapa(event) {
-  const ubicacion = event.detail
-  console.log('🗺️ Ubicación seleccionada desde mapa:', ubicacion)
-  
-  const itemEncontrado = items.value.find(item => 
-    (item.tipo === 'poi' && item.id === ubicacion.poiId) ||
-    (item.tipo === 'geozona' && item.id === ubicacion.geozonaId)
-  )
-  
-  if (itemEncontrado) {
-    console.log('✅ Ubicación encontrada:', itemEncontrado)
-    
-    if (itemEncontrado.tipo === 'poi') {
-      vistaActual.value = 'poi'
-    } else if (itemEncontrado.tipo === 'geozona') {
-      vistaActual.value = 'geozona'
-    }
-    
-    ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
-    seleccionarItem(itemEncontrado)
-    
-    setTimeout(() => {
-      const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
-      if (elemento) {
-        elemento.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        })
-        
-        elemento.classList.add('flash-highlight')
-        setTimeout(() => {
-          elemento.classList.remove('flash-highlight')
-        }, 2000)
-      }
-    }, 500)
-    
-    setTimeout(() => {
-      ubicacionSeleccionadaDesdeMapa.value = null
-    }, 4000)
-    
-    $q.notify({
-      type: 'positive',
-      message: `📍 ${itemEncontrado.nombre}`,
-      caption: itemEncontrado.tipo === 'poi' ? itemEncontrado.direccion : `${itemEncontrado.tipoGeozona === 'circular' ? 'Geozona Circular' : 'Geozona Poligonal'}`,
-      icon: 'place',
-      timeout: 2500,
-      position: 'top'
-    })
-  } else {
-    console.warn('⚠️ No se encontró la ubicación:', ubicacion)
-    $q.notify({
-      type: 'warning',
-      message: 'Ubicación no encontrada',
-      icon: 'warning'
-    })
-  }
 }
 
 // Computed properties
@@ -1972,74 +1913,6 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
   console.log('✅ Diálogo reabierto con datos:', nuevaGeozona.value)
 }
 
-// 🆕 NUEVO WATCH: Escuchar cuando se selecciona desde el mapa vía EventBus
-watch(
-  () => eventBus.value.abrirGeozonasConPOI,
-  (evento) => {
-    if (evento && evento.poi) {
-      console.log('🎯 GeoZonas: Recibido POI/Geozona desde mapa:', evento.poi)
-      
-      const ubicacion = evento.poi
-      
-      // Determinar si es POI o Geozona
-      if (ubicacion.coordenadas && !ubicacion.tipoGeozona) {
-        // Es un POI
-        vistaActual.value = 'poi'
-        ubicacionSeleccionadaDesdeMapa.value = ubicacion.id
-        
-        const poiEncontrado = items.value.find(item => item.id === ubicacion.id && item.tipo === 'poi')
-        if (poiEncontrado) {
-          seleccionarItem(poiEncontrado)
-          
-          setTimeout(() => {
-            const elemento = document.querySelector(`[data-ubicacion-id="${ubicacion.id}"]`)
-            if (elemento) {
-              elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              elemento.classList.add('flash-highlight')
-              setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
-            }
-          }, 300)
-        }
-      } else if (ubicacion.tipoGeozona) {
-        // Es una Geozona
-        vistaActual.value = 'geozona'
-        ubicacionSeleccionadaDesdeMapa.value = ubicacion.id
-        
-        const geozonaEncontrada = items.value.find(item => item.id === ubicacion.id && item.tipo === 'geozona')
-        if (geozonaEncontrada) {
-          seleccionarItem(geozonaEncontrada)
-          
-          setTimeout(() => {
-            const elemento = document.querySelector(`[data-ubicacion-id="${ubicacion.id}"]`)
-            if (elemento) {
-              elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              elemento.classList.add('flash-highlight')
-              setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
-            }
-          }, 300)
-        }
-      }
-      
-      // Notificar al usuario
-      $q.notify({
-        type: 'positive',
-        message: `📍 ${ubicacion.nombre}`,
-        caption: ubicacion.direccion || (ubicacion.tipoGeozona ? `Geozona ${ubicacion.tipoGeozona}` : ''),
-        icon: 'place',
-        timeout: 2500,
-        position: 'top'
-      })
-      
-      // Limpiar después de 4 segundos
-      setTimeout(() => {
-        ubicacionSeleccionadaDesdeMapa.value = null
-        resetAbrirGeozonas()
-      }, 4000)
-    }
-  },
-  { deep: true }
-)
-
 // Hooks de ciclo de vida
 onMounted(async () => {
   try {
@@ -2067,10 +1940,63 @@ onMounted(async () => {
     })
   }
   
-  // 🆕 ESCUCHAR EVENTOS DE SELECCIÓN DESDE EL MAPA
-  window.addEventListener('seleccionarUbicacionDesdeMapa', (event) => {
-    seleccionarUbicacionDesdeMapa(event.detail)
-  })
+// 🆕 ESCUCHAR EVENTOS DIRECTAMENTE DEL EVENTBUS (VUE 3)
+eventBus.value.on('ver-detalles', (data) => {
+  console.log('🎯 GeoZonas: Recibido evento ver-detalles:', data)
+  
+  // Determinar si es POI o Geozona
+  if (data.tipo === 'poi') {
+    vistaActual.value = 'poi'
+  } else if (data.tipo === 'geozona') {
+    vistaActual.value = 'geozona'
+  }
+  
+  // Buscar el item en la lista
+  const itemEncontrado = items.value.find(item => item.id === data.id)
+  if (itemEncontrado) {
+    console.log('✅ Item encontrado:', itemEncontrado)
+    
+    // Seleccionar el item
+    seleccionarItem(itemEncontrado)
+    
+    // Marcar como seleccionado desde el mapa
+    ubicacionSeleccionadaDesdeMapa.value = itemEncontrado.id
+    
+    // Hacer scroll y resaltar después de un pequeño retraso
+    setTimeout(() => {
+      const elemento = document.querySelector(`[data-ubicacion-id="${itemEncontrado.id}"]`)
+      if (elemento) {
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        elemento.classList.add('flash-highlight')
+        setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+      }
+    }, 300)
+    
+    // Mostrar notificación
+    $q.notify({
+      type: 'positive',
+      message: `📍 ${itemEncontrado.nombre}`,
+      caption: itemEncontrado.tipo === 'poi' ? 
+        itemEncontrado.direccion : 
+        `Geozona ${itemEncontrado.tipoGeozona}`,
+      icon: 'place',
+      timeout: 2500,
+      position: 'top'
+    })
+    
+    // Limpiar después de 4 segundos
+    setTimeout(() => {
+      ubicacionSeleccionadaDesdeMapa.value = null
+    }, 4000)
+  } else {
+    console.error('❌ No se encontró el item con ID:', data.id)
+    $q.notify({
+      type: 'warning',
+      message: 'No se encontró la ubicación seleccionada',
+      icon: 'warning'
+    })
+  }
+})
   
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
@@ -2094,8 +2020,11 @@ onUnmounted(() => {
     poligonoActivo.value = null
   }
 
-  // 🆕 LIMPIAR EVENTOS
-  window.removeEventListener('seleccionarUbicacionDesdeMapa', seleccionarUbicacionDesdeMapa)
+  // 🆕 LIMPIAR EVENTOS DEL EVENTBUS
+  if (eventBus.value && eventBus.value.off) {
+  eventBus.value.off('ver-detalles')
+}
+  
   window.removeEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
@@ -2103,7 +2032,6 @@ const redibujarMapa = () => {
   // Emitir evento para que IndexPage redibuje todo
   window.dispatchEvent(new CustomEvent('redibujarMapa'))
 }
-
 
 </script>
 
