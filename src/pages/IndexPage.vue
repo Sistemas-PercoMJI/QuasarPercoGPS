@@ -160,12 +160,12 @@ function actualizarMarcadorUsuario(lat, lng) {
         "></div>
       `,
       iconSize: [20, 20],
-      iconAnchor: [10, 10]
+      iconAnchor: [10, 10],
     })
 
     marcadorUsuario.value = mapaAPI.L.marker([lat, lng], {
       icon: iconoUsuario,
-      zIndexOffset: 2000
+      zIndexOffset: 2000,
     }).addTo(mapaAPI.map)
 
     marcadorUsuario.value.bindPopup('<b>📍 Tu ubicación</b>')
@@ -182,19 +182,19 @@ function iniciarSeguimientoGPS() {
   const opciones = {
     enableHighAccuracy: true,
     timeout: 10000,
-    maximumAge: 0
+    maximumAge: 0,
   }
 
   watchId = navigator.geolocation.watchPosition(
     (position) => {
       const { latitude, longitude } = position.coords
-      
+
       console.log('📍 Nueva ubicación detectada:', latitude, longitude)
       ubicacionActiva.value = true
-      
+
       // Actualizar marcador en el mapa
       actualizarMarcadorUsuario(latitude, longitude)
-      
+
       // Evaluar eventos con la nueva ubicación
       actualizarUbicacion(latitude, longitude)
     },
@@ -202,7 +202,7 @@ function iniciarSeguimientoGPS() {
       console.error('❌ Error de geolocalización:', error.message)
       ubicacionActiva.value = false
     },
-    opciones
+    opciones,
   )
 
   console.log('🎯 Seguimiento GPS iniciado')
@@ -222,19 +222,19 @@ function detenerSeguimientoGPS() {
 async function inicializarSistemaDeteccion() {
   try {
     console.log('🚀 Inicializando sistema de detección de eventos...')
-    
+
     const [eventos, pois, geozonas] = await Promise.all([
       obtenerEventos(),
       obtenerPOIs(),
-      obtenerGeozonas()
+      obtenerGeozonas(),
     ])
 
     // Filtrar solo eventos activos
-    const eventosActivos = eventos.filter(e => e.activo)
-    
+    const eventosActivos = eventos.filter((e) => e.activo)
+
     // Inicializar el detector
     inicializar(eventosActivos, pois, geozonas)
-    
+
     console.log('✅ Sistema de detección inicializado')
     console.log('  📊 Eventos activos:', eventosActivos.length)
     console.log('  📍 POIs:', pois.length)
@@ -269,6 +269,14 @@ const dibujarTodosEnMapa = async () => {
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
+        const radio = poi.radio || 100
+        mapaAPI.L.circle([lat, lng], {
+          radius: radio,
+          color: '#2196F3',
+          fillColor: '#2196F3',
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(mapaAPI.map)
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
 
@@ -627,10 +635,10 @@ onMounted(async () => {
       }
 
       await dibujarTodosEnMapa()
-      
+
       // Inicializar sistema de detección de eventos
       await inicializarSistemaDeteccion()
-      
+
       // Iniciar seguimiento GPS
       iniciarSeguimientoGPS()
     }, 100)
@@ -677,7 +685,7 @@ onMounted(async () => {
     }
 
     await dibujarTodosEnMapa()
-    
+
     // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
@@ -703,7 +711,7 @@ const confirmarYVolverADialogo = () => {
 onUnmounted(() => {
   // Detener seguimiento GPS
   detenerSeguimientoGPS()
-  
+
   // Resetear sistema de detección
   resetear()
 

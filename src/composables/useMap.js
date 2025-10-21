@@ -13,7 +13,7 @@ const modoSeleccionActivo = ref(false)
 const circuloTemporal = ref(null)
 const poligonoTemporal = ref(null)
 const puntosPoligono = ref([])
-const marcadoresPoligono = ref([]) // Añadido para almacenar los marcadores de los puntos
+const marcadoresPoligono = ref([])
 const modoSeleccionGeozonaCircular = ref(false)
 const modoSeleccionGeozonaPoligonal = ref(false)
 const poligonoFinalizado = ref(false)
@@ -23,6 +23,146 @@ const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 export function useMap() {
+  // Variable para almacenar el círculo temporal del POI
+  let circuloTemporalPOI = null
+
+  /**
+   * Crea un círculo temporal mientras se edita un POI
+   */
+  function crearCirculoTemporalPOI(lat, lng, radio) {
+    if (!map.value || !L) return
+
+    if (circuloTemporalPOI) {
+      map.value.removeLayer(circuloTemporalPOI)
+    }
+
+    circuloTemporalPOI = L.circle([lat, lng], {
+      radius: radio,
+      color: '#2196F3',
+      fillColor: '#2196F3',
+      fillOpacity: 0.2,
+      weight: 2,
+      dashArray: '5, 10',
+    }).addTo(map.value)
+
+    console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
+  }
+
+  /**
+   * Actualiza el radio del círculo temporal en tiempo real
+   */
+  function actualizarRadioCirculoTemporal(lat, lng, nuevoRadio) {
+    if (!map.value || !L) return
+
+    if (circuloTemporalPOI) {
+      map.value.removeLayer(circuloTemporalPOI)
+    }
+
+    crearCirculoTemporalPOI(lat, lng, nuevoRadio)
+    console.log(`🔄 Radio actualizado: ${nuevoRadio}m`)
+  }
+
+  /**
+   * Limpia el círculo temporal del POI
+   */
+  function limpiarCirculoTemporalPOI() {
+    if (circuloTemporalPOI && map.value) {
+      map.value.removeLayer(circuloTemporalPOI)
+      circuloTemporalPOI = null
+      console.log('🧹 Círculo temporal POI limpiado')
+    }
+  }
+
+  /**
+   * Confirma el marcador temporal Y su círculo
+   */
+  function confirmarMarcadorConCirculo(nombre, radio) {
+    if (!marcadorTemporal.value || !ubicacionSeleccionada.value) {
+      console.error('❌ No hay marcador temporal para confirmar')
+      return
+    }
+
+    const { lat, lng } = ubicacionSeleccionada.value.coordenadas
+
+    // Remover marcador temporal
+    if (marcadorTemporal.value && map.value) {
+      map.value.removeLayer(marcadorTemporal.value)
+      marcadorTemporal.value = null
+    }
+
+    // Crear marcador permanente
+    L.marker([lat, lng], {
+      icon: L.icon({
+        iconUrl:
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    })
+      .addTo(map.value)
+      .bindPopup(`<b>📍 ${nombre}</b><br>${ubicacionSeleccionada.value.direccion}`)
+
+    // Crear círculo permanente
+    L.circle([lat, lng], {
+      radius: radio,
+      color: '#2196F3',
+      fillColor: '#2196F3',
+      fillOpacity: 0.15,
+      weight: 2,
+    }).addTo(map.value)
+
+    limpiarCirculoTemporalPOI()
+    ubicacionSeleccionada.value = null
+
+    console.log(`✅ POI confirmado con círculo de ${radio}m`)
+  }
+
+  /**
+   * Actualiza un marcador existente Y su círculo
+   */
+  function actualizarMarcadorConCirculo(lat, lng, nombre, direccion, radio) {
+    if (!map.value || !L) return
+
+    // Eliminar marcador y círculo anteriores en esa ubicación
+    map.value.eachLayer((layer) => {
+      if (layer instanceof L.Marker || layer instanceof L.Circle) {
+        const pos = layer.getLatLng()
+        if (pos && Math.abs(pos.lat - lat) < 0.00001 && Math.abs(pos.lng - lng) < 0.00001) {
+          map.value.removeLayer(layer)
+        }
+      }
+    })
+
+    // Crear nuevo marcador
+    L.marker([lat, lng], {
+      icon: L.icon({
+        iconUrl:
+          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      }),
+    })
+      .addTo(map.value)
+      .bindPopup(`<b>📍 ${nombre}</b><br>${direccion}`)
+
+    // Crear nuevo círculo
+    L.circle([lat, lng], {
+      radius: radio,
+      color: '#2196F3',
+      fillColor: '#2196F3',
+      fillOpacity: 0.15,
+      weight: 2,
+    }).addTo(map.value)
+
+    console.log(`🔄 Marcador y círculo actualizados: ${nombre} (${radio}m)`)
+  }
+
   // Función para activar modo selección (para POIs)
   const activarModoSeleccion = () => {
     if (!map.value) {
@@ -32,12 +172,8 @@ export function useMap() {
 
     modoSeleccionActivo.value = true
     ubicacionSeleccionada.value = null
-
-    // Cambiar cursor a "seleccionar"
     map.value.getContainer().style.cursor = 'crosshair'
-
-    // Agregar evento de clic al mapa
-    map.value.off('click') // Remover eventos previos
+    map.value.off('click')
     map.value.on('click', onMapClick)
 
     console.log('✅ Modo selección activado')
@@ -48,15 +184,10 @@ export function useMap() {
   const desactivarModoSeleccion = () => {
     if (!map.value) return
 
-    // Desactivar TODOS los modos
     modoSeleccionActivo.value = false
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
-
-    // Restaurar cursor normal
     map.value.getContainer().style.cursor = ''
-
-    // Remover TODOS los eventos de clic
     map.value.off('click', onMapClick)
     map.value.off('click', onMapClickGeozonaCircular)
     map.value.off('click', onMapClickGeozonaPoligonal)
@@ -73,12 +204,8 @@ export function useMap() {
 
     modoSeleccionGeozonaCircular.value = true
     ubicacionSeleccionada.value = null
-
-    // Cambiar cursor a "seleccionar"
     map.value.getContainer().style.cursor = 'crosshair'
-
-    // Agregar evento de clic al mapa
-    map.value.off('click') // Remover eventos previos
+    map.value.off('click')
     map.value.on('click', onMapClickGeozonaCircular)
 
     console.log('✅ Modo selección geozona circular activado')
@@ -94,14 +221,10 @@ export function useMap() {
 
     modoSeleccionGeozonaPoligonal.value = true
     puntosPoligono.value = []
-    marcadoresPoligono.value = [] // Limpiar marcadores existentes
+    marcadoresPoligono.value = []
     poligonoFinalizado.value = false
-
-    // Cambiar cursor a "seleccionar"
     map.value.getContainer().style.cursor = 'crosshair'
-
-    // Agregar evento de clic al mapa
-    map.value.off('click') // Remover eventos previos
+    map.value.off('click')
     map.value.on('click', onMapClickGeozonaPoligonal)
 
     console.log('✅ Modo selección geozona poligonal activado')
@@ -114,12 +237,10 @@ export function useMap() {
 
     const { lat, lng } = e.latlng
 
-    // Limpiar marcador temporal anterior
     if (marcadorTemporal.value) {
       map.value.removeLayer(marcadorTemporal.value)
     }
 
-    // Crear nuevo marcador temporal
     marcadorTemporal.value = L.marker([lat, lng], {
       icon: L.divIcon({
         className: 'marcador-temporal',
@@ -130,14 +251,11 @@ export function useMap() {
       draggable: true,
     }).addTo(map.value)
 
-    // Obtener dirección (reverse geocoding simple)
     obtenerDireccion(lat, lng).then((direccionObtenida) => {
-      // Renombrado para evitar conflicto
       ubicacionSeleccionada.value = {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
       }
-
       console.log('📍 Ubicación seleccionada:', ubicacionSeleccionada.value)
     })
   }
@@ -148,12 +266,10 @@ export function useMap() {
 
     const { lat, lng } = e.latlng
 
-    // Limpiar círculo temporal anterior
     if (circuloTemporal.value) {
       map.value.removeLayer(circuloTemporal.value)
     }
 
-    // Crear nuevo círculo temporal con radio por defecto
     circuloTemporal.value = L.circle([lat, lng], {
       radius: 100,
       color: '#3388ff',
@@ -162,7 +278,6 @@ export function useMap() {
       draggable: true,
     }).addTo(map.value)
 
-    // Obtener dirección (reverse geocoding simple)
     obtenerDireccion(lat, lng).then((direccionObtenida) => {
       ubicacionSeleccionada.value = {
         coordenadas: { lat, lng },
@@ -171,7 +286,6 @@ export function useMap() {
 
       console.log('📍 Centro de geozona circular seleccionado:', ubicacionSeleccionada.value)
 
-      // ✅ NUEVO: Mostrar botón flotante
       window.dispatchEvent(
         new CustomEvent('mostrarBotonConfirmarGeozona', {
           detail: { mostrar: true },
@@ -186,10 +300,8 @@ export function useMap() {
 
     const { lat, lng } = e.latlng
 
-    // Agregar punto a la lista
     puntosPoligono.value.push({ lat, lng })
 
-    // Crear marcador para el punto y guardarlo en el array
     const marcadorPunto = L.marker([lat, lng], {
       icon: L.divIcon({
         className: 'marcador-punto-poligono',
@@ -200,17 +312,13 @@ export function useMap() {
       draggable: true,
     }).addTo(map.value)
 
-    // Guardar referencia al marcador
     marcadoresPoligono.value.push(marcadorPunto)
 
-    // Actualizar el polígono si hay suficientes puntos
     if (puntosPoligono.value.length >= 2) {
-      // Limpiar polígono anterior si existe
       if (poligonoTemporal.value) {
         map.value.removeLayer(poligonoTemporal.value)
       }
 
-      // Crear nuevo polígono
       poligonoTemporal.value = L.polygon(puntosPoligono.value, {
         color: '#3388ff',
         fillColor: '#3388ff',
@@ -221,7 +329,6 @@ export function useMap() {
     console.log('📍 Punto agregado al polígono:', { lat, lng })
     console.log('📍 Total de puntos:', puntosPoligono.value.length)
 
-    // ✅ NUEVO: Mostrar botón flotante si ya hay al menos 3 puntos
     if (puntosPoligono.value.length >= 3) {
       window.dispatchEvent(
         new CustomEvent('mostrarBotonConfirmarGeozona', {
@@ -249,22 +356,10 @@ export function useMap() {
     return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
   }
 
-  // Obtener ubicación seleccionada
-  const getUbicacionSeleccionada = () => {
-    return ubicacionSeleccionada.value
-  }
+  const getUbicacionSeleccionada = () => ubicacionSeleccionada.value
+  const getPuntosSeleccionados = () => puntosPoligono.value
+  const isPoligonoFinalizado = () => poligonoFinalizado.value
 
-  // Obtener puntos seleccionados para polígono
-  const getPuntosSeleccionados = () => {
-    return puntosPoligono.value
-  }
-
-  // Verificar si el polígono está finalizado
-  const isPoligonoFinalizado = () => {
-    return poligonoFinalizado.value
-  }
-
-  // Finalizar polígono temporal
   const finalizarPoligonoTemporal = () => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
       poligonoFinalizado.value = true
@@ -272,7 +367,6 @@ export function useMap() {
     }
   }
 
-  // Limpiar marcador temporal
   const limpiarMarcadorTemporal = () => {
     if (marcadorTemporal.value && map.value) {
       map.value.removeLayer(marcadorTemporal.value)
@@ -281,7 +375,6 @@ export function useMap() {
     ubicacionSeleccionada.value = null
   }
 
-  // Limpiar círculo temporal
   const limpiarCirculoTemporal = () => {
     if (circuloTemporal.value && map.value) {
       map.value.removeLayer(circuloTemporal.value)
@@ -290,85 +383,64 @@ export function useMap() {
     ubicacionSeleccionada.value = null
   }
 
-  // Limpiar polígono temporal
   const limpiarPoligonoTemporal = () => {
     if (poligonoTemporal.value && map.value) {
       map.value.removeLayer(poligonoTemporal.value)
       poligonoTemporal.value = null
     }
 
-    // Eliminar todos los marcadores de puntos usando el array de referencias
     marcadoresPoligono.value.forEach((marcador) => {
       if (map.value && marcador) {
         map.value.removeLayer(marcador)
       }
     })
     marcadoresPoligono.value = []
-
     puntosPoligono.value = []
     poligonoFinalizado.value = false
   }
 
-  // Confirmar marcador temporal (convertir a permanente)
   const confirmarMarcadorTemporal = (nombre) => {
     if (marcadorTemporal.value && ubicacionSeleccionada.value) {
       console.log(`✅ Marcador confirmado: ${nombre}`, ubicacionSeleccionada.value)
-      // Aquí puedes convertir el marcador temporal a permanente si lo necesitas
       limpiarMarcadorTemporal()
     }
   }
 
-  // Confirmar círculo temporal (convertir a permanente)
   const confirmarCirculoTemporal = (nombre) => {
     if (circuloTemporal.value && ubicacionSeleccionada.value) {
       console.log(`✅ Círculo confirmado: ${nombre}`, ubicacionSeleccionada.value)
-      // Aquí puedes convertir el círculo temporal a permanente si lo necesitas
       limpiarCirculoTemporal()
     }
   }
 
-  // Confirmar polígono temporal (convertir a permanente)
   const confirmarPoligonoTemporal = (nombre) => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
       console.log(`✅ Polígono confirmado: ${nombre}`, puntosPoligono.value)
-      // Aquí puedes convertir el polígono temporal a permanente si lo necesitas
       limpiarPoligonoTemporal()
     }
   }
 
-  // Actualizar marcador existente
   const actualizarMarcador = (lat, lng, nombre, direccion) => {
-    // He añadido 'direccion' al console.log para usar la variable
     console.log(`🔄 Actualizando marcador: ${nombre} en ${lat}, ${lng} con dirección: ${direccion}`)
-
-    // Aquí puedes implementar la lógica para actualizar marcadores existentes
-    // Por ejemplo, buscar el marcador por su ID o coordenadas y actualizar su popup o icono.
   }
 
-  // Actualizar círculo existente
   const actualizarCirculo = (id, centro, radio, nombre) => {
     console.log(
       `🔄 Actualizando círculo: ${nombre} en ${centro.lat}, ${centro.lng} con radio ${radio}`,
     )
-    // Aquí puedes implementar la lógica para actualizar círculos existentes
   }
 
-  // Actualizar polígono existente
   const actualizarPoligono = (id, puntos, nombre) => {
     console.log(`🔄 Actualizando polígono: ${nombre} con ${puntos.length} puntos`)
-    // Aquí puedes implementar la lógica para actualizar polígonos existentes
   }
 
-  // Actualizar polígono temporal
   const actualizarPoligonoTemporal = (puntos) => {
     if (!map.value) return
 
-    // Limpiar polígono anterior si existe
     if (poligonoTemporal.value) {
       map.value.removeLayer(poligonoTemporal.value)
     }
 
-    // Crear nuevo polígono con los puntos actualizados
     if (puntos.length >= 2) {
       poligonoTemporal.value = L.polygon(puntos, {
         color: '#3388ff',
@@ -378,41 +450,29 @@ export function useMap() {
     }
   }
 
-  // Eliminar marcador por coordenadas
   const eliminarMarcadorPorCoordenadas = (lat, lng) => {
     console.log(`🗑️ Eliminando marcador en: ${lat}, ${lng}`)
-    // Aquí puedes implementar la lógica para eliminar marcadores
   }
 
-  // Eliminar círculo por ID
   const eliminarCirculo = (id) => {
     console.log(`🗑️ Eliminando círculo con ID: ${id}`)
-    // Aquí puedes implementar la lógica para eliminar círculos
   }
 
-  // Eliminar polígono por ID
   const eliminarPoligono = (id) => {
     console.log(`🗑️ Eliminando polígono con ID: ${id}`)
-    // Aquí puedes implementar la lógica para eliminar polígonos
   }
 
   const initMap = async (containerId, center, zoom) => {
     try {
-      // Limpiar mapa anterior si existe
       if (map.value) {
         map.value.remove()
       }
 
-      // Crear nuevo mapa
       map.value = L.map(containerId).setView(center, zoom)
 
-      // 🔥 IMPORTANTE: Exponer la API completa globalmente
       const mapaAPI = {
-        // Funciones del mapa base
         map: map.value,
         L: L,
-
-        // Funciones de selección (las que busca GeoZonas para POIs)
         activarModoSeleccion,
         desactivarModoSeleccion,
         getUbicacionSeleccionada,
@@ -420,15 +480,11 @@ export function useMap() {
         confirmarMarcadorTemporal,
         actualizarMarcador,
         eliminarMarcadorPorCoordenadas,
-
-        // Nuevas funciones para geozonas circulares
         activarModoSeleccionGeozonaCircular,
         limpiarCirculoTemporal,
         confirmarCirculoTemporal,
         actualizarCirculo,
         eliminarCirculo,
-
-        // Nuevas funciones para geozonas poligonales
         activarModoSeleccionGeozonaPoligonal,
         getPuntosSeleccionados,
         isPoligonoFinalizado,
@@ -438,19 +494,22 @@ export function useMap() {
         actualizarPoligono,
         actualizarPoligonoTemporal,
         eliminarPoligono,
+        crearCirculoTemporalPOI,
+        actualizarRadioCirculoTemporal,
+        limpiarCirculoTemporalPOI,
+        confirmarMarcadorConCirculo,
+        actualizarMarcadorConCirculo,
       }
 
       window.mapaGlobal = mapaAPI
       window.L = L
 
-      // También exponer directamente en el elemento del mapa
       const mapPage = document.getElementById('map-page')
       if (mapPage) {
         mapPage._mapaAPI = mapaAPI
         console.log('✅ _mapaAPI expuesto en map-page')
       }
 
-      // 🛰️ MAPBOX SATELLITE LAYER
       L.tileLayer(
         `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
         {
@@ -502,7 +561,6 @@ export function useMap() {
       map.value = null
     }
 
-    // Limpiar referencias globales
     if (window.mapaGlobal) {
       window.mapaGlobal = null
     }
@@ -510,7 +568,6 @@ export function useMap() {
       window.marcadorBusqueda = null
     }
 
-    // Limpiar estado de selección
     modoSeleccionActivo.value = false
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
@@ -519,7 +576,7 @@ export function useMap() {
     circuloTemporal.value = null
     poligonoTemporal.value = null
     puntosPoligono.value = []
-    marcadoresPoligono.value = [] // Limpiar marcadores de polígono
+    marcadoresPoligono.value = []
     poligonoFinalizado.value = false
 
     console.log('🧹 Mapa limpiado')
@@ -530,7 +587,6 @@ export function useMap() {
     initMap,
     addMarker,
     cleanup,
-    // Exportar las funciones existentes
     activarModoSeleccion,
     desactivarModoSeleccion,
     getUbicacionSeleccionada,
@@ -538,13 +594,11 @@ export function useMap() {
     confirmarMarcadorTemporal,
     actualizarMarcador,
     eliminarMarcadorPorCoordenadas,
-    // Exportar las nuevas funciones para geozonas circulares
     activarModoSeleccionGeozonaCircular,
     limpiarCirculoTemporal,
     confirmarCirculoTemporal,
     actualizarCirculo,
     eliminarCirculo,
-    // Exportar las nuevas funciones para geozonas poligonales
     activarModoSeleccionGeozonaPoligonal,
     getPuntosSeleccionados,
     isPoligonoFinalizado,
@@ -554,5 +608,10 @@ export function useMap() {
     actualizarPoligono,
     actualizarPoligonoTemporal,
     eliminarPoligono,
+    crearCirculoTemporalPOI,
+    actualizarRadioCirculoTemporal,
+    limpiarCirculoTemporalPOI,
+    confirmarMarcadorConCirculo,
+    actualizarMarcadorConCirculo,
   }
 }
