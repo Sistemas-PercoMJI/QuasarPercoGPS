@@ -480,6 +480,8 @@
 </template>
 
 <script setup>
+import { usePOIs } from 'src/composables/usePOIs'
+import { useGeozonas } from 'src/composables/useGeozonas'
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
@@ -498,6 +500,7 @@ import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 const router = useRouter()
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()
+const userId = ref(auth.currentUser?.uid || '')
 
 // ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
@@ -525,6 +528,15 @@ const { gruposConductores, obtenerConductores, obtenerGruposConductores, conduct
   useConductoresFirebase()
 
 const conductoresCargados = ref(false)
+
+//para geozonas y pois
+const { obtenerPOIs } = usePOIs(userId.value)
+const { obtenerGeozonas } = useGeozonas(userId.value)
+
+const poisCargados = ref(false)
+const geozonasCargadas = ref(false)
+const pois = ref([])
+const geozonas = ref([])
 
 // Función para cargar datos de conductores si no están cargados
 const cargarDatosConductores = async () => {
@@ -604,7 +616,7 @@ watch(
         geozonaDrawerOpen.value = true
       }, 100)
     }
-  }
+  },
 )
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
@@ -751,20 +763,6 @@ async function buscarConductores(termino) {
   }
 }
 
-// 📌 BÚSQUEDA DE POIs - Placeholder
-async function buscarPOIs(termino) {
-  console.log('📌 Buscando POIs para:', termino)
-  // TODO: Implementar cuando tengas POIs en Firebase
-  return []
-}
-
-// 🗺️ BÚSQUEDA DE GEOZONAS - Placeholder
-async function buscarGeozonas(termino) {
-  console.log('🗺️ Buscando geozonas para:', termino)
-  // TODO: Implementar cuando tengas geozonas en Firebase
-  return []
-}
-
 // 🔧 FUNCIONES DE EVENTOS
 const dentroDelMenu = ref(false)
 
@@ -792,18 +790,39 @@ function seleccionarBusquedaReciente(reciente) {
   }
 }
 
-function toggleFiltro(filtro) {
-  const estaActivo = filtrosActivos.value.includes(filtro)
+// Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
 
-  if (estaActivo && filtrosActivos.value.length === 1) {
-    // Si es el único activo, no hacer nada
-    console.log('⚠️ Este filtro ya es el único activo')
-    return
+// Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
+
+function toggleFiltro(filtro) {
+  const soloEsteActivo = filtrosActivos.value.length === 1 && filtrosActivos.value[0] === filtro
+
+  if (soloEsteActivo) {
+    // Si solo este filtro está activo, activar TODOS (búsqueda general)
+    filtrosActivos.value = ['direccion', 'vehiculo', 'conductor', 'poi', 'geozona']
+    console.log('🔄 Activando TODOS los filtros (búsqueda general)')
+
+    $q.notify({
+      message: 'Búsqueda general activada',
+      color: 'info',
+      icon: 'filter_alt',
+      position: 'top',
+      timeout: 2000,
+    })
+  } else {
+    // Activar SOLO este filtro
+    filtrosActivos.value = [filtro]
+    console.log(`🎯 Solo filtro "${filtro}" activo`)
+
+    $q.notify({
+      message: `Filtrando solo por: ${filtro}`,
+      color: 'primary',
+      icon: 'filter_alt',
+      position: 'top',
+      timeout: 2000,
+    })
   }
 
-  // Activar solo este filtro
-  filtrosActivos.value = [filtro]
-  console.log(`🎯 Solo filtro "${filtro}" activo`)
   console.log('🎛️ Filtros activos:', [...filtrosActivos.value])
 
   // Re-buscar si hay texto
@@ -960,83 +979,6 @@ function seleccionarResultado(resultado) {
   procesarResultado(resultadoTemp)
 }
 
-function procesarResultado(resultado) {
-  // Acción según el tipo
-  if (resultado.tipo === 'direccion') {
-    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
-
-    if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng)
-      $q.notify({
-        message: `📍 Mostrando: ${resultado.nombre}`,
-        color: 'positive',
-        icon: 'place',
-        position: 'top',
-        timeout: 3000,
-      })
-    } else {
-      console.error('❌ Coordenadas inválidas:', resultado)
-      $q.notify({
-        message: 'Error: Ubicación sin coordenadas válidas',
-        color: 'negative',
-        icon: 'error',
-        position: 'top',
-      })
-    }
-  } else if (resultado.tipo === 'vehiculo') {
-    console.log('🚗 Abriendo estado de flota')
-    estadoFlotaDrawerOpen.value = true
-    $q.notify({
-      message: `🚗 Vehículo: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'directions_car',
-      position: 'top',
-    })
-  } else if (resultado.tipo === 'conductor') {
-  console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
-
-    /// Abrir el drawer de conductores
-  conductoresDrawerOpen.value = true
-
-  // Guardar la información del conductor seleccionado usando el estado compartido
-  estadoCompartido.value.abrirConductoresConConductor = {
-    conductor: {
-      id: resultado.conductorId,
-      grupoId: resultado.grupoId,
-    },
-    timestamp: Date.now()
-  }
-
-    $q.notify({
-      message: `👤 Conductor: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'person',
-      position: 'top',
-    })
-  } else if (resultado.tipo === 'poi') {
-    console.log('📌 Procesando POI')
-    if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng)
-    }
-    geozonaDrawerOpen.value = true
-    $q.notify({
-      message: `📌 POI: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'location_on',
-      position: 'top',
-    })
-  } else if (resultado.tipo === 'geozona') {
-    console.log('🗺️ Abriendo geozonas')
-    geozonaDrawerOpen.value = true
-    $q.notify({
-      message: `🗺️ Geozona: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'layers',
-      position: 'top',
-    })
-  }
-}
-
 function eliminarReciente(index) {
   busquedasRecientes.value.splice(index, 1)
 }
@@ -1083,6 +1025,12 @@ function getColorTipo(tipo) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('click', handleClickOutside)
+
+  // Precargar POIs y Geozonas para búsqueda más rápida
+  Promise.all([cargarDatosPOIs(), cargarDatosGeozonas()]).catch((err) => {
+    console.error('Error al precargar datos:', err)
+  })
 })
 
 onUnmounted(() => {
@@ -1281,6 +1229,274 @@ const logout = async () => {
       type: 'negative',
       message: 'Error al cerrar sesión',
       icon: 'error',
+    })
+  }
+}
+
+//funciones para geozonas y drawer
+const cargarDatosPOIs = async () => {
+  if (!poisCargados.value) {
+    try {
+      const poisData = await obtenerPOIs()
+      pois.value = poisData
+      poisCargados.value = true
+      console.log('✅ POIs cargados para búsqueda:', poisData.length)
+    } catch (error) {
+      console.error('❌ Error al cargar POIs:', error)
+    }
+  }
+}
+
+// ============================================
+// 4. FUNCIÓN PARA CARGAR DATOS DE GEOZONAS
+// ============================================
+const cargarDatosGeozonas = async () => {
+  if (!geozonasCargadas.value) {
+    try {
+      const geozonasDa = await obtenerGeozonas()
+      geozonas.value = geozonasDa
+      geozonasCargadas.value = true
+      console.log('✅ Geozonas cargadas para búsqueda:', geozonasDa.length)
+    } catch (error) {
+      console.error('❌ Error al cargar Geozonas:', error)
+    }
+  }
+}
+
+// ============================================
+// 5. FUNCIÓN AUXILIAR: CALCULAR CENTRO DE POLÍGONO
+// ============================================
+function calcularCentroPoligono(puntos) {
+  if (!puntos || puntos.length === 0) return null
+
+  let sumaLat = 0
+  let sumaLng = 0
+
+  puntos.forEach((punto) => {
+    sumaLat += punto.lat
+    sumaLng += punto.lng
+  })
+
+  return {
+    lat: sumaLat / puntos.length,
+    lng: sumaLng / puntos.length,
+  }
+}
+
+// ============================================
+// 6. REEMPLAZAR LA FUNCIÓN buscarPOIs
+// ============================================
+async function buscarPOIs(termino) {
+  try {
+    console.log('📌 Buscando POIs para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosPOIs()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    for (const poi of pois.value) {
+      // Buscar en nombre y dirección
+      if (
+        poi.nombre?.toLowerCase().includes(terminoLower) ||
+        poi.direccion?.toLowerCase().includes(terminoLower)
+      ) {
+        resultados.push({
+          id: `poi-${poi.id}`,
+          tipo: 'poi',
+          nombre: poi.nombre,
+          detalle: poi.direccion || 'Sin dirección',
+          lat: poi.coordenadas?.lat,
+          lng: poi.coordenadas?.lng,
+          poiId: poi.id,
+        })
+      }
+    }
+
+    console.log('📌 POIs encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando POIs:', error)
+    return []
+  }
+}
+
+// ============================================
+// 7. REEMPLAZAR LA FUNCIÓN buscarGeozonas
+// ============================================
+async function buscarGeozonas(termino) {
+  try {
+    console.log('🗺️ Buscando geozonas para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosGeozonas()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    for (const geozona of geozonas.value) {
+      // Buscar en nombre y dirección
+      if (
+        geozona.nombre?.toLowerCase().includes(terminoLower) ||
+        geozona.direccion?.toLowerCase().includes(terminoLower)
+      ) {
+        // Calcular coordenadas del centro según el tipo
+        let lat, lng
+
+        if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+          // Geozona circular - usar centro directamente
+          lat = geozona.centro.lat
+          lng = geozona.centro.lng
+        } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+          // Geozona polígono - calcular centro
+          const centro = calcularCentroPoligono(geozona.puntos)
+          if (centro) {
+            lat = centro.lat
+            lng = centro.lng
+          }
+        }
+
+        // Solo agregar si tenemos coordenadas válidas
+        if (lat && lng) {
+          resultados.push({
+            id: `geozona-${geozona.id}`,
+            tipo: 'geozona',
+            nombre: geozona.nombre,
+            detalle: `${geozona.direccion || 'Sin dirección'} - ${geozona.tipoGeozona === 'circular' ? 'Circular' : 'Polígono'}`,
+            lat: lat,
+            lng: lng,
+            geozonaId: geozona.id,
+            tipoGeozona: geozona.tipoGeozona,
+          })
+        }
+      }
+    }
+
+    console.log('🗺️ Geozonas encontradas:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando geozonas:', error)
+    return []
+  }
+}
+
+// ============================================
+// 8. ACTUALIZAR LA FUNCIÓN procesarResultado
+// ============================================
+function procesarResultado(resultado) {
+  // Acción según el tipo
+  if (resultado.tipo === 'direccion') {
+    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
+
+    if (resultado.lat && resultado.lng) {
+      centrarMapaEn(resultado.lat, resultado.lng)
+      $q.notify({
+        message: `📍 Mostrando: ${resultado.nombre}`,
+        color: 'positive',
+        icon: 'place',
+        position: 'top',
+        timeout: 3000,
+      })
+    } else {
+      console.error('❌ Coordenadas inválidas:', resultado)
+      $q.notify({
+        message: 'Error: Ubicación sin coordenadas válidas',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+      })
+    }
+  } else if (resultado.tipo === 'vehiculo') {
+    console.log('🚗 Abriendo estado de flota')
+    estadoFlotaDrawerOpen.value = true
+    $q.notify({
+      message: `🚗 Vehículo: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'directions_car',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'conductor') {
+    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
+
+    // Abrir el drawer de conductores
+    conductoresDrawerOpen.value = true
+
+    // Guardar la información del conductor seleccionado usando el estado compartido
+    estadoCompartido.value.abrirConductoresConConductor = {
+      conductor: {
+        id: resultado.conductorId,
+        grupoId: resultado.grupoId,
+      },
+      timestamp: Date.now(),
+    }
+
+    $q.notify({
+      message: `👤 Conductor: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'person',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'poi') {
+    console.log('📌 Procesando POI:', resultado.poiId)
+
+    if (resultado.lat && resultado.lng) {
+      // Centrar en el POI con zoom cercano
+      centrarMapaEn(resultado.lat, resultado.lng, 18)
+
+      // Abrir drawer de Geozonas con el POI seleccionado
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+
+        // Pasar información del POI al drawer usando estado compartido
+        estadoCompartido.value.abrirGeozonasConPOI = {
+          item: {
+            id: resultado.poiId,
+            tipo: 'poi',
+          },
+          timestamp: Date.now(),
+        }
+      }, 100)
+    }
+
+    $q.notify({
+      message: `📌 POI: ${resultado.nombre}`,
+      color: 'red',
+      icon: 'location_on',
+      position: 'top',
+      timeout: 3000,
+    })
+  } else if (resultado.tipo === 'geozona') {
+    console.log('🗺️ Procesando geozona:', resultado.geozonaId)
+
+    if (resultado.lat && resultado.lng) {
+      // Centrar en la geozona con zoom medio (para ver todo el área)
+      const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
+      centrarMapaEn(resultado.lat, resultado.lng, zoom)
+
+      // Abrir drawer de Geozonas con la geozona seleccionada
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+
+        // Pasar información de la geozona al drawer usando estado compartido
+        estadoCompartido.value.abrirGeozonasConPOI = {
+          item: {
+            id: resultado.geozonaId,
+            tipo: 'geozona',
+          },
+          timestamp: Date.now(),
+        }
+      }, 100)
+    }
+
+    $q.notify({
+      message: `🗺️ Geozona: ${resultado.nombre}`,
+      color: 'purple',
+      icon: 'layers',
+      position: 'top',
+      timeout: 3000,
     })
   }
 }
