@@ -46,12 +46,14 @@ const geozonasCargadas = ref([])
 // 🆕 FUNCIÓN PARA VERIFICAR SI UNA UBICACIÓN TIENE EVENTOS
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
-  eventosActivos.forEach(evento => {
+  eventosActivos.forEach((evento) => {
     if (evento.condiciones) {
-      evento.condiciones.forEach(condicion => {
-        if (condicion.ubicacionId === ubicacionId && 
-            ((tipo === 'poi' && condicion.tipo === 'POI') || 
-             (tipo === 'geozona' && condicion.tipo === 'Geozona'))) {
+      evento.condiciones.forEach((condicion) => {
+        if (
+          condicion.ubicacionId === ubicacionId &&
+          ((tipo === 'poi' && condicion.tipo === 'POI') ||
+            (tipo === 'geozona' && condicion.tipo === 'Geozona'))
+        ) {
           count++
         }
       })
@@ -62,8 +64,10 @@ function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
 
 // 🆕 FUNCIÓN PARA CREAR ÍCONO PERSONALIZADO CON BADGE
 function crearIconoConBadge(tipoUbicacion, colorUrl, tieneEventos, cantidadEventos) {
-  const iconUrl = colorUrl || 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
-  
+  const iconUrl =
+    colorUrl ||
+    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
+
   if (tieneEventos > 0) {
     return window.L.divIcon({
       className: 'custom-marker-with-badge',
@@ -97,7 +101,7 @@ function crearIconoConBadge(tipoUbicacion, colorUrl, tieneEventos, cantidadEvent
       popupAnchor: [1, -34],
     })
   }
-  
+
   return window.L.icon({
     iconUrl: iconUrl,
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -121,7 +125,7 @@ const dibujarTodosEnMapa = async () => {
     console.log('🎨 Cargando y dibujando items en el mapa...')
 
     const eventosActivos = await obtenerEventos()
-    const eventosFiltrados = eventosActivos.filter(e => e.activo)
+    const eventosFiltrados = eventosActivos.filter((e) => e.activo)
     console.log('✅ Eventos activos cargados:', eventosFiltrados.length)
 
     // Cargar POIs
@@ -144,7 +148,7 @@ const dibujarTodosEnMapa = async () => {
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               ${poi.direccion}
             </p>
-            <button 
+            <button
               onclick="window.verDetallesPOI('${poi.id}')"
               style="
                 width: 100%;
@@ -168,11 +172,12 @@ const dibujarTodosEnMapa = async () => {
         `
 
         const marker = mapaAPI.L.marker([lat, lng], {
-          icon: crearIconoConBadge('poi', 
+          icon: crearIconoConBadge(
+            'poi',
             'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
             tieneEventos,
-            cantidadEventos
-          )
+            cantidadEventos,
+          ),
         }).addTo(mapaAPI.map)
 
         marker.bindPopup(popupContent)
@@ -180,7 +185,9 @@ const dibujarTodosEnMapa = async () => {
           console.log('🖱️ Clic en POI:', poi.nombre)
         })
 
-        console.log(`📍 POI dibujado: ${poi.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
+        console.log(
+          `📍 POI dibujado: ${poi.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       }
     })
 
@@ -215,7 +222,7 @@ const dibujarTodosEnMapa = async () => {
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               Radio: ${geozona.radio}m
             </p>
-            <button 
+            <button
               onclick="window.verDetallesGeozona('${geozona.id}')"
               style="
                 width: 100%;
@@ -271,7 +278,7 @@ const dibujarTodosEnMapa = async () => {
 
           const marcadorEvento = mapaAPI.L.marker([lat, lng], {
             icon: markerIcono,
-            zIndexOffset: 1000
+            zIndexOffset: 1000,
           }).addTo(mapaAPI.map)
 
           // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
@@ -282,7 +289,7 @@ const dibujarTodosEnMapa = async () => {
               <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
                 Geozona Circular - Radio: ${geozona.radio}m
               </p>
-              <button 
+              <button
                 onclick="window.verDetallesGeozona('${geozona.id}')"
                 style="
                   width: 100%;
@@ -310,7 +317,9 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        console.log(`🔵 Geozona circular dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
+        console.log(
+          `🔵 Geozona circular dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
         const color = '#4ECDC4'
@@ -331,7 +340,7 @@ const dibujarTodosEnMapa = async () => {
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               ${geozona.puntos.length} puntos
             </p>
-            <button 
+            <button
               onclick="window.verDetallesGeozona('${geozona.id}')"
               style="
                 width: 100%;
@@ -390,7 +399,7 @@ const dibujarTodosEnMapa = async () => {
 
           const marcadorEvento = mapaAPI.L.marker(centro, {
             icon: markerIcono,
-            zIndexOffset: 1000
+            zIndexOffset: 1000,
           }).addTo(mapaAPI.map)
 
           // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
@@ -401,7 +410,7 @@ const dibujarTodosEnMapa = async () => {
               <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
                 Geozona Poligonal - ${geozona.puntos.length} puntos
               </p>
-              <button 
+              <button
                 onclick="window.verDetallesGeozona('${geozona.id}')"
                 style="
                   width: 100%;
@@ -429,7 +438,9 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        console.log(`🔷 Geozona poligonal dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`)
+        console.log(
+          `🔷 Geozona poligonal dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       }
     })
 
@@ -457,10 +468,10 @@ onMounted(async () => {
       // ✅ FUNCIÓN GLOBAL PRINCIPAL MEJORADA
       window.abrirDetallesUbicacion = (ubicacionData) => {
         console.log('🔍 Abriendo detalles de ubicación:', ubicacionData)
-        
+
         try {
           if (ubicacionData.tipo === 'poi') {
-            const poi = poisCargados.value.find(p => p.id === ubicacionData.id)
+            const poi = poisCargados.value.find((p) => p.id === ubicacionData.id)
             if (poi) {
               console.log('📍 Navegando a detalles de POI:', poi.nombre)
               abrirGeozonasConPOI(poi)
@@ -468,7 +479,7 @@ onMounted(async () => {
               console.error('❌ POI no encontrado:', ubicacionData.id)
             }
           } else if (ubicacionData.tipo === 'geozona') {
-            const geozona = geozonasCargadas.value.find(g => g.id === ubicacionData.id)
+            const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
             if (geozona) {
               console.log('🔷 Navegando a detalles de Geozona:', geozona.nombre)
               abrirGeozonasConPOI(geozona)
@@ -626,7 +637,8 @@ const confirmarYVolverADialogo = () => {
 }
 
 @keyframes pulse-badge {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba(255, 87, 34, 0.5);
   }
@@ -637,7 +649,8 @@ const confirmarYVolverADialogo = () => {
 }
 
 @keyframes pulse-badge-geozona {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
   }

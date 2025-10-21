@@ -123,14 +123,34 @@
                 dense
                 @click.stop
               />
-              <q-btn
-                flat
-                dense
-                round
-                icon="more_vert"
-                size="sm"
-                @click.stop="mostrarMenuContextual(evento)"
-              />
+              <q-btn flat dense round icon="more_vert" size="sm" @click.stop="eventoMenu = evento">
+                <q-menu anchor="bottom right" self="top right" :offset="[0, 5]">
+                  <q-list dense style="min-width: 150px">
+                    <q-item clickable v-close-popup @click="editarEvento">
+                      <q-item-section avatar>
+                        <q-icon name="edit" />
+                      </q-item-section>
+                      <q-item-section>Editar</q-item-section>
+                    </q-item>
+
+                    <q-item clickable v-close-popup @click="duplicarEventoSeleccionado">
+                      <q-item-section avatar>
+                        <q-icon name="content_copy" />
+                      </q-item-section>
+                      <q-item-section>Duplicar</q-item-section>
+                    </q-item>
+
+                    <q-separator />
+
+                    <q-item clickable v-close-popup @click="eliminarEventoSeleccionado">
+                      <q-item-section avatar>
+                        <q-icon name="delete" color="negative" />
+                      </q-item-section>
+                      <q-item-section class="text-negative">Eliminar</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </div>
           </q-item-section>
         </q-item>
@@ -352,35 +372,6 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-
-    <!-- Menú Contextual para cada evento -->
-    <!-- Menú Contextual para cada evento -->
-    <q-menu v-model="menuContextualVisible" touch-position>
-      <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="editarEvento">
-          <q-item-section avatar>
-            <q-icon name="edit" />
-          </q-item-section>
-          <q-item-section>Editar</q-item-section>
-        </q-item>
-
-        <q-item clickable v-close-popup @click="duplicarEventoSeleccionado">
-          <q-item-section avatar>
-            <q-icon name="content_copy" />
-          </q-item-section>
-          <q-item-section>Duplicar</q-item-section>
-        </q-item>
-
-        <q-separator />
-
-        <q-item clickable v-close-popup @click="eliminarEventoSeleccionado">
-          <q-item-section avatar>
-            <q-icon name="delete" color="negative" />
-          </q-item-section>
-          <q-item-section class="text-negative">Eliminar</q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
   </div>
 </template>
 
@@ -417,7 +408,6 @@ const busqueda = ref('')
 const filtroEstado = ref('todos')
 const eventoSeleccionado = ref(null)
 const dialogNuevoEvento = ref(false)
-const menuContextualVisible = ref(false)
 const eventoMenu = ref(null)
 const modoEdicion = ref(false)
 
@@ -769,11 +759,6 @@ async function guardarEvento() {
       })
     }
   }
-}
-
-function mostrarMenuContextual(evento) {
-  eventoMenu.value = evento
-  menuContextualVisible.value = true
 }
 
 function editarEvento() {
