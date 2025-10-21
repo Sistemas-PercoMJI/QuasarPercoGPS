@@ -16,6 +16,12 @@
         <q-tooltip>Listo, guardar geozona</q-tooltip>
       </q-btn>
     </transition>
+
+    <!-- Marcador de ubicación del usuario -->
+    <div v-if="ubicacionActiva" class="user-location-indicator">
+      <q-icon name="gps_fixed" size="24px" color="positive" />
+      <span class="text-caption">GPS Activo</span>
+    </div>
   </q-page>
 </template>
 
@@ -25,13 +31,18 @@ import { useMap } from 'src/composables/useMap'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 import { useEventos } from 'src/composables/useEventos'
-import { useEventBus } from 'src/composables/useEventBus.js' // 🆕 AGREGADO
+import { useEventBus } from 'src/composables/useEventBus.js'
+import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 
 const { initMap, addMarker, cleanup } = useMap()
-const { abrirGeozonasConPOI } = useEventBus() // 🆕 AGREGADO
+const { abrirGeozonasConPOI } = useEventBus()
+const { inicializar, actualizarUbicacion, resetear } = useEventDetection()
+
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
+const ubicacionActiva = ref(false)
+const marcadorUsuario = ref(null)
 
 const userId = ref(auth.currentUser?.uid || '')
 
@@ -43,7 +54,11 @@ const { obtenerEventos } = useEventos(userId.value)
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
 
-// 🆕 FUNCIÓN PARA VERIFICAR SI UNA UBICACIÓN TIENE EVENTOS
+// Variables para GPS
+let watchId = null
+let mapaAPI = null
+
+// Función para verificar si una ubicación tiene eventos
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
   eventosActivos.forEach((evento) => {
@@ -62,7 +77,7 @@ function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   return count
 }
 
-// 🆕 FUNCIÓN PARA CREAR ÍCONO PERSONALIZADO CON BADGE
+// Función para crear ícono personalizado con badge
 function crearIconoConBadge(tipoUbicacion, colorUrl, tieneEventos, cantidadEventos) {
   const iconUrl =
     colorUrl ||
@@ -112,6 +127,123 @@ function crearIconoConBadge(tipoUbicacion, colorUrl, tieneEventos, cantidadEvent
   })
 }
 
+// FUNCIÓN PARA ACTUALIZAR EL MARCADOR DEL USUARIO
+function actualizarMarcadorUsuario(lat, lng) {
+  if (!mapaAPI || !mapaAPI.map) return
+
+  if (marcadorUsuario.value) {
+    // Actualizar posición del marcador existente
+    marcadorUsuario.value.setLatLng([lat, lng])
+  } else {
+    // Crear nuevo marcador de usuario
+    const iconoUsuario = mapaAPI.L.divIcon({
+      className: 'user-location-marker',
+      html: `
+        <div style="
+          width: 20px;
+          height: 20px;
+          background: #4285F4;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        "></div>
+        <div style="
+          width: 40px;
+          height: 40px;
+          background: rgba(66, 133, 244, 0.2);
+          border-radius: 50%;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          animation: pulse-location 2s infinite;
+        "></div>
+      `,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    })
+
+    marcadorUsuario.value = mapaAPI.L.marker([lat, lng], {
+      icon: iconoUsuario,
+      zIndexOffset: 2000
+    }).addTo(mapaAPI.map)
+
+    marcadorUsuario.value.bindPopup('<b>📍 Tu ubicación</b>')
+  }
+}
+
+// FUNCIÓN PARA INICIAR SEGUIMIENTO GPS
+function iniciarSeguimientoGPS() {
+  if (!navigator.geolocation) {
+    console.error('❌ Geolocalización no soportada en este navegador')
+    return
+  }
+
+  const opciones = {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 0
+  }
+
+  watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords
+      
+      console.log('📍 Nueva ubicación detectada:', latitude, longitude)
+      ubicacionActiva.value = true
+      
+      // Actualizar marcador en el mapa
+      actualizarMarcadorUsuario(latitude, longitude)
+      
+      // Evaluar eventos con la nueva ubicación
+      actualizarUbicacion(latitude, longitude)
+    },
+    (error) => {
+      console.error('❌ Error de geolocalización:', error.message)
+      ubicacionActiva.value = false
+    },
+    opciones
+  )
+
+  console.log('🎯 Seguimiento GPS iniciado')
+}
+
+// FUNCIÓN PARA DETENER SEGUIMIENTO GPS
+function detenerSeguimientoGPS() {
+  if (watchId) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+    ubicacionActiva.value = false
+    console.log('🛑 Seguimiento GPS detenido')
+  }
+}
+
+// FUNCIÓN PARA INICIALIZAR EL SISTEMA DE DETECCIÓN
+async function inicializarSistemaDeteccion() {
+  try {
+    console.log('🚀 Inicializando sistema de detección de eventos...')
+    
+    const [eventos, pois, geozonas] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas()
+    ])
+
+    // Filtrar solo eventos activos
+    const eventosActivos = eventos.filter(e => e.activo)
+    
+    // Inicializar el detector
+    inicializar(eventosActivos, pois, geozonas)
+    
+    console.log('✅ Sistema de detección inicializado')
+    console.log('  📊 Eventos activos:', eventosActivos.length)
+    console.log('  📍 POIs:', pois.length)
+    console.log('  🗺️ Geozonas:', geozonas.length)
+  } catch (error) {
+    console.error('❌ Error al inicializar detección:', error)
+  }
+}
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -119,7 +251,7 @@ const dibujarTodosEnMapa = async () => {
     return
   }
 
-  const mapaAPI = mapPage._mapaAPI
+  mapaAPI = mapPage._mapaAPI
 
   try {
     console.log('🎨 Cargando y dibujando items en el mapa...')
@@ -130,7 +262,7 @@ const dibujarTodosEnMapa = async () => {
 
     // Cargar POIs
     const pois = await obtenerPOIs()
-    poisCargados.value = pois // 🆕 Guardar para uso posterior
+    poisCargados.value = pois
     console.log('✅ POIs cargados:', pois.length)
 
     // Dibujar POIs
@@ -140,7 +272,6 @@ const dibujarTodosEnMapa = async () => {
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
 
-        // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
         const popupContent = `
           <div style="min-width: 180px;">
             <b style="font-size: 14px;">📍 ${poi.nombre}</b>
@@ -193,7 +324,7 @@ const dibujarTodosEnMapa = async () => {
 
     // Cargar Geozonas
     const geozonas = await obtenerGeozonas()
-    geozonasCargadas.value = geozonas // 🆕 Guardar para uso posterior
+    geozonasCargadas.value = geozonas
     console.log('✅ Geozonas cargadas:', geozonas.length)
 
     // Dibujar Geozonas
@@ -214,7 +345,6 @@ const dibujarTodosEnMapa = async () => {
           weight: 2,
         }).addTo(mapaAPI.map)
 
-        // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
         const popupContent = `
           <div style="min-width: 180px;">
             <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
@@ -281,7 +411,6 @@ const dibujarTodosEnMapa = async () => {
             zIndexOffset: 1000,
           }).addTo(mapaAPI.map)
 
-          // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
           marcadorEvento.bindPopup(`
             <div style="min-width: 180px;">
               <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
@@ -332,7 +461,6 @@ const dibujarTodosEnMapa = async () => {
           weight: 2,
         }).addTo(mapaAPI.map)
 
-        // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
         const popupContent = `
           <div style="min-width: 180px;">
             <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
@@ -402,7 +530,6 @@ const dibujarTodosEnMapa = async () => {
             zIndexOffset: 1000,
           }).addTo(mapaAPI.map)
 
-          // ✅ CAMBIO CLAVE: El onclick ahora llama a una función más simple
           marcadorEvento.bindPopup(`
             <div style="min-width: 180px;">
               <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
@@ -465,7 +592,6 @@ onMounted(async () => {
 
       console.log('✅ Mapa completamente listo')
 
-      // ✅ FUNCIÓN GLOBAL PRINCIPAL MEJORADA
       window.abrirDetallesUbicacion = (ubicacionData) => {
         console.log('🔍 Abriendo detalles de ubicación:', ubicacionData)
 
@@ -492,7 +618,6 @@ onMounted(async () => {
         }
       }
 
-      // ✅ NUEVAS FUNCIONES GLOBALES AUXILIARES
       window.verDetallesPOI = (poiId) => {
         window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
       }
@@ -502,6 +627,12 @@ onMounted(async () => {
       }
 
       await dibujarTodosEnMapa()
+      
+      // Inicializar sistema de detección de eventos
+      await inicializarSistemaDeteccion()
+      
+      // Iniciar seguimiento GPS
+      iniciarSeguimientoGPS()
     }, 100)
 
     window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
@@ -523,8 +654,9 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
+  // Listener mejorado para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    console.log('🔄 Redibujando mapa...')
+    console.log('🔄 Redibujando mapa y reiniciando detección...')
 
     const mapPage = document.getElementById('map-page')
     if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
@@ -535,39 +667,21 @@ onMounted(async () => {
           layer instanceof mapPage._mapaAPI.L.Polygon
         ) {
           if (layer.getPopup()?.getContent() !== '<b>MJ Industrias</b><br>Ubicación principal') {
-            mapPage._mapaAPI.map.removeLayer(layer)
+            // No eliminar el marcador del usuario
+            if (layer !== marcadorUsuario.value) {
+              mapPage._mapaAPI.map.removeLayer(layer)
+            }
           }
         }
       })
     }
 
     await dibujarTodosEnMapa()
+    
+    // Reinicializar sistema de detección
+    resetear()
+    await inicializarSistemaDeteccion()
   })
-})
-
-onUnmounted(() => {
-  if (window._resizeHandler) {
-    window.removeEventListener('resize', window._resizeHandler)
-    delete window._resizeHandler
-  }
-
-  window.removeEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
-  window.removeEventListener('redibujarMapa', () => {})
-
-  // 🆕 Limpiar funciones globales
-  if (window.abrirDetallesUbicacion) {
-    delete window.abrirDetallesUbicacion
-  }
-  if (window.verDetallesPOI) {
-    delete window.verDetallesPOI
-  }
-  if (window.verDetallesGeozona) {
-    delete window.verDetallesGeozona
-  }
-
-  cleanup()
-
-  console.log('🧹 IndexPage desmontado, mapa limpiado')
 })
 
 const handleMostrarBoton = (e) => {
@@ -585,6 +699,36 @@ const confirmarYVolverADialogo = () => {
 
   mostrarBotonConfirmarGeozona.value = false
 }
+
+onUnmounted(() => {
+  // Detener seguimiento GPS
+  detenerSeguimientoGPS()
+  
+  // Resetear sistema de detección
+  resetear()
+
+  if (window._resizeHandler) {
+    window.removeEventListener('resize', window._resizeHandler)
+    delete window._resizeHandler
+  }
+
+  window.removeEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
+  window.removeEventListener('redibujarMapa', () => {})
+
+  if (window.abrirDetallesUbicacion) {
+    delete window.abrirDetallesUbicacion
+  }
+  if (window.verDetallesPOI) {
+    delete window.verDetallesPOI
+  }
+  if (window.verDetallesGeozona) {
+    delete window.verDetallesGeozona
+  }
+
+  cleanup()
+
+  console.log('🧹 IndexPage desmontado, mapa y detección limpiados')
+})
 </script>
 
 <style scoped>
@@ -609,6 +753,33 @@ const confirmarYVolverADialogo = () => {
   right: 24px;
   z-index: 9999;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Indicador de GPS activo */
+.user-location-indicator {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  z-index: 1000;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .fade-scale-enter-active,
@@ -636,6 +807,12 @@ const confirmarYVolverADialogo = () => {
   border: none !important;
 }
 
+/* Estilos para marcador de usuario */
+:deep(.user-location-marker) {
+  background: none !important;
+  border: none !important;
+}
+
 @keyframes pulse-badge {
   0%,
   100% {
@@ -657,6 +834,22 @@ const confirmarYVolverADialogo = () => {
   50% {
     transform: scale(1.15);
     box-shadow: 0 4px 16px rgba(255, 87, 34, 0.8);
+  }
+}
+
+/* Animación del marcador de ubicación */
+@keyframes pulse-location {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
   }
 }
 </style>
