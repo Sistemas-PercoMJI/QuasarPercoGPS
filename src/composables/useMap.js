@@ -8,6 +8,8 @@ const map = ref(null)
 const marcadorTemporal = ref(null)
 const ubicacionSeleccionada = ref(null)
 const modoSeleccionActivo = ref(false)
+//capa para trafico
+let capaTrafico = null
 
 // Nuevas referencias para geozonas
 const circuloTemporal = ref(null)
@@ -499,6 +501,7 @@ export function useMap() {
         limpiarCirculoTemporalPOI,
         confirmarMarcadorConCirculo,
         actualizarMarcadorConCirculo,
+        toggleTrafico, // ✅ AGREGAR AQUÍ
       }
 
       window.mapaGlobal = mapaAPI
@@ -582,6 +585,36 @@ export function useMap() {
     console.log('🧹 Mapa limpiado')
   }
 
+  //TRAFICO
+  const toggleTrafico = () => {
+    if (!map.value) {
+      console.error('❌ Mapa no inicializado')
+      return false
+    }
+
+    if (capaTrafico) {
+      // Desactivar tráfico
+      map.value.removeLayer(capaTrafico)
+      capaTrafico = null
+      console.log('🚦 Capa de tráfico DESACTIVADA')
+      return false // Retorna false = desactivado
+    } else {
+      // Activar tráfico
+      capaTrafico = L.tileLayer(
+        `https://api.mapbox.com/styles/v1/mapbox/traffic-day-v2/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+        {
+          maxZoom: 22,
+          tileSize: 512,
+          zoomOffset: -1,
+          opacity: 0.7,
+          attribution: 'Traffic by Mapbox',
+        },
+      ).addTo(map.value)
+      console.log('🚦 Capa de tráfico ACTIVADA')
+      return true // Retorna true = activado
+    }
+  }
+
   return {
     map,
     initMap,
@@ -613,5 +646,6 @@ export function useMap() {
     limpiarCirculoTemporalPOI,
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
+    toggleTrafico,
   }
 }

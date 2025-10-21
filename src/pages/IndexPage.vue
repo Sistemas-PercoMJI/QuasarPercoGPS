@@ -2,6 +2,17 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
+    <q-btn
+      fab
+      :color="traficoActivo ? 'positive' : 'grey-7'"
+      :icon="traficoActivo ? 'traffic' : 'block'"
+      class="traffic-toggle-btn"
+      @click="manejarToggleTrafico"
+      size="md"
+    >
+      <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
+    </q-btn>
+
     <transition name="fade-scale">
       <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
         <!-- Botón de Cancelar -->
@@ -48,7 +59,7 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 
-const { initMap, addMarker, cleanup } = useMap()
+const { initMap, addMarker, cleanup, toggleTrafico } = useMap()
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, actualizarUbicacion, resetear } = useEventDetection()
 
@@ -62,6 +73,8 @@ const userId = ref(auth.currentUser?.uid || '')
 const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
 const { obtenerEventos } = useEventos(userId.value)
+//trafico
+const traficoActivo = ref(false)
 
 // Variables para almacenar los datos cargados
 const poisCargados = ref([])
@@ -798,6 +811,11 @@ onUnmounted(() => {
 
   console.log('🧹 IndexPage desmontado, mapa y detección limpiados')
 })
+
+const manejarToggleTrafico = () => {
+  const nuevoEstado = toggleTrafico()
+  traficoActivo.value = nuevoEstado
+}
 </script>
 
 <style scoped>
@@ -967,5 +985,35 @@ onUnmounted(() => {
 .fade-scale-leave-to {
   opacity: 0;
   transform: scale(0.8) translateY(20px);
+}
+
+/* Botón de toggle de tráfico */
+.traffic-toggle-btn {
+  position: fixed !important;
+  top: 80px;
+  left: 85px; /* Justo a la derecha del drawer mini */
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.traffic-toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Animación cuando está activo */
+.traffic-toggle-btn.bg-positive {
+  animation: pulse-traffic 2s infinite;
+}
+
+@keyframes pulse-traffic {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(33, 186, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(33, 186, 69, 0.6);
+  }
 }
 </style>
