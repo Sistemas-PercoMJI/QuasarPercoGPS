@@ -354,39 +354,6 @@
             </template>
           </q-input>
 
-          <!-- ✅ NUEVO: SLIDER DE RADIO -->
-          <div class="q-mb-md">
-            <div class="row items-center q-mb-sm">
-              <q-icon name="radio_button_unchecked" size="20px" class="q-mr-sm" />
-              <span class="text-subtitle2">Radio de cobertura</span>
-            </div>
-
-            <div class="radius-preview q-mb-sm">
-              <div class="radius-value">{{ nuevoPOI.radio }} metros</div>
-              <div class="radius-label">Área de detección del POI</div>
-            </div>
-
-            <q-slider
-              v-model="nuevoPOI.radio"
-              :min="10"
-              :max="1000"
-              :step="10"
-              color="primary"
-              track-color="grey-3"
-              thumb-color="primary"
-              label
-              :label-value="nuevoPOI.radio + 'm'"
-              markers
-              marker-labels
-              @update:model-value="actualizarRadioPOI"
-            />
-
-            <div class="row justify-between q-mt-xs">
-              <span class="text-caption text-grey-6">10m</span>
-              <span class="text-caption text-grey-6">1km</span>
-            </div>
-          </div>
-
           <q-select
             v-model="nuevoPOI.grupoId"
             :options="opcionesGruposSelect"
@@ -426,6 +393,109 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Slider flotante para ajustar radio del POI -->
+    <!-- Slider flotante para ajustar radio del POI -->
+    <transition name="slide-up">
+      <div v-if="mostrarSliderRadio" class="slider-flotante-container">
+        <q-card class="slider-flotante-card">
+          <q-card-section class="q-pa-md">
+            <div class="row items-center q-mb-sm">
+              <q-icon name="radio_button_unchecked" size="24px" color="primary" class="q-mr-sm" />
+              <div class="col">
+                <div class="text-subtitle2 text-weight-bold">Radio del POI</div>
+                <div class="text-caption text-grey-7">Ajusta el área de cobertura</div>
+              </div>
+            </div>
+
+            <!-- Vista previa del valor -->
+            <div class="radius-display q-mb-md">
+              <div class="radius-value">{{ nuevoPOI.radio }}m</div>
+              <div class="radius-sublabel">metros de radio</div>
+            </div>
+
+            <!-- Slider principal -->
+            <q-slider
+              v-model="nuevoPOI.radio"
+              :min="10"
+              :max="1000"
+              :step="10"
+              color="primary"
+              track-color="grey-3"
+              label
+              :label-value="nuevoPOI.radio + 'm'"
+              @update:model-value="actualizarRadioPOI"
+              class="q-mb-sm"
+            />
+
+            <!-- Valores mín/máx -->
+            <div class="row justify-between text-caption text-grey-6">
+              <span>10m</span>
+              <span>1km</span>
+            </div>
+
+            <!-- Atajos rápidos -->
+            <div class="q-mt-md">
+              <div class="text-caption text-grey-7 q-mb-xs">Atajos rápidos:</div>
+              <div class="row q-gutter-xs">
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="50m"
+                  size="sm"
+                  @click="establecerRadio(50)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="100m"
+                  size="sm"
+                  @click="establecerRadio(100)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="250m"
+                  size="sm"
+                  @click="establecerRadio(250)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="500m"
+                  size="sm"
+                  @click="establecerRadio(500)"
+                />
+              </div>
+            </div>
+          </q-card-section>
+
+          <!-- Botón de cerrar -->
+          <!-- En el template del slider flotante, las q-card-actions deben tener: -->
+          <q-card-actions align="between" class="q-px-md q-pb-md">
+            <q-btn
+              flat
+              dense
+              icon="close"
+              color="grey-7"
+              label="Cancelar"
+              @click="cancelarNuevoPOI"
+            />
+            <q-btn
+              unelevated
+              color="primary"
+              icon="check"
+              label="Continuar"
+              @click="continuarAlDialog"
+            />
+          </q-card-actions>
+        </q-card>
+      </div>
+    </transition>
 
     <!-- Dialog: Tipo de Geozona -->
     <!-- Dialog: Tipo de Geozona - SIMPLIFICADO -->
@@ -767,6 +837,32 @@ const grupos = ref([
 ])
 
 const items = ref([])
+
+const mostrarSliderRadio = ref(false)
+
+// ✅ NUEVA FUNCIÓN: Continuar al dialog después de ajustar el radio
+function continuarAlDialog() {
+  // Ocultar slider
+  mostrarSliderRadio.value = false
+
+  // Restaurar visibilidad del drawer
+  const componentDialog = document.querySelector('.component-dialog')
+  if (componentDialog) {
+    componentDialog.style.opacity = '1'
+    componentDialog.style.pointerEvents = 'auto'
+  }
+
+  // Abrir dialog con los datos ya llenos
+  dialogNuevoPOI.value = true
+
+  console.log('✅ Continuando al dialog con radio:', nuevoPOI.value.radio)
+}
+
+// ✅ NUEVA FUNCIÓN: Establecer radio con atajos
+function establecerRadio(valor) {
+  nuevoPOI.value.radio = valor
+  actualizarRadioPOI(valor)
+}
 
 // 🆕 Computed para saber qué ubicaciones tienen eventos
 const ubicacionesConEventos = computed(() => {
@@ -1282,6 +1378,7 @@ const eliminarItem = async () => {
 // 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
 const guardarPOI = async () => {
   try {
+    mostrarSliderRadio.value = false
     const mapPage = document.querySelector('#map-page')
 
     // Preparar datos del POI
@@ -1671,6 +1768,8 @@ const guardarGeozona = async () => {
   }
 }
 
+// EN GeoZonas.vue, REEMPLAZAR TODA la función activarSeleccionMapa:
+
 const activarSeleccionMapa = async () => {
   console.log('🔵 1. Iniciando activarSeleccionMapa')
 
@@ -1678,116 +1777,67 @@ const activarSeleccionMapa = async () => {
   dialogNuevoPOI.value = false
   console.log('🔵 2. Diálogo cerrado')
 
-  // 2. Hacer semi-transparente el drawer de geozonas
-  const componentDialog = document.querySelector('.component-dialog')
-  console.log('🔵 3. componentDialog encontrado:', componentDialog)
+  // 2. NO TOCAR LA OPACIDAD DEL DRAWER
+  // Simplemente esperamos un momento
+  await new Promise((resolve) => setTimeout(resolve, 300))
 
-  if (componentDialog) {
-    componentDialog.style.opacity = '0.3'
-    componentDialog.style.pointerEvents = 'none'
-  }
-
-  // 3. Esperar un momento para que el drawer se oculte
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  console.log('🔵 4. Esperando completado')
-
-  // 4. FUNCIÓN MEJORADA: Intentar encontrar el mapa con reintentos
   const esperarMapa = async (intentosMaximos = 10, delay = 500) => {
     for (let i = 0; i < intentosMaximos; i++) {
       const mapPage = document.querySelector('#map-page')
-
-      console.log(`🔵 Intento ${i + 1}/${intentosMaximos} - mapPage:`, !!mapPage)
-      console.log(`🔵 Intento ${i + 1}/${intentosMaximos} - _mapaAPI:`, !!mapPage?._mapaAPI)
 
       if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.activarModoSeleccion) {
         console.log('✅ Mapa encontrado en intento', i + 1)
         return mapPage._mapaAPI
       }
 
-      // Esperar antes del siguiente intento
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
-
     return null
   }
 
   try {
-    // Intentar obtener el mapa con reintentos
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
       console.log('✅ Mapa disponible, activando modo selección')
 
-      // Activar modo selección
       mapaAPI.activarModoSeleccion()
-      console.log('🔵 8. Modo selección activado')
 
       // Esperar a que el usuario seleccione
       const ubicacion = await esperarSeleccionUbicacion(mapaAPI)
-      console.log('🔵 9. Ubicación obtenida:', ubicacion)
+      console.log('🔵 Ubicación obtenida:', ubicacion)
 
-      // Desactivar modo selección
       mapaAPI.desactivarModoSeleccion()
 
-      // Si hay ubicación, guardar los datos
       if (ubicacion) {
         nuevoPOI.value.direccion = ubicacion.direccion
         nuevoPOI.value.coordenadas = ubicacion.coordenadas
 
-        if (mapaAPI) {
-          mapaAPI.crearCirculoTemporalPOI(
-            ubicacion.coordenadas.lat,
-            ubicacion.coordenadas.lng,
-            nuevoPOI.value.radio,
-          )
-        }
-      }
+        // Crear círculo temporal
+        mapaAPI.crearCirculoTemporalPOI(
+          ubicacion.coordenadas.lat,
+          ubicacion.coordenadas.lng,
+          nuevoPOI.value.radio,
+        )
 
-      // Restaurar visibilidad del drawer
-      if (componentDialog) {
-        componentDialog.style.opacity = '1'
-        componentDialog.style.pointerEvents = 'auto'
-      }
+        // Mostrar slider flotante
+        mostrarSliderRadio.value = true
 
-      // REABRIR el diálogo con los datos ya llenos
-      dialogNuevoPOI.value = true
+        console.log('✅ Slider flotante mostrado')
+      }
     } else {
-      console.error('❌ No se pudo encontrar el mapa después de varios intentos')
+      console.error('❌ No se pudo encontrar el mapa')
 
-      // Restaurar visibilidad del drawer
-      if (componentDialog) {
-        componentDialog.style.opacity = '1'
-        componentDialog.style.pointerEvents = 'auto'
-      }
-
-      // Mostrar notificación más amigable
       $q.notify({
         type: 'warning',
         message: 'El mapa aún no está listo',
-        caption: 'Por favor, espera unos segundos e intenta de nuevo',
         timeout: 3000,
-        actions: [
-          {
-            label: 'Reintentar',
-            color: 'white',
-            handler: () => {
-              activarSeleccionMapa()
-            },
-          },
-        ],
       })
 
-      // Reabrir el diálogo para que el usuario pueda reintentar
       dialogNuevoPOI.value = true
     }
   } catch (error) {
     console.error('❌ Error en activarSeleccionMapa:', error)
-
-    // Restaurar visibilidad del drawer
-    if (componentDialog) {
-      componentDialog.style.opacity = '1'
-      componentDialog.style.pointerEvents = 'auto'
-    }
 
     $q.notify({
       type: 'negative',
@@ -1796,7 +1846,6 @@ const activarSeleccionMapa = async () => {
       icon: 'error',
     })
 
-    // Reabrir el diálogo
     dialogNuevoPOI.value = true
   }
 }
@@ -1819,6 +1868,7 @@ const esperarSeleccionUbicacion = (mapaAPI) => {
 }
 
 const cancelarNuevoPOI = () => {
+  mostrarSliderRadio.value = false
   const componentDialog = document.querySelector('.component-dialog')
   if (componentDialog) {
     componentDialog.style.opacity = '1'
@@ -1831,6 +1881,7 @@ const cancelarNuevoPOI = () => {
     if (mapaAPI) {
       mapaAPI.desactivarModoSeleccion()
       mapaAPI.limpiarMarcadorTemporal()
+      mapaAPI.limpiarCirculoTemporalPOI()
     }
   }
 
@@ -2280,5 +2331,61 @@ const redibujarMapa = () => {
   font-size: 12px;
   opacity: 0.9;
   margin-top: 4px;
+}
+
+/* ============================================ */
+/* ESTILOS DEL SLIDER FLOTANTE - AGREGAR AL FINAL */
+/* ============================================ */
+
+.slider-flotante-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  width: 380px;
+  max-width: calc(100vw - 48px);
+}
+
+.slider-flotante-card {
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: white;
+  border: 2px solid #1976d2;
+}
+
+.radius-display {
+  text-align: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.radius-value {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.radius-sublabel {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* Animación de entrada desde la derecha */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
 }
 </style>
