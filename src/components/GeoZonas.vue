@@ -1962,6 +1962,7 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
 // Hooks de ciclo de vida
 onMounted(async () => {
   try {
+    window.addEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
     // Cargar POIs, Geozonas Y EVENTOS en paralelo
     const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
       obtenerPOIs(),
@@ -2001,6 +2002,11 @@ onMounted(async () => {
   // ... (otros listeners como el del botón flotante)
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
+
+const handleCancelarGeozona = (e) => {
+  console.log('🔘 Evento cancelarGeozonaDesdeBoton:', e.detail)
+  // Aquí puedes agregar lógica adicional si la necesitas
+}
 
 onMounted(async () => {
   try {
@@ -2046,7 +2052,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   // ... (código para limpiar marcadores y polígonos activos)
-
+  window.removeEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
   // 🆕 LIMPIAR EVENTOS DE VENTANA
   window.removeEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })

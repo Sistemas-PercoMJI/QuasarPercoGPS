@@ -2,19 +2,32 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
-    <!-- Botón flotante para confirmar geozona -->
     <transition name="fade-scale">
-      <q-btn
-        v-if="mostrarBotonConfirmarGeozona"
-        fab
-        color="secondary"
-        icon="check"
-        class="floating-confirm-btn"
-        @click="confirmarYVolverADialogo"
-        size="lg"
-      >
-        <q-tooltip>Listo, guardar geozona</q-tooltip>
-      </q-btn>
+      <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
+        <!-- Botón de Cancelar -->
+        <q-btn
+          fab
+          color="negative"
+          icon="close"
+          class="floating-cancel-btn"
+          @click="cancelarGeozona"
+          size="md"
+        >
+          <q-tooltip>Cancelar geozona</q-tooltip>
+        </q-btn>
+
+        <!-- Botón de Confirmar -->
+        <q-btn
+          fab
+          color="secondary"
+          icon="check"
+          class="floating-confirm-btn-main"
+          @click="confirmarYVolverADialogo"
+          size="lg"
+        >
+          <q-tooltip>Listo, guardar geozona</q-tooltip>
+        </q-btn>
+      </div>
     </transition>
 
     <!-- Marcador de ubicación del usuario -->
@@ -708,6 +721,54 @@ const confirmarYVolverADialogo = () => {
   mostrarBotonConfirmarGeozona.value = false
 }
 
+const cancelarGeozona = () => {
+  console.log('❌ Cancelando creación de geozona')
+
+  // Ocultar botones
+  mostrarBotonConfirmarGeozona.value = false
+
+  // Limpiar capas temporales del mapa
+  const mapPage = document.getElementById('map-page')
+  if (mapPage && mapPage._mapaAPI) {
+    const mapaAPI = mapPage._mapaAPI
+
+    // Desactivar modos de selección
+    mapaAPI.desactivarModoSeleccion()
+
+    // Limpiar capas temporales
+    mapaAPI.limpiarCirculoTemporal()
+    mapaAPI.limpiarPoligonoTemporal()
+
+    console.log('✅ Capas temporales limpiadas')
+  }
+
+  // ✅ NUEVO: Restaurar opacidad del drawer
+  const componentDialog = document.querySelector('.component-dialog')
+  if (componentDialog) {
+    componentDialog.style.opacity = '1'
+    componentDialog.style.pointerEvents = 'auto'
+    console.log('✅ Opacidad del drawer restaurada')
+  }
+
+  // Disparar evento para que GeoZonas limpie su estado
+  const evento = new CustomEvent('cancelarGeozonaDesdeBoton', {
+    detail: { cancelled: true },
+  })
+  window.dispatchEvent(evento)
+
+  // Notificar al usuario
+  const $q = window.$q
+  if ($q && $q.notify) {
+    $q.notify({
+      type: 'info',
+      message: 'Creación de geozona cancelada',
+      icon: 'cancel',
+      position: 'top',
+      timeout: 2000,
+    })
+  }
+}
+
 onUnmounted(() => {
   // Detener seguimiento GPS
   detenerSeguimientoGPS()
@@ -859,5 +920,52 @@ onUnmounted(() => {
     transform: translate(-50%, -50%) scale(1);
     opacity: 0.6;
   }
+}
+
+.floating-buttons-container {
+  position: fixed !important;
+  bottom: 100px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Botón de confirmar (palomita) */
+.floating-confirm-btn-main {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón de cancelar (X) */
+.floating-cancel-btn {
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+}
+
+.floating-cancel-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 28px rgba(244, 67, 54, 0.5);
+}
+
+.floating-confirm-btn-main:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Animación de entrada */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-scale-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+}
+
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
 }
 </style>
