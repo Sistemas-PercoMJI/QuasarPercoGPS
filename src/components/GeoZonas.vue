@@ -1876,6 +1876,11 @@ const activarSeleccionMapa = async () => {
         nuevoPOI.value.direccion = ubicacion.direccion
         nuevoPOI.value.coordenadas = ubicacion.coordenadas
 
+        // Asegúrate de que el radio tenga un valor por defecto
+        if (!nuevoPOI.value.radio) {
+          nuevoPOI.value.radio = 100 // Valor por defecto
+        }
+
         // Crear círculo temporal
         mapaAPI.crearCirculoTemporalPOI(
           ubicacion.coordenadas.lat,
@@ -1944,12 +1949,14 @@ const cancelarNuevoPOI = () => {
     }
   }
 
+  // Asegúrate de incluir el radio con un valor por defecto
   nuevoPOI.value = {
     nombre: '',
     direccion: '',
     coordenadas: null,
     grupoId: null,
     notas: '',
+    radio: 100, // Agrega esta línea con el valor por defecto
   }
 
   dialogNuevoPOI.value = false
