@@ -489,7 +489,7 @@ const vehiculos = computed(() => {
     timestamp: unidad.timestamp,
     ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
     
-    // Datos de ejemplo para tabs (puedes calcularlos realmente después)
+    // Datos de ejemplo para tabs
     plan: 'Plan Básico',
     bloqueado: false,
     tiempoConductionHoy: '3h 24m',
@@ -538,7 +538,6 @@ const vehiculos = computed(() => {
     }
   }))
 })
-
 // Computed para estados
 const estadosVehiculos = computed(() => {
   const conteo = contarPorEstado()

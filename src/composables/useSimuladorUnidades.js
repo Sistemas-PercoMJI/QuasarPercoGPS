@@ -158,7 +158,7 @@ export function useSimuladorUnidades() {
           ultimaActualizacion: new Date().toISOString()
         })
 
-        console.log(`✅ Unidad ${unidad} actualizada - Estado: ${nuevoEstado}, Vel: ${Math.floor(nuevaVelocidad)} km/h`)
+        console.log(`✅ Unidad ${unidad.Unidad} actualizada - Estado: ${nuevoEstado}, Vel: ${Math.floor(nuevaVelocidad)} km/h`)
         
       } catch (error) {
         console.error(`Error actualizando unidad ${unidadId}:`, error)

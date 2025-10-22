@@ -101,7 +101,7 @@ export function useTrackingUnidades() {
     return conteo
   }
 
-  /**
+  /*
    * Obtiene estadísticas generales
    */
   const estadisticas = () => {
