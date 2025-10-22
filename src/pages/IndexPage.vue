@@ -13,6 +13,11 @@
       <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
     </q-btn>
 
+    <!-- SimuladorControl - Justo debajo del botón de tráfico -->
+    <div class="simulador-container">
+      <SimuladorControl />
+    </div>
+
     <transition name="fade-scale">
       <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
         <!-- Botón de Cancelar -->
@@ -58,6 +63,7 @@ import { useEventos } from 'src/composables/useEventos'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
+import SimuladorControl from 'src/components/SimuladorControl.vue'
 
 const { initMap, addMarker, cleanup, toggleTrafico } = useMap()
 const { abrirGeozonasConPOI } = useEventBus()
@@ -1021,4 +1027,29 @@ const manejarToggleTrafico = () => {
   mix-blend-mode: multiply;
   opacity: 0.9;
 }
+
+/* Contenedor del SimuladorControl - VERSIÓN COMPACTA */
+.simulador-container {
+  position: fixed !important;
+  top: 220px; /* Debajo del botón de tráfico */
+  right: 20px;
+  z-index: 1000;
+}
+
+/* Cuando está expandido, darle ancho fijo */
+.simulador-container :deep(.simulador-card-expandido) {
+  width: 350px;
+}
+
+/* Media query para pantallas pequeñas */
+@media (max-width: 768px) {
+  .simulador-container :deep(.simulador-card-expandido) {
+    width: 320px;
+  }
+  
+  .simulador-container {
+    right: 10px;
+  }
+}
+
 </style>
