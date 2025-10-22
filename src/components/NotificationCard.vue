@@ -1,23 +1,40 @@
 <template>
-  <q-card :class="`bg-${type}`" class="q-mb-md q-pa-md shadow-2 rounded-borders notification-card">
-    <div class="row items-center">
+  <q-card
+    :class="['notification-card', `bg-${type}`, { 'leida': leida }]"
+    class="q-mb-sm q-pa-md shadow-2 rounded-borders"
+  >
+    <div class="row items-start">
       <q-icon :name="icon" size="md" class="q-mr-sm notification-icon" />
       <div class="col">
-        <div class="text-subtitle1">{{ title }}</div>
-        <div class="text-body2">{{ message }}</div>
+        <div class="text-subtitle2 text-weight-medium">{{ title }}</div>
+        <div class="text-body2 q-mt-xs">{{ message }}</div>
+        <div class="text-caption text-grey-7 q-mt-sm">
+          <q-icon name="access_time" size="14px" class="q-mr-xs" />
+          {{ tiempoTranscurrido }}
+        </div>
       </div>
-      <q-btn flat round icon="close" @click="handleClose" class="q-ml-md close-btn" />
+      <q-btn
+        flat
+        round
+        dense
+        icon="close"
+        size="sm"
+        @click.stop="handleClose"
+        class="close-btn"
+      />
     </div>
   </q-card>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   type: { type: String, default: 'info' },
   title: { type: String, default: '' },
   message: { type: String, default: '' },
+  timestamp: { type: Number, default: Date.now },
+  leida: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close'])
@@ -26,10 +43,42 @@ const iconMap = {
   info: 'info',
   positive: 'check_circle',
   negative: 'error',
-  warning: 'warning',
+  warning: 'warning'
 }
 
 const icon = computed(() => iconMap[props.type] || 'info')
+
+// Tiempo transcurrido actualizado cada minuto
+const tiempoTranscurrido = ref('')
+let intervalId = null
+
+function actualizarTiempo() {
+  const ahora = Date.now()
+  const diferencia = ahora - props.timestamp
+  const minutos = Math.floor(diferencia / 60000)
+  
+  if (minutos < 1) {
+    tiempoTranscurrido.value = 'Justo ahora'
+  } else if (minutos === 1) {
+    tiempoTranscurrido.value = 'Hace 1 minuto'
+  } else if (minutos < 60) {
+    tiempoTranscurrido.value = `Hace ${minutos} minutos`
+  } else {
+    const horas = Math.floor(minutos / 60)
+    tiempoTranscurrido.value = horas === 1 ? 'Hace 1 hora' : `Hace ${horas} horas`
+  }
+}
+
+onMounted(() => {
+  actualizarTiempo()
+  intervalId = setInterval(actualizarTiempo, 60000) // Actualizar cada minuto
+})
+
+onUnmounted(() => {
+  if (intervalId) {
+    clearInterval(intervalId)
+  }
+})
 
 function handleClose() {
   emit('close')
@@ -41,6 +90,12 @@ function handleClose() {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   border-left: 4px solid rgba(0, 0, 0, 0.2);
+  opacity: 1;
+}
+
+.notification-card.leida {
+  opacity: 0.6;
+  background: #f5f5f5 !important;
 }
 
 .notification-card:hover {

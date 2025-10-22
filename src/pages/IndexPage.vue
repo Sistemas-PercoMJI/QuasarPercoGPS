@@ -2,20 +2,50 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
-    <!-- Botón flotante para confirmar geozona -->
+    <q-btn
+      fab
+      :color="traficoActivo ? 'positive' : 'grey-7'"
+      :icon="traficoActivo ? 'traffic' : 'block'"
+      class="traffic-toggle-btn"
+      @click="manejarToggleTrafico"
+      size="md"
+    >
+      <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
+    </q-btn>
+
     <transition name="fade-scale">
-      <q-btn
-        v-if="mostrarBotonConfirmarGeozona"
-        fab
-        color="secondary"
-        icon="check"
-        class="floating-confirm-btn"
-        @click="confirmarYVolverADialogo"
-        size="lg"
-      >
-        <q-tooltip>Listo, guardar geozona</q-tooltip>
-      </q-btn>
+      <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
+        <!-- Botón de Cancelar -->
+        <q-btn
+          fab
+          color="negative"
+          icon="close"
+          class="floating-cancel-btn"
+          @click="cancelarGeozona"
+          size="md"
+        >
+          <q-tooltip>Cancelar geozona</q-tooltip>
+        </q-btn>
+
+        <!-- Botón de Confirmar -->
+        <q-btn
+          fab
+          color="secondary"
+          icon="check"
+          class="floating-confirm-btn-main"
+          @click="confirmarYVolverADialogo"
+          size="lg"
+        >
+          <q-tooltip>Listo, guardar geozona</q-tooltip>
+        </q-btn>
+      </div>
     </transition>
+
+    <!-- Marcador de ubicación del usuario -->
+    <div v-if="ubicacionActiva" class="user-location-indicator">
+      <q-icon name="gps_fixed" size="24px" color="positive" />
+      <span class="text-caption">GPS Activo</span>
+    </div>
   </q-page>
 </template>
 
@@ -24,20 +54,222 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useMap } from 'src/composables/useMap'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
+import { useEventos } from 'src/composables/useEventos'
+import { useEventBus } from 'src/composables/useEventBus.js'
+import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 
-const { initMap, addMarker, cleanup } = useMap()
+const { initMap, addMarker, cleanup, toggleTrafico } = useMap()
+const { abrirGeozonasConPOI } = useEventBus()
+const { inicializar, actualizarUbicacion, resetear } = useEventDetection()
+
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
+const ubicacionActiva = ref(false)
+const marcadorUsuario = ref(null)
 
-// ✅ NUEVO: Obtener userId
 const userId = ref(auth.currentUser?.uid || '')
 
-// ✅ NUEVO: Usar composables para cargar datos
 const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
+const { obtenerEventos } = useEventos(userId.value)
+//trafico
+const traficoActivo = ref(false)
 
-// ✅ NUEVO: Función para dibujar todos los POIs y Geozonas
+// Variables para almacenar los datos cargados
+const poisCargados = ref([])
+const geozonasCargadas = ref([])
+
+// Variables para GPS
+let watchId = null
+let mapaAPI = null
+
+// Función para verificar si una ubicación tiene eventos
+function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
+  let count = 0
+  eventosActivos.forEach((evento) => {
+    if (evento.condiciones) {
+      evento.condiciones.forEach((condicion) => {
+        if (
+          condicion.ubicacionId === ubicacionId &&
+          ((tipo === 'poi' && condicion.tipo === 'POI') ||
+            (tipo === 'geozona' && condicion.tipo === 'Geozona'))
+        ) {
+          count++
+        }
+      })
+    }
+  })
+  return count
+}
+
+// Función para crear ícono personalizado con badge
+function crearIconoConBadge(tipoUbicacion, colorUrl, tieneEventos, cantidadEventos) {
+  const iconUrl =
+    colorUrl ||
+    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
+
+  if (tieneEventos > 0) {
+    return window.L.divIcon({
+      className: 'custom-marker-with-badge',
+      html: `
+        <div style="position: relative;">
+          <img src="${iconUrl}" style="width: 25px; height: 41px;" />
+          <div style="
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff5722;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(255, 87, 34, 0.5);
+            animation: pulse-badge 2s infinite;
+          ">
+            ${cantidadEventos}
+          </div>
+        </div>
+      `,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+    })
+  }
+
+  return window.L.icon({
+    iconUrl: iconUrl,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  })
+}
+
+// FUNCIÓN PARA ACTUALIZAR EL MARCADOR DEL USUARIO
+function actualizarMarcadorUsuario(lat, lng) {
+  if (!mapaAPI || !mapaAPI.map) return
+
+  if (marcadorUsuario.value) {
+    // Actualizar posición del marcador existente
+    marcadorUsuario.value.setLatLng([lat, lng])
+  } else {
+    // Crear nuevo marcador de usuario
+    const iconoUsuario = mapaAPI.L.divIcon({
+      className: 'user-location-marker',
+      html: `
+        <div style="
+          width: 20px;
+          height: 20px;
+          background: #4285F4;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        "></div>
+        <div style="
+          width: 40px;
+          height: 40px;
+          background: rgba(66, 133, 244, 0.2);
+          border-radius: 50%;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          animation: pulse-location 2s infinite;
+        "></div>
+      `,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    })
+
+    marcadorUsuario.value = mapaAPI.L.marker([lat, lng], {
+      icon: iconoUsuario,
+      zIndexOffset: 2000,
+    }).addTo(mapaAPI.map)
+
+    marcadorUsuario.value.bindPopup('<b>📍 Tu ubicación</b>')
+  }
+}
+
+// FUNCIÓN PARA INICIAR SEGUIMIENTO GPS
+function iniciarSeguimientoGPS() {
+  if (!navigator.geolocation) {
+    console.error('❌ Geolocalización no soportada en este navegador')
+    return
+  }
+
+  const opciones = {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 0,
+  }
+
+  watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords
+
+      console.log('📍 Nueva ubicación detectada:', latitude, longitude)
+      ubicacionActiva.value = true
+
+      // Actualizar marcador en el mapa
+      actualizarMarcadorUsuario(latitude, longitude)
+
+      // Evaluar eventos con la nueva ubicación
+      actualizarUbicacion(latitude, longitude)
+    },
+    (error) => {
+      console.error('❌ Error de geolocalización:', error.message)
+      ubicacionActiva.value = false
+    },
+    opciones,
+  )
+
+  console.log('🎯 Seguimiento GPS iniciado')
+}
+
+// FUNCIÓN PARA DETENER SEGUIMIENTO GPS
+function detenerSeguimientoGPS() {
+  if (watchId) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+    ubicacionActiva.value = false
+    console.log('🛑 Seguimiento GPS detenido')
+  }
+}
+
+// FUNCIÓN PARA INICIALIZAR EL SISTEMA DE DETECCIÓN
+async function inicializarSistemaDeteccion() {
+  try {
+    console.log('🚀 Inicializando sistema de detección de eventos...')
+
+    const [eventos, pois, geozonas] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas(),
+    ])
+
+    // Filtrar solo eventos activos
+    const eventosActivos = eventos.filter((e) => e.activo)
+
+    // Inicializar el detector
+    inicializar(eventosActivos, pois, geozonas)
+
+    console.log('✅ Sistema de detección inicializado')
+    console.log('  📊 Eventos activos:', eventosActivos.length)
+    console.log('  📍 POIs:', pois.length)
+    console.log('  🗺️ Geozonas:', geozonas.length)
+  } catch (error) {
+    console.error('❌ Error al inicializar detección:', error)
+  }
+}
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -45,94 +277,331 @@ const dibujarTodosEnMapa = async () => {
     return
   }
 
-  const mapaAPI = mapPage._mapaAPI
+  mapaAPI = mapPage._mapaAPI
 
   try {
     console.log('🎨 Cargando y dibujando items en el mapa...')
 
+    const eventosActivos = await obtenerEventos()
+    const eventosFiltrados = eventosActivos.filter((e) => e.activo)
+    console.log('✅ Eventos activos cargados:', eventosFiltrados.length)
+
     // Cargar POIs
     const pois = await obtenerPOIs()
+    poisCargados.value = pois
     console.log('✅ POIs cargados:', pois.length)
 
     // Dibujar POIs
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
+        const radio = poi.radio || 100
+        mapaAPI.L.circle([lat, lng], {
+          radius: radio,
+          color: '#2196F3',
+          fillColor: '#2196F3',
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(mapaAPI.map)
+        const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
+        const tieneEventos = cantidadEventos > 0
 
         const popupContent = `
-          <div style="min-width: 150px;">
+          <div style="min-width: 180px;">
             <b style="font-size: 14px;">📍 ${poi.nombre}</b>
+            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               ${poi.direccion}
             </p>
+            <button
+              onclick="window.verDetallesPOI('${poi.id}')"
+              style="
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              📍 Ver detalles
+            </button>
           </div>
         `
 
         const marker = mapaAPI.L.marker([lat, lng], {
-          icon: mapaAPI.L.icon({
-            iconUrl:
-              'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            shadowUrl:
-              'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41],
-          }),
+          icon: crearIconoConBadge(
+            'poi',
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            tieneEventos,
+            cantidadEventos,
+          ),
         }).addTo(mapaAPI.map)
 
         marker.bindPopup(popupContent)
-        console.log('📍 POI dibujado:', poi.nombre)
+        marker.on('click', () => {
+          console.log('🖱️ Clic en POI:', poi.nombre)
+        })
+
+        console.log(
+          `📍 POI dibujado: ${poi.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       }
     })
 
     // Cargar Geozonas
     const geozonas = await obtenerGeozonas()
+    geozonasCargadas.value = geozonas
     console.log('✅ Geozonas cargadas:', geozonas.length)
 
     // Dibujar Geozonas
     geozonas.forEach((geozona) => {
+      const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
+      const tieneEventos = cantidadEventos > 0
+
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
+        const color = '#FF6B6B'
+        const fillColor = '#FF6B6B'
 
         const circle = mapaAPI.L.circle([lat, lng], {
           radius: geozona.radio,
-          color: '#FF6B6B',
-          fillColor: '#FF6B6B',
+          color: color,
+          fillColor: fillColor,
           fillOpacity: 0.15,
           weight: 2,
         }).addTo(mapaAPI.map)
 
-        circle.bindPopup(`
-          <div style="min-width: 150px;">
+        const popupContent = `
+          <div style="min-width: 180px;">
             <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
+            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               Radio: ${geozona.radio}m
             </p>
+            <button
+              onclick="window.verDetallesGeozona('${geozona.id}')"
+              style="
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              📍 Ver detalles
+            </button>
           </div>
-        `)
+        `
 
-        console.log('🔵 Geozona circular dibujada:', geozona.nombre)
+        circle.bindPopup(popupContent)
+        circle.on('click', () => {
+          console.log('🖱️ Clic en Geozona Circular:', geozona.nombre)
+        })
+
+        if (tieneEventos) {
+          const markerIcono = mapaAPI.L.divIcon({
+            className: 'geozona-marker-badge',
+            html: `
+              <div style="
+                background: #ff5722;
+                color: white;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                font-weight: bold;
+                border: 3px solid white;
+                box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+                animation: pulse-badge-geozona 2s infinite;
+              ">
+                ${cantidadEventos}
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          })
+
+          const marcadorEvento = mapaAPI.L.marker([lat, lng], {
+            icon: markerIcono,
+            zIndexOffset: 1000,
+          }).addTo(mapaAPI.map)
+
+          marcadorEvento.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
+              <span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">${cantidadEventos} evento${cantidadEventos > 1 ? 's' : ''}</span>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                Geozona Circular - Radio: ${geozona.radio}m
+              </p>
+              <button
+                onclick="window.verDetallesGeozona('${geozona.id}')"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
+
+          marcadorEvento.on('click', () => {
+            console.log('🖱️ Clic en marcador de geozona con eventos:', geozona.nombre)
+          })
+        }
+
+        console.log(
+          `🔵 Geozona circular dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
+        const color = '#4ECDC4'
+        const fillColor = '#4ECDC4'
 
         const polygon = mapaAPI.L.polygon(puntos, {
-          color: '#4ECDC4',
-          fillColor: '#4ECDC4',
+          color: color,
+          fillColor: fillColor,
           fillOpacity: 0.15,
           weight: 2,
         }).addTo(mapaAPI.map)
 
-        polygon.bindPopup(`
-          <div style="min-width: 150px;">
+        const popupContent = `
+          <div style="min-width: 180px;">
             <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
+            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
             <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
               ${geozona.puntos.length} puntos
             </p>
+            <button
+              onclick="window.verDetallesGeozona('${geozona.id}')"
+              style="
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              📍 Ver detalles
+            </button>
           </div>
-        `)
+        `
 
-        console.log('🔷 Geozona poligonal dibujada:', geozona.nombre)
+        polygon.bindPopup(popupContent)
+        polygon.on('click', () => {
+          console.log('🖱️ Clic en Geozona Poligonal:', geozona.nombre)
+        })
+
+        if (tieneEventos) {
+          const bounds = mapaAPI.L.latLngBounds(puntos)
+          const centro = bounds.getCenter()
+
+          const markerIcono = mapaAPI.L.divIcon({
+            className: 'geozona-marker-badge',
+            html: `
+              <div style="
+                background: #ff5722;
+                color: white;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                font-weight: bold;
+                border: 3px solid white;
+                box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+                animation: pulse-badge-geozona 2s infinite;
+              ">
+                ${cantidadEventos}
+              </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+          })
+
+          const marcadorEvento = mapaAPI.L.marker(centro, {
+            icon: markerIcono,
+            zIndexOffset: 1000,
+          }).addTo(mapaAPI.map)
+
+          marcadorEvento.bindPopup(`
+            <div style="min-width: 180px;">
+              <b style="font-size: 14px;">🔔 ${geozona.nombre}</b>
+              <span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">${cantidadEventos} evento${cantidadEventos > 1 ? 's' : ''}</span>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                Geozona Poligonal - ${geozona.puntos.length} puntos
+              </p>
+              <button
+                onclick="window.verDetallesGeozona('${geozona.id}')"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                  transition: all 0.2s ease;
+                "
+                onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(187, 0, 0, 0.3)';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                📍 Ver detalles
+              </button>
+            </div>
+          `)
+
+          marcadorEvento.on('click', () => {
+            console.log('🖱️ Clic en marcador de geozona con eventos:', geozona.nombre)
+          })
+        }
+
+        console.log(
+          `🔷 Geozona poligonal dibujada: ${geozona.nombre}${tieneEventos ? ' (con ' + cantidadEventos + ' eventos)' : ''}`,
+        )
       }
     })
 
@@ -146,10 +615,8 @@ onMounted(async () => {
   try {
     console.log('🗺️ Iniciando mapa Mapbox satelital...')
 
-    // Inicializar mapa
     await initMap('map', [32.504421823945805, -116.9514484543167], 13)
 
-    // Pequeño delay para asegurar que el mapa esté completamente renderizado
     setTimeout(async () => {
       addMarker(32.504421823945805, -116.9514484543167, {
         popup: '<b>MJ Industrias</b><br>Ubicación principal',
@@ -158,26 +625,55 @@ onMounted(async () => {
       mapaListo.value = true
 
       console.log('✅ Mapa completamente listo')
-      console.log('✅ window.mapaGlobal disponible:', !!window.mapaGlobal)
-      console.log(
-        '✅ map-page._mapaAPI disponible:',
-        !!document.getElementById('map-page')?._mapaAPI,
-      )
-      if (window.mapaGlobal) {
-        console.log('✅ Funciones disponibles:', Object.keys(window.mapaGlobal))
+
+      window.abrirDetallesUbicacion = (ubicacionData) => {
+        console.log('🔍 Abriendo detalles de ubicación:', ubicacionData)
+
+        try {
+          if (ubicacionData.tipo === 'poi') {
+            const poi = poisCargados.value.find((p) => p.id === ubicacionData.id)
+            if (poi) {
+              console.log('📍 Navegando a detalles de POI:', poi.nombre)
+              abrirGeozonasConPOI(poi)
+            } else {
+              console.error('❌ POI no encontrado:', ubicacionData.id)
+            }
+          } else if (ubicacionData.tipo === 'geozona') {
+            const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
+            if (geozona) {
+              console.log('🔷 Navegando a detalles de Geozona:', geozona.nombre)
+              abrirGeozonasConPOI(geozona)
+            } else {
+              console.error('❌ Geozona no encontrada:', ubicacionData.id)
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error al abrir detalles:', error)
+        }
       }
 
-      // ✅ NUEVO: Dibujar todos los POIs y Geozonas
+      window.verDetallesPOI = (poiId) => {
+        window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
+      }
+
+      window.verDetallesGeozona = (geozonaId) => {
+        window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
+      }
+
       await dibujarTodosEnMapa()
+
+      // Inicializar sistema de detección de eventos
+      await inicializarSistemaDeteccion()
+
+      // Iniciar seguimiento GPS
+      iniciarSeguimientoGPS()
     }, 100)
 
-    // Event listener para el botón flotante
     window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
   } catch (error) {
     console.error('❌ Error inicializando mapa:', error)
   }
 
-  // Redibujado optimizado del mapa
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -190,49 +686,36 @@ onMounted(async () => {
   }
 
   window.addEventListener('resize', handleResize)
-
-  // Guardar referencia para limpiar después
   window._resizeHandler = handleResize
 
+  // Listener mejorado para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    console.log('🔄 Redibujando mapa...')
+    console.log('🔄 Redibujando mapa y reiniciando detección...')
 
-    // Limpiar capas existentes (excepto el tile layer y el marcador principal)
     const mapPage = document.getElementById('map-page')
     if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
       mapPage._mapaAPI.map.eachLayer((layer) => {
-        // No eliminar el tile layer (mapa base) ni el marcador de MJ Industrias
         if (
           layer instanceof mapPage._mapaAPI.L.Marker ||
           layer instanceof mapPage._mapaAPI.L.Circle ||
           layer instanceof mapPage._mapaAPI.L.Polygon
         ) {
-          // Solo eliminar si no es el marcador principal
           if (layer.getPopup()?.getContent() !== '<b>MJ Industrias</b><br>Ubicación principal') {
-            mapPage._mapaAPI.map.removeLayer(layer)
+            // No eliminar el marcador del usuario
+            if (layer !== marcadorUsuario.value) {
+              mapPage._mapaAPI.map.removeLayer(layer)
+            }
           }
         }
       })
     }
 
-    // Redibujar todo
     await dibujarTodosEnMapa()
+
+    // Reinicializar sistema de detección
+    resetear()
+    await inicializarSistemaDeteccion()
   })
-})
-
-onUnmounted(() => {
-  // Limpiar event listener
-  if (window._resizeHandler) {
-    window.removeEventListener('resize', window._resizeHandler)
-    delete window._resizeHandler
-  }
-
-  window.removeEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
-  window.removeEventListener('redibujarMapa', () => {})
-
-  cleanup()
-
-  console.log('🧹 IndexPage desmontado, mapa limpiado')
 })
 
 const handleMostrarBoton = (e) => {
@@ -249,6 +732,89 @@ const confirmarYVolverADialogo = () => {
   window.dispatchEvent(evento)
 
   mostrarBotonConfirmarGeozona.value = false
+}
+
+const cancelarGeozona = () => {
+  console.log('❌ Cancelando creación de geozona')
+
+  // Ocultar botones
+  mostrarBotonConfirmarGeozona.value = false
+
+  // Limpiar capas temporales del mapa
+  const mapPage = document.getElementById('map-page')
+  if (mapPage && mapPage._mapaAPI) {
+    const mapaAPI = mapPage._mapaAPI
+
+    // Desactivar modos de selección
+    mapaAPI.desactivarModoSeleccion()
+
+    // Limpiar capas temporales
+    mapaAPI.limpiarCirculoTemporal()
+    mapaAPI.limpiarPoligonoTemporal()
+
+    console.log('✅ Capas temporales limpiadas')
+  }
+
+  // ✅ NUEVO: Restaurar opacidad del drawer
+  const componentDialog = document.querySelector('.component-dialog')
+  if (componentDialog) {
+    componentDialog.style.opacity = '1'
+    componentDialog.style.pointerEvents = 'auto'
+    console.log('✅ Opacidad del drawer restaurada')
+  }
+
+  // Disparar evento para que GeoZonas limpie su estado
+  const evento = new CustomEvent('cancelarGeozonaDesdeBoton', {
+    detail: { cancelled: true },
+  })
+  window.dispatchEvent(evento)
+
+  // Notificar al usuario
+  const $q = window.$q
+  if ($q && $q.notify) {
+    $q.notify({
+      type: 'info',
+      message: 'Creación de geozona cancelada',
+      icon: 'cancel',
+      position: 'top',
+      timeout: 2000,
+    })
+  }
+}
+
+onUnmounted(() => {
+  // Detener seguimiento GPS
+  detenerSeguimientoGPS()
+
+  // Resetear sistema de detección
+  resetear()
+
+  if (window._resizeHandler) {
+    window.removeEventListener('resize', window._resizeHandler)
+    delete window._resizeHandler
+  }
+
+  window.removeEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
+  window.removeEventListener('redibujarMapa', () => {})
+
+  if (window.abrirDetallesUbicacion) {
+    delete window.abrirDetallesUbicacion
+  }
+  if (window.verDetallesPOI) {
+    delete window.verDetallesPOI
+  }
+  if (window.verDetallesGeozona) {
+    delete window.verDetallesGeozona
+  }
+
+  cleanup()
+
+  console.log('🧹 IndexPage desmontado, mapa y detección limpiados')
+})
+
+const manejarToggleTrafico = () => {
+  const nuevoEstado = toggleTrafico()
+  traficoActivo.value = nuevoEstado
 }
 </script>
 
@@ -276,6 +842,33 @@ const confirmarYVolverADialogo = () => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
+/* Indicador de GPS activo */
+.user-location-indicator {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  z-index: 1000;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .fade-scale-enter-active,
 .fade-scale-leave-active {
   transition: all 0.3s ease;
@@ -289,5 +882,143 @@ const confirmarYVolverADialogo = () => {
 .fade-scale-leave-to {
   opacity: 0;
   transform: scale(0.8) translateY(20px);
+}
+
+:deep(.custom-marker-with-badge) {
+  background: none !important;
+  border: none !important;
+}
+
+:deep(.geozona-marker-badge) {
+  background: none !important;
+  border: none !important;
+}
+
+/* Estilos para marcador de usuario */
+:deep(.user-location-marker) {
+  background: none !important;
+  border: none !important;
+}
+
+@keyframes pulse-badge {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 3px 12px rgba(255, 87, 34, 0.7);
+  }
+}
+
+@keyframes pulse-badge-geozona {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.8);
+  }
+}
+
+/* Animación del marcador de ubicación */
+@keyframes pulse-location {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+}
+
+.floating-buttons-container {
+  position: fixed !important;
+  bottom: 100px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Botón de confirmar (palomita) */
+.floating-confirm-btn-main {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón de cancelar (X) */
+.floating-cancel-btn {
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+}
+
+.floating-cancel-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 28px rgba(244, 67, 54, 0.5);
+}
+
+.floating-confirm-btn-main:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Animación de entrada */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-scale-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+}
+
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+}
+
+/* Botón de toggle de tráfico */
+.traffic-toggle-btn {
+  position: fixed !important;
+  top: 80px;
+  left: 85px; /* Justo a la derecha del drawer mini */
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.traffic-toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Animación cuando está activo */
+.traffic-toggle-btn.bg-positive {
+  animation: pulse-traffic 2s infinite;
+}
+
+@keyframes pulse-traffic {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(33, 186, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(33, 186, 69, 0.6);
+  }
+}
+
+:deep(.traffic-layer-blend) {
+  mix-blend-mode: multiply;
+  opacity: 0.9;
 }
 </style>

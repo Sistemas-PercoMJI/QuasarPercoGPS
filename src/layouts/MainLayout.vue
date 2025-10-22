@@ -5,6 +5,7 @@
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
 
         <!-- Búsqueda Mejorada -->
+        <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
             ref="searchInput"
@@ -16,7 +17,6 @@
             dense
             @keyup.enter="buscar"
             @focus="onFocus"
-            @blur="() => setTimeout(() => (mostrarSugerencias = false), 200)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
@@ -49,101 +49,105 @@
             </div>
           </q-slide-transition>
 
-          <!-- Sugerencias de búsqueda - OPTIMIZADO -->
-          <q-menu
-            v-model="mostrarSugerencias"
-            fit
-            :offset="[0, 8]"
-            class="sugerencias-menu"
-            persistent
+          <!-- Sugerencias de búsqueda - SIN PARPADEO -->
+          <div
+            v-if="mostrarSugerencias"
+            class="sugerencias-container"
+            @mouseenter="dentroDelMenu = true"
+            @mouseleave="dentroDelMenu = false"
           >
-            <q-list style="min-width: 500px; max-height: 400px" class="scroll">
-              <!-- Mientras escribe -->
-              <div
-                v-if="busqueda && resultadosBusqueda.length === 0 && buscando"
-                class="q-pa-md text-center text-grey-6"
-              >
-                <q-spinner color="primary" size="24px" />
-                <div class="q-mt-sm text-caption">Buscando...</div>
-              </div>
+            <q-card class="sugerencias-card">
+              <q-list style="max-height: 400px" class="scroll">
+                <!-- Mientras escribe -->
+                <div
+                  v-if="busqueda && resultadosBusqueda.length === 0 && buscando"
+                  class="q-pa-md text-center text-grey-6"
+                >
+                  <q-spinner color="primary" size="24px" />
+                  <div class="q-mt-sm text-caption">Buscando...</div>
+                </div>
 
-              <!-- Sin resultados -->
-              <div
-                v-else-if="busqueda && resultadosBusqueda.length === 0 && !buscando"
-                class="q-pa-md text-center text-grey-6"
-              >
-                <q-icon name="search_off" size="48px" />
-                <div class="q-mt-sm">No se encontraron resultados</div>
-              </div>
+                <!-- Sin resultados -->
+                <div
+                  v-else-if="busqueda && resultadosBusqueda.length === 0 && !buscando"
+                  class="q-pa-md text-center text-grey-6"
+                >
+                  <q-icon name="search_off" size="48px" />
+                  <div class="q-mt-sm">No se encontraron resultados</div>
+                </div>
 
-              <!-- Resultados agrupados por tipo -->
-              <template v-else-if="resultadosBusqueda.length > 0">
-                <div v-for="(grupo, tipo) in resultadosAgrupados" :key="tipo">
-                  <!-- Header del grupo -->
-                  <q-item-label header class="text-weight-bold text-primary">
-                    <q-icon :name="getIconoTipo(tipo)" size="18px" class="q-mr-xs" />
-                    {{ getTituloTipo(tipo) }} ({{ grupo.length }})
+                <!-- Resultados agrupados por tipo -->
+                <template v-else-if="resultadosBusqueda.length > 0">
+                  <div v-for="(grupo, tipo) in resultadosAgrupados" :key="tipo">
+                    <!-- Header del grupo -->
+                    <q-item-label header class="text-weight-bold text-primary">
+                      <q-icon :name="getIconoTipo(tipo)" size="18px" class="q-mr-xs" />
+                      {{ getTituloTipo(tipo) }} ({{ grupo.length }})
+                    </q-item-label>
+
+                    <!-- Items del grupo -->
+                    <!-- Items del grupo -->
+                    <q-item
+                      v-for="resultado in grupo"
+                      :key="resultado.id"
+                      clickable
+                      v-ripple
+                      @click="seleccionarResultado(resultado)"
+                    >
+                      <q-item-section avatar>
+                        <q-avatar :color="getColorTipo(tipo)" text-color="white" size="40px">
+                          <q-icon :name="getIconoTipo(tipo)" />
+                        </q-avatar>
+                      </q-item-section>
+
+                      <q-item-section>
+                        <q-item-label class="text-black">{{ resultado.nombre }}</q-item-label>
+                        <q-item-label caption class="text-grey-7">{{
+                          resultado.detalle
+                        }}</q-item-label>
+                      </q-item-section>
+
+                      <q-item-section side>
+                        <q-icon name="chevron_right" color="grey-5" />
+                      </q-item-section>
+                    </q-item>
+
+                    <q-separator v-if="Object.keys(resultadosAgrupados).length > 1" />
+                  </div>
+                </template>
+
+                <!-- Búsquedas recientes (cuando no hay texto) -->
+                <template v-else-if="!busqueda && busquedasRecientes.length > 0">
+                  <q-item-label header>
+                    <q-icon name="history" class="q-mr-xs" />
+                    Búsquedas recientes
                   </q-item-label>
-
-                  <!-- Items del grupo -->
                   <q-item
-                    v-for="resultado in grupo"
-                    :key="resultado.id"
+                    v-for="(reciente, index) in busquedasRecientes"
+                    :key="index"
                     clickable
                     v-ripple
-                    @click="seleccionarResultado(resultado)"
+                    @click="seleccionarBusquedaReciente(reciente)"
                   >
                     <q-item-section avatar>
-                      <q-avatar :color="getColorTipo(tipo)" text-color="white" size="40px">
-                        <q-icon :name="getIconoTipo(tipo)" />
-                      </q-avatar>
+                      <q-icon name="history" color="grey-6" />
                     </q-item-section>
-
-                    <q-item-section>
-                      <q-item-label>{{ resultado.nombre }}</q-item-label>
-                      <q-item-label caption>{{ resultado.detalle }}</q-item-label>
-                    </q-item-section>
-
+                    <q-item-section>{{ reciente }}</q-item-section>
                     <q-item-section side>
-                      <q-icon name="chevron_right" color="grey-5" />
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        icon="close"
+                        size="sm"
+                        @click.stop="eliminarReciente(index)"
+                      />
                     </q-item-section>
                   </q-item>
-
-                  <q-separator v-if="Object.keys(resultadosAgrupados).length > 1" />
-                </div>
-              </template>
-
-              <!-- Búsquedas recientes (cuando no hay texto) -->
-              <template v-else-if="!busqueda && busquedasRecientes.length > 0">
-                <q-item-label header>
-                  <q-icon name="history" class="q-mr-xs" />
-                  Búsquedas recientes
-                </q-item-label>
-                <q-item
-                  v-for="(reciente, index) in busquedasRecientes"
-                  :key="index"
-                  clickable
-                  v-ripple
-                  @click="seleccionarBusquedaReciente(reciente)"
-                >
-                  <q-item-section avatar>
-                    <q-icon name="history" color="grey-6" />
-                  </q-item-section>
-                  <q-item-section>{{ reciente }}</q-item-section>
-                  <q-item-section side>
-                    <q-btn
-                      flat
-                      dense
-                      round
-                      icon="close"
-                      size="sm"
-                      @click.stop="eliminarReciente(index)"
-                    />
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-list>
-          </q-menu>
+                </template>
+              </q-list>
+            </q-card>
+          </div>
         </div>
 
         <q-space />
@@ -476,7 +480,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { usePOIs } from 'src/composables/usePOIs'
+import { useGeozonas } from 'src/composables/useGeozonas'
+import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -484,12 +490,22 @@ import { signOut } from 'firebase/auth'
 import { useNotifications } from 'src/composables/useNotifications.js'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
+
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
+import { useEventBus } from 'src/composables/useEventBus.js'
+import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 
 const router = useRouter()
 const $q = useQuasar()
+const { estadoCompartido } = useEventBus()
+const userId = ref(auth.currentUser?.uid || '')
+
+// ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
+if (!estadoCompartido.value) {
+  console.error('❌ Error crítico: estadoCompartido.value no está definido en MainLayout')
+}
 
 // NOTIFICACIONES
 const { notifications } = useNotifications()
@@ -498,7 +514,6 @@ const notificacionesCount = computed(() => notifications.value.length)
 // Control de dialogs abiertos
 const dialogAbierto = ref(false)
 
-// ========== BUSCADOR OPTIMIZADO - CORREGIDO ==========
 const busqueda = ref('')
 const mostrarSugerencias = ref(false)
 const mostrarFiltros = ref(false)
@@ -506,7 +521,35 @@ const buscando = ref(false)
 const resultadosBusqueda = ref([])
 const busquedasRecientes = ref([])
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
-const searchInput = ref(null) // Referencia ya la tienes
+const searchInput = ref(null)
+
+//conductores
+const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
+  useConductoresFirebase()
+
+const conductoresCargados = ref(false)
+
+//para geozonas y pois
+const { obtenerPOIs } = usePOIs(userId.value)
+const { obtenerGeozonas } = useGeozonas(userId.value)
+
+const poisCargados = ref(false)
+const geozonasCargadas = ref(false)
+const pois = ref([])
+const geozonas = ref([])
+
+// Función para cargar datos de conductores si no están cargados
+const cargarDatosConductores = async () => {
+  if (!conductoresCargados.value) {
+    try {
+      await Promise.all([obtenerConductores(), obtenerGruposConductores()])
+      conductoresCargados.value = true
+      console.log('✅ Datos de conductores cargados para búsqueda')
+    } catch (error) {
+      console.error('❌ Error al cargar datos de conductores:', error)
+    }
+  }
+}
 
 const filtrosDisponibles = [
   { label: 'Direcciones', value: 'direccion', icon: 'place', color: 'blue' },
@@ -528,7 +571,7 @@ const resultadosAgrupados = computed(() => {
   return grupos
 })
 
-// ⚡ WATCH OPTIMIZADO - SOLO UNO
+// ⚡ WATCH OPTIMIZADO - CORREGIDO PARA EVITAR PARPADEO
 let timeoutBusqueda = null
 
 watch(busqueda, (newVal) => {
@@ -537,69 +580,111 @@ watch(busqueda, (newVal) => {
     clearTimeout(timeoutBusqueda)
   }
 
-  // Si está vacío, limpiar todo SIN TOCAR mostrarSugerencias
-  if (!newVal) {
+  // Si está vacío, limpiar resultados pero MANTENER sugerencias abiertas
+  if (!newVal || newVal.trim() === '') {
     resultadosBusqueda.value = []
     buscando.value = false
-    // NO tocar mostrarSugerencias aquí
+    // NO cerrar mostrarSugerencias aquí
     return
   }
 
-  // Para texto corto, mostrar recientes
+  // Para texto corto (menos de 3 caracteres), NO buscar pero tampoco cerrar
   if (newVal.length < 3) {
     resultadosBusqueda.value = []
     buscando.value = false
     return
   }
 
+  // Mostrar indicador de búsqueda inmediatamente
+  buscando.value = true
+
   // Debounce para búsqueda
   timeoutBusqueda = setTimeout(() => {
     realizarBusqueda(newVal)
-  }, 500) // Reducido a 500ms para mejor UX
+  }, 300) // Reducido a 300ms
 })
 
-// 🔍 FUNCIÓN DE BÚSQUEDA SIMPLIFICADA
-async function realizarBusqueda(termino) {
-  if (busqueda.value !== termino) return
+// ✅ BLOQUE CORRECTO
+watch(
+  () => estadoCompartido.value.abrirGeozonasConPOI,
+  (newValue) => {
+    if (newValue && newValue.item) {
+      console.log('🚀 MainLayout: Detectado cambio en estadoCompartido, abriendo GeoZonas')
+      console.log('✅ Abriendo GeoZonas con item:', newValue.item)
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+      }, 100)
+    }
+  },
+)
 
-  buscando.value = true
+// 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
+async function realizarBusqueda(termino) {
+  console.log('🔍 INICIANDO BÚSQUEDA')
+  console.log('  - Término:', termino)
+  console.log('  - Filtros activos:', filtrosActivos.value)
+  console.log('  - ¿Incluye direccion?:', filtrosActivos.value.includes('direccion'))
+
+  // Verificar que el término sigue siendo el actual
+  if (busqueda.value !== termino) {
+    buscando.value = false
+    return
+  }
+
   const promesas = []
 
+  // Solo buscar en los filtros activos
   if (filtrosActivos.value.includes('direccion')) {
+    console.log('  ✅ Agregando búsqueda de direcciones')
     promesas.push(buscarDirecciones(termino))
+  } else {
+    console.log('  ❌ NO buscando direcciones')
   }
   if (filtrosActivos.value.includes('vehiculo')) {
+    console.log('  ✅ Agregando búsqueda de vehículos')
     promesas.push(buscarVehiculos(termino))
+  } else {
+    console.log('  ❌ NO buscando vehículos')
   }
   if (filtrosActivos.value.includes('conductor')) {
+    console.log('  ✅ Agregando búsqueda de conductores')
     promesas.push(buscarConductores(termino))
+  } else {
+    console.log('  ❌ NO buscando conductores')
   }
   if (filtrosActivos.value.includes('poi')) {
-    promesas.push(buscarPOIs())
+    promesas.push(buscarPOIs(termino))
   }
   if (filtrosActivos.value.includes('geozona')) {
-    promesas.push(buscarGeozonas())
+    promesas.push(buscarGeozonas(termino))
   }
 
   try {
     const resultadosArray = await Promise.all(promesas)
 
-    if (busqueda.value !== termino) return
+    // Verificar nuevamente que el término sigue siendo el actual
+    if (busqueda.value !== termino) {
+      return
+    }
 
-    const resultados = resultadosArray.flat().filter((r) => r !== undefined)
+    const resultados = resultadosArray.flat().filter((r) => r !== null && r !== undefined)
 
     resultadosBusqueda.value = resultados
+    console.log('✅ Resultados encontrados:', resultados.length)
   } catch (error) {
-    console.error('Error en búsqueda:', error)
+    console.error('❌ Error en búsqueda:', error)
     resultadosBusqueda.value = []
   } finally {
     buscando.value = false
   }
 }
 
-// 📍 BÚSQUEDA DE DIRECCIONES
+// 📍 BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
   try {
+    console.log('🔍 Buscando direcciones para:', termino)
+
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
       {
@@ -609,8 +694,12 @@ async function buscarDirecciones(termino) {
       },
     )
 
-    if (!response.ok) throw new Error('Error en la respuesta')
+    if (!response.ok) {
+      throw new Error('Error en la respuesta de Nominatim')
+    }
+
     const data = await response.json()
+    console.log('📍 Direcciones encontradas:', data.length)
 
     return data.map((lugar) => ({
       id: `dir-${lugar.place_id}`,
@@ -621,42 +710,66 @@ async function buscarDirecciones(termino) {
       lng: parseFloat(lugar.lon),
     }))
   } catch (error) {
-    console.error('Error buscando direcciones:', error)
+    console.error('❌ Error buscando direcciones:', error)
     return []
   }
 }
-async function buscarVehiculos() {
+
+// 🚗 BÚSQUEDA DE VEHÍCULOS - Placeholder
+async function buscarVehiculos(termino) {
+  console.log('🚗 Buscando vehículos para:', termino)
   // TODO: Implementar cuando tengas vehículos en Firebase
-  console.log('Búsqueda de vehículos pendiente de implementar')
   return []
 }
 
-// 👤 BÚSQUEDA DE CONDUCTORES - Placeholder
-async function buscarConductores() {
-  // TODO: Implementar cuando tengas conductores en Firebase
-  console.log('Búsqueda de conductores pendiente de implementar')
-  return []
+// 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
+async function buscarConductores(termino) {
+  try {
+    console.log('👤 Buscando conductores para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosConductores()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    // Buscar en todos los grupos
+    for (const grupo of gruposConductores.value) {
+      const conductoresDelGrupo = conductoresPorGrupo(grupo.id) || []
+
+      for (const conductor of conductoresDelGrupo) {
+        if (
+          conductor.Nombre?.toLowerCase().includes(terminoLower) ||
+          conductor.Telefono?.toLowerCase().includes(terminoLower)
+        ) {
+          resultados.push({
+            id: `conductor-${conductor.id}`,
+            tipo: 'conductor',
+            nombre: conductor.Nombre,
+            detalle: `${grupo.Nombre} - ${conductor.Telefono || 'Sin teléfono'}`,
+            conductorId: conductor.id,
+            grupoId: grupo.id,
+            grupoNombre: grupo.Nombre,
+          })
+        }
+      }
+    }
+
+    console.log('👤 Conductores encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando conductores:', error)
+    return []
+  }
 }
 
-// 📌 BÚSQUEDA DE POIs - Placeholder
-async function buscarPOIs() {
-  // TODO: Implementar cuando tengas POIs en Firebase
-  console.log('Búsqueda de POIs pendiente de implementar')
-  return []
-}
+// 🔧 FUNCIONES DE EVENTOS
+const dentroDelMenu = ref(false)
 
-// 🗺️ BÚSQUEDA DE GEOZONAS - Placeholder
-async function buscarGeozonas() {
-  // TODO: Implementar cuando tengas geozonas en Firebase
-  console.log('Búsqueda de geozonas pendiente de implementar')
-  return []
-}
-// 🔧 FUNCIONES DE EVENTOS - SIMPLIFICADAS
+// Reemplazar las funciones de eventos
 function onFocus() {
   mostrarSugerencias.value = true
 }
-
-// ❌ ELIMINAR onBusquedaChange completamente - causa el bug
 
 function limpiarBusqueda() {
   if (timeoutBusqueda) {
@@ -666,6 +779,7 @@ function limpiarBusqueda() {
   resultadosBusqueda.value = []
   mostrarSugerencias.value = false
   buscando.value = false
+  console.log('🧹 Búsqueda limpiada')
 }
 
 function seleccionarBusquedaReciente(reciente) {
@@ -676,15 +790,45 @@ function seleccionarBusquedaReciente(reciente) {
   }
 }
 
+// Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
+
+// Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
+
 function toggleFiltro(filtro) {
-  const index = filtrosActivos.value.indexOf(filtro)
-  if (index > -1) {
-    filtrosActivos.value.splice(index, 1)
+  const soloEsteActivo = filtrosActivos.value.length === 1 && filtrosActivos.value[0] === filtro
+
+  if (soloEsteActivo) {
+    // Si solo este filtro está activo, activar TODOS (búsqueda general)
+    filtrosActivos.value = ['direccion', 'vehiculo', 'conductor', 'poi', 'geozona']
+    console.log('🔄 Activando TODOS los filtros (búsqueda general)')
+
+    $q.notify({
+      message: 'Búsqueda general activada',
+      color: 'info',
+      icon: 'filter_alt',
+      position: 'top',
+      timeout: 2000,
+    })
   } else {
-    filtrosActivos.value.push(filtro)
+    // Activar SOLO este filtro
+    filtrosActivos.value = [filtro]
+    console.log(`🎯 Solo filtro "${filtro}" activo`)
+
+    $q.notify({
+      message: `Filtrando solo por: ${filtro}`,
+      color: 'primary',
+      icon: 'filter_alt',
+      position: 'top',
+      timeout: 2000,
+    })
   }
 
+  console.log('🎛️ Filtros activos:', [...filtrosActivos.value])
+
+  // Re-buscar si hay texto
   if (busqueda.value && busqueda.value.length >= 3) {
+    resultadosBusqueda.value = []
+    buscando.value = true
     realizarBusqueda(busqueda.value)
   }
 }
@@ -718,41 +862,40 @@ function centrarMapaEn(lat, lng, zoom = 18) {
   return esperarMapa()
 }
 
+// En MainLayout.vue
+
+let busquedaEnProgreso = ref(false)
+
 function ejecutarCentrado(lat, lng, zoom) {
   try {
-    // Acceder al mapa a través de la API
     const map = window.mapaGlobal.map
-
-    console.log('🗺️ Mapa encontrado:', map)
-    console.log('📌 Métodos disponibles:', {
-      flyTo: typeof map.flyTo,
-      setView: typeof map.setView,
-      panTo: typeof map.panTo,
-    })
-
-    // Verificar métodos disponibles
-    if (map.flyTo && typeof map.flyTo === 'function') {
-      map.flyTo([lat, lng], zoom, {
-        duration: 2,
-        easeLinearity: 0.25,
-      })
-      console.log('✅ flyTo ejecutado')
-    } else if (map.setView && typeof map.setView === 'function') {
-      map.setView([lat, lng], zoom, {
-        animate: true,
-        duration: 1,
-      })
-      console.log('✅ setView ejecutado')
-    } else {
-      console.warn('⚠️ Usando panTo como fallback')
-      map.panTo([lat, lng], { duration: 1 })
-      map.setZoom(zoom)
+    if (!map) {
+      console.error('❌ Mapa no disponible')
+      return
     }
 
-    // Agregar marcador después de mover el mapa
+    // Si ya hay una búsqueda en progreso, la ignoramos para evitar solapamientos
+    if (busquedaEnProgreso.value) {
+      console.log('⏳ Búsqueda ya en progreso, ignorando...')
+      return
+    }
+
+    busquedaEnProgreso.value = true
+
+    // Mover el mapa de forma instantánea
+    map.setView([lat, lng], zoom, {
+      animate: false,
+      duration: 0,
+    })
+    console.log('✅ setView ejecutado sin animación')
+
+    // Actualizar o crear el marcador
+    actualizarMarcadorBusqueda(lat, lng)
+
+    // Marcar que la búsqueda ha terminado
     setTimeout(() => {
-      agregarMarcadorBusqueda(lat, lng)
-    }, 1000)
+      busquedaEnProgreso.value = false
+    }, 300) // Un pequeño retraso para evitar clics múltiples
   } catch (error) {
     console.error('❌ Error al centrar mapa:', error)
     $q.notify({
@@ -761,54 +904,60 @@ function ejecutarCentrado(lat, lng, zoom) {
       icon: 'error',
       position: 'top',
     })
+    busquedaEnProgreso.value = false
   }
 }
-function agregarMarcadorBusqueda(lat, lng) {
+
+function actualizarMarcadorBusqueda(lat, lng) {
   if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
-    console.warn('⚠️ Mapa no disponible para agregar marcador')
+    console.warn('⚠️ Mapa no disponible para actualizar marcador')
     return
   }
 
   const map = window.mapaGlobal.map
   const L = window.L
 
-  // Remover marcador anterior
-  if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-    map.removeLayer(window.marcadorBusqueda)
-  }
-
-  // Crear nuevo marcador
   try {
-    window.marcadorBusqueda = L.marker([lat, lng], {
-      icon: L.icon({
-        iconUrl:
-          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      }),
-    }).addTo(map)
+    // Si el marcador no existe, créalo
+    if (!window.marcadorBusqueda) {
+      window.marcadorBusqueda = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl:
+            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+        riseOnHover: true,
+      }).addTo(map)
 
-    // Agregar popup
-    window.marcadorBusqueda
-      .bindPopup(`<b>📍 ${busqueda.value || 'Ubicación buscada'}</b>`)
-      .openPopup()
+      // Vincular el popup solo una vez
+      window.marcadorBusqueda.bindPopup(`<b>📍 Ubicación buscada</b>`, {
+        closeButton: true,
+        autoClose: false,
+        closeOnClick: false,
+        closeOnEscapeKey: true,
+        autoPan: true, // Permitir que el mapa se mueva para mostrar el popup
+      })
 
-    console.log('✅ Marcador agregado')
+      console.log('✅ Marcador creado y añadido al mapa')
+    } else {
+      // Si ya existe, solo actualiza su posición
+      window.marcadorBusqueda.setLatLng([lat, lng])
+      console.log('✅ Posición del marcador actualizada')
+    }
 
-    // Remover después de 10 segundos
-    setTimeout(() => {
-      if (window.marcadorBusqueda && map.hasLayer(window.marcadorBusqueda)) {
-        map.removeLayer(window.marcadorBusqueda)
-        window.marcadorBusqueda = null
-      }
-    }, 10000)
+    // Abrir popup
+    window.marcadorBusqueda.openPopup()
   } catch (error) {
-    console.error('❌ Error agregando marcador:', error)
+    console.error('❌ Error al actualizar marcador:', error)
   }
 }
+
+// Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
   console.log('🎯 Resultado seleccionado:', resultado)
 
@@ -826,71 +975,8 @@ function seleccionarResultado(resultado) {
   busqueda.value = ''
   resultadosBusqueda.value = []
 
-  // Acción según el tipo
-  if (resultadoTemp.tipo === 'direccion') {
-    console.log('📍 Procesando dirección:', resultadoTemp.lat, resultadoTemp.lng)
-
-    // Verificar que tenemos coordenadas válidas
-    if (resultadoTemp.lat && resultadoTemp.lng) {
-      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
-
-      $q.notify({
-        message: `📍 Mostrando: ${resultadoTemp.nombre}`,
-        color: 'positive',
-        icon: 'place',
-        position: 'top',
-        timeout: 3000,
-      })
-    } else {
-      console.error('❌ Coordenadas inválidas:', resultadoTemp)
-      $q.notify({
-        message: 'Error: Ubicación sin coordenadas válidas',
-        color: 'negative',
-        icon: 'error',
-        position: 'top',
-      })
-    }
-  } else if (resultadoTemp.tipo === 'vehiculo') {
-    console.log('🚗 Abriendo estado de flota')
-    estadoFlotaDrawerOpen.value = true
-    $q.notify({
-      message: `🚗 Vehículo: ${resultadoTemp.nombre}`,
-      color: 'positive',
-      icon: 'directions_car',
-      position: 'top',
-    })
-  } else if (resultadoTemp.tipo === 'conductor') {
-    console.log('👤 Abriendo conductores')
-    conductoresDrawerOpen.value = true
-    $q.notify({
-      message: `👤 Conductor: ${resultadoTemp.nombre}`,
-      color: 'positive',
-      icon: 'person',
-      position: 'top',
-    })
-  } else if (resultadoTemp.tipo === 'poi') {
-    console.log('📌 Procesando POI')
-    // Si el POI tiene coordenadas, centrar mapa
-    if (resultadoTemp.lat && resultadoTemp.lng) {
-      centrarMapaEn(resultadoTemp.lat, resultadoTemp.lng)
-    }
-    geozonaDrawerOpen.value = true
-    $q.notify({
-      message: `📌 POI: ${resultadoTemp.nombre}`,
-      color: 'positive',
-      icon: 'location_on',
-      position: 'top',
-    })
-  } else if (resultadoTemp.tipo === 'geozona') {
-    console.log('🗺️ Abriendo geozonas')
-    geozonaDrawerOpen.value = true
-    $q.notify({
-      message: `🗺️ Geozona: ${resultadoTemp.nombre}`,
-      color: 'positive',
-      icon: 'layers',
-      position: 'top',
-    })
-  }
+  // Procesar el resultado
+  procesarResultado(resultadoTemp)
 }
 
 function eliminarReciente(index) {
@@ -937,12 +1023,38 @@ function getColorTipo(tipo) {
   return colores[tipo] || 'grey'
 }
 
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('click', handleClickOutside)
+
+  // Precargar POIs y Geozonas para búsqueda más rápida
+  Promise.all([cargarDatosPOIs(), cargarDatosGeozonas()]).catch((err) => {
+    console.error('Error al precargar datos:', err)
+  })
+})
+
 onUnmounted(() => {
+  if (window.marcadorBusqueda && window.marcadorBusqueda.remove) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
+    console.log('🗑️ Marcador de búsqueda eliminado al desmontar.')
+  }
+  document.removeEventListener('click', handleClickOutside)
   if (timeoutBusqueda) {
     clearTimeout(timeoutBusqueda)
   }
 })
+function handleClickOutside(event) {
+  const searchContainer = document.querySelector('.search-container')
+  const sugerenciasContainer = document.querySelector('.sugerencias-container')
 
+  if (!searchContainer || !sugerenciasContainer) return
+
+  // Si el clic fue fuera del contenedor de búsqueda y sugerencias
+  if (!searchContainer.contains(event.target) && !sugerenciasContainer.contains(event.target)) {
+    mostrarSugerencias.value = false
+  }
+}
 function cerrarSesionDesdeConfig() {
   logout()
 }
@@ -1120,11 +1232,297 @@ const logout = async () => {
     })
   }
 }
+
+//funciones para geozonas y drawer
+const cargarDatosPOIs = async () => {
+  if (!poisCargados.value) {
+    try {
+      const poisData = await obtenerPOIs()
+      pois.value = poisData
+      poisCargados.value = true
+      console.log('✅ POIs cargados para búsqueda:', poisData.length)
+    } catch (error) {
+      console.error('❌ Error al cargar POIs:', error)
+    }
+  }
+}
+
+// ============================================
+// 4. FUNCIÓN PARA CARGAR DATOS DE GEOZONAS
+// ============================================
+const cargarDatosGeozonas = async () => {
+  if (!geozonasCargadas.value) {
+    try {
+      const geozonasDa = await obtenerGeozonas()
+      geozonas.value = geozonasDa
+      geozonasCargadas.value = true
+      console.log('✅ Geozonas cargadas para búsqueda:', geozonasDa.length)
+    } catch (error) {
+      console.error('❌ Error al cargar Geozonas:', error)
+    }
+  }
+}
+
+// ============================================
+// 5. FUNCIÓN AUXILIAR: CALCULAR CENTRO DE POLÍGONO
+// ============================================
+function calcularCentroPoligono(puntos) {
+  if (!puntos || puntos.length === 0) return null
+
+  let sumaLat = 0
+  let sumaLng = 0
+
+  puntos.forEach((punto) => {
+    sumaLat += punto.lat
+    sumaLng += punto.lng
+  })
+
+  return {
+    lat: sumaLat / puntos.length,
+    lng: sumaLng / puntos.length,
+  }
+}
+
+// ============================================
+// 6. REEMPLAZAR LA FUNCIÓN buscarPOIs
+// ============================================
+async function buscarPOIs(termino) {
+  try {
+    console.log('📌 Buscando POIs para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosPOIs()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    for (const poi of pois.value) {
+      // Buscar en nombre y dirección
+      if (
+        poi.nombre?.toLowerCase().includes(terminoLower) ||
+        poi.direccion?.toLowerCase().includes(terminoLower)
+      ) {
+        resultados.push({
+          id: `poi-${poi.id}`,
+          tipo: 'poi',
+          nombre: poi.nombre,
+          detalle: poi.direccion || 'Sin dirección',
+          lat: poi.coordenadas?.lat,
+          lng: poi.coordenadas?.lng,
+          poiId: poi.id,
+        })
+      }
+    }
+
+    console.log('📌 POIs encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando POIs:', error)
+    return []
+  }
+}
+
+// ============================================
+// 7. REEMPLAZAR LA FUNCIÓN buscarGeozonas
+// ============================================
+async function buscarGeozonas(termino) {
+  try {
+    console.log('🗺️ Buscando geozonas para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosGeozonas()
+
+    const resultados = []
+    const terminoLower = termino.toLowerCase()
+
+    for (const geozona of geozonas.value) {
+      // Buscar en nombre y dirección
+      if (
+        geozona.nombre?.toLowerCase().includes(terminoLower) ||
+        geozona.direccion?.toLowerCase().includes(terminoLower)
+      ) {
+        // Calcular coordenadas del centro según el tipo
+        let lat, lng
+
+        if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+          // Geozona circular - usar centro directamente
+          lat = geozona.centro.lat
+          lng = geozona.centro.lng
+        } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+          // Geozona polígono - calcular centro
+          const centro = calcularCentroPoligono(geozona.puntos)
+          if (centro) {
+            lat = centro.lat
+            lng = centro.lng
+          }
+        }
+
+        // Solo agregar si tenemos coordenadas válidas
+        if (lat && lng) {
+          resultados.push({
+            id: `geozona-${geozona.id}`,
+            tipo: 'geozona',
+            nombre: geozona.nombre,
+            detalle: `${geozona.direccion || 'Sin dirección'} - ${geozona.tipoGeozona === 'circular' ? 'Circular' : 'Polígono'}`,
+            lat: lat,
+            lng: lng,
+            geozonaId: geozona.id,
+            tipoGeozona: geozona.tipoGeozona,
+          })
+        }
+      }
+    }
+
+    console.log('🗺️ Geozonas encontradas:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando geozonas:', error)
+    return []
+  }
+}
+
+// ============================================
+// 8. ACTUALIZAR LA FUNCIÓN procesarResultado
+// ============================================
+function procesarResultado(resultado) {
+  // Acción según el tipo
+  if (resultado.tipo === 'direccion') {
+    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
+
+    if (resultado.lat && resultado.lng) {
+      centrarMapaEn(resultado.lat, resultado.lng)
+      $q.notify({
+        message: `📍 Mostrando: ${resultado.nombre}`,
+        color: 'positive',
+        icon: 'place',
+        position: 'top',
+        timeout: 3000,
+      })
+    } else {
+      console.error('❌ Coordenadas inválidas:', resultado)
+      $q.notify({
+        message: 'Error: Ubicación sin coordenadas válidas',
+        color: 'negative',
+        icon: 'error',
+        position: 'top',
+      })
+    }
+  } else if (resultado.tipo === 'vehiculo') {
+    console.log('🚗 Abriendo estado de flota')
+    estadoFlotaDrawerOpen.value = true
+    $q.notify({
+      message: `🚗 Vehículo: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'directions_car',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'conductor') {
+    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
+
+    // Abrir el drawer de conductores
+    conductoresDrawerOpen.value = true
+
+    // Guardar la información del conductor seleccionado usando el estado compartido
+    estadoCompartido.value.abrirConductoresConConductor = {
+      conductor: {
+        id: resultado.conductorId,
+        grupoId: resultado.grupoId,
+      },
+      timestamp: Date.now(),
+    }
+
+    $q.notify({
+      message: `👤 Conductor: ${resultado.nombre}`,
+      color: 'positive',
+      icon: 'person',
+      position: 'top',
+    })
+  } else if (resultado.tipo === 'poi') {
+    console.log('📌 Procesando POI:', resultado.poiId)
+
+    if (resultado.lat && resultado.lng) {
+      // Centrar en el POI con zoom cercano
+      centrarMapaEn(resultado.lat, resultado.lng, 18)
+
+      // Abrir drawer de Geozonas con el POI seleccionado
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+
+        // Pasar información del POI al drawer usando estado compartido
+        estadoCompartido.value.abrirGeozonasConPOI = {
+          item: {
+            id: resultado.poiId,
+            tipo: 'poi',
+          },
+          timestamp: Date.now(),
+        }
+      }, 100)
+    }
+
+    $q.notify({
+      message: `📌 POI: ${resultado.nombre}`,
+      color: 'red',
+      icon: 'location_on',
+      position: 'top',
+      timeout: 3000,
+    })
+  } else if (resultado.tipo === 'geozona') {
+    console.log('🗺️ Procesando geozona:', resultado.geozonaId)
+
+    if (resultado.lat && resultado.lng) {
+      // Centrar en la geozona con zoom medio (para ver todo el área)
+      const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
+      centrarMapaEn(resultado.lat, resultado.lng, zoom)
+
+      // Abrir drawer de Geozonas con la geozona seleccionada
+      cerrarTodosLosDialogs()
+      setTimeout(() => {
+        geozonaDrawerOpen.value = true
+
+        // Pasar información de la geozona al drawer usando estado compartido
+        estadoCompartido.value.abrirGeozonasConPOI = {
+          item: {
+            id: resultado.geozonaId,
+            tipo: 'geozona',
+          },
+          timestamp: Date.now(),
+        }
+      }, 100)
+    }
+
+    $q.notify({
+      message: `🗺️ Geozona: ${resultado.nombre}`,
+      color: 'purple',
+      icon: 'layers',
+      position: 'top',
+      timeout: 3000,
+    })
+  }
+}
 </script>
 
 <style scoped>
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+}
+
+.sugerencias-container {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+}
+
+.sugerencias-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.search-container {
+  position: relative; /* Importante para el posicionamiento absoluto */
 }
 
 /* ESTILOS ESPECÍFICOS Y AISLADOS PARA LOS BOTONES DEL HEADER */

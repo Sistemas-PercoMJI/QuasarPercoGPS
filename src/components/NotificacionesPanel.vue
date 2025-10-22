@@ -7,6 +7,9 @@
     >
       <q-icon name="notifications" size="20px" class="q-mr-xs icon-animated" />
       <div class="text-subtitle1 text-weight-bold">Notificaciones</div>
+      <q-badge v-if="totalNoLeidas > 0" color="white" text-color="red" class="q-ml-sm">
+        {{ totalNoLeidas }}
+      </q-badge>
       <q-space />
       <q-btn icon="close" flat round dense size="sm" v-close-popup class="close-btn-animated" />
     </q-card-section>
@@ -20,6 +23,9 @@
       >
         <q-icon name="notifications" size="18px" />
         <span>Todas</span>
+        <q-badge v-if="notificacionesActivas.length > 0" color="red" class="q-ml-xs">
+          {{ notificacionesActivas.length }}
+        </q-badge>
       </div>
       <div
         class="tab-item"
@@ -28,6 +34,9 @@
       >
         <q-icon name="priority_high" size="18px" />
         <span>Importantes</span>
+        <q-badge v-if="notificacionesImportantes.length > 0" color="orange" class="q-ml-xs">
+          {{ notificacionesImportantes.length }}
+        </q-badge>
       </div>
       <div
         class="tab-item"
@@ -48,7 +57,9 @@
         class="q-pa-lg text-center text-grey-6 empty-state"
       >
         <q-icon name="notifications_none" size="64px" class="q-mb-md empty-icon" />
-        <div class="text-body2">No hay notificaciones</div>
+        <div class="text-body2">
+          {{ vistaActual === 'leidas' ? 'No hay notificaciones leídas' : 'No hay notificaciones' }}
+        </div>
       </div>
 
       <div v-else class="q-pa-sm">
@@ -59,7 +70,10 @@
             :type="notif.type"
             :title="notif.title"
             :message="notif.message"
+            :timestamp="notif.timestamp"
+            :leida="notif.leida"
             @close="removeNotification(notif.id)"
+            @click="!notif.leida && marcarComoLeida(notif.id)"
             :style="{ transitionDelay: `${index * 50}ms` }"
           />
         </transition-group>
@@ -71,14 +85,27 @@
     <!-- Footer -->
     <q-card-actions align="right" class="q-pa-sm bg-grey-1 footer-animated">
       <q-btn
+        v-if="vistaActual === 'leidas'"
         flat
         dense
-        label="Limpiar todas"
+        label="Limpiar historial"
         color="negative"
         icon="delete_sweep"
         size="sm"
+        @click="limpiarHistorial"
+        :disable="notificacionesLeidas.length === 0"
+        class="clear-btn"
+      />
+      <q-btn
+        v-else
+        flat
+        dense
+        label="Marcar todas como leídas"
+        color="primary"
+        icon="done_all"
+        size="sm"
         @click="clearAll"
-        :disable="notifications.length === 0"
+        :disable="notificacionesActivas.length === 0"
         class="clear-btn"
       />
     </q-card-actions>
@@ -90,7 +117,16 @@ import { ref, computed } from 'vue'
 import { useNotifications } from 'src/composables/useNotifications'
 import NotificationCard from './NotificationCard.vue'
 
-const { notifications, removeNotification, clearAll } = useNotifications()
+const {
+  notificacionesActivas,
+  notificacionesLeidas,
+  notificacionesImportantes,
+  totalNoLeidas,
+  marcarComoLeida,
+  removeNotification,
+  clearAll,
+  limpiarHistorial
+} = useNotifications()
 
 // Estado del tab activo
 const vistaActual = ref('todas')
@@ -98,13 +134,13 @@ const vistaActual = ref('todas')
 // Filtrar notificaciones según el tab seleccionado
 const notificacionesFiltradas = computed(() => {
   if (vistaActual.value === 'todas') {
-    return notifications.value
+    return notificacionesActivas.value
   } else if (vistaActual.value === 'importantes') {
-    return notifications.value.filter((n) => n.type === 'warning' || n.type === 'negative')
+    return notificacionesImportantes.value
   } else if (vistaActual.value === 'leidas') {
-    return []
+    return notificacionesLeidas.value
   }
-  return notifications.value
+  return []
 })
 </script>
 
@@ -304,7 +340,7 @@ const notificacionesFiltradas = computed(() => {
 
 .clear-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+  box-shadow: 0 2px 8px rgba(187, 0, 0, 0.3);
 }
 
 .clear-btn:active {
