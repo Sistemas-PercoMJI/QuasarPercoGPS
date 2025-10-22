@@ -1,344 +1,361 @@
 <template>
   <div class="estado-flota-container">
-    <!-- Panel Izquierdo: Lista de Vehículos -->
+    <!-- Panel Izquierdo: Contenido completo -->
     <div class="panel-izquierdo">
-      <div class="drawer-header">
-        <div class="text-h6 text-weight-medium">Estado de la flota</div>
-        <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
-      </div>
+      <!-- Vista de lista de vehículos -->
+      <div v-if="!vehiculoSeleccionado" class="lista-vehiculos">
+        <div class="drawer-header">
+          <div class="text-h6 text-weight-medium">Estado de la flota</div>
+          <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+        </div>
 
-      <div class="q-pa-sm q-px-md">
-        <q-checkbox
-          v-model="todosVehiculos"
-          label="Todos los vehículos"
-          @update:model-value="seleccionarTodos"
-          dense
-        />
-        <span class="text-grey-7 q-ml-sm">{{ totalVehiculos }}</span>
-        <q-btn flat dense round icon="more_vert" size="sm" class="float-right" />
-      </div>
+        <div class="q-pa-sm q-px-md">
+          <q-checkbox
+            v-model="todosVehiculos"
+            label="Todos los vehículos"
+            @update:model-value="seleccionarTodos"
+            dense
+          />
+          <span class="text-grey-7 q-ml-sm">{{ totalVehiculos }}</span>
+          <q-btn flat dense round icon="more_vert" size="sm" class="float-right" />
+        </div>
 
-      <div class="estados-grid q-px-md q-pb-sm">
-        <q-btn
-          v-for="estado in estadosVehiculos"
-          :key="estado.tipo"
-          flat
-          class="estado-btn"
-          @click="seleccionarEstado(estado)"
-          :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
-        >
-          <div class="estado-contenido">
-            <q-icon :name="estado.icono" size="22px" :color="estado.color" class="estado-icono" />
-            <div class="estado-numero" :style="{ background: getColorHex(estado.color) }">
-              {{ estado.cantidad }}
+        <div class="estados-grid q-px-md q-pb-sm">
+          <q-btn
+            v-for="estado in estadosVehiculos"
+            :key="estado.tipo"
+            flat
+            class="estado-btn"
+            @click="seleccionarEstado(estado)"
+            :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
+          >
+            <div class="estado-contenido">
+              <q-icon :name="estado.icono" size="22px" :color="estado.color" class="estado-icono" />
+              <div class="estado-numero" :style="{ background: getColorHex(estado.color) }">
+                {{ estado.cantidad }}
+              </div>
             </div>
-          </div>
-        </q-btn>
+          </q-btn>
+        </div>
+
+        <div class="q-px-md q-pb-sm">
+          <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
+            <template v-slot:prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </div>
+
+        <div class="tabla-header q-px-md">
+          <div class="header-item">Nombre del vehículo</div>
+          <div class="header-item text-right">Velocidad</div>
+          <q-btn flat dense round icon="more_vert" size="sm" />
+        </div>
+
+        <q-list class="vehiculos-list">
+          <q-item
+            v-for="vehiculo in vehiculosFiltrados"
+            :key="vehiculo.id"
+            clickable
+            v-ripple
+            @click="seleccionarVehiculo(vehiculo)"
+            :active="vehiculoSeleccionado?.id === vehiculo.id"
+            class="vehiculo-item"
+          >
+            <q-item-section avatar>
+              <q-avatar :color="getColorEstado(vehiculo.estado)" text-color="white" size="40px">
+                <q-icon :name="getIconoEstado(vehiculo.estado)" size="24px" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label class="text-weight-medium">{{ vehiculo.nombre }}</q-item-label>
+              <q-item-label caption class="text-grey-7">{{ vehiculo.ubicacion }}</q-item-label>
+            </q-item-section>
+
+            <q-item-section side class="text-right">
+              <q-item-label>{{ vehiculo.velocidad }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
       </div>
 
-      <div class="q-px-md q-pb-sm">
-        <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
-      </div>
+      <!-- Vista de detalles del vehículo -->
+      <div v-else class="detalles-vehiculo">
+        <div class="drawer-header">
+          <q-btn flat dense round icon="arrow_back" color="white" @click="cerrarDetalles" />
+          <div class="text-h6 text-weight-medium">{{ vehiculoSeleccionado.nombre }}</div>
+          <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+        </div>
 
-      <div class="tabla-header q-px-md">
-        <div class="header-item">Nombre del vehículo</div>
-        <div class="header-item text-right">Velocidad</div>
-        <q-btn flat dense round icon="more_vert" size="sm" />
-      </div>
-
-      <q-list class="vehiculos-list">
-        <q-item
-          v-for="vehiculo in vehiculosFiltrados"
-          :key="vehiculo.id"
-          clickable
-          v-ripple
-          @click="seleccionarVehiculo(vehiculo)"
-          :active="vehiculoSeleccionado?.id === vehiculo.id"
-          class="vehiculo-item"
+        <!-- Tabs de navegación -->
+        <q-tabs
+          v-model="tabActual"
+          dense
+          class="text-grey-7 bg-white"
+          active-color="primary"
+          indicator-color="primary"
+          align="justify"
+          outside-arrows
+          mobile-arrows
         >
-          <q-item-section avatar>
-            <q-avatar :color="getColorEstado(vehiculo.estado)" text-color="white" size="40px">
-              <q-icon :name="getIconoEstado(vehiculo.estado)" size="24px" />
-            </q-avatar>
-          </q-item-section>
+          <q-tab name="resumen" icon="description" label="Resumen" />
+          <q-tab name="hoy" icon="schedule" label="Hoy" />
+          <q-tab name="notificaciones" icon="notifications" label="Notificaciones">
+            <q-badge v-if="vehiculoSeleccionado.notificaciones > 0" color="red" floating>
+              {{ vehiculoSeleccionado.notificaciones }}
+            </q-badge>
+          </q-tab>
+          <q-tab name="combustible" icon="local_gas_station" label="Combustible" />
+        </q-tabs>
 
-          <q-item-section>
-            <q-item-label class="text-weight-medium">{{ vehiculo.nombre }}</q-item-label>
-            <q-item-label caption class="text-grey-7">{{ vehiculo.ubicacion }}</q-item-label>
-          </q-item-section>
-
-          <q-item-section side class="text-right">
-            <q-item-label>{{ vehiculo.velocidad }}</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </div>
-
-    <!-- Panel Derecho: Detalles del Vehículo -->
-    <div v-if="vehiculoSeleccionado" class="panel-derecho">
-      <div class="drawer-header">
-        <div class="text-h6 text-weight-medium">{{ vehiculoSeleccionado.nombre }}</div>
-        <q-btn flat dense round icon="close" color="white" @click="cerrarDetalles" />
-      </div>
-
-      <!-- Tabs de navegación -->
-      <q-tabs
-        v-model="tabActual"
-        dense
-        class="text-grey-7"
-        active-color="primary"
-        indicator-color="primary"
-        align="justify"
-      >
-        <q-tab name="resumen" icon="description" label="Resumen" />
-        <q-tab name="hoy" icon="schedule" label="Hoy" />
-        <q-tab name="notificaciones" icon="notifications" label="Notificaciones">
-          <q-badge v-if="vehiculoSeleccionado.notificaciones > 0" color="red" floating>
-            {{ vehiculoSeleccionado.notificaciones }}
-          </q-badge>
-        </q-tab>
-        <q-tab name="combustible" icon="local_gas_station" label="Combustible" />
-      </q-tabs>
-
-      <!-- Contenido de las tabs -->
-      <q-tab-panels v-model="tabActual" animated class="tab-panels">
-        <!-- Tab Resumen -->
-        <q-tab-panel name="resumen" class="q-pa-md">
-          <div class="detalle-seccion">
-            <div class="detalle-item">
-              <q-icon name="place" color="primary" size="20px" />
-              <div class="detalle-texto">
-                <div class="detalle-label">Ubicación</div>
-                <div class="detalle-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
-                <div class="detalle-coordenadas">
-                  {{ vehiculoSeleccionado.coordenadas }}
+        <!-- Contenido de las tabs -->
+        <q-tab-panels v-model="tabActual" animated class="tab-panels">
+          <!-- Tab Resumen -->
+          <q-tab-panel name="resumen" class="q-pa-md">
+            <div class="detalle-seccion">
+              <div class="detalle-item">
+                <q-icon name="place" color="primary" size="20px" />
+                <div class="detalle-texto">
+                  <div class="detalle-label">Ubicación</div>
+                  <div class="detalle-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
+                  <div class="detalle-coordenadas">
+                    {{ vehiculoSeleccionado.coordenadas }}
+                  </div>
                 </div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Plan</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.plan }}</div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Bloquear vehículo</div>
+                <q-toggle
+                  v-model="vehiculoSeleccionado.bloqueado"
+                  color="grey-7"
+                  @update:model-value="toggleBloqueo"
+                />
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Estado actual</div>
+                <div class="detalle-valor-derecha">
+                  <q-chip :color="getColorEstado(vehiculoSeleccionado.estado)" text-color="white" dense>
+                    {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
+                  </q-chip>
+                </div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Tiempo de conducción restante hoy</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionHoy }}</div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Tiempo de conducción restante esta semana</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionSemana }}</div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Duración de estado</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.duracionEstado }}</div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Última sincronización de señal</div>
+                <div class="detalle-valor-derecha text-grey-7">
+                  {{ vehiculoSeleccionado.ultimaSincronizacion }}
+                  <q-icon name="info_outline" size="16px" class="q-ml-xs" />
+                </div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Fecha y hora</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.fechaHora }}</div>
+              </div>
+
+              <q-separator class="q-my-md" />
+
+              <div class="detalle-item">
+                <div class="detalle-label-simple">Tipo de trayecto</div>
+                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
+              </div>
+            </div>
+
+            <q-btn 
+              color="primary" 
+              label="Detalles del vehículo" 
+              class="full-width q-mt-md"
+              @click="verDetallesCompletos"
+            />
+          </q-tab-panel>
+
+          <!-- Tab Hoy -->
+          <q-tab-panel name="hoy" class="q-pa-md">
+            <div class="filtro-dia">
+              <q-btn flat dense icon="chevron_left" />
+              <span class="text-weight-medium">Hoy</span>
+              <q-btn flat dense icon="chevron_right" />
+            </div>
+
+            <div class="resumen-dia q-mt-md">
+              <div class="resumen-item">
+                <div class="resumen-label">Ubicación de inicio</div>
+                <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
+              </div>
+              <div class="resumen-item">
+                <div class="resumen-label">Ubicación de fin</div>
+                <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
+              </div>
+              <div class="resumen-item">
+                <div class="resumen-label">Duración de trabajo</div>
+                <div class="resumen-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
+              </div>
+              <div class="resumen-item">
+                <div class="resumen-label">Duración de parada</div>
+                <div class="resumen-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
+              </div>
+              <div class="resumen-item">
+                <div class="resumen-label">Kilometraje</div>
+                <div class="resumen-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
               </div>
             </div>
 
             <q-separator class="q-my-md" />
 
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Plan</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.plan }}</div>
+            <div class="timeline-header q-mb-md">
+              <span class="text-weight-medium">{{ vehiculoSeleccionado.fechaTimeline }}</span>
             </div>
 
-            <q-separator class="q-my-md" />
+            <q-timeline color="primary" class="timeline-actividades">
+              <q-timeline-entry
+                v-for="(actividad, index) in vehiculoSeleccionado.actividades"
+                :key="index"
+                :title="actividad.titulo"
+                :subtitle="actividad.hora"
+                :icon="actividad.icono"
+                :color="actividad.color"
+              >
+                <div class="actividad-detalle">
+                  <div class="actividad-info">
+                    <div>Duración de la {{ actividad.tipo }}</div>
+                    <div class="text-weight-medium">{{ actividad.duracion }}</div>
+                  </div>
+                  <div class="actividad-info">
+                    <div>Kilometraje</div>
+                    <div class="text-weight-medium">{{ actividad.kilometraje }}</div>
+                  </div>
+                </div>
+              </q-timeline-entry>
+            </q-timeline>
 
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Bloquear vehículo</div>
-              <q-toggle
-                v-model="vehiculoSeleccionado.bloqueado"
-                color="grey-7"
-                @update:model-value="toggleBloqueo"
+            <div class="conducido-por q-mt-md">
+              <div class="text-grey-7">Conducido por</div>
+              <div class="text-weight-medium">{{ vehiculoSeleccionado.conductor }}</div>
+            </div>
+
+            <div class="tipo-trayecto-seccion q-mt-md">
+              <div class="text-grey-7">Tipo de trayecto</div>
+              <div class="text-weight-medium">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
+              <q-btn flat dense color="primary" label="EDITAR" size="sm" />
+            </div>
+
+            <div class="notas-seccion q-mt-md">
+              <div class="text-grey-7">Notas</div>
+              <q-input 
+                v-model="vehiculoSeleccionado.notas" 
+                outlined 
+                type="textarea" 
+                placeholder="Agregar nota..."
+                class="q-mt-sm"
+              />
+              <q-btn flat dense color="primary" label="EDITAR" size="sm" class="q-mt-xs" />
+            </div>
+          </q-tab-panel>
+
+          <!-- Tab Notificaciones -->
+          <q-tab-panel name="notificaciones" class="q-pa-md">
+            <div class="filtro-notificaciones q-mb-md">
+              <q-select
+                v-model="filtroNotificaciones"
+                :options="['Todo', 'Alertas', 'Info', 'Eventos']"
+                outlined
+                dense
+                label="Mostrar eventos"
               />
             </div>
 
-            <q-separator class="q-my-md" />
+            <q-list v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0">
+              <q-item 
+                v-for="(evento, index) in vehiculoSeleccionado.eventos" 
+                :key="index"
+                class="evento-item"
+              >
+                <q-item-section avatar>
+                  <q-avatar :color="evento.color" text-color="white" size="40px">
+                    <q-icon :name="evento.icono" />
+                  </q-avatar>
+                </q-item-section>
 
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Estado actual</div>
-              <div class="detalle-valor-derecha">
-                <q-chip :color="getColorEstado(vehiculoSeleccionado.estado)" text-color="white" dense>
-                  {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
-                </q-chip>
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">{{ evento.titulo }}</q-item-label>
+                  <q-item-label caption>{{ evento.fecha }}</q-item-label>
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-icon name="expand_more" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-else class="sin-notificaciones">
+              <div class="icono-vacio">
+                <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
               </div>
+              <div class="texto-vacio text-grey-7">No hay eventos para mostrar</div>
             </div>
+          </q-tab-panel>
 
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Tiempo de conducción restante hoy</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionHoy }}</div>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Tiempo de conducción restante esta semana</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionSemana }}</div>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Duración de estado</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.duracionEstado }}</div>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Última sincronización de señal</div>
-              <div class="detalle-valor-derecha text-grey-7">
-                {{ vehiculoSeleccionado.ultimaSincronizacion }}
-                <q-icon name="info_outline" size="16px" class="q-ml-xs" />
+          <!-- Tab Combustible -->
+          <q-tab-panel name="combustible" class="q-pa-md">
+            <div class="sin-notificaciones">
+              <div class="icono-vacio">
+                <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
               </div>
+              <div class="texto-vacio text-grey-7">No hay información de combustible disponible</div>
             </div>
+          </q-tab-panel>
+        </q-tab-panels>
+      </div>
+    </div>
 
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Fecha y hora</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.fechaHora }}</div>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="detalle-item">
-              <div class="detalle-label-simple">Tipo de trayecto</div>
-              <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
-            </div>
-          </div>
-
-          <q-btn 
-            color="primary" 
-            label="Detalles del vehículo" 
-            class="full-width q-mt-md"
-            @click="verDetallesCompletos"
-          />
-        </q-tab-panel>
-
-        <!-- Tab Hoy -->
-        <q-tab-panel name="hoy" class="q-pa-md">
-          <div class="filtro-dia">
-            <q-btn flat dense icon="chevron_left" />
-            <span class="text-weight-medium">Hoy</span>
-            <q-btn flat dense icon="chevron_right" />
-          </div>
-
-          <div class="resumen-dia q-mt-md">
-            <div class="resumen-item">
-              <div class="resumen-label">Ubicación de inicio</div>
-              <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
-            </div>
-            <div class="resumen-item">
-              <div class="resumen-label">Ubicación de fin</div>
-              <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
-            </div>
-            <div class="resumen-item">
-              <div class="resumen-label">Duración de trabajo</div>
-              <div class="resumen-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
-            </div>
-            <div class="resumen-item">
-              <div class="resumen-label">Duración de parada</div>
-              <div class="resumen-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
-            </div>
-            <div class="resumen-item">
-              <div class="resumen-label">Kilometraje</div>
-              <div class="resumen-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
-            </div>
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <div class="timeline-header q-mb-md">
-            <span class="text-weight-medium">{{ vehiculoSeleccionado.fechaTimeline }}</span>
-          </div>
-
-          <q-timeline color="primary" class="timeline-actividades">
-            <q-timeline-entry
-              v-for="(actividad, index) in vehiculoSeleccionado.actividades"
-              :key="index"
-              :title="actividad.titulo"
-              :subtitle="actividad.hora"
-              :icon="actividad.icono"
-              :color="actividad.color"
-            >
-              <div class="actividad-detalle">
-                <div class="actividad-info">
-                  <div>Duración de la {{ actividad.tipo }}</div>
-                  <div class="text-weight-medium">{{ actividad.duracion }}</div>
-                </div>
-                <div class="actividad-info">
-                  <div>Kilometraje</div>
-                  <div class="text-weight-medium">{{ actividad.kilometraje }}</div>
-                </div>
-              </div>
-            </q-timeline-entry>
-          </q-timeline>
-
-          <div class="conducido-por q-mt-md">
-            <div class="text-grey-7">Conducido por</div>
-            <div class="text-weight-medium">{{ vehiculoSeleccionado.conductor }}</div>
-          </div>
-
-          <div class="tipo-trayecto-seccion q-mt-md">
-            <div class="text-grey-7">Tipo de trayecto</div>
-            <div class="text-weight-medium">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
-            <q-btn flat dense color="primary" label="EDITAR" size="sm" />
-          </div>
-
-          <div class="notas-seccion q-mt-md">
-            <div class="text-grey-7">Notas</div>
-            <q-input 
-              v-model="vehiculoSeleccionado.notas" 
-              outlined 
-              type="textarea" 
-              placeholder="Agregar nota..."
-              class="q-mt-sm"
-            />
-            <q-btn flat dense color="primary" label="EDITAR" size="sm" class="q-mt-xs" />
-          </div>
-        </q-tab-panel>
-
-        <!-- Tab Notificaciones -->
-        <q-tab-panel name="notificaciones" class="q-pa-md">
-          <div class="filtro-notificaciones q-mb-md">
-            <q-select
-              v-model="filtroNotificaciones"
-              :options="['Todo', 'Alertas', 'Info', 'Eventos']"
-              outlined
-              dense
-              label="Mostrar eventos"
-            />
-          </div>
-
-          <q-list v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0">
-            <q-item 
-              v-for="(evento, index) in vehiculoSeleccionado.eventos" 
-              :key="index"
-              class="evento-item"
-            >
-              <q-item-section avatar>
-                <q-avatar :color="evento.color" text-color="white" size="40px">
-                  <q-icon :name="evento.icono" />
-                </q-avatar>
-              </q-item-section>
-
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ evento.titulo }}</q-item-label>
-                <q-item-label caption>{{ evento.fecha }}</q-item-label>
-              </q-item-section>
-
-              <q-item-section side>
-                <q-icon name="expand_more" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div v-else class="sin-notificaciones">
-            <div class="icono-vacio">
-              <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
-            </div>
-            <div class="texto-vacio text-grey-7">No hay eventos para mostrar</div>
-          </div>
-        </q-tab-panel>
-
-        <!-- Tab Combustible -->
-        <q-tab-panel name="combustible" class="q-pa-md">
-          <div class="sin-notificaciones">
-            <div class="icono-vacio">
-              <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
-            </div>
-            <div class="texto-vacio text-grey-7">No hay información de combustible disponible</div>
-          </div>
-        </q-tab-panel>
-      </q-tab-panels>
+    <!-- Panel Derecho: Mapa (opcional, más pequeño) -->
+    <div class="panel-derecho">
+      <div class="mapa-container">
+        <!-- Aquí iría tu componente de mapa -->
+        <div class="mapa-placeholder">
+          <q-icon name="map" size="60px" color="grey-5" />
+          <div class="text-grey-7 q-mt-sm text-caption">Mapa</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -692,7 +709,8 @@ function getColorHex(color) {
 }
 
 .panel-izquierdo {
-  width: 400px;
+  width: 100%;
+  max-width: 500px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -701,14 +719,41 @@ function getColorHex(color) {
 }
 
 .panel-derecho {
-  flex: 1;
-  min-width: 400px;
+  width: 300px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: white;
-  overflow: hidden;
+  background: #f5f5f5;
   border-left: 1px solid #e0e0e0;
+}
+
+.lista-vehiculos {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.detalles-vehiculo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mapa-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapa-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
 }
 
 .drawer-header {
@@ -988,12 +1033,18 @@ function getColorHex(color) {
 
   .panel-izquierdo {
     width: 100%;
-    height: 50%;
+    max-width: 100%;
+    height: 100%;
   }
 
   .panel-derecho {
-    width: 100%;
-    height: 50%;
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .panel-derecho {
+    width: 250px;
   }
 }
 </style>
