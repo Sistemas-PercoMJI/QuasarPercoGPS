@@ -449,217 +449,143 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
-const emit = defineEmits(['close', 'vehiculo-seleccionado', 'navegar-mapa'])
+// Composable de tracking
+const { 
+  unidadesActivas, 
+  //loading, 
+  iniciarTracking, 
+  detenerTracking,
+  contarPorEstado 
+} = useTrackingUnidades()
 
-const todosVehiculos = ref(true)
-const estadoSeleccionado = ref('todos')
-const busqueda = ref('')
+// Props y emits
+const emit = defineEmits(['close', 'vehiculo-seleccionado'])
+
+// Estado local
 const vehiculoSeleccionado = ref(null)
+const busqueda = ref('')
+const estadoSeleccionado = ref('todos')
+const todosVehiculos = ref(true)
 const tabActual = ref('resumen')
-const filtroNotificaciones = ref('Todo')
+const filtroNotificaciones = ref('todos')
 
-const estadosVehiculos = ref([
-  { tipo: 'todos', nombre: 'Todos', icono: 'directions_car', color: 'blue', cantidad: 6 },
-  { tipo: 'movimiento', nombre: 'En movimiento', icono: 'navigation', color: 'green', cantidad: 0 },
-  { tipo: 'inactivo', nombre: 'Inactivo', icono: 'pause_circle', color: 'orange', cantidad: 1 },
-  { tipo: 'ignicion_apagada', nombre: 'Ignición apagada', icono: 'power_settings_new', color: 'blue-grey', cantidad: 4 },
-  { tipo: 'carga', nombre: 'Carga', icono: 'local_gas_station', color: 'cyan', cantidad: 0 },
-  { tipo: 'ignicion_bloqueada', nombre: 'Ignición bloqueada', icono: 'lock', color: 'red', cantidad: 1 },
-])
-
-const vehiculos = ref([
-  {
-    id: 1,
-    nombre: 'CRAFTER-VF61428_REV',
-    ubicacion: 'MX, Hermosillo, Boulevard Enrique Mazón López...',
-    velocidad: '1 km/h',
-    estado: 'inactivo',
-    coordenadas: '29.0990083, -110.921115',
-    plan: 'Básico plus',
+// Computed - Convertir unidades activas a formato de vehículos
+const vehiculos = computed(() => {
+  return unidadesActivas.value.map(unidad => ({
+    id: unidad.id,
+    nombre: unidad.unidadNombre,
+    ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
+    coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
+    velocidad: `${unidad.velocidad} km/h`,
+    estado: unidad.estado,
+    conductor: unidad.conductorNombre,
+    conductorFoto: unidad.conductorFoto,
+    placa: unidad.unidadPlaca,
+    ignicion: unidad.ignicion,
+    bateria: unidad.bateria,
+    timestamp: unidad.timestamp,
+    ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
+    
+    // Datos de ejemplo para tabs (puedes calcularlos realmente después)
+    plan: 'Plan Básico',
     bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '42 min',
-    ultimaSincronizacion: 'hace unos segundos',
-    fechaHora: '21/10/2025 11:08:53',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Hermosillo, Boulevard Enrique Mazón López',
-    ubicacionFin: 'MX, Hermosillo, Boulevard Enrique Mazón López',
-    duracionTrabajo: '3 min',
-    duracionParada: '11 h 6 min',
-    kilometraje: '0,00 km',
-    fechaTimeline: '21/10/2025',
+    tiempoConductionHoy: '3h 24m',
+    tiempoConductionSemana: '18h 45m',
+    duracionEstado: '15 minutos',
+    ultimaSincronizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
+    fechaHora: new Date().toLocaleString('es-MX'),
+    tipoTrayecto: 'Ruta comercial',
+    notificaciones: 0,
+    
+    // Timeline de ejemplo
+    fechaTimeline: new Date().toLocaleDateString('es-MX'),
+    ubicacionInicio: 'Zona Centro',
+    ubicacionFin: unidad.direccionTexto,
+    duracionTrabajo: '3h 24m',
+    
     actividades: [
-      { titulo: 'Parada', hora: '0:00', tipo: 'parada', duracion: '10 h 18 min', kilometraje: '0,00 km', icono: 'pause_circle', color: 'orange' },
-      { titulo: 'Inicio', hora: '10:17', tipo: 'conducción', duracion: '1 min', kilometraje: '0,00 km', icono: 'play_arrow', color: 'green' },
-      { titulo: 'Parada', hora: '10:18', tipo: 'parada', duracion: '6 min', kilometraje: '0,00 km', icono: 'pause_circle', color: 'orange' }
+      {
+        titulo: 'Viaje iniciado',
+        hora: '08:00 AM',
+        ubicacion: 'Zona Centro',
+        distancia: '0 km',
+        duracion: '0 min'
+      },
+      {
+        titulo: 'En ruta',
+        hora: new Date(unidad.timestamp).toLocaleTimeString('es-MX', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        ubicacion: unidad.direccionTexto,
+        distancia: '12 km',
+        duracion: `${Math.floor(Math.random() * 60)} min`
+      }
     ],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 2,
-    nombre: 'ELEV TIJ-SOTO-FRONTI...',
-    ubicacion: 'MX, Ensenada, Calle Lago de...',
-    velocidad: '6 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '31.8667, -116.6000',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '2 h 15 min',
-    ultimaSincronizacion: 'hace 5 minutos',
-    fechaHora: '21/10/2025 10:45:20',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Ensenada, Calle Lago de',
-    ubicacionFin: 'MX, Ensenada, Calle Lago de',
-    duracionTrabajo: '45 min',
-    duracionParada: '8 h 30 min',
-    kilometraje: '12,5 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 3,
-    nombre: 'PERCO TIJ-CRAFTER-UX...',
-    ubicacion: 'MX, Tijuana, Calle Rey Alejan...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '1 h 30 min',
-    ultimaSincronizacion: 'hace 2 minutos',
-    fechaHora: '21/10/2025 10:30:15',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Calle Rey Alejan',
-    ubicacionFin: 'MX, Tijuana, Calle Rey Alejan',
-    duracionTrabajo: '1 h',
-    duracionParada: '9 h',
-    kilometraje: '5,2 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 4,
-    nombre: 'SPRINTER-PANEL-1-HF3...',
-    ubicacion: 'MX, Tijuana, Boulevard Guad...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5027, -117.0039',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '3 h',
-    ultimaSincronizacion: 'hace 10 minutos',
-    fechaHora: '21/10/2025 09:49:30',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard Guad',
-    ubicacionFin: 'MX, Tijuana, Boulevard Guad',
-    duracionTrabajo: '30 min',
-    duracionParada: '10 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 1,
-    eventos: [
-      { titulo: 'SALIDA TALLER MJ INDUSTRIAL', fecha: '21/10/2025 9:49', icono: 'exit_to_app', color: 'blue' }
-    ]
-  },
-  {
-    id: 5,
-    nombre: 'TIENDAPERCO-TIJ-NP3...',
-    ubicacion: 'MX, Tijuana, Boulevard de lo...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '5 h',
-    ultimaSincronizacion: 'hace 1 hora',
-    fechaHora: '21/10/2025 07:00:00',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard de lo',
-    ubicacionFin: 'MX, Tijuana, Boulevard de lo',
-    duracionTrabajo: '0 min',
-    duracionParada: '12 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 6,
-    nombre: 'VENTAS_PERCO_INS_N...',
-    ubicacion: 'MX, Tijuana, Boulevard de lo...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_bloqueada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: true,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '6 h',
-    ultimaSincronizacion: 'hace 2 horas',
-    fechaHora: '21/10/2025 06:00:00',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard de lo',
-    ubicacionFin: 'MX, Tijuana, Boulevard de lo',
-    duracionTrabajo: '0 min',
-    duracionParada: '12 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-])
+    
+    eventos: [],
+    
+    combustible: {
+      nivelActual: Math.floor(Math.random() * 40) + 60,
+      capacidadTotal: 60,
+      rendimiento: 12.5,
+      ultimaCarga: 'Hace 2 días',
+      consumoHoy: 8.5,
+      kmRestantes: 450
+    }
+  }))
+})
+
+// Computed para estados
+const estadosVehiculos = computed(() => {
+  const conteo = contarPorEstado()
+  
+  return [
+    { tipo: 'todos', nombre: 'Todos', icono: 'directions_car', color: 'blue', cantidad: conteo.todos },
+    { tipo: 'movimiento', nombre: 'En movimiento', icono: 'navigation', color: 'green', cantidad: conteo.movimiento },
+    { tipo: 'detenido', nombre: 'Detenido', icono: 'pause_circle', color: 'orange', cantidad: conteo.detenido },
+    { tipo: 'inactivo', nombre: 'Inactivo', icono: 'power_settings_new', color: 'blue-grey', cantidad: conteo.inactivo }
+  ]
+})
 
 const totalVehiculos = computed(() => vehiculos.value.length)
 
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
+  // Filtrar por estado
   if (estadoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
+    resultado = resultado.filter(v => v.estado === estadoSeleccionado.value)
   }
 
+  // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(
-      (v) =>
-        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()),
+    resultado = resultado.filter(v => 
+      v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+      v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+      v.conductor.toLowerCase().includes(busqueda.value.toLowerCase())
     )
   }
 
   return resultado
 })
 
+/*const eventosFiltrados = computed(() => {
+  if (!vehiculoSeleccionado.value) return []
+  
+  const eventos = vehiculoSeleccionado.value.eventos || []
+  
+  if (filtroNotificaciones.value === 'todos') {
+    return eventos
+  }
+  
+  return eventos.filter(e => e.tipo === filtroNotificaciones.value)
+})*/
+
+// Methods
 function seleccionarTodos(valor) {
   if (valor) {
     estadoSeleccionado.value = 'todos'
@@ -673,14 +599,7 @@ function seleccionarEstado(estado) {
 
 function seleccionarVehiculo(vehiculo) {
   vehiculoSeleccionado.value = vehiculo
-  tabActual.value = 'resumen'
-  
   emit('vehiculo-seleccionado', vehiculo)
-  emit('navegar-mapa', {
-    lat: parseFloat(vehiculo.coordenadas.split(',')[0]),
-    lng: parseFloat(vehiculo.coordenadas.split(',')[1]),
-    vehiculo: vehiculo
-  })
 }
 
 function volverALista() {
@@ -693,21 +612,19 @@ function cerrarDrawer() {
 }
 
 function toggleBloqueo(valor) {
-  console.log('Bloqueo cambiado:', valor)
+  console.log('Toggle bloqueo:', valor)
 }
 
 function verDetallesCompletos() {
-  console.log('Ver detalles completos del vehículo')
+  console.log('Ver detalles completos')
 }
 
 function getColorEstado(estado) {
   const colores = {
     todos: 'blue',
     movimiento: 'green',
-    inactivo: 'orange',
-    ignicion_apagada: 'blue-grey',
-    carga: 'cyan',
-    ignicion_bloqueada: 'red',
+    detenido: 'orange',
+    inactivo: 'blue-grey'
   }
   return colores[estado] || 'grey'
 }
@@ -716,24 +633,10 @@ function getIconoEstado(estado) {
   const iconos = {
     todos: 'directions_car',
     movimiento: 'navigation',
-    inactivo: 'pause_circle',
-    ignicion_apagada: 'power_settings_new',
-    carga: 'local_gas_station',
-    ignicion_bloqueada: 'lock',
+    detenido: 'pause_circle',
+    inactivo: 'power_settings_new'
   }
   return iconos[estado] || 'directions_car'
-}
-
-function getEstadoTexto(estado) {
-  const textos = {
-    todos: 'Todos',
-    movimiento: 'En movimiento',
-    inactivo: 'Inactivo',
-    ignicion_apagada: 'Ignición apagada',
-    carga: 'Carga',
-    ignicion_bloqueada: 'Ignición bloqueada',
-  }
-  return textos[estado] || 'Desconocido'
 }
 
 function getColorHex(color) {
@@ -743,10 +646,31 @@ function getColorHex(color) {
     orange: '#FF9800',
     'blue-grey': '#607D8B',
     cyan: '#00BCD4',
-    red: '#F44336',
+    red: '#F44336'
   }
   return colores[color] || '#9E9E9E'
 }
+
+function getEstadoTexto(estado) {
+  const textos = {
+    movimiento: 'En movimiento',
+    detenido: 'Detenido',
+    inactivo: 'Inactivo'
+  }
+  return textos[estado] || 'Desconocido'
+}
+
+// Lifecycle
+onMounted(() => {
+  iniciarTracking()
+  console.log('✅ Tracking iniciado en EstadoFlota')
+})
+
+onBeforeUnmount(() => {
+  detenerTracking()
+  console.log('🛑 Tracking detenido en EstadoFlota')
+})
+
 </script>
 
 <style scoped>
