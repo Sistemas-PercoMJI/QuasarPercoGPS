@@ -1016,4 +1016,9 @@ const manejarToggleTrafico = () => {
     box-shadow: 0 6px 20px rgba(33, 186, 69, 0.6);
   }
 }
+
+:deep(.traffic-layer-blend) {
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+}
 </style>

@@ -606,8 +606,8 @@ export function useMap() {
           maxZoom: 22,
           tileSize: 512,
           zoomOffset: -1,
-          opacity: 0.7,
-          attribution: 'Traffic by Mapbox',
+          opacity: 1,
+          className: 'traffic-layer-blend',
         },
       ).addTo(map.value)
       console.log('🚦 Capa de tráfico ACTIVADA')
