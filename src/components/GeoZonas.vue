@@ -914,6 +914,7 @@ const manejarMovimientoMouse = (e) => {
   }
 
   posicionMouseActual.value = e.latlng
+
   actualizarVistaPrevia()
 }
 // 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
@@ -952,6 +953,7 @@ const actualizarVistaPrevia = () => {
   const ultimoPunto = puntosActuales[puntosActuales.length - 1]
 
   // Dibujar línea desde el último punto hasta el cursor
+
   lineaPreview.value = L.polyline([ultimoPunto, posicionMouseActual.value], {
     color: '#1976d2',
     weight: 2,
@@ -1010,14 +1012,10 @@ const poisFiltrados = computed(() => {
 
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
-  console.log('🔍 DEBUG geozonasFiltradas:')
-  console.log('  - geozonas.value:', geozonas.value)
-  console.log('  - grupoSeleccionadoGZ:', grupoSeleccionadoGZ.value)
-  console.log('  - busquedaGeozona:', busquedaGeozona.value)
 
   if (grupoSeleccionadoGZ.value) {
     resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
-    console.log('  - después de filtrar por grupo:', resultado)
+    console.log('🔍 DEBUG geozonasFiltradas - después de filtrar por grupo:', resultado)
   }
   if (busquedaGeozona.value) {
     resultado = resultado.filter(
@@ -1476,41 +1474,70 @@ function abrirDialogGeozonaPoligonal() {
   dialogNuevaGeozona.value = true
 }
 
+// 🆕 FUNCIÓN PARA LIMPIAR COMPLETAMENTE LAS CAPAS DE PREVIEW
+const limpiarPreviewCompleto = () => {
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    return
+  }
+
+  const mapa = mapPage._mapaAPI.map
+
+  // Limpiar línea de preview
+  if (lineaPreview.value) {
+    try {
+      mapa.removeLayer(lineaPreview.value)
+    } catch (error) {
+      console.error('❌ Error al remover línea de preview:', error)
+    }
+    lineaPreview.value = null
+  } else {
+    console.log('ℹ️ No había línea de preview para limpiar')
+  }
+
+  // Limpiar polígono de preview
+  if (poligonoPreview.value) {
+    try {
+      mapa.removeLayer(poligonoPreview.value)
+    } catch (error) {
+      console.error('❌ Error al remover polígono de preview:', error)
+    }
+    poligonoPreview.value = null
+  } else {
+    console.log('ℹ️ No había polígono de preview para limpiar')
+  }
+
+  // Resetear posición del mouse
+  posicionMouseActual.value = null
+
+  // Remover listener de mouse
+  try {
+    mapa.off('mousemove', manejarMovimientoMouse)
+  } catch (error) {
+    console.error('❌ Error al remover listener:', error)
+  }
+}
+
 // Función para cancelar la creación de una nueva geozona
 function cancelarNuevaGeozona() {
   const mapPage = document.querySelector('#map-page')
 
   if (mapPage && mapPage._mapaAPI) {
-    console.log('🧹 Limpiando mapa al cancelar...')
     mapPage._mapaAPI.desactivarModoSeleccion()
 
     // Solo limpiar polígonos (ya no hay círculos)
     mapPage._mapaAPI.limpiarPoligonoTemporal()
 
-    // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
-    // Remover listener de mouse
-    if (mapPage._mapaAPI.map) {
-      mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
-      console.log('✅ Listener de mouse removido')
-    }
-
-    // Limpiar capas de preview
-    if (lineaPreview.value) {
-      mapPage._mapaAPI.map.removeLayer(lineaPreview.value)
-      lineaPreview.value = null
-    }
-    if (poligonoPreview.value) {
-      mapPage._mapaAPI.map.removeLayer(poligonoPreview.value)
-      poligonoPreview.value = null
-    }
-    posicionMouseActual.value = null
-    console.log('✅ Preview limpiado')
+    // 🆕 USAR LA FUNCIÓN DE LIMPIEZA MEJORADA
+    limpiarPreviewCompleto()
+  } else {
+    console.warn('⚠️ No se encontró mapPage o mapaAPI para limpiar')
   }
 
   const componentDialog = document.querySelector('.component-dialog')
   if (componentDialog) {
     componentDialog.style.opacity = '1'
-    componentDialog.style.pointerEvents = 'au  to'
+    componentDialog.style.pointerEvents = 'auto'
   }
 
   window.dispatchEvent(
@@ -1524,25 +1551,19 @@ function cancelarNuevaGeozona() {
   // Resetear formulario
   nuevaGeozona.value = {
     nombre: '',
-    tipo: 'poligono', // Siempre polígono ahora
+    tipo: 'poligono',
     direccion: '',
     grupoId: null,
     notas: '',
     puntos: [],
   }
-
-  console.log('✅ Cancelación completada y mapa limpiado')
 }
 
 // Función para activar la selección de geozona poligonal en el mapa
 const activarSeleccionGeozonaPoligonal = async () => {
-  console.log('🔵 1. Iniciando activarSeleccionGeozonaPoligonal')
-
   dialogNuevaGeozona.value = false
-  console.log('🔵 2. Diálogo cerrado')
 
   const componentDialog = document.querySelector('.component-dialog')
-  console.log('🔵 3. componentDialog encontrado:', componentDialog)
 
   if (componentDialog) {
     componentDialog.style.opacity = '0.3'
@@ -1550,7 +1571,6 @@ const activarSeleccionGeozonaPoligonal = async () => {
   }
 
   await new Promise((resolve) => setTimeout(resolve, 500))
-  console.log('🔵 4. Esperando completado')
 
   const esperarMapa = async (intentosMaximos = 10, delay = 500) => {
     for (let i = 0; i < intentosMaximos; i++) {
@@ -1574,21 +1594,14 @@ const activarSeleccionGeozonaPoligonal = async () => {
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
-      console.log('✅ Mapa disponible, activando modo selección de geozona poligonal')
-
       mapaAPI.activarModoSeleccionGeozonaPoligonal()
-      console.log('🔵 8. Modo selección de geozona poligonal activado')
 
       if (mapaAPI.map) {
         mapaAPI.map.on('mousemove', manejarMovimientoMouse)
-        console.log('✅ Listener de movimiento del mouse activado')
       }
 
       // ✅ NUEVO: Ya no esperamos los puntos aquí, el botón flotante lo manejará
-      console.log('⏳ Esperando que el usuario marque puntos y presione el botón flotante...')
     } else {
-      console.error('❌ No se pudo encontrar el mapa después de varios intentos')
-
       if (componentDialog) {
         componentDialog.style.opacity = '1'
         componentDialog.style.pointerEvents = 'auto'
@@ -1667,8 +1680,6 @@ const guardarGeozona = async () => {
       geozonaData.direccion = `${nuevaGeozona.value.puntos.length} puntos`
     }
     if (mapPage && mapPage._mapaAPI) {
-      console.log('🧹 Limpiando mapa después de guardar...')
-
       // Desactivar modos de selección
       mapPage._mapaAPI.desactivarModoSeleccion()
 
@@ -1679,13 +1690,10 @@ const guardarGeozona = async () => {
         mapPage._mapaAPI.limpiarPoligonoTemporal()
       }
 
-      console.log('✅ Mapa limpiado correctamente')
-
       // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
       // Remover listener de mouse
       if (mapPage._mapaAPI.map) {
         mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
-        console.log('✅ Listener de mouse removido')
       }
 
       // Limpiar capas de preview
@@ -1738,9 +1746,8 @@ const guardarGeozona = async () => {
       })
     } else {
       // CREAR NUEVA GEOZONA
-      console.log('📝 Creando nueva geozona...')
+
       const nuevoId = await crearGeozona(geozonaData)
-      console.log('✅ Geozona creada con ID:', nuevoId)
 
       if (mapPage && mapPage._mapaAPI) {
         if (nuevaGeozona.value.tipo === 'circular') {
@@ -1762,9 +1769,6 @@ const guardarGeozona = async () => {
 
       items.value.unshift(nuevaGeozonaParaItems)
 
-      console.log('📊 items.value después de agregar:', items.value.length)
-      console.log('📊 Geozonas en items:', items.value.filter((i) => i.tipo === 'geozona').length)
-
       $q.notify({
         type: 'positive',
         message: 'Geozona guardada correctamente',
@@ -1773,10 +1777,7 @@ const guardarGeozona = async () => {
       redibujarMapa()
     }
 
-    // ✅ NUEVO: Limpiar TODO después de guardar
     if (mapPage && mapPage._mapaAPI) {
-      console.log('🧹 Limpiando mapa después de guardar...')
-
       // Desactivar modos de selección
       mapPage._mapaAPI.desactivarModoSeleccion()
 
@@ -1787,7 +1788,7 @@ const guardarGeozona = async () => {
         mapPage._mapaAPI.limpiarPoligonoTemporal()
       }
 
-      console.log('✅ Mapa limpiado correctamente')
+      limpiarPreviewCompleto()
     }
 
     // ✅ NUEVO: Restaurar el drawer completamente
@@ -1837,11 +1838,8 @@ const guardarGeozona = async () => {
 // EN GeoZonas.vue, REEMPLAZAR TODA la función activarSeleccionMapa:
 
 const activarSeleccionMapa = async () => {
-  console.log('🔵 1. Iniciando activarSeleccionMapa')
-
   // 1. CERRAR el diálogo del POI
   dialogNuevoPOI.value = false
-  console.log('🔵 2. Diálogo cerrado')
 
   // 2. NO TOCAR LA OPACIDAD DEL DRAWER
   // Simplemente esperamos un momento
@@ -1871,7 +1869,6 @@ const activarSeleccionMapa = async () => {
 
       // Esperar a que el usuario seleccione
       const ubicacion = await esperarSeleccionUbicacion(mapaAPI)
-      console.log('🔵 Ubicación obtenida:', ubicacion)
 
       mapaAPI.desactivarModoSeleccion()
 
@@ -1892,8 +1889,6 @@ const activarSeleccionMapa = async () => {
         console.log('✅ Slider flotante mostrado')
       }
     } else {
-      console.error('❌ No se pudo encontrar el mapa')
-
       $q.notify({
         type: 'warning',
         message: 'El mapa aún no está listo',
@@ -1903,8 +1898,6 @@ const activarSeleccionMapa = async () => {
       dialogNuevoPOI.value = true
     }
   } catch (error) {
-    console.error('❌ Error en activarSeleccionMapa:', error)
-
     $q.notify({
       type: 'negative',
       message: 'Error al activar selección de mapa',
@@ -1979,11 +1972,8 @@ function actualizarRadioPOI(nuevoRadio) {
 
 // Función para manejar la confirmación de geozona desde el botón flotante
 const handleConfirmarGeozonaDesdeBoton = async () => {
-  console.log('🔘 Confirmación desde botón flotante recibida')
-
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
-    console.error('❌ No se encontró la API del mapa')
     return
   }
 
@@ -2048,12 +2038,7 @@ onMounted(async () => {
     // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
     if (estadoCompartido.value.abrirGeozonasConPOI) {
       const { item } = estadoCompartido.value.abrirGeozonasConPOI
-      console.log('🎯 GeoZonas: Montado con item para mostrar:', item)
-
-      // Ejecutamos la lógica de selección
       handleSeleccionDesdeMapa(item)
-
-      // Limpiamos el estado para la próxima vez
       resetAbrirGeozonas()
     }
   } catch (err) {
@@ -2072,6 +2057,10 @@ onMounted(async () => {
 const handleCancelarGeozona = (e) => {
   console.log('🔘 Evento cancelarGeozonaDesdeBoton:', e.detail)
   // Aquí puedes agregar lógica adicional si la necesitas
+  limpiarPreviewCompleto()
+
+  // 🆕 TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
+  cancelarNuevaGeozona()
 }
 
 onMounted(async () => {
