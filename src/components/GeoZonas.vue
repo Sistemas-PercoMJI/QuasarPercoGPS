@@ -810,6 +810,11 @@ const poligonoActivo = ref(null)
 const modoSeleccionGeozonaCircular = ref(false)
 const modoSeleccionGeozonaPoligonal = ref(false)
 
+// 🆕 NUEVAS VARIABLES PARA VISTA PREVIA
+const posicionMouseActual = ref(null)
+const lineaPreview = ref(null)
+const poligonoPreview = ref(null)
+
 const nuevoPOI = ref({
   nombre: '',
   direccion: '',
@@ -963,6 +968,84 @@ function contarEventos(ubicacionId, tipo) {
     }
   })
   return count
+}
+
+const manejarMovimientoMouse = (e) => {
+  // Obtener mapaAPI
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+
+  // Obtener puntos directamente del mapaAPI (en tiempo real)
+  const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
+
+  // Solo mostrar preview si hay al menos 1 punto
+  if (!puntosActuales || puntosActuales.length === 0) {
+    return
+  }
+
+  posicionMouseActual.value = e.latlng
+  actualizarVistaPrevia()
+}
+// 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
+const actualizarVistaPrevia = () => {
+  if (!posicionMouseActual.value) {
+    return
+  }
+
+  // Obtener el mapa desde mapaAPI
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map || !mapPage._mapaAPI.L) {
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+  const mapa = mapaAPI.map
+  const L = mapaAPI.L
+
+  // Obtener puntos directamente del mapaAPI (en tiempo real)
+  const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
+
+  if (!puntosActuales || puntosActuales.length === 0) {
+    return
+  }
+
+  // Limpiar línea y polígono de preview anteriores
+  if (lineaPreview.value) {
+    mapa.removeLayer(lineaPreview.value)
+    lineaPreview.value = null
+  }
+  if (poligonoPreview.value) {
+    mapa.removeLayer(poligonoPreview.value)
+    poligonoPreview.value = null
+  }
+
+  const ultimoPunto = puntosActuales[puntosActuales.length - 1]
+
+  // Dibujar línea desde el último punto hasta el cursor
+  lineaPreview.value = L.polyline([ultimoPunto, posicionMouseActual.value], {
+    color: '#1976d2',
+    weight: 2,
+    opacity: 0.7,
+    dashArray: '10, 10',
+  }).addTo(mapa)
+
+  // Si hay al menos 2 puntos, mostrar el polígono preview completo
+  if (puntosActuales.length >= 2) {
+    const puntosPreview = [...puntosActuales, posicionMouseActual.value]
+
+    poligonoPreview.value = L.polygon(puntosPreview, {
+      color: '#1976d2',
+      fillColor: '#1976d2',
+      fillOpacity: 0.15,
+      weight: 2,
+      opacity: 0.5,
+      dashArray: '10, 10',
+    }).addTo(mapa)
+  }
 }
 
 // Computed properties
@@ -1477,12 +1560,31 @@ function cancelarNuevaGeozona() {
 
     // Solo limpiar polígonos (ya no hay círculos)
     mapPage._mapaAPI.limpiarPoligonoTemporal()
+
+    // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
+    // Remover listener de mouse
+    if (mapPage._mapaAPI.map) {
+      mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
+      console.log('✅ Listener de mouse removido')
+    }
+
+    // Limpiar capas de preview
+    if (lineaPreview.value) {
+      mapPage._mapaAPI.map.removeLayer(lineaPreview.value)
+      lineaPreview.value = null
+    }
+    if (poligonoPreview.value) {
+      mapPage._mapaAPI.map.removeLayer(poligonoPreview.value)
+      poligonoPreview.value = null
+    }
+    posicionMouseActual.value = null
+    console.log('✅ Preview limpiado')
   }
 
   const componentDialog = document.querySelector('.component-dialog')
   if (componentDialog) {
     componentDialog.style.opacity = '1'
-    componentDialog.style.pointerEvents = 'auto'
+    componentDialog.style.pointerEvents = 'au  to'
   }
 
   window.dispatchEvent(
@@ -1550,6 +1652,11 @@ const activarSeleccionGeozonaPoligonal = async () => {
 
       mapaAPI.activarModoSeleccionGeozonaPoligonal()
       console.log('🔵 8. Modo selección de geozona poligonal activado')
+
+      if (mapaAPI.map) {
+        mapaAPI.map.on('mousemove', manejarMovimientoMouse)
+        console.log('✅ Listener de movimiento del mouse activado')
+      }
 
       // ✅ NUEVO: Ya no esperamos los puntos aquí, el botón flotante lo manejará
       console.log('⏳ Esperando que el usuario marque puntos y presione el botón flotante...')
@@ -1633,7 +1740,40 @@ const guardarGeozona = async () => {
       geozonaData.puntos = nuevaGeozona.value.puntos
       geozonaData.direccion = `${nuevaGeozona.value.puntos.length} puntos`
     }
+    if (mapPage && mapPage._mapaAPI) {
+      console.log('🧹 Limpiando mapa después de guardar...')
 
+      // Desactivar modos de selección
+      mapPage._mapaAPI.desactivarModoSeleccion()
+
+      // Limpiar capas temporales según el tipo
+      if (nuevaGeozona.value.tipo === 'circular') {
+        mapPage._mapaAPI.limpiarCirculoTemporal()
+      } else if (nuevaGeozona.value.tipo === 'poligono') {
+        mapPage._mapaAPI.limpiarPoligonoTemporal()
+      }
+
+      console.log('✅ Mapa limpiado correctamente')
+
+      // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
+      // Remover listener de mouse
+      if (mapPage._mapaAPI.map) {
+        mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
+        console.log('✅ Listener de mouse removido')
+      }
+
+      // Limpiar capas de preview
+      if (lineaPreview.value) {
+        mapPage._mapaAPI.map.removeLayer(lineaPreview.value)
+        lineaPreview.value = null
+      }
+      if (poligonoPreview.value) {
+        mapPage._mapaAPI.map.removeLayer(poligonoPreview.value)
+        poligonoPreview.value = null
+      }
+      posicionMouseActual.value = null
+      console.log('✅ Preview limpiado')
+    }
     if (nuevaGeozona.value.id) {
       // ACTUALIZAR GEOZONA EXISTENTE
       await actualizarGeozona(nuevaGeozona.value.id, geozonaData)
