@@ -10,6 +10,7 @@ const map = ref(null)
 const marcadorTemporal = ref(null)
 const ubicacionSeleccionada = ref(null)
 const modoSeleccionActivo = ref(false)
+const marcadoresUnidades = ref({})
 
 // 🔧 CAMBIO 1: Convertir capaTrafico a ref para reactividad
 const capaTrafico = ref(null)
@@ -48,6 +49,189 @@ export function useMap() {
       dashArray: '5, 10',
     }).addTo(map.value)
     console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
+  }
+
+    // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
+  
+  const crearIconoUnidad = (estado) => {
+    const colores = {
+      movimiento: '#4CAF50',
+      detenido: '#FF9800',
+      inactivo: '#9E9E9E'
+    }
+    
+    const color = colores[estado] || '#9E9E9E'
+    
+    return L.divIcon({
+      className: 'custom-marker-unidad',
+      html: `
+        <div style="
+          width: 36px;
+          height: 36px;
+          background-color: ${color};
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        ">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+          <div style="
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            width: 12px;
+            height: 12px;
+            background: ${estado === 'movimiento' ? '#4CAF50' : '#FF9800'};
+            border: 2px solid white;
+            border-radius: 50%;
+            animation: ${estado === 'movimiento' ? 'pulse-gps 2s infinite' : 'none'};
+          "></div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -18]
+    })
+  }
+
+  const crearPopupUnidad = (unidad) => {
+    const estadoTexto = {
+      movimiento: 'En movimiento',
+      detenido: 'Detenido',
+      inactivo: 'Inactivo'
+    }
+    
+    const estadoColor = {
+      movimiento: '#4CAF50',
+      detenido: '#FF9800',
+      inactivo: '#9E9E9E'
+    }
+
+    return `
+      <div style="min-width: 220px; font-family: 'Roboto', sans-serif;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee;">
+          ${unidad.conductorFoto 
+            ? `<img src="${unidad.conductorFoto}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid ${estadoColor[unidad.estado]};">`
+            : `<div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">${unidad.conductorNombre.charAt(0)}</div>`
+          }
+          <div style="flex: 1;">
+            <strong style="font-size: 15px; color: #212121;">${unidad.conductorNombre}</strong>
+            <div style="font-size: 12px; color: #666; margin-top: 2px;">${unidad.unidadNombre}</div>
+          </div>
+        </div>
+        
+        <div style="background: #f5f7fa; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: ${estadoColor[unidad.estado]};"></div>
+            <span style="font-size: 13px; font-weight: 600; color: ${estadoColor[unidad.estado]};">${estadoTexto[unidad.estado]}</span>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px; font-size: 12px; color: #424242;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span>⚡</span>
+              <strong>Velocidad:</strong>
+            </div>
+            <span>${unidad.velocidad} km/h</span>
+            
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span>📍</span>
+              <strong>Ubicación:</strong>
+            </div>
+            <span>${unidad.direccionTexto}</span>
+            
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span>🔋</span>
+              <strong>Batería:</strong>
+            </div>
+            <span>${unidad.bateria}%</span>
+            
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span>🔑</span>
+              <strong>Placa:</strong>
+            </div>
+            <span>${unidad.unidadPlaca}</span>
+          </div>
+        </div>
+        
+        <div style="font-size: 11px; color: #999; text-align: center; margin-top: 8px;">
+          Última actualización: ${new Date(unidad.timestamp).toLocaleTimeString('es-MX')}
+        </div>
+      </div>
+    `
+  }
+
+  const actualizarMarcadoresUnidades = (unidades) => {
+    if (!map.value) return
+
+    const idsActuales = new Set(unidades.map(u => u.id))
+    
+    Object.keys(marcadoresUnidades.value).forEach(id => {
+      if (!idsActuales.has(id)) {
+        map.value.removeLayer(marcadoresUnidades.value[id])
+        delete marcadoresUnidades.value[id]
+        console.log(`🗑️ Marcador GPS removido: ${id}`)
+      }
+    })
+    
+    unidades.forEach(unidad => {
+      const { lat, lng } = unidad.ubicacion
+      
+      if (marcadoresUnidades.value[unidad.id]) {
+        const marcador = marcadoresUnidades.value[unidad.id]
+        marcador.setLatLng([lat, lng])
+        marcador.setIcon(crearIconoUnidad(unidad.estado))
+        marcador.setPopupContent(crearPopupUnidad(unidad))
+        
+        if (marcador._icon?.style) {
+          marcador._icon.style.transition = 'all 0.5s ease-out'
+        }
+      } else {
+        const icono = crearIconoUnidad(unidad.estado)
+        const marcador = L.marker([lat, lng], { 
+          icon: icono,
+          zIndexOffset: 1000
+        })
+          .addTo(map.value)
+          .bindPopup(crearPopupUnidad(unidad), {
+            maxWidth: 300,
+            className: 'popup-unidad'
+          })
+        
+        marcadoresUnidades.value[unidad.id] = marcador
+        console.log(`✅ Marcador GPS creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
+      }
+    })
+  }
+
+  const limpiarMarcadoresUnidades = () => {
+    if (!map.value) return
+    
+    Object.values(marcadoresUnidades.value).forEach(marcador => {
+      map.value.removeLayer(marcador)
+    })
+    
+    marcadoresUnidades.value = {}
+    console.log('🧹 Marcadores GPS limpiados')
+  }
+
+  const centrarEnUnidad = (unidadId) => {
+    if (!map.value) return
+    
+    const marcador = marcadoresUnidades.value[unidadId]
+    if (marcador) {
+      const latlng = marcador.getLatLng()
+      map.value.setView(latlng, 16, {
+        animate: true,
+        duration: 1
+      })
+      marcador.openPopup()
+      console.log(`🎯 Mapa centrado en unidad: ${unidadId}`)
+    }
   }
 
   function actualizarRadioCirculoTemporal(lat, lng, nuevoRadio) {
@@ -421,6 +605,10 @@ export function useMap() {
         confirmarMarcadorConCirculo,
         actualizarMarcadorConCirculo,
         toggleTrafico,
+        actualizarMarcadoresUnidades,
+        limpiarMarcadoresUnidades,
+        centrarEnUnidad,
+
       }
       window.mapaGlobal = mapaAPI
       window.L = L
@@ -492,7 +680,9 @@ export function useMap() {
     marcadoresPoligono.value = []
     poligonoFinalizado.value = false
     capaTrafico.value = null // 🔧 Limpiar referencia
+    limpiarMarcadoresUnidades()
     console.log('🧹 Mapa limpiado')
+    
   }
 
   // 🚦 TRAFICO - SOLUCIÓN PRINCIPAL

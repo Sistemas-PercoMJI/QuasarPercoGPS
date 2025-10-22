@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useMap } from 'src/composables/useMap'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
@@ -64,8 +64,10 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 import SimuladorControl from 'src/components/SimuladorControl.vue'
+import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
-const { initMap, addMarker, cleanup, toggleTrafico } = useMap()
+
+const { initMap, addMarker, cleanup, toggleTrafico, actualizarMarcadoresUnidades, limpiarMarcadoresUnidades } = useMap()
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, actualizarUbicacion, resetear } = useEventDetection()
 
@@ -73,7 +75,7 @@ const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
 const marcadorUsuario = ref(null)
-
+const { unidadesActivas, iniciarTracking, detenerTracking } = useTrackingUnidades()
 const userId = ref(auth.currentUser?.uid || '')
 
 const { obtenerPOIs } = usePOIs(userId.value)
@@ -282,6 +284,18 @@ const dibujarTodosEnMapa = async () => {
     console.warn('⚠️ Mapa no disponible para dibujar items')
     return
   }
+
+  // 🆕 Watch para actualizar marcadores GPS en tiempo real
+watch (unidadesActivas, (nuevasUnidades) => {
+  if (mapaAPI && nuevasUnidades.length > 0) {
+    console.log(`🗺️ Actualizando ${nuevasUnidades.length} unidades en el mapa`)
+    actualizarMarcadoresUnidades(nuevasUnidades)
+  } else if (nuevasUnidades.length === 0) {
+    console.log('🧹 No hay unidades activas, limpiando marcadores')
+    limpiarMarcadoresUnidades()
+  }
+}, { deep: true })
+
 
   mapaAPI = mapPage._mapaAPI
 
@@ -722,6 +736,8 @@ onMounted(async () => {
     resetear()
     await inicializarSistemaDeteccion()
   })
+  console.log('🚀 Iniciando tracking GPS...')
+  iniciarTracking()
 })
 
 const handleMostrarBoton = (e) => {
@@ -793,6 +809,8 @@ onUnmounted(() => {
   detenerSeguimientoGPS()
 
   // Resetear sistema de detección
+  detenerTracking()
+  limpiarMarcadoresUnidades()
   resetear()
 
   if (window._resizeHandler) {
@@ -1051,5 +1069,32 @@ const manejarToggleTrafico = () => {
     right: 10px;
   }
 }
+
+/* 🆕 Estilos para marcadores GPS */
+:deep(.custom-marker-unidad) {
+  background: none !important;
+  border: none !important;
+}
+
+@keyframes pulse-gps {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+:deep(.popup-unidad .leaflet-popup-content-wrapper) {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.popup-unidad .leaflet-popup-content) {
+  margin: 0;
+}
+
 
 </style>
