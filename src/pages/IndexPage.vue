@@ -4,7 +4,7 @@
 
     <q-btn
       fab
-      :color="traficoActivo ? 'positive' : 'grey-7'"
+      :color="traficoActivo ? 'positive' : 'red'"
       :icon="traficoActivo ? 'traffic' : 'block'"
       class="traffic-toggle-btn"
       @click="manejarToggleTrafico"
@@ -990,8 +990,8 @@ const manejarToggleTrafico = () => {
 /* Botón de toggle de tráfico */
 .traffic-toggle-btn {
   position: fixed !important;
-  top: 80px;
-  left: 85px; /* Justo a la derecha del drawer mini */
+  top: 150px;
+  right: 20px; /* Justo a la derecha del drawer mini */
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
