@@ -129,7 +129,8 @@
     </div>
 
     <!-- Vista de Detalles del Vehículo -->
-    <div v-show="vehiculoSeleccionado" class="vista-detalles">
+    <transition name="slide-right">
+      <div v-if="vehiculoSeleccionado" class="vista-detalles">
       <!-- Tabs de navegación -->
       <q-tabs
         v-model="tabActual"
@@ -443,6 +444,7 @@
         </q-tab-panels>
       </q-scroll-area>
     </div>
+    </transition>
   </div>
 </template>
 
@@ -963,11 +965,48 @@ function getColorHex(color) {
 
 /* === VISTA DETALLES === */
 .vista-detalles {
-  flex: 1;
+  position: absolute;
+  right: 0;
+  top: 64px;
+  bottom: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: white;
+  z-index: 100;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+}
+
+/* === ANIMACIÓN SLIDE === */
+.slide-right-enter-active {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-right-leave-active {
+  animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 
 /* === TABS === */
