@@ -515,6 +515,7 @@
 
         <q-card-section class="q-pt-lg text-center">
           <q-icon name="change_history" size="64px" color="primary" class="q-mb-md" />
+
           <div class="text-subtitle1">Geozona Poligonal</div>
           <div class="text-caption text-grey-7 q-mt-sm">
             Marca múltiples puntos en el mapa para definir el área de la geozona.
@@ -537,7 +538,19 @@
     <!-- Dialog: Nueva Geozona -->
     <q-dialog v-model="dialogNuevaGeozona" persistent>
       <q-card style="min-width: 400px; max-width: 500px">
+        <q-card-section class="bg-secondary text-white">
+          <div class="row items-center">
+            <q-icon name="layers" size="32px" class="q-mr-md" />
+            <div>
+              <div class="text-h6">Nueva Geozona</div>
+              <div class="text-caption">Define un área con múltiples puntos</div>
+            </div>
+            <q-space />
+            <q-btn flat dense round icon="close" v-close-popup color="white" />
+          </div>
+        </q-card-section>
         <q-card-section class="q-pt-lg">
+          <div></div>
           <q-input v-model="nuevaGeozona.nombre" label="Nombre de la zona" outlined class="q-mb-md">
             <template v-slot:prepend>
               <q-icon name="label" />
