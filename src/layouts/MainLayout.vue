@@ -266,6 +266,7 @@
             :href="link.link"
             target="_blank"
             v-ripple
+            @click="link.click"
             class="nav-item"
           >
             <q-item-section avatar>
@@ -862,8 +863,6 @@ function centrarMapaEn(lat, lng, zoom = 18) {
   return esperarMapa()
 }
 
-// En MainLayout.vue
-
 let busquedaEnProgreso = ref(false)
 
 function ejecutarCentrado(lat, lng, zoom) {
@@ -1082,7 +1081,16 @@ const linksList = [
     title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    action: 'open-geozonas',
+    click: () => {
+      if (router.currentRoute.value.path !== '/') {
+        router.push('/')
+        setTimeout(() => {
+          geozonaDrawerOpen.value = true
+        }, 300)
+      } else {
+        geozonaDrawerOpen.value = true
+      }
+    },
   },
   {
     title: 'Eventos',
@@ -1095,6 +1103,7 @@ const linksList = [
     caption: 'Crear reporte',
     icon: 'description',
     link: '/reporte',
+    to: '/dashboard',
   },
 ]
 
@@ -1184,6 +1193,8 @@ function handleLinkClick(link) {
   } else if (link.action === 'open-eventos') {
     cerrarTodosLosDialogs()
     eventosDrawerOpen.value = true
+  } else if (link.click) {
+    link.click()
   }
 }
 
