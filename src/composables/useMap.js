@@ -423,32 +423,41 @@ export function useMap() {
     })
   }
 
-  const onMapClickGeozonaPoligonal = (e) => {
-    if (!modoSeleccionGeozonaPoligonal.value || !map.value) return
-    const { lat, lng } = e.latlng
-    const punto = { lat, lng }
-    puntosPoligono.value.push(punto)
-    const marcador = L.marker([lat, lng], {
-      icon: L.divIcon({
-        className: 'punto-poligono',
-        html: `<div style="
-          width: 12px;
-          height: 12px;
-          background: #3388ff;
-          border: 2px solid white;
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        "></div>`,
-        iconSize: [12, 12],
-        iconAnchor: [6, 6],
-      }),
-    }).addTo(map.value)
-    marcadoresPoligono.value.push(marcador)
-    if (puntosPoligono.value.length >= 2) {
-      actualizarPoligonoTemporal(puntosPoligono.value)
-    }
-    console.log(`📍 Punto ${puntosPoligono.value.length} agregado al polígono`)
+  // Busca esta función
+const onMapClickGeozonaPoligonal = (e) => {
+  if (!modoSeleccionGeozonaPoligonal.value || !map.value) return
+  const { lat, lng } = e.latlng
+  const punto = { lat, lng }
+  puntosPoligono.value.push(punto)
+  const marcador = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: 'punto-poligono',
+      html: `<div style="
+        width: 12px;
+        height: 12px;
+        background: #3388ff;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    }),
+  }).addTo(map.value)
+  marcadoresPoligono.value.push(marcador)
+  if (puntosPoligono.value.length >= 2) {
+    actualizarPoligonoTemporal(puntosPoligono.value)
   }
+  console.log(`📍 Punto ${puntosPoligono.value.length} agregado al polígono`)
+
+  // >>>> AÑADE ESTE CÓDIGO JUSTO AQUÍ <<<<
+  if (puntosPoligono.value.length >= 3) {
+    console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
+    window.dispatchEvent(new CustomEvent('mostrarBotonConfirmarGeozona', {
+      detail: { mostrar: true }
+    }))
+  }
+}
 
   const finalizarPoligonoTemporal = () => {
     if (puntosPoligono.value.length < 3) {
