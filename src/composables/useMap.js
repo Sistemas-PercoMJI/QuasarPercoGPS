@@ -765,5 +765,8 @@ export function useMap() {
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
     toggleTrafico,
+    actualizarMarcadoresUnidades,
+    limpiarMarcadoresUnidades,
+    centrarEnUnidad
   }
 }

@@ -286,8 +286,8 @@ const dibujarTodosEnMapa = async () => {
   }
 
   // 🆕 Watch para actualizar marcadores GPS en tiempo real
-watch (unidadesActivas, (nuevasUnidades) => {
-  if (mapaAPI && nuevasUnidades.length > 0) {
+watch(unidadesActivas, (nuevasUnidades) => {
+  if (mapaAPI && mapaListo.value && nuevasUnidades.length > 0) {
     console.log(`🗺️ Actualizando ${nuevasUnidades.length} unidades en el mapa`)
     actualizarMarcadoresUnidades(nuevasUnidades)
   } else if (nuevasUnidades.length === 0) {
