@@ -270,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
 import { useReportes } from 'src/composables/useReportes'
@@ -309,6 +309,7 @@ const { generarExcelEventos } = useReporteExcel()
 const generando = ref(false)
 const loadingOpciones = ref(false)
 const loadingEventos = ref(false)
+const loading = ref(false)
 
 // Datos del formulario
 const tipoInforme = ref('Informe de eventos')
@@ -846,6 +847,7 @@ const generarExcel = async () => {
 const cargarHistorialReportes = async () => {
   if (!userId.user?.uid) return
 
+  loading.value = true // ✅ Activar loading
   try {
     const reportes = await obtenerHistorialReportes(userId.user.uid)
     reportesAnteriores.value = reportes.map((r) => ({
@@ -858,8 +860,16 @@ const cargarHistorialReportes = async () => {
       downloadURL: r.storageUrl,
       tipoArchivo: r.tipo,
     }))
+    console.log('Historial cargado:', reportesAnteriores.value.length, 'reportes') // ✅ Debug
   } catch (error) {
     console.error('Error al cargar historial:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar el historial de reportes',
+      icon: 'error',
+    })
+  } finally {
+    loading.value = false
   }
 }
 // Lifecycle
@@ -867,5 +877,11 @@ onMounted(() => {
   cargarOpcionesSelector()
   cargarEventosDisponibles()
   cargarHistorialReportes()
+})
+
+watch(tab, (newTab) => {
+  if (newTab === 'historial') {
+    cargarHistorialReportes()
+  }
 })
 </script>

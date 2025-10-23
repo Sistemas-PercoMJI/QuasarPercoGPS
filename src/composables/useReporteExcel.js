@@ -200,11 +200,16 @@ export function useReporteExcel() {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `informe_eventos_${Date.now()}.xlsx`
+    const filename = `informe_eventos_${Date.now()}.xlsx`
+    link.download = filename
     link.click()
     window.URL.revokeObjectURL(url)
 
-    return link.download
+    // ✅ DEVOLVER BLOB Y FILENAME (como en generarExcelSimple)
+    return {
+      blob: blob,
+      filename: filename,
+    }
   }
 
   /**
