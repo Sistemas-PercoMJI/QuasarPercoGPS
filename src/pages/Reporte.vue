@@ -217,15 +217,49 @@
           :rows="reportesAnteriores"
           :columns="columnasHistorial"
           row-key="id"
+          :loading="loading"
           class="q-mt-md"
         >
+          <template v-slot:body-cell-tipo="props">
+            <q-td :props="props">
+              <q-chip
+                :color="props.row.tipoArchivo === 'pdf' ? 'red' : 'green'"
+                text-color="white"
+                size="sm"
+              >
+                <q-icon
+                  :name="props.row.tipoArchivo === 'pdf' ? 'picture_as_pdf' : 'table_chart'"
+                  size="xs"
+                  class="q-mr-xs"
+                />
+                {{ props.row.tipo }}
+              </q-chip>
+            </q-td>
+          </template>
+
           <template v-slot:body-cell-acciones="props">
             <q-td :props="props">
-              <q-btn flat dense icon="visibility" color="primary" size="sm">
-                <q-tooltip>Ver</q-tooltip>
-              </q-btn>
-              <q-btn flat dense icon="download" color="primary" size="sm">
+              <q-btn
+                flat
+                dense
+                icon="download"
+                color="primary"
+                size="sm"
+                :href="props.row.downloadURL"
+                target="_blank"
+              >
                 <q-tooltip>Descargar</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                dense
+                icon="open_in_new"
+                color="primary"
+                size="sm"
+                :href="props.row.downloadURL"
+                target="_blank"
+              >
+                <q-tooltip>Ver en nueva pestaña</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -242,11 +276,19 @@ import { getAuth } from 'firebase/auth'
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
 import { useReporteExcel } from 'src/composables/useReporteExcel'
+import { useReportesStorage } from 'src/composables/useReportesStorage'
 
 const $q = useQuasar()
 const auth = getAuth()
 const userId = auth.currentUser?.uid
 const tab = ref('crear')
+
+const {
+  subirReporte,
+
+  obtenerHistorialReportes,
+  formatearTamaño,
+} = useReportesStorage()
 
 // Composables
 const {
@@ -337,10 +379,11 @@ const reportesAnteriores = ref([
 ])
 
 const columnasHistorial = [
-  { name: 'fecha', label: 'Fecha', field: 'fecha', align: 'left' },
+  { name: 'fecha', label: 'Fecha', field: 'fecha', align: 'left', sortable: true },
   { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'left' },
   { name: 'elementos', label: 'Elementos', field: 'elementos', align: 'left' },
   { name: 'periodo', label: 'Período', field: 'periodo', align: 'left' },
+  { name: 'tamaño', label: 'Tamaño', field: 'tamaño', align: 'left' },
   { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
 
@@ -620,17 +663,78 @@ const generarReporte = async () => {
       agruparPor: agruparPor.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.displayName || userId.email,
+      nombreUsuario: userId.user?.displayName || userId.user?.email,
+    }
+    const resultadoPDF = generarPDFEventos(config, datosReales)
+
+    // Añadimos este console.log para depurar
+    console.log('Resultado de generarPDFEventos:', resultadoPDF)
+    // Generar PDF
+    const { blob, filename } = generarPDFEventos(config, datosReales)
+
+    if (!blob) {
+      console.error('El blob es undefined o nulo')
+      throw new Error(
+        'No se pudo generar el archivo PDF. Es posible que no haya datos para el período y filtros seleccionados.',
+      )
     }
 
-    generarPDFEventos(config, datosReales)
+    // Preparar metadata
+    const metadata = {
+      nombre: `Reporte ${reportarPor.value}`,
+      tipo: 'pdf',
+      tipoInforme: tipoInforme.value,
+      reportarPor: reportarPor.value,
+      elementos: elementosSeleccionados.value,
+      rangoFechas: rangoFechaFormateado.value,
+      columnas: columnasSeleccionadas.value,
+      totalEventos: datosReales.totalEventos,
+    }
 
+    // Subir a Firebase Storage y guardar metadata
+    const reporteGuardado = await subirReporte(blob, metadata)
+
+    // También descargar localmente
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    // Usar reporteGuardado para mostrar información más detallada
     $q.notify({
       type: 'positive',
-      message: 'PDF generado exitosamente',
-      icon: 'check_circle',
-      timeout: 2000,
+      message: `PDF generado y guardado con ID: ${reporteGuardado.id}`,
+      icon: 'cloud_done',
+      timeout: 3000,
+      actions: [
+        {
+          label: 'Ver en historial',
+          color: 'white',
+          handler: () => {
+            tab.value = 'historial'
+          },
+        },
+      ],
     })
+
+    // Opcional: agregar el nuevo reporte a la lista local sin recargar todo
+    if (reporteGuardado) {
+      reportesAnteriores.value.unshift({
+        id: reporteGuardado.id,
+        fecha: new Date().toLocaleDateString('es-MX'),
+        tipo: reporteGuardado.tipoInforme || 'Reporte',
+        elementos: reporteGuardado.elementos.join(', ') || 'N/A',
+        periodo: reporteGuardado.rangoFechas || 'N/A',
+        tamaño: formatearTamaño(reporteGuardado.tamaño),
+        downloadURL: reporteGuardado.storageUrl,
+        tipoArchivo: reporteGuardado.tipo,
+      })
+    }
+
+    // Recargar historial
+    await cargarHistorialReportes()
   } catch (error) {
     console.error('Error al generar PDF:', error)
     $q.notify({
@@ -660,17 +764,73 @@ const generarExcel = async () => {
       agruparPor: agruparPor.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.displayName || userId.email,
+      nombreUsuario: userId.displayName || userId.user?.email,
     }
 
-    await generarExcelEventos(config, datosReales)
+    // Generar Excel
+    const { blob, filename } = await generarExcelEventos(config, datosReales)
 
+    if (!blob) {
+      throw new Error(
+        'No se pudo generar el archivo Excel. Es posible que no haya datos para el período y filtros seleccionados.',
+      )
+    }
+    // Preparar metadata
+    const metadata = {
+      nombre: `Reporte ${reportarPor.value}`,
+      tipo: 'excel',
+      tipoInforme: tipoInforme.value,
+      reportarPor: reportarPor.value,
+      elementos: elementosSeleccionados.value,
+      rangoFechas: rangoFechaFormateado.value,
+      columnas: columnasSeleccionadas.value,
+      totalEventos: datosReales.totalEventos,
+    }
+
+    // Subir a Firebase Storage y guardar metadata
+    const reporteGuardado = await subirReporte(blob, metadata)
+
+    // También descargar localmente
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    // Usar reporteGuardado para mostrar información más detallada
     $q.notify({
       type: 'positive',
-      message: 'Excel generado exitosamente',
-      icon: 'check_circle',
-      timeout: 2000,
+      message: `Excel generado y guardado con ID: ${reporteGuardado.id}`,
+      icon: 'cloud_done',
+      timeout: 3000,
+      actions: [
+        {
+          label: 'Ver en historial',
+          color: 'white',
+          handler: () => {
+            tab.value = 'historial'
+          },
+        },
+      ],
     })
+
+    // Opcional: agregar el nuevo reporte a la lista local sin recargar todo
+    if (reporteGuardado) {
+      reportesAnteriores.value.unshift({
+        id: reporteGuardado.id,
+        fecha: new Date().toLocaleDateString('es-MX'),
+        tipo: reporteGuardado.tipoInforme || 'Reporte',
+        elementos: reporteGuardado.elementos.join(', ') || 'N/A',
+        periodo: reporteGuardado.rangoFechas || 'N/A',
+        tamaño: formatearTamaño(reporteGuardado.tamaño),
+        downloadURL: reporteGuardado.storageUrl,
+        tipoArchivo: reporteGuardado.tipo,
+      })
+    }
+
+    // Recargar historial
+    await cargarHistorialReportes()
   } catch (error) {
     console.error('Error al generar Excel:', error)
     $q.notify({
@@ -683,9 +843,29 @@ const generarExcel = async () => {
   }
 }
 
+const cargarHistorialReportes = async () => {
+  if (!userId.user?.uid) return
+
+  try {
+    const reportes = await obtenerHistorialReportes(userId.user.uid)
+    reportesAnteriores.value = reportes.map((r) => ({
+      id: r.id,
+      fecha: r.fechaCreacion?.toLocaleDateString('es-MX') || '',
+      tipo: r.tipoInforme || 'Reporte',
+      elementos: r.elementos.join(', ') || 'N/A',
+      periodo: r.rangoFechas || 'N/A',
+      tamaño: formatearTamaño(r.tamaño),
+      downloadURL: r.storageUrl,
+      tipoArchivo: r.tipo,
+    }))
+  } catch (error) {
+    console.error('Error al cargar historial:', error)
+  }
+}
 // Lifecycle
 onMounted(() => {
   cargarOpcionesSelector()
   cargarEventosDisponibles()
+  cargarHistorialReportes()
 })
 </script>

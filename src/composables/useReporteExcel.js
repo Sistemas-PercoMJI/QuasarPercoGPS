@@ -264,7 +264,10 @@ export function useReporteExcel() {
     link.click()
     window.URL.revokeObjectURL(url)
 
-    return link.download
+    return {
+      blob: blob,
+      filename: `informe_eventos_${Date.now()}.xlsx`,
+    }
   }
 
   return {

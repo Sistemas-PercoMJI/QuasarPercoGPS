@@ -172,11 +172,19 @@ export function useReportePDF() {
       })
     }
 
-    // Guardar el PDF
-    const filename = `informe_eventos_${Date.now()}.pdf`
-    doc.save(filename)
+    // --- PARTE CORREGIDA ---
+    // 1. Generar el blob a partir del documento PDF
+    const pdfBlob = doc.output('blob')
 
-    return filename
+    // 2. Crear un nombre para el archivo
+    const filename = `informe_eventos_${Date.now()}.pdf`
+
+    // 3. Devolver el blob y el nombre del archivo
+    return {
+      blob: pdfBlob,
+      filename: filename,
+    }
+    // --- FIN DE LA CORRECCIÓN ---
   }
 
   /**
@@ -220,11 +228,14 @@ export function useReportePDF() {
     })
 
     const filename = `reporte_${Date.now()}.pdf`
-    doc.save(filename)
-
-    return filename
+    const pdfBlob = doc.output('blob')
+    return {
+      blob: pdfBlob,
+      filename: filename,
+    }
   }
 
+  // Este es el return CORRECTO, al final de la función useReportePDF
   return {
     generarPDFEventos,
     generarPDFSimple,
