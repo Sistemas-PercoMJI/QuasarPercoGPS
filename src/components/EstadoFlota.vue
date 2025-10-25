@@ -1,57 +1,94 @@
 <template>
-  <div class="estado-flota-container">
-    <!-- Panel Izquierdo: Contenido completo -->
-    <div class="panel-izquierdo">
-      <!-- Vista de lista de vehículos -->
-      <div v-if="!vehiculoSeleccionado" class="lista-vehiculos">
-        <div class="drawer-header">
-          <div class="text-h6 text-weight-medium">Estado de la flota</div>
-          <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+  <div class="estado-flota-wrapper">
+    <!-- Header principal -->
+    <div class="flota-header">
+      <div class="header-content">
+        <q-btn 
+          v-if="vehiculoSeleccionado"
+          flat 
+          dense 
+          round 
+          icon="arrow_back" 
+          color="white"
+          @click="volverALista"
+          class="back-btn"
+        />
+        <div class="header-title">
+          <span v-if="!vehiculoSeleccionado">Estado de la flota</span>
+          <span v-else class="vehiculo-nombre">{{ vehiculoSeleccionado.nombre }}</span>
         </div>
+      </div>
+      <q-btn 
+        flat 
+        dense 
+        round 
+        icon="close" 
+        color="white" 
+        @click="cerrarDrawer"
+        class="close-btn"
+      />
+    </div>
 
-        <div class="q-pa-sm q-px-md">
-          <q-checkbox
-            v-model="todosVehiculos"
-            label="Todos los vehículos"
-            @update:model-value="seleccionarTodos"
-            dense
-          />
-          <span class="text-grey-7 q-ml-sm">{{ totalVehiculos }}</span>
-          <q-btn flat dense round icon="more_vert" size="sm" class="float-right" />
-        </div>
+    <!-- Vista de Lista de Vehículos -->
+    <div v-show="!vehiculoSeleccionado" class="vista-lista">
+      <!-- Selector todos los vehículos -->
+      <div class="selector-todos">
+        <q-checkbox
+          v-model="todosVehiculos"
+          label="Todos los vehículos"
+          @update:model-value="seleccionarTodos"
+          dense
+          color="primary"
+        />
+        <q-chip dense color="grey-3" text-color="grey-8">
+          {{ totalVehiculos }}
+        </q-chip>
+      </div>
 
-        <div class="estados-grid q-px-md q-pb-sm">
-          <q-btn
+      <!-- Grid de estados -->
+      <div class="estados-container">
+        <div class="estados-grid">
+          <div
             v-for="estado in estadosVehiculos"
             :key="estado.tipo"
-            flat
-            class="estado-btn"
-            @click="seleccionarEstado(estado)"
+            class="estado-card"
             :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
+            @click="seleccionarEstado(estado)"
           >
-            <div class="estado-contenido">
-              <q-icon :name="estado.icono" size="22px" :color="estado.color" class="estado-icono" />
-              <div class="estado-numero" :style="{ background: getColorHex(estado.color) }">
-                {{ estado.cantidad }}
-              </div>
+            <q-icon :name="estado.icono" size="24px" :color="estado.color" />
+            <div class="estado-badge" :style="{ backgroundColor: getColorHex(estado.color) }">
+              {{ estado.cantidad }}
             </div>
-          </q-btn>
+          </div>
         </div>
+      </div>
 
-        <div class="q-px-md q-pb-sm">
-          <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-        </div>
+      <!-- Búsqueda -->
+      <div class="search-container">
+        <q-input 
+          v-model="busqueda" 
+          outlined 
+          dense 
+          placeholder="Buscar vehículo..." 
+          class="search-input"
+        >
+          <template v-slot:prepend>
+            <q-icon name="search" color="grey-6" />
+          </template>
+          <template v-slot:append v-if="busqueda">
+            <q-icon name="close" class="cursor-pointer" @click="busqueda = ''" />
+          </template>
+        </q-input>
+      </div>
 
-        <div class="tabla-header q-px-md">
-          <div class="header-item">Nombre del vehículo</div>
-          <div class="header-item text-right">Velocidad</div>
-          <q-btn flat dense round icon="more_vert" size="sm" />
-        </div>
+      <!-- Header de tabla -->
+      <div class="tabla-header">
+        <div class="header-col">Vehículo</div>
+        <div class="header-col-velocidad">Velocidad</div>
+      </div>
 
+      <!-- Lista de vehículos -->
+      <q-scroll-area class="vehiculos-scroll-area">
         <q-list class="vehiculos-list">
           <q-item
             v-for="vehiculo in vehiculosFiltrados"
@@ -59,552 +96,493 @@
             clickable
             v-ripple
             @click="seleccionarVehiculo(vehiculo)"
-            :active="vehiculoSeleccionado?.id === vehiculo.id"
             class="vehiculo-item"
           >
             <q-item-section avatar>
-              <q-avatar :color="getColorEstado(vehiculo.estado)" text-color="white" size="40px">
-                <q-icon :name="getIconoEstado(vehiculo.estado)" size="24px" />
+              <q-avatar 
+                :style="{ backgroundColor: getColorHex(getColorEstado(vehiculo.estado)) }" 
+                text-color="white" 
+                size="44px"
+              >
+                <q-icon :name="getIconoEstado(vehiculo.estado)" size="22px" />
               </q-avatar>
             </q-item-section>
 
             <q-item-section>
-              <q-item-label class="text-weight-medium">{{ vehiculo.nombre }}</q-item-label>
-              <q-item-label caption class="text-grey-7">{{ vehiculo.ubicacion }}</q-item-label>
+              <q-item-label class="vehiculo-nombre-item">
+                {{ vehiculo.nombre }}
+              </q-item-label>
+              <q-item-label caption class="vehiculo-ubicacion">
+                <q-icon name="place" size="14px" class="q-mr-xs" />
+                {{ vehiculo.ubicacion }}
+              </q-item-label>
             </q-item-section>
 
-            <q-item-section side class="text-right">
-              <q-item-label>{{ vehiculo.velocidad }}</q-item-label>
+            <q-item-section side class="velocidad-section">
+              <div class="velocidad-badge">
+                {{ vehiculo.velocidad }}
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
-      </div>
+      </q-scroll-area>
+    </div>
 
-      <!-- Vista de detalles del vehículo -->
-      <div v-else class="detalles-vehiculo">
-        <div class="drawer-header">
-          <q-btn flat dense round icon="arrow_back" color="white" @click="cerrarDetalles" />
-          <div class="text-h6 text-weight-medium">{{ vehiculoSeleccionado.nombre }}</div>
-          <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
-        </div>
+    <!-- Vista de Detalles del Vehículo -->
+    <transition name="slide-right">
+      <div v-if="vehiculoSeleccionado" class="vista-detalles">
+      <!-- Tabs de navegación -->
+      <q-tabs
+        v-model="tabActual"
+        dense
+        class="tabs-vehiculo"
+        active-color="primary"
+        indicator-color="primary"
+        align="justify"
+      >
+        <q-tab name="resumen" icon="description" class="tab-item" />
+        <q-tab name="hoy" icon="schedule" class="tab-item" />
+        <q-tab name="notificaciones" class="tab-item">
+          <q-icon name="notifications" />
+          <q-badge 
+            v-if="vehiculoSeleccionado && vehiculoSeleccionado.notificaciones > 0" 
+            color="red" 
+            floating
+            rounded
+          >
+            {{ vehiculoSeleccionado.notificaciones }}
+          </q-badge>
+        </q-tab>
+        <q-tab name="combustible" icon="local_gas_station" class="tab-item" />
+      </q-tabs>
 
-        <!-- Tabs de navegación -->
-        <q-tabs
-          v-model="tabActual"
-          dense
-          class="text-grey-7 bg-white"
-          active-color="primary"
-          indicator-color="primary"
-          align="justify"
-          outside-arrows
-          mobile-arrows
+      <!-- Contenido de las tabs -->
+      <q-scroll-area class="tab-content-scroll">
+        <q-tab-panels 
+          v-if="vehiculoSeleccionado"
+          v-model="tabActual" 
+          animated 
+          class="tab-panels-content"
         >
-          <q-tab name="resumen" icon="description" label="Resumen" />
-          <q-tab name="hoy" icon="schedule" label="Hoy" />
-          <q-tab name="notificaciones" icon="notifications" label="Notificaciones">
-            <q-badge v-if="vehiculoSeleccionado.notificaciones > 0" color="red" floating>
-              {{ vehiculoSeleccionado.notificaciones }}
-            </q-badge>
-          </q-tab>
-          <q-tab name="combustible" icon="local_gas_station" label="Combustible" />
-        </q-tabs>
-
-        <!-- Contenido de las tabs -->
-        <q-tab-panels v-model="tabActual" animated class="tab-panels">
           <!-- Tab Resumen -->
-          <q-tab-panel name="resumen" class="q-pa-md">
-            <div class="detalle-seccion">
-              <div class="detalle-item">
-                <q-icon name="place" color="primary" size="20px" />
-                <div class="detalle-texto">
-                  <div class="detalle-label">Ubicación</div>
-                  <div class="detalle-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
-                  <div class="detalle-coordenadas">
-                    {{ vehiculoSeleccionado.coordenadas }}
-                  </div>
+          <q-tab-panel name="resumen" class="tab-panel-padding">
+            <div class="info-card ubicacion-card">
+              <div class="info-icon-wrapper">
+                <q-icon name="place" color="primary" size="24px" />
+              </div>
+              <div class="info-content">
+                <div class="info-label">Ubicación actual</div>
+                <div class="info-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
+                <div class="info-coordenadas">
+                  <q-icon name="my_location" size="14px" class="q-mr-xs" />
+                  {{ vehiculoSeleccionado.coordenadas }}
                 </div>
               </div>
+            </div>
 
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Plan</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.plan }}</div>
+            <div class="detalles-grid">
+              <div class="detalle-row">
+                <span class="detalle-label">Plan</span>
+                <q-chip dense color="blue-1" text-color="primary" class="detalle-chip">
+                  {{ vehiculoSeleccionado.plan }}
+                </q-chip>
               </div>
 
-              <q-separator class="q-my-md" />
+              <div class="detalle-row">
+                <span class="detalle-label">Estado actual</span>
+                <q-chip 
+                  dense 
+                  :style="{ backgroundColor: getColorHex(getColorEstado(vehiculoSeleccionado.estado)) }" 
+                  text-color="white"
+                >
+                  {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
+                </q-chip>
+              </div>
 
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Bloquear vehículo</div>
+              <div class="detalle-row">
+                <span class="detalle-label">Bloquear vehículo</span>
                 <q-toggle
                   v-model="vehiculoSeleccionado.bloqueado"
-                  color="grey-7"
+                  color="primary"
                   @update:model-value="toggleBloqueo"
                 />
               </div>
 
-              <q-separator class="q-my-md" />
+              <q-separator class="separator" />
 
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Estado actual</div>
-                <div class="detalle-valor-derecha">
-                  <q-chip :color="getColorEstado(vehiculoSeleccionado.estado)" text-color="white" dense>
-                    {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
-                  </q-chip>
-                </div>
+              <div class="detalle-row">
+                <span class="detalle-label">Tiempo de conducción hoy</span>
+                <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionHoy }}</span>
               </div>
 
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Tiempo de conducción restante hoy</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionHoy }}</div>
+              <div class="detalle-row">
+                <span class="detalle-label">Tiempo esta semana</span>
+                <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionSemana }}</span>
               </div>
 
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Tiempo de conducción restante esta semana</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tiempoConductionSemana }}</div>
+              <div class="detalle-row">
+                <span class="detalle-label">Duración de estado</span>
+                <span class="detalle-valor">{{ vehiculoSeleccionado.duracionEstado }}</span>
               </div>
 
-              <q-separator class="q-my-md" />
+              <q-separator class="separator" />
 
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Duración de estado</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.duracionEstado }}</div>
-              </div>
-
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Última sincronización de señal</div>
-                <div class="detalle-valor-derecha text-grey-7">
+              <div class="detalle-row">
+                <span class="detalle-label">
+                  <q-icon name="sync" size="16px" class="q-mr-xs" />
+                  Última sincronización
+                </span>
+                <span class="detalle-valor-small">
                   {{ vehiculoSeleccionado.ultimaSincronizacion }}
-                  <q-icon name="info_outline" size="16px" class="q-ml-xs" />
-                </div>
+                </span>
               </div>
 
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Fecha y hora</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.fechaHora }}</div>
+              <div class="detalle-row">
+                <span class="detalle-label">
+                  <q-icon name="schedule" size="16px" class="q-mr-xs" />
+                  Fecha y hora
+                </span>
+                <span class="detalle-valor-small">{{ vehiculoSeleccionado.fechaHora }}</span>
               </div>
 
-              <q-separator class="q-my-md" />
-
-              <div class="detalle-item">
-                <div class="detalle-label-simple">Tipo de trayecto</div>
-                <div class="detalle-valor-derecha">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
+              <div class="detalle-row">
+                <span class="detalle-label">
+                  <q-icon name="route" size="16px" class="q-mr-xs" />
+                  Tipo de trayecto
+                </span>
+                <span class="detalle-valor-small">{{ vehiculoSeleccionado.tipoTrayecto }}</span>
               </div>
             </div>
 
             <q-btn 
+              unelevated
               color="primary" 
-              label="Detalles del vehículo" 
-              class="full-width q-mt-md"
+              label="Ver detalles completos" 
+              class="full-width btn-detalles"
+              icon="arrow_forward"
               @click="verDetallesCompletos"
             />
           </q-tab-panel>
 
           <!-- Tab Hoy -->
-          <q-tab-panel name="hoy" class="q-pa-md">
-            <div class="filtro-dia">
-              <q-btn flat dense icon="chevron_left" />
-              <span class="text-weight-medium">Hoy</span>
-              <q-btn flat dense icon="chevron_right" />
+          <q-tab-panel name="hoy" class="tab-panel-padding">
+            <div class="filtro-dia-card">
+              <q-btn flat dense round icon="chevron_left" size="sm" />
+              <div class="dia-actual">
+                <div class="dia-label">Hoy</div>
+                <div class="dia-fecha">{{ vehiculoSeleccionado.fechaTimeline }}</div>
+              </div>
+              <q-btn flat dense round icon="chevron_right" size="sm" />
             </div>
 
-            <div class="resumen-dia q-mt-md">
-              <div class="resumen-item">
-                <div class="resumen-label">Ubicación de inicio</div>
-                <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
-              </div>
-              <div class="resumen-item">
-                <div class="resumen-label">Ubicación de fin</div>
-                <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
-              </div>
-              <div class="resumen-item">
-                <div class="resumen-label">Duración de trabajo</div>
-                <div class="resumen-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
-              </div>
-              <div class="resumen-item">
-                <div class="resumen-label">Duración de parada</div>
-                <div class="resumen-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
-              </div>
-              <div class="resumen-item">
-                <div class="resumen-label">Kilometraje</div>
-                <div class="resumen-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
-              </div>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <div class="timeline-header q-mb-md">
-              <span class="text-weight-medium">{{ vehiculoSeleccionado.fechaTimeline }}</span>
-            </div>
-
-            <q-timeline color="primary" class="timeline-actividades">
-              <q-timeline-entry
-                v-for="(actividad, index) in vehiculoSeleccionado.actividades"
-                :key="index"
-                :title="actividad.titulo"
-                :subtitle="actividad.hora"
-                :icon="actividad.icono"
-                :color="actividad.color"
-              >
-                <div class="actividad-detalle">
-                  <div class="actividad-info">
-                    <div>Duración de la {{ actividad.tipo }}</div>
-                    <div class="text-weight-medium">{{ actividad.duracion }}</div>
-                  </div>
-                  <div class="actividad-info">
-                    <div>Kilometraje</div>
-                    <div class="text-weight-medium">{{ actividad.kilometraje }}</div>
+            <div class="resumen-dia-card">
+              <div class="card-title">Resumen del día</div>
+              <div class="resumen-grid">
+                <div class="resumen-item-card">
+                  <q-icon name="play_circle" color="green" size="20px" />
+                  <div class="resumen-content">
+                    <div class="resumen-label">Ubicación de inicio</div>
+                    <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
                   </div>
                 </div>
-              </q-timeline-entry>
-            </q-timeline>
 
-            <div class="conducido-por q-mt-md">
-              <div class="text-grey-7">Conducido por</div>
-              <div class="text-weight-medium">{{ vehiculoSeleccionado.conductor }}</div>
+                <div class="resumen-item-card">
+                  <q-icon name="stop_circle" color="red" size="20px" />
+                  <div class="resumen-content">
+                    <div class="resumen-label">Ubicación de fin</div>
+                    <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
+                  </div>
+                </div>
+
+                <div class="resumen-stat">
+                  <q-icon name="work" color="blue" size="18px" />
+                  <div>
+                    <div class="stat-label">Duración de trabajo</div>
+                    <div class="stat-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
+                  </div>
+                </div>
+
+                <div class="resumen-stat">
+                  <q-icon name="pause_circle" color="orange" size="18px" />
+                  <div>
+                    <div class="stat-label">Duración de parada</div>
+                    <div class="stat-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
+                  </div>
+                </div>
+
+                <div class="resumen-stat">
+                  <q-icon name="speed" color="purple" size="18px" />
+                  <div>
+                    <div class="stat-label">Kilometraje</div>
+                    <div class="stat-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="tipo-trayecto-seccion q-mt-md">
-              <div class="text-grey-7">Tipo de trayecto</div>
-              <div class="text-weight-medium">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
-              <q-btn flat dense color="primary" label="EDITAR" size="sm" />
+            <div class="timeline-section" v-if="vehiculoSeleccionado.actividades.length > 0">
+              <div class="section-title">Actividades</div>
+              <q-timeline color="primary" class="timeline-actividades">
+                <q-timeline-entry
+                  v-for="(actividad, index) in vehiculoSeleccionado.actividades"
+                  :key="index"
+                  :icon="actividad.icono"
+                  :color="actividad.color"
+                >
+                  <template v-slot:title>
+                    <div class="timeline-title">{{ actividad.titulo }}</div>
+                  </template>
+                  <template v-slot:subtitle>
+                    <div class="timeline-hora">{{ actividad.hora }}</div>
+                  </template>
+                  <div class="timeline-detalle-card">
+                    <div class="timeline-info">
+                      <span class="timeline-info-label">Duración</span>
+                      <span class="timeline-info-valor">{{ actividad.duracion }}</span>
+                    </div>
+                    <div class="timeline-info">
+                      <span class="timeline-info-label">Kilometraje</span>
+                      <span class="timeline-info-valor">{{ actividad.kilometraje }}</span>
+                    </div>
+                  </div>
+                </q-timeline-entry>
+              </q-timeline>
             </div>
 
-            <div class="notas-seccion q-mt-md">
-              <div class="text-grey-7">Notas</div>
-              <q-input 
-                v-model="vehiculoSeleccionado.notas" 
-                outlined 
-                type="textarea" 
-                placeholder="Agregar nota..."
-                class="q-mt-sm"
-              />
-              <q-btn flat dense color="primary" label="EDITAR" size="sm" class="q-mt-xs" />
+            <div class="info-adicional-card">
+              <div class="info-item">
+                <q-icon name="person" color="grey-7" size="20px" />
+                <div>
+                  <div class="info-item-label">Conducido por</div>
+                  <div class="info-item-valor">{{ vehiculoSeleccionado.conductor }}</div>
+                </div>
+              </div>
+
+              <q-separator />
+
+              <div class="info-item">
+                <q-icon name="route" color="grey-7" size="20px" />
+                <div class="flex-grow">
+                  <div class="info-item-label">Tipo de trayecto</div>
+                  <div class="info-item-valor">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
+                </div>
+                <q-btn flat dense color="primary" label="Editar" size="sm" />
+              </div>
+
+              <q-separator />
+
+              <div class="info-item-column">
+                <div class="info-item-header">
+                  <q-icon name="note" color="grey-7" size="20px" />
+                  <div class="info-item-label">Notas</div>
+                  <q-btn flat dense color="primary" label="Editar" size="sm" />
+                </div>
+                <q-input 
+                  v-model="vehiculoSeleccionado.notas" 
+                  outlined 
+                  type="textarea" 
+                  placeholder="Agregar nota..."
+                  rows="3"
+                  class="notas-input"
+                />
+              </div>
             </div>
           </q-tab-panel>
 
           <!-- Tab Notificaciones -->
-          <q-tab-panel name="notificaciones" class="q-pa-md">
-            <div class="filtro-notificaciones q-mb-md">
+          <q-tab-panel name="notificaciones" class="tab-panel-padding">
+            <div class="filtro-container">
               <q-select
                 v-model="filtroNotificaciones"
                 :options="['Todo', 'Alertas', 'Info', 'Eventos']"
                 outlined
                 dense
                 label="Mostrar eventos"
+                class="filtro-select"
               />
             </div>
 
-            <q-list v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0">
-              <q-item 
-                v-for="(evento, index) in vehiculoSeleccionado.eventos" 
+            <div v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0" class="eventos-list">
+              <div
+                v-for="(evento, index) in vehiculoSeleccionado.eventos"
                 :key="index"
-                class="evento-item"
+                class="evento-card"
               >
-                <q-item-section avatar>
-                  <q-avatar :color="evento.color" text-color="white" size="40px">
-                    <q-icon :name="evento.icono" />
-                  </q-avatar>
-                </q-item-section>
-
-                <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ evento.titulo }}</q-item-label>
-                  <q-item-label caption>{{ evento.fecha }}</q-item-label>
-                </q-item-section>
-
-                <q-item-section side>
-                  <q-icon name="expand_more" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-
-            <div v-else class="sin-notificaciones">
-              <div class="icono-vacio">
-                <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
+                <q-avatar 
+                  :style="{ backgroundColor: getColorHex(evento.color) }" 
+                  text-color="white" 
+                  size="44px"
+                >
+                  <q-icon :name="evento.icono" size="22px" />
+                </q-avatar>
+                <div class="evento-content">
+                  <div class="evento-titulo">{{ evento.titulo }}</div>
+                  <div class="evento-fecha">
+                    <q-icon name="schedule" size="14px" />
+                    {{ evento.fecha }}
+                  </div>
+                </div>
+                <q-btn flat dense round icon="expand_more" />
               </div>
-              <div class="texto-vacio text-grey-7">No hay eventos para mostrar</div>
+            </div>
+
+            <div v-else class="empty-state">
+              <q-icon name="notifications_none" size="80px" color="grey-4" />
+              <div class="empty-title">Sin notificaciones</div>
+              <div class="empty-subtitle">No hay eventos para mostrar en este momento</div>
             </div>
           </q-tab-panel>
 
           <!-- Tab Combustible -->
-          <q-tab-panel name="combustible" class="q-pa-md">
-            <div class="sin-notificaciones">
-              <div class="icono-vacio">
-                <q-icon name="sentiment_satisfied" size="80px" color="grey-5" />
-              </div>
-              <div class="texto-vacio text-grey-7">No hay información de combustible disponible</div>
+          <q-tab-panel name="combustible" class="tab-panel-padding">
+            <div class="empty-state">
+              <q-icon name="local_gas_station" size="80px" color="grey-4" />
+              <div class="empty-title">Sin información</div>
+              <div class="empty-subtitle">No hay datos de combustible disponibles</div>
             </div>
           </q-tab-panel>
         </q-tab-panels>
-      </div>
+      </q-scroll-area>
     </div>
-
-    <!-- Panel Derecho: Mapa (opcional, más pequeño) -->
-    <div class="panel-derecho">
-      <div class="mapa-container">
-        <!-- Aquí iría tu componente de mapa -->
-        <div class="mapa-placeholder">
-          <q-icon name="map" size="60px" color="grey-5" />
-          <div class="text-grey-7 q-mt-sm text-caption">Mapa</div>
-        </div>
-      </div>
-    </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
-// Emits
-const emit = defineEmits(['close', 'vehiculo-seleccionado', 'navegar-mapa'])
+// Composable de tracking
+const { 
+  unidadesActivas, 
+  //loading, 
+  iniciarTracking, 
+  detenerTracking,
+  contarPorEstado 
+} = useTrackingUnidades()
 
-// Estado
-const todosVehiculos = ref(true)
-const estadoSeleccionado = ref('todos')
-const busqueda = ref('')
+// Props y emits
+const emit = defineEmits(['close', 'vehiculo-seleccionado'])
+
+// Estado local
 const vehiculoSeleccionado = ref(null)
+const busqueda = ref('')
+const estadoSeleccionado = ref('todos')
+const todosVehiculos = ref(true)
 const tabActual = ref('resumen')
-const filtroNotificaciones = ref('Todo')
+const filtroNotificaciones = ref('todos')
 
-// Definición de estados de vehículos
-const estadosVehiculos = ref([
-  { tipo: 'todos', nombre: 'Todos', icono: 'directions_car', color: 'blue', cantidad: 6 },
-  { tipo: 'movimiento', nombre: 'En movimiento', icono: 'navigation', color: 'green', cantidad: 0 },
-  { tipo: 'inactivo', nombre: 'Inactivo', icono: 'pause_circle', color: 'orange', cantidad: 1 },
-  { tipo: 'ignicion_apagada', nombre: 'Ignición apagada', icono: 'power_settings_new', color: 'blue-grey', cantidad: 4 },
-  { tipo: 'carga', nombre: 'Carga', icono: 'local_gas_station', color: 'cyan', cantidad: 0 },
-  { tipo: 'ignicion_bloqueada', nombre: 'Ignición bloqueada', icono: 'lock', color: 'red', cantidad: 1 },
-])
-
-// Lista de vehículos con información completa
-const vehiculos = ref([
-  {
-    id: 1,
-    nombre: 'CRAFTER-VF61428_REV',
-    ubicacion: 'MX, Hermosillo, Boulevard Enrique Mazón López...',
-    velocidad: '1 km/h',
-    estado: 'inactivo',
-    coordenadas: '29.0990083, -110.921115',
-    plan: 'Básico plus',
+// Computed - Convertir unidades activas a formato de vehículos
+const vehiculos = computed(() => {
+  return unidadesActivas.value.map(unidad => ({
+    id: unidad.id,
+    nombre: unidad.unidadNombre,
+    ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
+    coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
+    velocidad: `${unidad.velocidad} km/h`,
+    estado: unidad.estado,
+    conductor: unidad.conductorNombre,
+    conductorFoto: unidad.conductorFoto,
+    placa: unidad.unidadPlaca,
+    ignicion: unidad.ignicion,
+    bateria: unidad.bateria,
+    timestamp: unidad.timestamp,
+    ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
+    
+    // Datos de ejemplo para tabs
+    plan: 'Plan Básico',
     bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '42 min',
-    ultimaSincronizacion: 'hace unos segundos',
-    fechaHora: '21/10/2025 11:08:53',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Hermosillo, Boulevard Enrique Mazón López',
-    ubicacionFin: 'MX, Hermosillo, Boulevard Enrique Mazón López',
-    duracionTrabajo: '3 min',
-    duracionParada: '11 h 6 min',
-    kilometraje: '0,00 km',
-    fechaTimeline: '21/10/2025',
+    tiempoConductionHoy: '3h 24m',
+    tiempoConductionSemana: '18h 45m',
+    duracionEstado: '15 minutos',
+    ultimaSincronizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
+    fechaHora: new Date().toLocaleString('es-MX'),
+    tipoTrayecto: 'Ruta comercial',
+    notificaciones: 0,
+    
+    // Timeline de ejemplo
+    fechaTimeline: new Date().toLocaleDateString('es-MX'),
+    ubicacionInicio: 'Zona Centro',
+    ubicacionFin: unidad.direccionTexto,
+    duracionTrabajo: '3h 24m',
+    
     actividades: [
       {
-        titulo: 'Parada',
-        hora: '0:00',
-        tipo: 'parada',
-        duracion: '10 h 18 min',
-        kilometraje: '0,00 km',
-        icono: 'pause_circle',
-        color: 'orange'
+        titulo: 'Viaje iniciado',
+        hora: '08:00 AM',
+        ubicacion: 'Zona Centro',
+        distancia: '0 km',
+        duracion: '0 min'
       },
       {
-        titulo: 'Inicio',
-        hora: '10:17',
-        tipo: 'conducción',
-        duracion: '1 min',
-        kilometraje: '0,00 km',
-        icono: 'play_arrow',
-        color: 'green'
-      },
-      {
-        titulo: 'Parada',
-        hora: '10:18',
-        tipo: 'parada',
-        duracion: '6 min',
-        kilometraje: '0,00 km',
-        icono: 'pause_circle',
-        color: 'orange'
+        titulo: 'En ruta',
+        hora: new Date(unidad.timestamp).toLocaleTimeString('es-MX', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        ubicacion: unidad.direccionTexto,
+        distancia: '12 km',
+        duracion: `${Math.floor(Math.random() * 60)} min`
       }
     ],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 2,
-    nombre: 'ELEV TIJ-SOTO-FRONTI...',
-    ubicacion: 'MX, Ensenada, Calle Lago de...',
-    velocidad: '6 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '31.8667, -116.6000',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '2 h 15 min',
-    ultimaSincronizacion: 'hace 5 minutos',
-    fechaHora: '21/10/2025 10:45:20',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Ensenada, Calle Lago de',
-    ubicacionFin: 'MX, Ensenada, Calle Lago de',
-    duracionTrabajo: '45 min',
-    duracionParada: '8 h 30 min',
-    kilometraje: '12,5 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 3,
-    nombre: 'PERCO TIJ-CRAFTER-UX...',
-    ubicacion: 'MX, Tijuana, Calle Rey Alejan...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '1 h 30 min',
-    ultimaSincronizacion: 'hace 2 minutos',
-    fechaHora: '21/10/2025 10:30:15',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Calle Rey Alejan',
-    ubicacionFin: 'MX, Tijuana, Calle Rey Alejan',
-    duracionTrabajo: '1 h',
-    duracionParada: '9 h',
-    kilometraje: '5,2 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 4,
-    nombre: 'SPRINTER-PANEL-1-HF3...',
-    ubicacion: 'MX, Tijuana, Boulevard Guad...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5027, -117.0039',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '3 h',
-    ultimaSincronizacion: 'hace 10 minutos',
-    fechaHora: '21/10/2025 09:49:30',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard Guad',
-    ubicacionFin: 'MX, Tijuana, Boulevard Guad',
-    duracionTrabajo: '30 min',
-    duracionParada: '10 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 1,
-    eventos: [
-      {
-        titulo: 'SALIDA TALLER MJ INDUSTRIAL',
-        fecha: '21/10/2025 9:49',
-        icono: 'exit_to_app',
-        color: 'blue'
-      }
-    ]
-  },
-  {
-    id: 5,
-    nombre: 'TIENDAPERCO-TIJ-NP3...',
-    ubicacion: 'MX, Tijuana, Boulevard de lo...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_apagada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: false,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '5 h',
-    ultimaSincronizacion: 'hace 1 hora',
-    fechaHora: '21/10/2025 07:00:00',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard de lo',
-    ubicacionFin: 'MX, Tijuana, Boulevard de lo',
-    duracionTrabajo: '0 min',
-    duracionParada: '12 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-  {
-    id: 6,
-    nombre: 'VENTAS_PERCO_INS_N...',
-    ubicacion: 'MX, Tijuana, Boulevard de lo...',
-    velocidad: '0 km/h',
-    estado: 'ignicion_bloqueada',
-    coordenadas: '32.5149, -117.0382',
-    plan: 'Básico plus',
-    bloqueado: true,
-    tiempoConductionHoy: '—',
-    tiempoConductionSemana: '—',
-    duracionEstado: '6 h',
-    ultimaSincronizacion: 'hace 2 horas',
-    fechaHora: '21/10/2025 06:00:00',
-    tipoTrayecto: 'Ninguno',
-    ubicacionInicio: 'MX, Tijuana, Boulevard de lo',
-    ubicacionFin: 'MX, Tijuana, Boulevard de lo',
-    duracionTrabajo: '0 min',
-    duracionParada: '12 h',
-    kilometraje: '0 km',
-    fechaTimeline: '21/10/2025',
-    actividades: [],
-    conductor: 'Sin conductor',
-    notas: '',
-    notificaciones: 0,
-    eventos: []
-  },
-])
+    
+    eventos: [],
+    
+    combustible: {
+      nivelActual: Math.floor(Math.random() * 40) + 60,
+      capacidadTotal: 60,
+      rendimiento: 12.5,
+      ultimaCarga: 'Hace 2 días',
+      consumoHoy: 8.5,
+      kmRestantes: 450
+    }
+  }))
+})
+// Computed para estados
+const estadosVehiculos = computed(() => {
+  const conteo = contarPorEstado()
+  
+  return [
+    { tipo: 'todos', nombre: 'Todos', icono: 'directions_car', color: 'blue', cantidad: conteo.todos },
+    { tipo: 'movimiento', nombre: 'En movimiento', icono: 'navigation', color: 'green', cantidad: conteo.movimiento },
+    { tipo: 'detenido', nombre: 'Detenido', icono: 'pause_circle', color: 'orange', cantidad: conteo.detenido },
+    { tipo: 'inactivo', nombre: 'Inactivo', icono: 'power_settings_new', color: 'blue-grey', cantidad: conteo.inactivo }
+  ]
+})
 
-// Computed
 const totalVehiculos = computed(() => vehiculos.value.length)
 
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
+  // Filtrar por estado
   if (estadoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
+    resultado = resultado.filter(v => v.estado === estadoSeleccionado.value)
   }
 
+  // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(
-      (v) =>
-        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()),
+    resultado = resultado.filter(v => 
+      v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+      v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+      v.conductor.toLowerCase().includes(busqueda.value.toLowerCase())
     )
   }
 
   return resultado
 })
+
+/*const eventosFiltrados = computed(() => {
+  if (!vehiculoSeleccionado.value) return []
+  
+  const eventos = vehiculoSeleccionado.value.eventos || []
+  
+  if (filtroNotificaciones.value === 'todos') {
+    return eventos
+  }
+  
+  return eventos.filter(e => e.tipo === filtroNotificaciones.value)
+})*/
 
 // Methods
 function seleccionarTodos(valor) {
@@ -620,43 +598,32 @@ function seleccionarEstado(estado) {
 
 function seleccionarVehiculo(vehiculo) {
   vehiculoSeleccionado.value = vehiculo
-  tabActual.value = 'resumen'
-  
-  // Emitir evento para navegar en el mapa
   emit('vehiculo-seleccionado', vehiculo)
-  emit('navegar-mapa', {
-    lat: parseFloat(vehiculo.coordenadas.split(',')[0]),
-    lng: parseFloat(vehiculo.coordenadas.split(',')[1]),
-    vehiculo: vehiculo
-  })
+}
+
+function volverALista() {
+  vehiculoSeleccionado.value = null
+  tabActual.value = 'resumen'
 }
 
 function cerrarDrawer() {
   emit('close')
 }
 
-function cerrarDetalles() {
-  vehiculoSeleccionado.value = null
-}
-
 function toggleBloqueo(valor) {
-  console.log('Bloqueo cambiado:', valor)
-  // Aquí puedes agregar la lógica para bloquear/desbloquear el vehículo en Firebase
+  console.log('Toggle bloqueo:', valor)
 }
 
 function verDetallesCompletos() {
-  console.log('Ver detalles completos del vehículo')
-  // Navegar a una vista completa o abrir un modal con más detalles
+  console.log('Ver detalles completos')
 }
 
 function getColorEstado(estado) {
   const colores = {
     todos: 'blue',
     movimiento: 'green',
-    inactivo: 'orange',
-    ignicion_apagada: 'blue-grey',
-    carga: 'cyan',
-    ignicion_bloqueada: 'red',
+    detenido: 'orange',
+    inactivo: 'blue-grey'
   }
   return colores[estado] || 'grey'
 }
@@ -665,24 +632,10 @@ function getIconoEstado(estado) {
   const iconos = {
     todos: 'directions_car',
     movimiento: 'navigation',
-    inactivo: 'pause_circle',
-    ignicion_apagada: 'power_settings_new',
-    carga: 'local_gas_station',
-    ignicion_bloqueada: 'lock',
+    detenido: 'pause_circle',
+    inactivo: 'power_settings_new'
   }
   return iconos[estado] || 'directions_car'
-}
-
-function getEstadoTexto(estado) {
-  const textos = {
-    todos: 'Todos',
-    movimiento: 'En movimiento',
-    inactivo: 'Inactivo',
-    ignicion_apagada: 'Ignición apagada',
-    carga: 'Carga',
-    ignicion_bloqueada: 'Ignición bloqueada',
-  }
-  return textos[estado] || 'Desconocido'
 }
 
 function getColorHex(color) {
@@ -692,359 +645,755 @@ function getColorHex(color) {
     orange: '#FF9800',
     'blue-grey': '#607D8B',
     cyan: '#00BCD4',
-    red: '#F44336',
+    red: '#F44336'
   }
   return colores[color] || '#9E9E9E'
 }
+
+function getEstadoTexto(estado) {
+  const textos = {
+    movimiento: 'En movimiento',
+    detenido: 'Detenido',
+    inactivo: 'Inactivo'
+  }
+  return textos[estado] || 'Desconocido'
+}
+
+// Lifecycle
+onMounted(() => {
+  iniciarTracking()
+  console.log('✅ Tracking iniciado en EstadoFlota')
+})
+
+onBeforeUnmount(() => {
+  detenerTracking()
+  console.log('🛑 Tracking detenido en EstadoFlota')
+})
+
 </script>
 
 <style scoped>
-.estado-flota-container {
-  display: flex;
+/* === LAYOUT PRINCIPAL === */
+.estado-flota-wrapper {
   width: 100%;
   height: 100vh;
-  background: white;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fa;
   overflow: hidden;
 }
 
-.panel-izquierdo {
-  width: 100%;
-  max-width: 500px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border-right: 1px solid #e0e0e0;
-}
-
-.panel-derecho {
-  width: 300px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: #f5f5f5;
-  border-left: 1px solid #e0e0e0;
-}
-
-.lista-vehiculos {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.detalles-vehiculo {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.mapa-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mapa-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-}
-
-.drawer-header {
+/* === HEADER === */
+.flota-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-  color: white;
-  min-height: 48px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #c62828 0%, #d84315 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-height: 64px;
+  z-index: 10;
 }
 
-.drawer-header .text-h6 {
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.header-title {
   color: white;
-  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.vehiculo-nombre {
   font-size: 16px;
   font-weight: 500;
 }
 
-/* Grid de estados */
+.back-btn,
+.close-btn {
+  transition: transform 0.2s ease;
+}
+
+.back-btn:hover,
+.close-btn:hover {
+  transform: scale(1.1);
+}
+
+/* === VISTA LISTA === */
+.vista-lista {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.selector-todos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* === ESTADOS GRID === */
+.estados-container {
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .estados-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 12px;
 }
 
-.estado-btn {
-  padding: 8px 6px;
-  border-radius: 8px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-.estado-btn:hover {
-  border-color: #1976d2;
-  background: #f5f5f5;
-}
-
-.estado-btn.estado-activo {
-  border-color: #1976d2;
-  background: #e3f2fd;
-}
-
-.estado-contenido {
+.estado-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  padding: 16px 8px;
+  background: #fafafa;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 80px;
 }
 
-.estado-icono {
-  font-size: 22px;
+.estado-card:hover {
+  border-color: #2196F3;
+  background: #f5f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
 
-.estado-numero {
-  min-width: 28px;
-  height: 20px;
-  border-radius: 10px;
+.estado-card.estado-activo {
+  border-color: #2196F3;
+  background: #e3f2fd;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.estado-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 12px;
-  padding: 0 6px;
+  padding: 0 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Búsqueda */
+/* === BÚSQUEDA === */
+.search-container {
+  padding: 0 20px 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .search-input {
   background: white;
+  border-radius: 8px;
 }
 
-/* Tabla header */
+/* === TABLA HEADER === */
 .tabla-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-  font-weight: 500;
-  color: #666;
-  font-size: 11px;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #fafafa;
+  border-bottom: 2px solid #e0e0e0;
+  font-weight: 600;
+  color: #616161;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.header-item {
+.header-col {
   flex: 1;
 }
 
-/* Lista de vehículos */
+.header-col-velocidad {
+  text-align: right;
+  min-width: 80px;
+}
+
+/* === LISTA VEHÍCULOS === */
+.vehiculos-scroll-area {
+  flex: 1;
+  height: 100%;
+}
+
 .vehiculos-list {
-  flex: 1;
-  overflow-y: auto;
+  padding: 0;
 }
 
 .vehiculo-item {
+  padding: 16px 20px;
   border-bottom: 1px solid #f0f0f0;
-  padding: 10px 12px;
-}
-
-.vehiculo-item.q-item--active {
-  background-color: #e3f2fd;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .vehiculo-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f5f9ff;
+  border-left: 4px solid #2196F3;
 }
 
-/* Tabs */
-.tab-panels {
-  flex: 1;
-  overflow-y: auto;
-  background: white;
+.vehiculo-nombre-item {
+  font-weight: 600;
+  font-size: 14px;
+  color: #212121;
+  margin-bottom: 4px;
 }
 
-/* Panel de Resumen */
-.detalle-seccion {
+.vehiculo-ubicacion {
+  font-size: 12px;
+  color: #757575;
+  display: flex;
+  align-items: center;
+}
+
+.velocidad-section {
+  min-width: 80px;
+}
+
+.velocidad-badge {
+  padding: 6px 12px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* === VISTA DETALLES === */
+.vista-detalles {
+  position: absolute;
+  right: 0;
+  top: 64px;
+  bottom: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
+  background: white;
+  z-index: 100;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
 }
 
-.detalle-item {
+/* === ANIMACIÓN SLIDE === */
+.slide-right-enter-active {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-right-leave-active {
+  animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* === TABS === */
+.tabs-vehiculo {
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  min-height: 56px;
+}
+
+.tab-item {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.tab-content-scroll {
+  flex: 1;
+  height: 100%;
+  background: #f5f7fa;
+}
+
+.tab-panels-content {
+  background: transparent;
+  height: 100%;
+}
+
+.tab-panel-padding {
+  padding: 20px;
+}
+
+/* === INFO CARD === */
+.info-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.ubicacion-card {
+  border-left: 4px solid #2196F3;
+}
+
+.info-icon-wrapper {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  padding-top: 4px;
 }
 
-.detalle-texto {
+.info-content {
   flex: 1;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.info-valor {
+  font-size: 15px;
+  color: #212121;
+  font-weight: 600;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.info-coordenadas {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #9e9e9e;
+  font-family: 'Courier New', monospace;
+}
+
+/* === DETALLES GRID === */
+.detalles-grid {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.detalle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
 }
 
 .detalle-label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 4px;
+  font-size: 14px;
+  color: #616161;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
 }
 
 .detalle-valor {
   font-size: 14px;
-  color: #333;
-  font-weight: 500;
+  color: #212121;
+  font-weight: 600;
 }
 
-.detalle-coordenadas {
-  font-size: 12px;
-  color: #999;
-  margin-top: 2px;
-}
-
-.detalle-label-simple {
-  flex: 1;
-  font-size: 14px;
-  color: #666;
-}
-
-.detalle-valor-derecha {
-  font-size: 14px;
-  color: #333;
+.detalle-valor-small {
+  font-size: 13px;
+  color: #424242;
   font-weight: 500;
   text-align: right;
 }
 
-/* Tab Hoy */
-.filtro-dia {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  padding: 8px;
-  background: #f5f5f5;
-  border-radius: 8px;
+.detalle-chip {
+  font-weight: 600;
+  font-size: 12px;
 }
 
-.resumen-dia {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
+.separator {
+  margin: 8px 0;
+  background: #e0e0e0;
 }
 
-.resumen-item {
+/* === BOTÓN DETALLES === */
+.btn-detalles {
+  margin-top: 8px;
+  height: 48px;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* === TAB HOY === */
+.filtro-dia-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.dia-actual {
+  text-align: center;
+  flex: 1;
+}
+
+.dia-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dia-fecha {
+  font-size: 15px;
+  color: #212121;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* === RESUMEN DIA === */
+.resumen-dia-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212121;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.resumen-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resumen-item-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  border-left: 3px solid;
+}
+
+.resumen-item-card:nth-child(1) {
+  border-left-color: #4CAF50;
+}
+
+.resumen-item-card:nth-child(2) {
+  border-left-color: #F44336;
+}
+
+.resumen-content {
+  flex: 1;
 }
 
 .resumen-label {
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 4px;
 }
 
 .resumen-valor {
   font-size: 13px;
-  color: #333;
-  font-weight: 500;
+  color: #212121;
+  font-weight: 600;
 }
 
-.timeline-header {
+.resumen-stat {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #757575;
+}
+
+.stat-valor {
   font-size: 14px;
-  color: #333;
+  color: #212121;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* === TIMELINE === */
+.timeline-section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212121;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
 }
 
 .timeline-actividades {
-  padding: 0;
+  padding-left: 8px;
 }
 
-.actividad-detalle {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.timeline-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #212121;
+}
+
+.timeline-hora {
+  font-size: 12px;
+  color: #757575;
+  margin-top: 2px;
+}
+
+.timeline-detalle-card {
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 8px;
   margin-top: 8px;
 }
 
-.actividad-info {
+.timeline-info {
   display: flex;
   justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.timeline-info:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-info-label {
+  font-size: 12px;
+  color: #757575;
+}
+
+.timeline-info-valor {
   font-size: 13px;
+  color: #212121;
+  font-weight: 600;
 }
 
-.conducido-por {
-  padding: 12px;
-  background: #f9f9f9;
+/* === INFO ADICIONAL === */
+.info-adicional-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.info-item-column {
+  padding: 16px 0;
+}
+
+.info-item-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.info-item-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.info-item-valor {
+  font-size: 14px;
+  color: #212121;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.flex-grow {
+  flex: 1;
+}
+
+.notas-input {
+  margin-top: 8px;
+}
+
+/* === TAB NOTIFICACIONES === */
+.filtro-container {
+  margin-bottom: 16px;
+}
+
+.filtro-select {
+  background: white;
   border-radius: 8px;
 }
 
-.tipo-trayecto-seccion {
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 8px;
+.eventos-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.evento-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.evento-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.evento-content {
+  flex: 1;
+}
+
+.evento-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212121;
+  margin-bottom: 4px;
+}
+
+.evento-fecha {
+  font-size: 12px;
+  color: #757575;
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
-.notas-seccion {
-  padding: 12px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-
-/* Tab Notificaciones */
-.filtro-notificaciones {
-  width: 100%;
-}
-
-.evento-item {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 12px 0;
-}
-
-.sin-notificaciones {
+/* === EMPTY STATE === */
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.icono-vacio {
-  margin-bottom: 16px;
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #424242;
+  margin-top: 16px;
+  margin-bottom: 8px;
 }
 
-.texto-vacio {
+.empty-subtitle {
   font-size: 14px;
+  color: #9e9e9e;
+  max-width: 300px;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .estado-flota-container {
-    flex-direction: column;
+/* === RESPONSIVE === */
+@media (max-width: 600px) {
+  .flota-header {
+    padding: 12px 16px;
+    min-height: 56px;
   }
 
-  .panel-izquierdo {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
+  .header-title {
+    font-size: 16px;
   }
 
-  .panel-derecho {
-    display: none;
+  .estados-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
-}
 
-@media (max-width: 1024px) {
-  .panel-derecho {
-    width: 250px;
+  .estado-card {
+    min-height: 70px;
+    padding: 12px 6px;
+  }
+
+  .tab-panel-padding {
+    padding: 16px;
   }
 }
 </style>

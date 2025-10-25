@@ -1,6 +1,6 @@
 rules_version = '2';
-service cloud.firestore {
 
+service cloud.firestore {
   match /databases/{database}/documents {
     
     // Reportes: acceso para autenticados
@@ -31,40 +31,35 @@ service cloud.firestore {
     match /Usuarios/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // ✅ SUBCOLECCIÓN POIS - mismo nivel que GruposConductores
+      // SUBCOLECCIÓN POIS
       match /POIS/{poiId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-      match /POIS {
-        allow list: if request.auth != null && request.auth.uid == userId;
-      }
       
-      // ✅ SUBCOLECCIÓN GruposConductores
+      // SUBCOLECCIÓN GruposConductores
       match /GruposConductores/{grupoId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-      match /GruposConductores {
-        allow list: if request.auth != null && request.auth.uid == userId;
-      }
+      
+      // SUBCOLECCIÓN Geozonas
       match /Geozonas/{geozonaId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-      match /Geozonas {
-        allow list: if request.auth != null && request.auth.uid == userId;
-
-      }
+      
+      // SUBCOLECCIÓN Eventos
       match /Eventos/{eventoId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-      match /Eventos {
-        allow list: if request.auth != null && request.auth.uid == userId;
+      
+      // ⭐ AGREGAR: SUBCOLECCIÓN HistorialReportes
+      match /HistorialReportes/{reporteId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
+    // Listar usuarios (si lo necesitas)
     match /Usuarios {
       allow list: if request.auth != null;
     }
   }
-
-}}
-
-
+}

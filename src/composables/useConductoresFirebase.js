@@ -1,24 +1,19 @@
 // src/composables/useConductoresFirebase.js
 import { ref } from 'vue'
-import { 
-  collection, 
-  doc, 
-  getDocs, 
+import {
+  collection,
+  doc,
+  getDocs,
   getDoc,
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
   orderBy,
   onSnapshot,
-  Timestamp 
+  Timestamp,
 } from 'firebase/firestore'
-import { 
-  ref as storageRef, 
-  uploadBytes, 
-  getDownloadURL,
-  deleteObject 
-} from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage, auth } from 'src/firebase/firebaseConfig'
 
 export function useConductoresFirebase() {
@@ -28,16 +23,16 @@ export function useConductoresFirebase() {
   const gruposConductores = ref([])
   const loading = ref(false)
   const error = ref(null)
-  
+
   // Referencias de Firebase
   const conductoresRef = collection(db, 'Conductores')
   const unidadesRef = collection(db, 'Unidades')
-  
+
   // Obtener el ID del usuario actual
   const getCurrentUserId = () => {
     return auth.currentUser?.uid || null
   }
-  
+
   // Obtener referencia a grupos del usuario
   const getGruposRef = () => {
     const userId = getCurrentUserId()
@@ -46,7 +41,7 @@ export function useConductoresFirebase() {
   }
 
   // === CONDUCTORES ===
-  
+
   // Obtener todos los conductores
   const obtenerConductores = async () => {
     loading.value = true
@@ -54,9 +49,9 @@ export function useConductoresFirebase() {
     try {
       const q = query(conductoresRef, orderBy('Nombre'))
       const snapshot = await getDocs(q)
-      conductores.value = snapshot.docs.map(doc => ({
+      conductores.value = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
       return conductores.value
     } catch (err) {
@@ -71,31 +66,54 @@ export function useConductoresFirebase() {
   // Escuchar cambios en tiempo real de conductores
   const escucharConductores = () => {
     const q = query(conductoresRef, orderBy('Nombre'))
-    return onSnapshot(q, (snapshot) => {
-      conductores.value = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-    }, (err) => {
-      console.error('Error en listener de conductores:', err)
-      error.value = err.message
-    })
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        conductores.value = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+      },
+      (err) => {
+        console.error('Error en listener de conductores:', err)
+        error.value = err.message
+      },
+    )
   }
 
+  // Agregar conductor
   // Agregar conductor
   const agregarConductor = async (conductorData) => {
     loading.value = true
     error.value = null
     try {
+      // 1️⃣ Obtener todos los conductores para encontrar el último Id
+      const snapshot = await getDocs(conductoresRef)
+
+      // 2️⃣ Encontrar el Id más alto
+      let maxId = 0
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const currentId = parseInt(data.Id) || 0
+        if (currentId > maxId) {
+          maxId = currentId
+        }
+      })
+
+      // 3️⃣ El nuevo Id será el siguiente número
+      const nuevoId = maxId + 1
+
+      console.log('🔢 Último Id:', maxId, '→ Nuevo Id:', nuevoId)
+
+      // 4️⃣ Crear el documento con el Id secuencial
       const docRef = await addDoc(conductoresRef, {
         ...conductorData,
-        Id: conductorData.Id || '',
-        createdAt: Timestamp.now()
+        Id: nuevoId.toString(), // Guardar como string para mantener consistencia
+        createdAt: Timestamp.now(),
       })
-      
-      // Actualizar el ID en el documento
-      await updateDoc(docRef, { Id: docRef.id })
-      
+
+      console.log('✅ Conductor creado con Id:', nuevoId)
+
       await obtenerConductores()
       return docRef.id
     } catch (err) {
@@ -115,7 +133,7 @@ export function useConductoresFirebase() {
       const docRef = doc(conductoresRef, conductorId)
       await updateDoc(docRef, {
         ...data,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       })
       await obtenerConductores()
     } catch (err) {
@@ -165,11 +183,10 @@ export function useConductoresFirebase() {
       await deleteDoc(conductorDocRef)
 
       // 5. Actualizar el estado local de forma eficiente (sin recargar todo)
-      conductores.value = conductores.value.filter(c => c.id !== conductorId)
+      conductores.value = conductores.value.filter((c) => c.id !== conductorId)
 
       console.log('Conductor eliminado correctamente.')
       return true
-
     } catch (err) {
       console.error('Error al eliminar conductor:', err)
       error.value = err.message
@@ -188,16 +205,16 @@ export function useConductoresFirebase() {
       const timestamp = Date.now()
       const fileName = `licencias/${conductorId}_${timestamp}.${file.name.split('.').pop()}`
       const fileRef = storageRef(storage, fileName)
-      
+
       // Subir archivo
       const snapshot = await uploadBytes(fileRef, file)
       const downloadURL = await getDownloadURL(snapshot.ref)
-      
+
       // Actualizar conductor con la URL
       await actualizarConductor(conductorId, {
-        LicenciaConducirFoto: downloadURL
+        LicenciaConducirFoto: downloadURL,
       })
-      
+
       return downloadURL
     } catch (err) {
       console.error('Error al subir foto:', err)
@@ -209,7 +226,7 @@ export function useConductoresFirebase() {
   }
 
   // === UNIDADES ===
-  
+
   // Obtener todas las unidades
   const obtenerUnidades = async () => {
     loading.value = true
@@ -217,9 +234,9 @@ export function useConductoresFirebase() {
     try {
       const q = query(unidadesRef, orderBy('Unidad'))
       const snapshot = await getDocs(q)
-      unidades.value = snapshot.docs.map(doc => ({
+      unidades.value = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
       return unidades.value
     } catch (err) {
@@ -237,7 +254,7 @@ export function useConductoresFirebase() {
     error.value = null
     try {
       await actualizarConductor(conductorId, {
-        UnidadAsignada: unidadId
+        UnidadAsignada: unidadId,
       })
     } catch (err) {
       console.error('Error al asignar unidad:', err)
@@ -249,7 +266,7 @@ export function useConductoresFirebase() {
   }
 
   // === GRUPOS DE CONDUCTORES ===
-  
+
   // Obtener grupos del usuario
   const obtenerGruposConductores = async () => {
     loading.value = true
@@ -258,9 +275,9 @@ export function useConductoresFirebase() {
       const gruposRef = getGruposRef()
       const q = query(gruposRef, orderBy('Nombre'))
       const snapshot = await getDocs(q)
-      gruposConductores.value = snapshot.docs.map(doc => ({
+      gruposConductores.value = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
       return gruposConductores.value
     } catch (err) {
@@ -277,15 +294,19 @@ export function useConductoresFirebase() {
     try {
       const gruposRef = getGruposRef()
       const q = query(gruposRef, orderBy('Nombre'))
-      return onSnapshot(q, (snapshot) => {
-        gruposConductores.value = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
-      }, (err) => {
-        console.error('Error en listener de grupos:', err)
-        error.value = err.message
-      })
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          gruposConductores.value = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+        },
+        (err) => {
+          console.error('Error en listener de grupos:', err)
+          error.value = err.message
+        },
+      )
     } catch (err) {
       console.error('Error al configurar listener:', err)
       return null
@@ -301,7 +322,7 @@ export function useConductoresFirebase() {
       const docRef = await addDoc(gruposRef, {
         Nombre: grupoData.Nombre,
         ConductoresIds: grupoData.ConductoresIds || [],
-        createdAt: Timestamp.now()
+        createdAt: Timestamp.now(),
       })
       await obtenerGruposConductores()
       return docRef.id
@@ -321,25 +342,25 @@ export function useConductoresFirebase() {
     try {
       const gruposRef = getGruposRef()
       const docRef = doc(gruposRef, grupoId)
-      
+
       // Preparar datos para actualizar
       const updateData = {
         ...data,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       }
-      
+
       await updateDoc(docRef, updateData)
-      
+
       // Actualizar el estado local inmediatamente
-      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
       if (grupoIndex !== -1) {
         gruposConductores.value[grupoIndex] = {
           ...gruposConductores.value[grupoIndex],
           ...updateData,
-          id: grupoId
+          id: grupoId,
         }
       }
-      
+
       console.log('Grupo actualizado correctamente')
       return true
     } catch (err) {
@@ -358,10 +379,10 @@ export function useConductoresFirebase() {
     try {
       const gruposRef = getGruposRef()
       await deleteDoc(doc(gruposRef, grupoId))
-      
+
       // Actualizar el estado local inmediatamente
-      gruposConductores.value = gruposConductores.value.filter(g => g.id !== grupoId)
-      
+      gruposConductores.value = gruposConductores.value.filter((g) => g.id !== grupoId)
+
       console.log('Grupo eliminado correctamente')
       return true
     } catch (err) {
@@ -381,25 +402,25 @@ export function useConductoresFirebase() {
       const gruposRef = getGruposRef()
       const docRef = doc(gruposRef, grupoId)
       const grupoDoc = await getDoc(docRef)
-      
+
       if (!grupoDoc.exists()) {
         throw new Error('Grupo no encontrado')
       }
-      
+
       const conductoresActuales = grupoDoc.data().ConductoresIds || []
       const nuevosIds = [...new Set([...conductoresActuales, ...conductoresIds])]
-      
+
       await updateDoc(docRef, {
         ConductoresIds: nuevosIds,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       })
-      
+
       // Actualizar el estado local inmediatamente
-      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
       if (grupoIndex !== -1) {
         gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
       }
-      
+
       return true
     } catch (err) {
       console.error('Error al agregar conductores a grupo:', err)
@@ -417,25 +438,25 @@ export function useConductoresFirebase() {
       const gruposRef = getGruposRef()
       const docRef = doc(gruposRef, grupoId)
       const grupoDoc = await getDoc(docRef)
-      
+
       if (!grupoDoc.exists()) {
         throw new Error('Grupo no encontrado')
       }
-      
+
       const conductoresActuales = grupoDoc.data().ConductoresIds || []
-      const nuevosIds = conductoresActuales.filter(id => id !== conductorId)
-      
+      const nuevosIds = conductoresActuales.filter((id) => id !== conductorId)
+
       await updateDoc(docRef, {
         ConductoresIds: nuevosIds,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       })
-      
+
       // Actualizar el estado local inmediatamente
-      const grupoIndex = gruposConductores.value.findIndex(g => g.id === grupoId)
+      const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
       if (grupoIndex !== -1) {
         gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
       }
-      
+
       console.log('Conductor removido del grupo correctamente')
       return true
     } catch (err) {
@@ -446,29 +467,27 @@ export function useConductoresFirebase() {
   }
 
   // === UTILIDADES ===
-  
+
   // Obtener conductores de un grupo
   const conductoresPorGrupo = (grupoId) => {
-    const grupo = gruposConductores.value.find(g => g.id === grupoId)
+    const grupo = gruposConductores.value.find((g) => g.id === grupoId)
     if (!grupo) return []
-    
-    return conductores.value.filter(c => 
-      grupo.ConductoresIds?.includes(c.id)
-    )
+
+    return conductores.value.filter((c) => grupo.ConductoresIds?.includes(c.id))
   }
 
   // Contar conductores por grupo
   const contarConductoresPorGrupo = (grupoId) => {
-    const grupo = gruposConductores.value.find(g => g.id === grupoId)
+    const grupo = gruposConductores.value.find((g) => g.id === grupoId)
     return grupo?.ConductoresIds?.length || 0
   }
 
   // Obtener unidad asignada a conductor
   const obtenerUnidadDeConductor = (conductorId) => {
-    const conductor = conductores.value.find(c => c.id === conductorId)
+    const conductor = conductores.value.find((c) => c.id === conductorId)
     if (!conductor?.UnidadAsignada) return null
-    
-    return unidades.value.find(u => u.id === conductor.UnidadAsignada)
+
+    return unidades.value.find((u) => u.id === conductor.UnidadAsignada)
   }
 
   return {
@@ -478,7 +497,7 @@ export function useConductoresFirebase() {
     gruposConductores,
     loading,
     error,
-    
+
     // Métodos de conductores
     obtenerConductores,
     escucharConductores,
@@ -486,12 +505,12 @@ export function useConductoresFirebase() {
     actualizarConductor,
     eliminarConductor,
     subirFotoLicencia,
-    
+
     // Métodos de unidades
     obtenerUnidades,
     asignarUnidad,
     obtenerUnidadDeConductor,
-    
+
     // Métodos de grupos
     obtenerGruposConductores,
     escucharGrupos,
@@ -500,9 +519,9 @@ export function useConductoresFirebase() {
     eliminarGrupo,
     agregarConductoresAGrupo,
     removerConductorDeGrupo,
-    
+
     // Utilidades
     conductoresPorGrupo,
-    contarConductoresPorGrupo
+    contarConductoresPorGrupo,
   }
 }

@@ -4,7 +4,7 @@
 
     <q-btn
       fab
-      :color="traficoActivo ? 'positive' : 'grey-7'"
+      :color="traficoActivo ? 'positive' : 'red'"
       :icon="traficoActivo ? 'traffic' : 'block'"
       class="traffic-toggle-btn"
       @click="manejarToggleTrafico"
@@ -12,6 +12,11 @@
     >
       <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
     </q-btn>
+
+    <!-- SimuladorControl - Justo debajo del botón de tráfico -->
+    <div class="simulador-container">
+      <SimuladorControl />
+    </div>
 
     <transition name="fade-scale">
       <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
@@ -50,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useMap } from 'src/composables/useMap'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
@@ -58,8 +63,11 @@ import { useEventos } from 'src/composables/useEventos'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
+import SimuladorControl from 'src/components/SimuladorControl.vue'
+import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
-const { initMap, addMarker, cleanup, toggleTrafico } = useMap()
+
+const { initMap, addMarker, cleanup, toggleTrafico, actualizarMarcadoresUnidades, limpiarMarcadoresUnidades } = useMap()
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, actualizarUbicacion, resetear } = useEventDetection()
 
@@ -67,7 +75,7 @@ const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
 const marcadorUsuario = ref(null)
-
+const { unidadesActivas, iniciarTracking, detenerTracking } = useTrackingUnidades()
 const userId = ref(auth.currentUser?.uid || '')
 
 const { obtenerPOIs } = usePOIs(userId.value)
@@ -276,6 +284,18 @@ const dibujarTodosEnMapa = async () => {
     console.warn('⚠️ Mapa no disponible para dibujar items')
     return
   }
+
+  // 🆕 Watch para actualizar marcadores GPS en tiempo real
+watch(unidadesActivas, (nuevasUnidades) => {
+  if (mapaAPI && mapaListo.value && nuevasUnidades.length > 0) {
+    console.log(`🗺️ Actualizando ${nuevasUnidades.length} unidades en el mapa`)
+    actualizarMarcadoresUnidades(nuevasUnidades)
+  } else if (nuevasUnidades.length === 0) {
+    console.log('🧹 No hay unidades activas, limpiando marcadores')
+    limpiarMarcadoresUnidades()
+  }
+}, { deep: true })
+
 
   mapaAPI = mapPage._mapaAPI
 
@@ -716,6 +736,8 @@ onMounted(async () => {
     resetear()
     await inicializarSistemaDeteccion()
   })
+  console.log('🚀 Iniciando tracking GPS...')
+  iniciarTracking()
 })
 
 const handleMostrarBoton = (e) => {
@@ -787,6 +809,8 @@ onUnmounted(() => {
   detenerSeguimientoGPS()
 
   // Resetear sistema de detección
+  detenerTracking()
+  limpiarMarcadoresUnidades()
   resetear()
 
   if (window._resizeHandler) {
@@ -990,8 +1014,8 @@ const manejarToggleTrafico = () => {
 /* Botón de toggle de tráfico */
 .traffic-toggle-btn {
   position: fixed !important;
-  top: 80px;
-  left: 85px; /* Justo a la derecha del drawer mini */
+  top: 150px;
+  right: 20px; /* Justo a la derecha del drawer mini */
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
@@ -1021,4 +1045,56 @@ const manejarToggleTrafico = () => {
   mix-blend-mode: multiply;
   opacity: 0.9;
 }
+
+/* Contenedor del SimuladorControl - VERSIÓN COMPACTA */
+.simulador-container {
+  position: fixed !important;
+  top: 220px; /* Debajo del botón de tráfico */
+  right: 20px;
+  z-index: 1000;
+}
+
+/* Cuando está expandido, darle ancho fijo */
+.simulador-container :deep(.simulador-card-expandido) {
+  width: 350px;
+}
+
+/* Media query para pantallas pequeñas */
+@media (max-width: 768px) {
+  .simulador-container :deep(.simulador-card-expandido) {
+    width: 320px;
+  }
+  
+  .simulador-container {
+    right: 10px;
+  }
+}
+
+/* 🆕 Estilos para marcadores GPS */
+:deep(.custom-marker-unidad) {
+  background: none !important;
+  border: none !important;
+}
+
+@keyframes pulse-gps {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+:deep(.popup-unidad .leaflet-popup-content-wrapper) {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.popup-unidad .leaflet-popup-content) {
+  margin: 0;
+}
+
+
 </style>

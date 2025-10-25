@@ -417,8 +417,8 @@
             <!-- Slider principal -->
             <q-slider
               v-model="nuevoPOI.radio"
-              :min="10"
-              :max="1000"
+              :min="5"
+              :max="500"
               :step="10"
               color="primary"
               track-color="grey-3"
@@ -430,8 +430,8 @@
 
             <!-- Valores mín/máx -->
             <div class="row justify-between text-caption text-grey-6">
-              <span>10m</span>
-              <span>1km</span>
+              <span>5m</span>
+              <span>500m</span>
             </div>
 
             <!-- Atajos rápidos -->
@@ -442,25 +442,33 @@
                   dense
                   outline
                   color="primary"
+                  label="5m"
+                  size="sm"
+                  @click="establecerRadio(5)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="10m"
+                  size="sm"
+                  @click="establecerRadio(10)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="20m"
+                  size="sm"
+                  @click="establecerRadio(20)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
                   label="50m"
                   size="sm"
                   @click="establecerRadio(50)"
-                />
-                <q-btn
-                  dense
-                  outline
-                  color="primary"
-                  label="100m"
-                  size="sm"
-                  @click="establecerRadio(100)"
-                />
-                <q-btn
-                  dense
-                  outline
-                  color="primary"
-                  label="250m"
-                  size="sm"
-                  @click="establecerRadio(250)"
                 />
                 <q-btn
                   dense
@@ -515,6 +523,7 @@
 
         <q-card-section class="q-pt-lg text-center">
           <q-icon name="change_history" size="64px" color="primary" class="q-mb-md" />
+
           <div class="text-subtitle1">Geozona Poligonal</div>
           <div class="text-caption text-grey-7 q-mt-sm">
             Marca múltiples puntos en el mapa para definir el área de la geozona.
@@ -537,7 +546,19 @@
     <!-- Dialog: Nueva Geozona -->
     <q-dialog v-model="dialogNuevaGeozona" persistent>
       <q-card style="min-width: 400px; max-width: 500px">
+        <q-card-section class="bg-secondary text-white">
+          <div class="row items-center">
+            <q-icon name="layers" size="32px" class="q-mr-md" />
+            <div>
+              <div class="text-h6">Nueva Geozona</div>
+              <div class="text-caption">Define un área con múltiples puntos</div>
+            </div>
+            <q-space />
+            <q-btn flat dense round icon="close" v-close-popup color="white" />
+          </div>
+        </q-card-section>
         <q-card-section class="q-pt-lg">
+          <div></div>
           <q-input v-model="nuevaGeozona.nombre" label="Nombre de la zona" outlined class="q-mb-md">
             <template v-slot:prepend>
               <q-icon name="label" />
@@ -579,80 +600,6 @@
               >
                 Punto {{ index + 1 }}
               </q-chip>
-            </div>
-          </div>
-
-          <q-select
-            v-model="nuevaGeozona.grupoId"
-            :options="opcionesGruposSelect"
-            label="Grupo (opcional)"
-            outlined
-            emit-value
-            map-options
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="folder" />
-            </template>
-          </q-select>
-
-          <q-input
-            v-model="nuevaGeozona.notas"
-            label="Notas adicionales"
-            type="textarea"
-            outlined
-            rows="3"
-          >
-            <template v-slot:prepend>
-              <q-icon name="note" />
-            </template>
-          </q-input>
-        </q-card-section>
-
-        <q-card-section class="q-pt-lg">
-          <q-input v-model="nuevaGeozona.nombre" label="Nombre de la zona" outlined class="q-mb-md">
-            <template v-slot:prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
-
-          <!-- Campos específicos para geozona poligonal -->
-          <div v-if="nuevaGeozona.tipo === 'poligono'">
-            <q-input
-              v-model="nuevaGeozona.direccion"
-              label="Puntos del polígono"
-              outlined
-              class="q-mb-md"
-              readonly
-              placeholder="Haz clic para seleccionar puntos en el mapa"
-              @click="activarSeleccionGeozonaPoligonal"
-            >
-              <template v-slot:prepend>
-                <q-icon name="change_history" />
-              </template>
-              <template v-slot:append>
-                <q-icon
-                  name="edit_location"
-                  class="cursor-pointer"
-                  @click="activarSeleccionGeozonaPoligonal"
-                />
-              </template>
-            </q-input>
-
-            <div v-if="nuevaGeozona.puntos && nuevaGeozona.puntos.length > 0" class="q-mb-md">
-              <div class="text-caption text-grey-7 q-mb-sm">Puntos seleccionados:</div>
-              <div class="row q-gutter-sm">
-                <q-chip
-                  v-for="(punto, index) in nuevaGeozona.puntos"
-                  :key="index"
-                  removable
-                  @remove="eliminarPuntoPoligono(index)"
-                  color="secondary"
-                  text-color="white"
-                >
-                  Punto {{ index + 1 }}
-                </q-chip>
-              </div>
             </div>
           </div>
 
@@ -810,6 +757,11 @@ const poligonoActivo = ref(null)
 const modoSeleccionGeozonaCircular = ref(false)
 const modoSeleccionGeozonaPoligonal = ref(false)
 
+// 🆕 NUEVAS VARIABLES PARA VISTA PREVIA
+const posicionMouseActual = ref(null)
+const lineaPreview = ref(null)
+const poligonoPreview = ref(null)
+
 const nuevoPOI = ref({
   nombre: '',
   direccion: '',
@@ -965,6 +917,86 @@ function contarEventos(ubicacionId, tipo) {
   return count
 }
 
+const manejarMovimientoMouse = (e) => {
+  // Obtener mapaAPI
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+
+  // Obtener puntos directamente del mapaAPI (en tiempo real)
+  const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
+
+  // Solo mostrar preview si hay al menos 1 punto
+  if (!puntosActuales || puntosActuales.length === 0) {
+    return
+  }
+
+  posicionMouseActual.value = e.latlng
+
+  actualizarVistaPrevia()
+}
+// 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
+const actualizarVistaPrevia = () => {
+  if (!posicionMouseActual.value) {
+    return
+  }
+
+  // Obtener el mapa desde mapaAPI
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map || !mapPage._mapaAPI.L) {
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+  const mapa = mapaAPI.map
+  const L = mapaAPI.L
+
+  // Obtener puntos directamente del mapaAPI (en tiempo real)
+  const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
+
+  if (!puntosActuales || puntosActuales.length === 0) {
+    return
+  }
+
+  // Limpiar línea y polígono de preview anteriores
+  if (lineaPreview.value) {
+    mapa.removeLayer(lineaPreview.value)
+    lineaPreview.value = null
+  }
+  if (poligonoPreview.value) {
+    mapa.removeLayer(poligonoPreview.value)
+    poligonoPreview.value = null
+  }
+
+  const ultimoPunto = puntosActuales[puntosActuales.length - 1]
+
+  // Dibujar línea desde el último punto hasta el cursor
+
+  lineaPreview.value = L.polyline([ultimoPunto, posicionMouseActual.value], {
+    color: '#1976d2',
+    weight: 2,
+    opacity: 0.7,
+    dashArray: '10, 10',
+  }).addTo(mapa)
+
+  // Si hay al menos 2 puntos, mostrar el polígono preview completo
+  if (puntosActuales.length >= 2) {
+    const puntosPreview = [...puntosActuales, posicionMouseActual.value]
+
+    poligonoPreview.value = L.polygon(puntosPreview, {
+      color: '#1976d2',
+      fillColor: '#1976d2',
+      fillOpacity: 0.15,
+      weight: 2,
+      opacity: 0.5,
+      dashArray: '10, 10',
+    }).addTo(mapa)
+  }
+}
+
 // Computed properties
 const pois = computed(() => items.value.filter((i) => i.tipo === 'poi'))
 const geozonas = computed(() => {
@@ -1001,14 +1033,10 @@ const poisFiltrados = computed(() => {
 
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
-  console.log('🔍 DEBUG geozonasFiltradas:')
-  console.log('  - geozonas.value:', geozonas.value)
-  console.log('  - grupoSeleccionadoGZ:', grupoSeleccionadoGZ.value)
-  console.log('  - busquedaGeozona:', busquedaGeozona.value)
 
   if (grupoSeleccionadoGZ.value) {
     resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
-    console.log('  - después de filtrar por grupo:', resultado)
+    console.log('🔍 DEBUG geozonasFiltradas - después de filtrar por grupo:', resultado)
   }
   if (busquedaGeozona.value) {
     resultado = resultado.filter(
@@ -1249,7 +1277,7 @@ function editarItem() {
       coordenadas: itemMenu.value.coordenadas,
       grupoId: itemMenu.value.grupoId,
       notas: itemMenu.value.notas || '',
-      radio: itemMenu.value.radio || 100, // ✅ NUEVO: Cargar radio existente
+      radio: itemMenu.value.radio || 5, // ✅ NUEVO: Cargar radio existente
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
@@ -1388,7 +1416,7 @@ const guardarPOI = async () => {
       coordenadas: nuevoPOI.value.coordenadas || null,
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
-      radio: nuevoPOI.value.radio || 100, // ✅ NUEVO: Incluir radio
+      radio: nuevoPOI.value.radio || 5, // ✅ NUEVO: Incluir radio
     }
 
     if (nuevoPOI.value.id) {
@@ -1467,16 +1495,64 @@ function abrirDialogGeozonaPoligonal() {
   dialogNuevaGeozona.value = true
 }
 
+// 🆕 FUNCIÓN PARA LIMPIAR COMPLETAMENTE LAS CAPAS DE PREVIEW
+const limpiarPreviewCompleto = () => {
+  const mapPage = document.querySelector('#map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    return
+  }
+
+  const mapa = mapPage._mapaAPI.map
+
+  // Limpiar línea de preview
+  if (lineaPreview.value) {
+    try {
+      mapa.removeLayer(lineaPreview.value)
+    } catch (error) {
+      console.error('❌ Error al remover línea de preview:', error)
+    }
+    lineaPreview.value = null
+  } else {
+    console.log('ℹ️ No había línea de preview para limpiar')
+  }
+
+  // Limpiar polígono de preview
+  if (poligonoPreview.value) {
+    try {
+      mapa.removeLayer(poligonoPreview.value)
+    } catch (error) {
+      console.error('❌ Error al remover polígono de preview:', error)
+    }
+    poligonoPreview.value = null
+  } else {
+    console.log('ℹ️ No había polígono de preview para limpiar')
+  }
+
+  // Resetear posición del mouse
+  posicionMouseActual.value = null
+
+  // Remover listener de mouse
+  try {
+    mapa.off('mousemove', manejarMovimientoMouse)
+  } catch (error) {
+    console.error('❌ Error al remover listener:', error)
+  }
+}
+
 // Función para cancelar la creación de una nueva geozona
 function cancelarNuevaGeozona() {
   const mapPage = document.querySelector('#map-page')
 
   if (mapPage && mapPage._mapaAPI) {
-    console.log('🧹 Limpiando mapa al cancelar...')
     mapPage._mapaAPI.desactivarModoSeleccion()
 
     // Solo limpiar polígonos (ya no hay círculos)
     mapPage._mapaAPI.limpiarPoligonoTemporal()
+
+    // 🆕 USAR LA FUNCIÓN DE LIMPIEZA MEJORADA
+    limpiarPreviewCompleto()
+  } else {
+    console.warn('⚠️ No se encontró mapPage o mapaAPI para limpiar')
   }
 
   const componentDialog = document.querySelector('.component-dialog')
@@ -1496,25 +1572,19 @@ function cancelarNuevaGeozona() {
   // Resetear formulario
   nuevaGeozona.value = {
     nombre: '',
-    tipo: 'poligono', // Siempre polígono ahora
+    tipo: 'poligono',
     direccion: '',
     grupoId: null,
     notas: '',
     puntos: [],
   }
-
-  console.log('✅ Cancelación completada y mapa limpiado')
 }
 
 // Función para activar la selección de geozona poligonal en el mapa
 const activarSeleccionGeozonaPoligonal = async () => {
-  console.log('🔵 1. Iniciando activarSeleccionGeozonaPoligonal')
-
   dialogNuevaGeozona.value = false
-  console.log('🔵 2. Diálogo cerrado')
 
   const componentDialog = document.querySelector('.component-dialog')
-  console.log('🔵 3. componentDialog encontrado:', componentDialog)
 
   if (componentDialog) {
     componentDialog.style.opacity = '0.3'
@@ -1522,7 +1592,6 @@ const activarSeleccionGeozonaPoligonal = async () => {
   }
 
   await new Promise((resolve) => setTimeout(resolve, 500))
-  console.log('🔵 4. Esperando completado')
 
   const esperarMapa = async (intentosMaximos = 10, delay = 500) => {
     for (let i = 0; i < intentosMaximos; i++) {
@@ -1546,16 +1615,14 @@ const activarSeleccionGeozonaPoligonal = async () => {
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
-      console.log('✅ Mapa disponible, activando modo selección de geozona poligonal')
-
       mapaAPI.activarModoSeleccionGeozonaPoligonal()
-      console.log('🔵 8. Modo selección de geozona poligonal activado')
+
+      if (mapaAPI.map) {
+        mapaAPI.map.on('mousemove', manejarMovimientoMouse)
+      }
 
       // ✅ NUEVO: Ya no esperamos los puntos aquí, el botón flotante lo manejará
-      console.log('⏳ Esperando que el usuario marque puntos y presione el botón flotante...')
     } else {
-      console.error('❌ No se pudo encontrar el mapa después de varios intentos')
-
       if (componentDialog) {
         componentDialog.style.opacity = '1'
         componentDialog.style.pointerEvents = 'auto'
@@ -1633,7 +1700,35 @@ const guardarGeozona = async () => {
       geozonaData.puntos = nuevaGeozona.value.puntos
       geozonaData.direccion = `${nuevaGeozona.value.puntos.length} puntos`
     }
+    if (mapPage && mapPage._mapaAPI) {
+      // Desactivar modos de selección
+      mapPage._mapaAPI.desactivarModoSeleccion()
 
+      // Limpiar capas temporales según el tipo
+      if (nuevaGeozona.value.tipo === 'circular') {
+        mapPage._mapaAPI.limpiarCirculoTemporal()
+      } else if (nuevaGeozona.value.tipo === 'poligono') {
+        mapPage._mapaAPI.limpiarPoligonoTemporal()
+      }
+
+      // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
+      // Remover listener de mouse
+      if (mapPage._mapaAPI.map) {
+        mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
+      }
+
+      // Limpiar capas de preview
+      if (lineaPreview.value) {
+        mapPage._mapaAPI.map.removeLayer(lineaPreview.value)
+        lineaPreview.value = null
+      }
+      if (poligonoPreview.value) {
+        mapPage._mapaAPI.map.removeLayer(poligonoPreview.value)
+        poligonoPreview.value = null
+      }
+      posicionMouseActual.value = null
+      console.log('✅ Preview limpiado')
+    }
     if (nuevaGeozona.value.id) {
       // ACTUALIZAR GEOZONA EXISTENTE
       await actualizarGeozona(nuevaGeozona.value.id, geozonaData)
@@ -1672,9 +1767,8 @@ const guardarGeozona = async () => {
       })
     } else {
       // CREAR NUEVA GEOZONA
-      console.log('📝 Creando nueva geozona...')
+
       const nuevoId = await crearGeozona(geozonaData)
-      console.log('✅ Geozona creada con ID:', nuevoId)
 
       if (mapPage && mapPage._mapaAPI) {
         if (nuevaGeozona.value.tipo === 'circular') {
@@ -1696,9 +1790,6 @@ const guardarGeozona = async () => {
 
       items.value.unshift(nuevaGeozonaParaItems)
 
-      console.log('📊 items.value después de agregar:', items.value.length)
-      console.log('📊 Geozonas en items:', items.value.filter((i) => i.tipo === 'geozona').length)
-
       $q.notify({
         type: 'positive',
         message: 'Geozona guardada correctamente',
@@ -1707,10 +1798,7 @@ const guardarGeozona = async () => {
       redibujarMapa()
     }
 
-    // ✅ NUEVO: Limpiar TODO después de guardar
     if (mapPage && mapPage._mapaAPI) {
-      console.log('🧹 Limpiando mapa después de guardar...')
-
       // Desactivar modos de selección
       mapPage._mapaAPI.desactivarModoSeleccion()
 
@@ -1721,7 +1809,7 @@ const guardarGeozona = async () => {
         mapPage._mapaAPI.limpiarPoligonoTemporal()
       }
 
-      console.log('✅ Mapa limpiado correctamente')
+      limpiarPreviewCompleto()
     }
 
     // ✅ NUEVO: Restaurar el drawer completamente
@@ -1771,11 +1859,8 @@ const guardarGeozona = async () => {
 // EN GeoZonas.vue, REEMPLAZAR TODA la función activarSeleccionMapa:
 
 const activarSeleccionMapa = async () => {
-  console.log('🔵 1. Iniciando activarSeleccionMapa')
-
   // 1. CERRAR el diálogo del POI
   dialogNuevoPOI.value = false
-  console.log('🔵 2. Diálogo cerrado')
 
   // 2. NO TOCAR LA OPACIDAD DEL DRAWER
   // Simplemente esperamos un momento
@@ -1805,13 +1890,17 @@ const activarSeleccionMapa = async () => {
 
       // Esperar a que el usuario seleccione
       const ubicacion = await esperarSeleccionUbicacion(mapaAPI)
-      console.log('🔵 Ubicación obtenida:', ubicacion)
 
       mapaAPI.desactivarModoSeleccion()
 
       if (ubicacion) {
         nuevoPOI.value.direccion = ubicacion.direccion
         nuevoPOI.value.coordenadas = ubicacion.coordenadas
+
+        // Asegúrate de que el radio tenga un valor por defecto
+        if (!nuevoPOI.value.radio) {
+          nuevoPOI.value.radio = 100 // Valor por defecto
+        }
 
         // Crear círculo temporal
         mapaAPI.crearCirculoTemporalPOI(
@@ -1826,8 +1915,6 @@ const activarSeleccionMapa = async () => {
         console.log('✅ Slider flotante mostrado')
       }
     } else {
-      console.error('❌ No se pudo encontrar el mapa')
-
       $q.notify({
         type: 'warning',
         message: 'El mapa aún no está listo',
@@ -1837,8 +1924,6 @@ const activarSeleccionMapa = async () => {
       dialogNuevoPOI.value = true
     }
   } catch (error) {
-    console.error('❌ Error en activarSeleccionMapa:', error)
-
     $q.notify({
       type: 'negative',
       message: 'Error al activar selección de mapa',
@@ -1885,12 +1970,14 @@ const cancelarNuevoPOI = () => {
     }
   }
 
+  // Asegúrate de incluir el radio con un valor por defecto
   nuevoPOI.value = {
     nombre: '',
     direccion: '',
     coordenadas: null,
     grupoId: null,
     notas: '',
+    radio: 5, // Agrega esta línea con el valor por defecto
   }
 
   dialogNuevoPOI.value = false
@@ -1913,11 +2000,8 @@ function actualizarRadioPOI(nuevoRadio) {
 
 // Función para manejar la confirmación de geozona desde el botón flotante
 const handleConfirmarGeozonaDesdeBoton = async () => {
-  console.log('🔘 Confirmación desde botón flotante recibida')
-
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
-    console.error('❌ No se encontró la API del mapa')
     return
   }
 
@@ -1982,12 +2066,7 @@ onMounted(async () => {
     // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
     if (estadoCompartido.value.abrirGeozonasConPOI) {
       const { item } = estadoCompartido.value.abrirGeozonasConPOI
-      console.log('🎯 GeoZonas: Montado con item para mostrar:', item)
-
-      // Ejecutamos la lógica de selección
       handleSeleccionDesdeMapa(item)
-
-      // Limpiamos el estado para la próxima vez
       resetAbrirGeozonas()
     }
   } catch (err) {
@@ -2006,6 +2085,10 @@ onMounted(async () => {
 const handleCancelarGeozona = (e) => {
   console.log('🔘 Evento cancelarGeozonaDesdeBoton:', e.detail)
   // Aquí puedes agregar lógica adicional si la necesitas
+  limpiarPreviewCompleto()
+
+  // 🆕 TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
+  cancelarNuevaGeozona()
 }
 
 onMounted(async () => {
