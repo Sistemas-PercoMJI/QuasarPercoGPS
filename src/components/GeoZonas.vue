@@ -417,8 +417,8 @@
             <!-- Slider principal -->
             <q-slider
               v-model="nuevoPOI.radio"
-              :min="10"
-              :max="1000"
+              :min="5"
+              :max="500"
               :step="10"
               color="primary"
               track-color="grey-3"
@@ -430,8 +430,8 @@
 
             <!-- Valores mín/máx -->
             <div class="row justify-between text-caption text-grey-6">
-              <span>10m</span>
-              <span>1km</span>
+              <span>5m</span>
+              <span>500m</span>
             </div>
 
             <!-- Atajos rápidos -->
@@ -442,25 +442,33 @@
                   dense
                   outline
                   color="primary"
+                  label="5m"
+                  size="sm"
+                  @click="establecerRadio(5)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="10m"
+                  size="sm"
+                  @click="establecerRadio(10)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
+                  label="20m"
+                  size="sm"
+                  @click="establecerRadio(20)"
+                />
+                <q-btn
+                  dense
+                  outline
+                  color="primary"
                   label="50m"
                   size="sm"
                   @click="establecerRadio(50)"
-                />
-                <q-btn
-                  dense
-                  outline
-                  color="primary"
-                  label="100m"
-                  size="sm"
-                  @click="establecerRadio(100)"
-                />
-                <q-btn
-                  dense
-                  outline
-                  color="primary"
-                  label="250m"
-                  size="sm"
-                  @click="establecerRadio(250)"
                 />
                 <q-btn
                   dense
@@ -1269,7 +1277,7 @@ function editarItem() {
       coordenadas: itemMenu.value.coordenadas,
       grupoId: itemMenu.value.grupoId,
       notas: itemMenu.value.notas || '',
-      radio: itemMenu.value.radio || 100, // ✅ NUEVO: Cargar radio existente
+      radio: itemMenu.value.radio || 5, // ✅ NUEVO: Cargar radio existente
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
@@ -1408,7 +1416,7 @@ const guardarPOI = async () => {
       coordenadas: nuevoPOI.value.coordenadas || null,
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
-      radio: nuevoPOI.value.radio || 100, // ✅ NUEVO: Incluir radio
+      radio: nuevoPOI.value.radio || 5, // ✅ NUEVO: Incluir radio
     }
 
     if (nuevoPOI.value.id) {
@@ -1969,7 +1977,7 @@ const cancelarNuevoPOI = () => {
     coordenadas: null,
     grupoId: null,
     notas: '',
-    radio: 100, // Agrega esta línea con el valor por defecto
+    radio: 5, // Agrega esta línea con el valor por defecto
   }
 
   dialogNuevoPOI.value = false
