@@ -11,7 +11,7 @@
             ref="searchInput"
             v-model="busqueda"
             outlined
-            placeholder="Buscar dirección, vehículo, conductor..."
+            placeholder="Buscar dirección, conductor..."
             class="search-input"
             bg-color="white"
             dense
