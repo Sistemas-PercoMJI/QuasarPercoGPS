@@ -121,7 +121,13 @@
                       <q-date v-model="rangoFechaTemporal" range>
                         <div class="row items-center justify-end q-gutter-sm">
                           <q-btn label="Cancelar" color="grey-7" flat v-close-popup />
-                          <q-btn label="Aceptar" color="primary" flat @click="aplicarRangoFecha" />
+                          <q-btn
+                            label="Aceptar"
+                            color="primary"
+                            flat
+                            v-close-popup
+                            @click="aplicarRangoFecha"
+                          />
                         </div>
                       </q-date>
                     </q-popup-proxy>
