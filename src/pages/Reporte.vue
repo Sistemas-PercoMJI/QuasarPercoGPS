@@ -270,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
 import { useReportes } from 'src/composables/useReportes'
@@ -922,5 +922,12 @@ onMounted(() => {
       cargarEventosDisponibles()
     }
   })
+})
+watch(reportarPor, (nuevoValor, valorAnterior) => {
+  if (nuevoValor !== valorAnterior) {
+    console.log('🔄 Cambió "Reportar por" de', valorAnterior, 'a', nuevoValor)
+    elementosSeleccionados.value = []
+    console.log('🧹 Elementos seleccionados limpiados')
+  }
 })
 </script>
