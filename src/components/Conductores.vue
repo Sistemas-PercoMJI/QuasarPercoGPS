@@ -565,21 +565,21 @@ watch(
     if (newValue && newValue.conductor) {
       console.log('🎯 Conductores: Detectado cambio en estadoCompartido, procesando conductor')
       console.log('✅ Conductor recibido:', newValue.conductor)
-      
+
       // Seleccionar el grupo si es necesario
       if (newValue.conductor.grupoId && newValue.conductor.grupoId !== grupoSeleccionado.value) {
         grupoSeleccionado.value = newValue.conductor.grupoId
       }
-      
+
       // Buscar el conductor en la lista
-      const conductorEncontrado = conductores.value.find((c) => 
-        c.id === newValue.conductor.id && c.grupoId === newValue.conductor.grupoId
+      const conductorEncontrado = conductores.value.find(
+        (c) => c.id === newValue.conductor.id && c.grupoId === newValue.conductor.grupoId,
       )
-      
+
       if (conductorEncontrado) {
         console.log('✅ Conductor encontrado, seleccionando...')
         seleccionarConductor(conductorEncontrado)
-        
+
         // Hacer scroll y resaltar
         setTimeout(() => {
           const elemento = document.querySelector(`[data-conductor-id="${conductorEncontrado.id}"]`)
@@ -589,7 +589,7 @@ watch(
             setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
           }
         }, 300)
-        
+
         // Mostrar notificación
         Notify.create({
           type: 'positive',
@@ -597,21 +597,21 @@ watch(
           caption: `Grupo: ${newValue.conductor.grupoNombre || 'Sin grupo'}`,
           icon: 'person',
           timeout: 2500,
-          position: 'top'
+          position: 'top',
         })
       } else {
         console.error('❌ No se encontró el conductor con los datos:', newValue.conductor)
         Notify.create({
           type: 'warning',
           message: 'No se encontró el conductor seleccionado',
-          icon: 'warning'
+          icon: 'warning',
         })
       }
-      
+
       // Limpiar después de procesar
       resetAbrirConductores()
     }
-  }
+  },
 )
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
@@ -1136,7 +1136,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-
 /* 🆕 EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
