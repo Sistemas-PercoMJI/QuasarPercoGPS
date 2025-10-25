@@ -270,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
 import { useReportes } from 'src/composables/useReportes'
@@ -280,7 +280,7 @@ import { useReportesStorage } from 'src/composables/useReportesStorage'
 
 const $q = useQuasar()
 const auth = getAuth()
-const userId = auth.currentUser?.uid
+const userId = ref(null) // ✅ Cambiar a ref simple
 const tab = ref('crear')
 
 const {
@@ -439,7 +439,10 @@ const removerColumna = (columna) => {
  */
 const cargarOpcionesSelector = async () => {
   console.log('Cargando opciones para:', reportarPor.value)
-  if (!userId) {
+  console.log('🔍 userId.value:', userId.value)
+
+  if (!userId.value || typeof userId.value !== 'string') {
+    console.error('❌ Usuario no autenticado o userId no es string')
     $q.notify({
       type: 'warning',
       message: 'Usuario no autenticado',
@@ -454,14 +457,17 @@ const cargarOpcionesSelector = async () => {
     switch (reportarPor.value) {
       case 'Objetos':
         {
+          console.log('📡 Obteniendo unidades...')
           const unidades = await obtenerUnidades()
           opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
+          console.log('✅ Unidades cargadas:', opcionesSelector.value.length)
         }
         break
 
       case 'Conductores': {
+        console.log('📡 Obteniendo conductores...')
         // 1. Obtener los grupos del usuario
-        const grupos = await obtenerGruposConductores(userId)
+        const grupos = await obtenerGruposConductores(userId.value) // ✅ .value
 
         // 2. Extraer todos los IDs de conductores de todos los grupos
         const conductoresIdsDelUsuario = new Set()
@@ -480,20 +486,25 @@ const cargarOpcionesSelector = async () => {
         )
 
         opcionesSelector.value = conductoresDelUsuario.map((c) => c.Nombre || c.id)
+        console.log('✅ Conductores cargados:', opcionesSelector.value.length)
         break
       }
 
       case 'Grupos':
         {
-          const grupos = await obtenerGruposConductores(userId)
+          console.log('📡 Obteniendo grupos...')
+          const grupos = await obtenerGruposConductores(userId.value) // ✅ .value
           opcionesSelector.value = grupos.map((g) => g.nombre || g.id)
+          console.log('✅ Grupos cargados:', opcionesSelector.value.length)
         }
         break
 
       case 'Geozonas':
         {
-          const geozonas = await obtenerGeozonas(userId)
+          console.log('📡 Obteniendo geozonas...')
+          const geozonas = await obtenerGeozonas(userId.value) // ✅ .value
           opcionesSelector.value = geozonas.map((g) => g.nombre || g.id)
+          console.log('✅ Geozonas cargadas:', opcionesSelector.value.length)
         }
         break
 
@@ -501,7 +512,7 @@ const cargarOpcionesSelector = async () => {
         opcionesSelector.value = []
     }
   } catch (error) {
-    console.error('Error al cargar opciones:', error)
+    console.error('❌ Error al cargar opciones:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar las opciones',
@@ -516,7 +527,14 @@ const cargarOpcionesSelector = async () => {
  * Carga los tipos de eventos disponibles desde Firebase
  */
 const cargarEventosDisponibles = async () => {
-  if (!userId) return
+  console.log('🔍 Cargando eventos disponibles...')
+  console.log('🔍 userId.value:', userId.value)
+  console.log('🔍 Tipo:', typeof userId.value)
+
+  if (!userId.value || typeof userId.value !== 'string') {
+    console.error('❌ userId no es válido')
+    return
+  }
 
   loadingEventos.value = true
 
@@ -526,7 +544,9 @@ const cargarEventosDisponibles = async () => {
     const fechaInicio = new Date()
     fechaInicio.setDate(fechaInicio.getDate() - 30)
 
-    const eventosRecientes = await obtenerEventos(userId, fechaInicio, fechaFin)
+    console.log('📡 Llamando a obtenerEventos con:', userId.value) // ✅ Debug
+    const eventosRecientes = await obtenerEventos(userId.value, fechaInicio, fechaFin) // ✅ .value
+    console.log('✅ Eventos obtenidos:', eventosRecientes.length) // ✅ Debug
 
     // Extraer tipos únicos de eventos
     const tiposUnicos = [
@@ -537,8 +557,10 @@ const cargarEventosDisponibles = async () => {
       tiposUnicos.length > 0
         ? tiposUnicos
         : ['Entrada a geozona', 'Salida de geozona', 'Exceso de velocidad', 'Ralentí prolongado']
+
+    console.log('✅ Tipos de eventos únicos:', listaEventosDisponibles.value)
   } catch (error) {
-    console.error('Error al cargar eventos:', error)
+    console.error('❌ Error al cargar eventos:', error)
     // Valores por defecto
     listaEventosDisponibles.value = [
       'Entrada a geozona',
@@ -589,7 +611,10 @@ const validarFormulario = () => {
  * Obtiene los datos reales de Firebase para el reporte
  */
 const obtenerDatosReporte = async () => {
-  if (!userId) {
+  console.log('🔍 Obteniendo datos del reporte...')
+  console.log('🔍 userId.value:', userId.value)
+
+  if (!userId.value || typeof userId.value !== 'string') {
     throw new Error('Usuario no autenticado')
   }
 
@@ -610,8 +635,13 @@ const obtenerDatosReporte = async () => {
     fechaFin = new Date(añoFin, mesFin - 1, diaFin, 23, 59, 59)
   }
 
+  console.log('📅 Rango de fechas:', fechaInicio, 'a', fechaFin)
+
   // Obtener eventos del período
-  const eventosDelPeriodo = await obtenerEventos(userId, fechaInicio, fechaFin, eventos.value)
+  console.log('📡 Obteniendo eventos del período...')
+  const eventosDelPeriodo = await obtenerEventos(userId.value, fechaInicio, fechaFin, eventos.value) // ✅ .value
+
+  console.log('✅ Eventos obtenidos:', eventosDelPeriodo.length)
 
   // Filtrar eventos según elementos seleccionados
   const eventosFiltrados = filtrarEventosPorElementos(
@@ -620,8 +650,12 @@ const obtenerDatosReporte = async () => {
     reportarPor.value,
   )
 
+  console.log('✅ Eventos filtrados:', eventosFiltrados.length)
+
   // Agrupar eventos según el criterio
   const eventosAgrupados = agruparEventos(eventosFiltrados, agruparPor.value)
+
+  console.log('✅ Eventos agrupados por:', agruparPor.value)
 
   // Calcular estadísticas
   const stats = calcularEstadisticas(eventosFiltrados)
@@ -631,6 +665,8 @@ const obtenerDatosReporte = async () => {
   const elementosSinDatos = elementosSeleccionados.value.filter(
     (elem) => !elementosConDatos.includes(elem),
   )
+
+  console.log('📊 Elementos sin datos:', elementosSinDatos)
 
   // Preparar resumen
   const resumen = {}
@@ -664,7 +700,7 @@ const generarReporte = async () => {
       agruparPor: agruparPor.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.user?.displayName || userId.user?.email,
+      nombreUsuario: userId.value.user?.displayName || userId.value.user?.email,
     }
     const resultadoPDF = generarPDFEventos(config, datosReales)
 
@@ -765,11 +801,11 @@ const generarExcel = async () => {
       agruparPor: agruparPor.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.displayName || userId.user?.email,
+      nombreUsuario: userId.value.displayName || userId.value.user?.email,
     }
 
     // Generar Excel
-    const { blob, filename } = await generarExcelEventos(config, datosReales)
+    const { blob } = await generarExcelEventos(config, datosReales)
 
     if (!blob) {
       throw new Error(
@@ -790,15 +826,6 @@ const generarExcel = async () => {
 
     // Subir a Firebase Storage y guardar metadata
     const reporteGuardado = await subirReporte(blob, metadata)
-
-    // También descargar localmente
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
-    window.URL.revokeObjectURL(url)
-
     // Usar reporteGuardado para mostrar información más detallada
     $q.notify({
       type: 'positive',
@@ -845,24 +872,34 @@ const generarExcel = async () => {
 }
 
 const cargarHistorialReportes = async () => {
-  if (!userId.user?.uid) return
+  console.log('🔍 userId.value:', userId.value)
+  console.log('🔍 Tipo:', typeof userId.value)
+  console.log('🔍 Es string?:', typeof userId.value === 'string')
 
-  loading.value = true // ✅ Activar loading
+  if (!userId.value || typeof userId.value !== 'string') {
+    console.error('❌ userId no es un string válido')
+    return
+  }
+
+  loading.value = true
   try {
-    const reportes = await obtenerHistorialReportes(userId.user.uid)
+    console.log('📡 Llamando a obtenerHistorialReportes con UID:', userId.value)
+    const reportes = await obtenerHistorialReportes(userId.value)
+    console.log('✅ Reportes obtenidos:', reportes.length)
+
     reportesAnteriores.value = reportes.map((r) => ({
       id: r.id,
       fecha: r.fechaCreacion?.toLocaleDateString('es-MX') || '',
       tipo: r.tipoInforme || 'Reporte',
-      elementos: r.elementos.join(', ') || 'N/A',
+      elementos: Array.isArray(r.elementos) ? r.elementos.join(', ') : 'N/A',
       periodo: r.rangoFechas || 'N/A',
       tamaño: formatearTamaño(r.tamaño),
       downloadURL: r.storageUrl,
       tipoArchivo: r.tipo,
     }))
-    console.log('Historial cargado:', reportesAnteriores.value.length, 'reportes') // ✅ Debug
+    console.log('✅ Historial cargado:', reportesAnteriores.value.length, 'reportes')
   } catch (error) {
-    console.error('Error al cargar historial:', error)
+    console.error('❌ Error al cargar historial:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar el historial de reportes',
@@ -874,14 +911,16 @@ const cargarHistorialReportes = async () => {
 }
 // Lifecycle
 onMounted(() => {
-  cargarOpcionesSelector()
-  cargarEventosDisponibles()
-  cargarHistorialReportes()
-})
+  auth.onAuthStateChanged((user) => {
+    console.log('👤 Usuario autenticado:', user?.email)
+    userId.value = user?.uid || null // ✅ Funciona porque es ref
 
-watch(tab, (newTab) => {
-  if (newTab === 'historial') {
-    cargarHistorialReportes()
-  }
+    if (userId.value) {
+      console.log('✅ Usuario autenticado, cargando datos...')
+      cargarHistorialReportes()
+      cargarOpcionesSelector()
+      cargarEventosDisponibles()
+    }
+  })
 })
 </script>
