@@ -731,17 +731,38 @@ onMounted(async () => {
 
     const mapPage = document.getElementById('map-page')
     if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+      // 🔧 SOLUCIÓN: Guardar referencias de marcadores GPS antes de limpiar
+      const marcadoresGPSTemporales = []
+      
+      mapPage._mapaAPI.map.eachLayer((layer) => {
+        // Identificar y guardar marcadores GPS
+        if (layer instanceof mapPage._mapaAPI.L.Marker) {
+          const esMarkerVehiculo = layer.options?.className === 'marker-vehiculo-gps' || 
+                                   layer.options?.icon?.options?.className === 'custom-marker-unidad' ||
+                                   layer.options?.zIndexOffset === 5000 // Los marcadores GPS tienen zIndexOffset alto
+          
+          if (esMarkerVehiculo) {
+            marcadoresGPSTemporales.push(layer)
+          }
+        }
+      })
+      
+      console.log(`💾 Guardando ${marcadoresGPSTemporales.length} marcadores GPS temporalmente`)
+      
       mapPage._mapaAPI.map.eachLayer((layer) => {
         if (
           layer instanceof mapPage._mapaAPI.L.Marker ||
           layer instanceof mapPage._mapaAPI.L.Circle ||
           layer instanceof mapPage._mapaAPI.L.Polygon
         ) {
-          if (layer.getPopup()?.getContent() !== '<b>MJ Industrias</b><br>Ubicación principal') {
-            // No eliminar el marcador del usuario
-            if (layer !== marcadorUsuario.value) {
-              mapPage._mapaAPI.map.removeLayer(layer)
-            }
+          // No eliminar marcadores importantes
+          const esMarkerPrincipal = layer.getPopup()?.getContent() === '<b>MJ Industrias</b><br>Ubicación principal'
+          const esMarkerUsuario = layer === marcadorUsuario.value
+          const esMarkerVehiculo = marcadoresGPSTemporales.includes(layer)
+          
+          // Solo eliminar si NO es ninguno de los marcadores importantes
+          if (!esMarkerPrincipal && !esMarkerUsuario && !esMarkerVehiculo) {
+            mapPage._mapaAPI.map.removeLayer(layer)
           }
         }
       })
@@ -752,6 +773,13 @@ onMounted(async () => {
     // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
+    
+    // 🔧 SOLUCIÓN: Forzar re-renderizado de marcadores GPS después de redibujar
+    await nextTick()
+    if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+      console.log('🔄 Re-aplicando marcadores GPS después de redibujar mapa')
+      actualizarMarcadoresUnidades(unidadesActivas.value)
+    }
   })
   
   // 🔧 CAMBIO 3: Iniciar tracking después de que el mapa esté listo
