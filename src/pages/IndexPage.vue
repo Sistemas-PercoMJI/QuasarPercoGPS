@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useMap } from 'src/composables/useMap'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
@@ -91,6 +91,28 @@ const geozonasCargadas = ref([])
 // Variables para GPS
 let watchId = null
 let mapaAPI = null
+
+// 🔧 CAMBIO 1: Watch movido FUERA de dibujarTodosEnMapa para que siempre esté activo
+// Este watch se ejecutará cada vez que cambien las unidades activas
+watch(
+  unidadesActivas, 
+  (nuevasUnidades) => {
+    // Verificar que el mapa esté listo y la API disponible
+    if (!mapaAPI || !mapaListo.value) {
+      console.warn('⚠️ Mapa no listo para actualizar unidades')
+      return
+    }
+
+    if (nuevasUnidades && nuevasUnidades.length > 0) {
+      console.log(`🗺️ Actualizando ${nuevasUnidades.length} unidades en el mapa`)
+      actualizarMarcadoresUnidades(nuevasUnidades)
+    } else {
+      console.log('🧹 No hay unidades activas, limpiando marcadores')
+      limpiarMarcadoresUnidades()
+    }
+  }, 
+  { deep: true, immediate: false }
+)
 
 // Función para verificar si una ubicación tiene eventos
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
@@ -284,18 +306,6 @@ const dibujarTodosEnMapa = async () => {
     console.warn('⚠️ Mapa no disponible para dibujar items')
     return
   }
-
-  // 🆕 Watch para actualizar marcadores GPS en tiempo real
-watch(unidadesActivas, (nuevasUnidades) => {
-  if (mapaAPI && mapaListo.value && nuevasUnidades.length > 0) {
-    console.log(`🗺️ Actualizando ${nuevasUnidades.length} unidades en el mapa`)
-    actualizarMarcadoresUnidades(nuevasUnidades)
-  } else if (nuevasUnidades.length === 0) {
-    console.log('🧹 No hay unidades activas, limpiando marcadores')
-    limpiarMarcadoresUnidades()
-  }
-}, { deep: true })
-
 
   mapaAPI = mapPage._mapaAPI
 
@@ -626,6 +636,13 @@ watch(unidadesActivas, (nuevasUnidades) => {
     })
 
     console.log('✅ Todos los items dibujados en el mapa')
+    
+    // 🔧 CAMBIO 2: Forzar actualización de marcadores de unidades después de dibujar
+    await nextTick()
+    if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+      console.log('🔄 Forzando actualización inicial de unidades GPS')
+      actualizarMarcadoresUnidades(unidadesActivas.value)
+    }
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
@@ -736,6 +753,8 @@ onMounted(async () => {
     resetear()
     await inicializarSistemaDeteccion()
   })
+  
+  // 🔧 CAMBIO 3: Iniciar tracking después de que el mapa esté listo
   console.log('🚀 Iniciando tracking GPS...')
   iniciarTracking()
 })
@@ -808,7 +827,7 @@ onUnmounted(() => {
   // Detener seguimiento GPS
   detenerSeguimientoGPS()
 
-  // Resetear sistema de detección
+  // 🔧 CAMBIO 4: Resetear sistema de detección en el orden correcto
   detenerTracking()
   limpiarMarcadoresUnidades()
   resetear()
