@@ -283,6 +283,8 @@ import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
+// AGREGA:
+import { useColumnasReportes } from 'src/composables/useColumnasReportes'
 
 const $q = useQuasar()
 const auth = getAuth()
@@ -324,7 +326,6 @@ const elementosSeleccionados = ref([])
 const eventos = ref([])
 const agruparPor = ref('Objetos')
 const mostrarUnidades = ref(false)
-const mostrarResumen = ref(true)
 
 // Opciones disponibles
 const tiposInforme = ['Informe de eventos', 'Informe de viajes', 'Informe de geozonas']
@@ -350,29 +351,18 @@ const rangoFechaFormateado = computed(() => {
 })
 
 // Columnas
-const columnasDisponibles = [
-  'Nombre de evento',
-  'Hora de inicio de evento',
-  'Duración',
-  'Condición de evento',
-  'Ubicación de eventos',
-  'Conductor',
-  'Vehículo',
-  'Geozona',
-  'Velocidad',
-  'Kilometraje',
-  'Dirección',
-]
-
-const columnasSeleccionadas = ref([
-  'Nombre de evento',
-  'Hora de inicio de evento',
-  'Duración',
-  'Condición de evento',
-])
-
-const columnasDisponiblesFiltradas = ref(columnasDisponibles)
-const columnaAgregar = ref(null)
+const {
+  columnasSeleccionadas,
+  columnaAgregar,
+  mostrarResumen,
+  columnasDisponiblesFiltradas,
+  agregarColumna,
+  removerColumna,
+  filtrarColumnas,
+  obtenerConfiguracionColumnas,
+  procesarNotificacionesParaReporte,
+  generarResumen,
+} = useColumnasReportes()
 
 // Historial
 const reportesAnteriores = ref([
@@ -408,36 +398,6 @@ const etiquetaSelector = computed(() => {
 // Métodos
 const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
-}
-
-const filtrarColumnas = (val, update) => {
-  if (val === '') {
-    update(() => {
-      columnasDisponiblesFiltradas.value = columnasDisponibles
-    })
-    return
-  }
-
-  update(() => {
-    const needle = val.toLowerCase()
-    columnasDisponiblesFiltradas.value = columnasDisponibles.filter(
-      (v) => v.toLowerCase().indexOf(needle) > -1,
-    )
-  })
-}
-
-const agregarColumna = (columna) => {
-  if (columna && !columnasSeleccionadas.value.includes(columna)) {
-    columnasSeleccionadas.value.push(columna)
-  }
-  columnaAgregar.value = null
-}
-
-const removerColumna = (columna) => {
-  const index = columnasSeleccionadas.value.indexOf(columna)
-  if (index > -1) {
-    columnasSeleccionadas.value.splice(index, 1)
-  }
 }
 
 /**
@@ -679,13 +639,17 @@ const obtenerDatosReporte = async () => {
   Object.entries(eventosAgrupados).forEach(([nombre, eventos]) => {
     resumen[nombre] = eventos.length
   })
+  const datosColumnas = procesarNotificacionesParaReporte(eventosFiltrados)
+  const resumenMejorado = mostrarResumen.value ? generarResumen(eventosFiltrados) : null
 
   return {
     eventosAgrupados,
-    resumen,
+    resumen: resumenMejorado || resumen,
     totalEventos: eventosFiltrados.length,
     elementosSinDatos,
     stats,
+    datosColumnas,
+    configuracionColumnas: obtenerConfiguracionColumnas(),
   }
 }
 
