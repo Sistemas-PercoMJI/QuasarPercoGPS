@@ -153,6 +153,7 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
+import { onMounted } from 'vue'
 
 const $q = useQuasar()
 
@@ -171,6 +172,17 @@ const stats = computed(() => estadisticas())
 
 const conductoresConUnidad = computed(() => {
   return conductores.value.filter(c => c.UnidadAsignada).length
+})
+
+onMounted(async () => {
+  // Esperar a que se carguen los datos iniciales
+  await recargarDatos()
+  
+  // Si hay conductores con unidades asignadas, iniciar simulación automáticamente
+  if (conductoresConUnidad.value > 0) {
+    console.log('Iniciando simulación automáticamente...')
+    await toggleSimulacion()
+  }
 })
 
 // Métodos
