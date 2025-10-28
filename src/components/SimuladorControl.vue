@@ -163,9 +163,154 @@ const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
 
 // Estado local
-const expanded = ref(false) // 🆕 Iniciar colapsado
+const expanded = ref(false)
 const loading = ref(false)
 const activityLogs = ref([])
+const emit = defineEmits(['recargar-datos'])
+
+// 🆕 NUEVO: Variables para POIs y Geozonas
+const pois = ref([])
+const geozonas = ref([])
+
+// 🆕 NUEVO: Función para recargar datos incluyendo POIs y Geozonas
+const recargarDatos = async () => {
+  loading.value = true
+  try {
+    // Recargar datos existentes
+    await Promise.all([
+      obtenerConductores(),
+      obtenerUnidades()
+    ])
+    
+    // 🆕 NUEVO: Recargar POIs y Geozonas
+    const { pois: poisData, geozonas: geozonasData } = await emit('recargar-datos')
+    pois.value = poisData || []
+    geozonas.value = geozonasData || []
+    
+    console.log('🔄 Datos recargados:', {
+      conductores: conductores.value.length,
+      unidades: unidades.value.length,
+      pois: pois.value.length,
+      geozonas: geozonas.value.length
+    })
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Datos recargados',
+      position: 'top'
+    })
+    
+    addLog('refresh', 'Datos actualizados', 'blue')
+  } catch (error) {
+    console.error('Error al recargar datos:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al recargar datos',
+      position: 'top'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// 🆕 NUEVO: Función para generar rutas que pasen por POIs y Geozonas
+const generarRutasParaUnidades = () => {
+  if (!conductores.value || !unidades.value || pois.value.length === 0) return
+  
+  // Obtener todas las ubicaciones (POIs y centros de geozonas)
+  const ubicaciones = []
+  
+  // Agregar POIs
+  pois.value.forEach(poi => {
+    if (poi.coordenadas) {
+      ubicaciones.push({
+        lat: poi.coordenadas.lat,
+        lng: poi.coordenadas.lng,
+        nombre: poi.nombre,
+        tipo: 'poi'
+      })
+    }
+  })
+  
+  // Agregar centros de geozonas
+  geozonas.value.forEach(geozona => {
+    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+      ubicaciones.push({
+        lat: geozona.centro.lat,
+        lng: geozona.centro.lng,
+        nombre: geozona.nombre,
+        tipo: 'geozona'
+      })
+    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+      // Calcular centro del polígono
+      const centro = calcularCentroPoligono(geozona.puntos)
+      ubicaciones.push({
+        lat: centro.lat,
+        lng: centro.lng,
+        nombre: geozona.nombre,
+        tipo: 'geozona'
+      })
+    }
+  })
+  
+  // Si no hay suficientes ubicaciones, agregar algunas por defecto
+  if (ubicaciones.length < 2) {
+    ubicaciones.push(
+      { lat: 32.504421823945805, lng: -116.9514484543167, nombre: 'MJ Industrias', tipo: 'defecto' },
+    )
+  }
+  
+  // Asignar rutas a las unidades de los conductores
+  conductores.value.forEach(conductor => {
+    if (conductor.UnidadAsignada) {
+      // Crear una ruta aleatoria para esta unidad
+      const ruta = []
+      const indicesUsados = new Set()
+      
+      // Seleccionar entre 3 y 6 puntos para la ruta
+      const numPuntos = Math.min(Math.max(3, Math.floor(Math.random() * 4) + 3), ubicaciones.length)
+      
+      while (ruta.length < numPuntos) {
+        const indice = Math.floor(Math.random() * ubicaciones.length)
+        if (!indicesUsados.has(indice)) {
+          indicesUsados.add(indice)
+          ruta.push(ubicaciones[indice])
+        }
+      }
+      
+      // Guardar la ruta en la unidad
+      const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
+      if (unidad) {
+        unidad.ruta = ruta
+        unidad.indiceRutaActual = 0
+        unidad.ultimoPuntoTiempo = Date.now()
+        
+        // Establecer posición inicial en el primer punto de la ruta
+        if (ruta.length > 0) {
+          unidad.lat = ruta[0].lat
+          unidad.lng = ruta[0].lng
+          unidad.estado = 'movimiento' // Siempre en movimiento
+          unidad.velocidad = Math.floor(Math.random() * 30) + 40 // 40-70 km/h
+        }
+        
+        console.log(`🚗 Ruta asignada a unidad ${unidad.nombre}: ${ruta.length} puntos`)
+      }
+    }
+  })
+}
+
+// 🆕 NUEVO: Función para calcular el centro de un polígono
+const calcularCentroPoligono = (puntos) => {
+  let lat = 0, lng = 0
+  puntos.forEach(punto => {
+    lat += punto.lat
+    lng += punto.lng
+  })
+  return {
+    lat: lat / puntos.length,
+    lng: lng / puntos.length
+  }
+}
 
 // Computed
 const stats = computed(() => estadisticas())
@@ -181,6 +326,10 @@ onMounted(async () => {
   // Si hay conductores con unidades asignadas, iniciar simulación automáticamente
   if (conductoresConUnidad.value > 0) {
     console.log('Iniciando simulación automáticamente...')
+    
+    // 🆕 NUEVO: Generar rutas antes de iniciar la simulación
+    generarRutasParaUnidades()
+    
     await toggleSimulacion()
   }
 })
@@ -198,6 +347,11 @@ const toggleSimulacion = async () => {
 
   loading.value = true
   try {
+    // 🆕 NUEVO: Generar rutas si no existen
+    if (!unidades.value.some(u => u.ruta && u.ruta.length > 0)) {
+      generarRutasParaUnidades()
+    }
+    
     await toggleSim(conductores.value, unidades.value)
     
     const message = simulacionActiva.value 
@@ -220,33 +374,6 @@ const toggleSimulacion = async () => {
     $q.notify({
       type: 'negative',
       message: 'Error al controlar la simulación',
-      position: 'top'
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
-const recargarDatos = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      obtenerConductores(),
-      obtenerUnidades()
-    ])
-    
-    $q.notify({
-      type: 'positive',
-      message: 'Datos recargados',
-      position: 'top'
-    })
-    
-    addLog('refresh', 'Datos actualizados', 'blue')
-  } catch (error) {
-    console.error('Error al recargar datos:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al recargar datos',
       position: 'top'
     })
   } finally {
