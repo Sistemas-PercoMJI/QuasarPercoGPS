@@ -22,22 +22,36 @@
       <q-tab-panel name="crear">
         <div class="text-h5 q-mb-lg">Generar nuevo informe</div>
 
+        <!-- 🔥 NUEVO: Selector de tipo de informe -->
+        <div class="q-mb-lg">
+          <div class="text-subtitle2 q-mb-sm">Tipo de informe</div>
+          <q-select
+            v-model="tipoInformeSeleccionado"
+            :options="listaTiposInforme"
+            outlined
+            dense
+            emit-value
+            map-options
+            @update:model-value="cambiarTipoInforme"
+          >
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section avatar>
+                  <q-icon :name="scope.opt.icon" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.label }}</q-item-label>
+                  <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+
         <div class="row q-col-gutter-md">
           <!-- Columna izquierda -->
           <div class="col-12 col-md-6">
-            <!-- Seleccionar informe -->
-            <div class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Seleccionar informe</div>
-              <q-select
-                v-model="tipoInforme"
-                :options="tiposInforme"
-                outlined
-                dense
-                label="Informe de eventos"
-              />
-            </div>
-
-            <!-- Reportar por -->
+            <!-- Reportar por (SIEMPRE visible) -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Reportar por</div>
               <q-select
@@ -50,7 +64,7 @@
               />
             </div>
 
-            <!-- Selector dinámico según "Reportar por" -->
+            <!-- Selector dinámico (SIEMPRE visible) -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
               <q-select
@@ -67,8 +81,8 @@
               />
             </div>
 
-            <!-- Eventos -->
-            <div class="q-mb-md">
+            <!-- 🔥 Eventos (solo para Informe de Eventos) -->
+            <div v-if="tieneOpcion('seleccionarEventos')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Eventos</div>
               <q-select
                 v-model="eventos"
@@ -84,23 +98,115 @@
               />
             </div>
 
-            <!-- Agrupar por -->
-            <div class="q-mb-md">
+            <!-- 🔥 Método de agrupación (solo para Informe de Eventos) -->
+            <div v-if="tieneOpcion('metodoAgrupacion')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Agrupar por</div>
               <q-select
-                v-model="agruparPor"
-                :options="opcionesAgrupar"
+                v-model="metodoAgrupacion"
+                :options="METODOS_AGRUPACION"
                 outlined
                 dense
-                label="Objetos"
+                emit-value
+                map-options
               />
-              <q-checkbox v-model="mostrarUnidades" label="Mostrar unidades" class="q-mt-sm" />
+            </div>
+
+            <!-- 🔥 Días laborables (solo para Horas de Trabajo) -->
+            <div v-if="tieneOpcion('diasLaborables')" class="q-mb-md">
+              <div class="text-subtitle2 q-mb-sm">Días laborables</div>
+              <div class="row q-gutter-sm">
+                <q-checkbox
+                  v-for="dia in DIAS_SEMANA"
+                  :key="dia.value"
+                  v-model="diasLaborablesSeleccionados"
+                  :val="dia.value"
+                  :label="dia.abrev"
+                  dense
+                />
+              </div>
+            </div>
+
+            <!-- 🔥 Horario laboral (solo para Horas de Trabajo) -->
+            <div v-if="tieneOpcion('horarioLaboral')" class="q-mb-md">
+              <div class="text-subtitle2 q-mb-sm">Horario laboral</div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-6">
+                  <q-input
+                    v-model="horarioInicio"
+                    outlined
+                    dense
+                    label="Hora inicio"
+                    mask="time"
+                    :rules="['time']"
+                  >
+                    <template v-slot:append>
+                      <q-icon name="access_time" class="cursor-pointer">
+                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                          <q-time v-model="horarioInicio" format24h>
+                            <div class="row items-center justify-end">
+                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                            </div>
+                          </q-time>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-6">
+                  <q-input
+                    v-model="horarioFin"
+                    outlined
+                    dense
+                    label="Hora fin"
+                    mask="time"
+                    :rules="['time']"
+                  >
+                    <template v-slot:append>
+                      <q-icon name="access_time" class="cursor-pointer">
+                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                          <q-time v-model="horarioFin" format24h>
+                            <div class="row items-center justify-end">
+                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                            </div>
+                          </q-time>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+            </div>
+
+            <!-- 🔥 Tipo de informe comercial (solo para Horas de Trabajo) -->
+            <div v-if="tieneOpcion('tipoInformeComercial')" class="q-mb-md">
+              <div class="text-subtitle2 q-mb-sm">Tipo de informe</div>
+              <q-select
+                v-model="tipoInformeComercial"
+                :options="TIPOS_INFORME_COMERCIAL"
+                outlined
+                dense
+                emit-value
+                map-options
+              />
+            </div>
+
+            <!-- 🔥 Tipo de detalle (solo para Horas de Trabajo) -->
+            <div v-if="tieneOpcion('tipoDetalle')" class="q-mb-md">
+              <div class="text-subtitle2 q-mb-sm">Datos del informe proporcionados</div>
+              <q-select
+                v-model="tipoDetalle"
+                :options="TIPOS_DETALLE"
+                outlined
+                dense
+                emit-value
+                map-options
+              />
             </div>
           </div>
 
           <!-- Columna derecha -->
           <div class="col-12 col-md-6">
-            <!-- Rango de fecha -->
+            <!-- Rango de fecha (SIEMPRE visible) -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
               <q-input
@@ -136,8 +242,34 @@
               </q-input>
             </div>
 
-            <!-- Lista de columnas -->
-            <div class="q-mb-md">
+            <!-- 🔥 Opciones de mapa para Trayectos -->
+            <div v-if="tieneOpcion('mostrarMapaTrayecto')" class="q-mb-md">
+              <div class="text-subtitle2 q-mb-sm">Opciones de mapa</div>
+              <q-checkbox
+                v-model="mostrarMapaTrayecto"
+                label="Mostrar mapa del trayecto"
+                class="q-mb-sm"
+              />
+              <q-checkbox
+                v-model="mostrarUnidadesMapa"
+                label="Mostrar unidades en el mapa"
+                class="q-mb-sm"
+                :disable="!mostrarMapaTrayecto"
+              />
+              <q-checkbox
+                v-model="mostrarPlacaMapa"
+                label="Mostrar número de placa"
+                :disable="!mostrarMapaTrayecto"
+              />
+            </div>
+
+            <!-- 🔥 Opción de mapa para Horas de Trabajo -->
+            <div v-if="tieneOpcion('mostrarMapaZona')" class="q-mb-md">
+              <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
+            </div>
+
+            <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
+            <div v-if="tieneOpcion('seleccionColumnas')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
 
               <!-- Buscador de columnas -->
@@ -176,17 +308,11 @@
                 label="Mostrar resumen del informe"
                 class="q-mt-md"
               />
-
-              <div class="text-subtitle2 q-mt-md q-mb-sm">Columnas en resumen</div>
-              <div class="q-gutter-sm">
-                <q-btn size="sm" outline color="grey-7" label="Objetos" />
-                <q-btn size="sm" outline color="grey-7" label="Recuento de eventos" />
-              </div>
             </div>
           </div>
         </div>
 
-        <!-- Botones de acción -->
+        <!-- Botones de acción (SIEMPRE visibles) -->
         <div class="row q-gutter-md q-mt-lg">
           <q-btn
             color="primary"
@@ -285,6 +411,7 @@ import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 // AGREGA:
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
+import { useTiposInforme } from 'src/composables/useTiposInforme'
 
 const $q = useQuasar()
 const auth = getAuth()
@@ -309,6 +436,28 @@ const {
   obtenerUnidades,
   obtenerConductores,
 } = useReportes()
+const {
+  tipoInformeSeleccionado,
+  listaTiposInforme,
+  cambiarTipoInforme,
+  tieneOpcion,
+  METODOS_AGRUPACION,
+  TIPOS_INFORME_COMERCIAL,
+  TIPOS_DETALLE,
+  DIAS_SEMANA,
+} = useTiposInforme()
+
+// Estados adicionales para las nuevas opciones
+const metodoAgrupacion = ref('objeto')
+const diasLaborablesSeleccionados = ref([1, 2, 3, 4, 5]) // Lun-Vie por defecto
+const horarioInicio = ref('08:00')
+const horarioFin = ref('17:00')
+const tipoInformeComercial = ref('todos')
+const tipoDetalle = ref('dias_detallados')
+const mostrarMapaTrayecto = ref(false)
+const mostrarUnidadesMapa = ref(true)
+const mostrarPlacaMapa = ref(true)
+const mostrarMapaZona = ref(false)
 
 const { generarPDFEventos } = useReportePDF()
 const { generarExcelEventos } = useReporteExcel()
@@ -325,12 +474,10 @@ const reportarPor = ref('Objetos')
 const elementosSeleccionados = ref([])
 const eventos = ref([])
 const agruparPor = ref('Objetos')
-const mostrarUnidades = ref(false)
 
 // Opciones disponibles
-const tiposInforme = ['Informe de eventos', 'Informe de viajes', 'Informe de geozonas']
+
 const opcionesReportar = ['Objetos', 'Conductores', 'Grupos', 'Geozonas']
-const opcionesAgrupar = ['Objetos', 'Conductores', 'Grupos', 'Geozonas']
 
 // Opciones dinámicas cargadas de Firebase
 const opcionesSelector = ref([])
