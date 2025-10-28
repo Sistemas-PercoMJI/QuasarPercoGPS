@@ -1101,7 +1101,7 @@ const manejarToggleTrafico = () => {
   z-index: 1000;
 }
 
-/* Cuando está expandido, darle ancho fijo */
+/* Cuando está expandido, darle ancho fijo sisisiis  */
 .simulador-container :deep(.simulador-card-expandido) {
   width: 350px;
 }

@@ -2144,6 +2144,15 @@ const redibujarMapa = () => {
   // Emitir evento para que IndexPage redibuje todo
   window.dispatchEvent(new CustomEvent('redibujarMapa'))
 }
+
+// Cosos raros estoy ando mejoras
+defineExpose({
+  pois: computed(() => pois.value),
+  geozonas: computed(() => geozonas.value),
+  obtenerPOIs,
+  obtenerGeozonas
+})
+
 </script>
 
 <style scoped>
