@@ -12,6 +12,7 @@ import {
   orderBy,
   onSnapshot,
   Timestamp,
+  setDoc,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage, auth } from 'src/firebase/firebaseConfig'
@@ -87,35 +88,30 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      // 1️⃣ Obtener todos los conductores para encontrar el último Id
+      // 1️⃣ Obtener el ID máximo actual
       const snapshot = await getDocs(conductoresRef)
-
-      // 2️⃣ Encontrar el Id más alto
       let maxId = 0
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
+      snapshot.docs.forEach((docItem) => {
+        const data = docItem.data()
         const currentId = parseInt(data.Id) || 0
-        if (currentId > maxId) {
-          maxId = currentId
-        }
+        if (currentId > maxId) maxId = currentId
       })
 
-      // 3️⃣ El nuevo Id será el siguiente número
-      const nuevoId = maxId + 1
+      const nuevoId = (maxId + 1).toString() // id secuencial como string
 
-      console.log('🔢 Último Id:', maxId, '→ Nuevo Id:', nuevoId)
+      // 2️⃣ Crear documento con ese ID como documentId
+      const docRef = doc(conductoresRef, nuevoId)
 
-      // 4️⃣ Crear el documento con el Id secuencial
-      const docRef = await addDoc(conductoresRef, {
+      await setDoc(docRef, {
         ...conductorData,
-        Id: nuevoId.toString(), // Guardar como string para mantener consistencia
+        Id: nuevoId,
         createdAt: Timestamp.now(),
       })
 
-      console.log('✅ Conductor creado con Id:', nuevoId)
+      console.log('✅ Conductor creado con Id como documentId:', nuevoId)
 
       await obtenerConductores()
-      return docRef.id
+      return nuevoId
     } catch (err) {
       console.error('Error al agregar conductor:', err)
       error.value = err.message
