@@ -1,18 +1,45 @@
 // src/composables/useColumnasReportes.js
-// 📊 SISTEMA DE COLUMNAS DINÁMICAS PARA REPORTES DE EVENTOS
+// 📊 SISTEMA DE COLUMNAS DINÁMICAS PARA TODOS LOS TIPOS DE REPORTES
 
 import { ref, computed } from 'vue'
 
 /**
- * Define todas las columnas disponibles para los reportes
- * Cada columna tiene:
- * - key: identificador único
- * - label: nombre para mostrar
- * - obtenerValor: función que extrae el valor de una notificación
- * - ancho: ancho sugerido para Excel/PDF
- * - formato: tipo de dato (texto, numero, fecha)
+ * ============================================
+ * COLUMNAS COMPARTIDAS (usadas en múltiples tipos)
+ * ============================================
  */
-export const COLUMNAS_DISPONIBLES = {
+const COLUMNAS_COMPARTIDAS = {
+  Conductor: {
+    key: 'conductor',
+    label: 'Conductor',
+    obtenerValor: (dato) => dato.conductorNombre || 'N/A',
+    ancho: 180,
+    formato: 'texto',
+  },
+
+  Vehículo: {
+    key: 'vehiculo',
+    label: 'Vehículo',
+    obtenerValor: (dato) => dato.unidadNombre || 'N/A',
+    ancho: 180,
+    formato: 'texto',
+  },
+
+  Placa: {
+    key: 'placa',
+    label: 'Placa',
+    obtenerValor: (dato) => dato.unidadPlaca || 'N/A',
+    ancho: 100,
+    formato: 'texto',
+  },
+}
+
+/**
+ * ============================================
+ * COLUMNAS PARA INFORME DE EVENTOS
+ * ============================================
+ */
+const COLUMNAS_EVENTOS = {
   // ============ INFORMACIÓN DEL EVENTO ============
   'Nombre de evento': {
     key: 'nombreEvento',
@@ -98,14 +125,7 @@ export const COLUMNAS_DISPONIBLES = {
         const horas = Math.floor(duracionMs / 3600000)
         const minutos = Math.floor((duracionMs % 3600000) / 60000)
         const segundos = Math.floor((duracionMs % 60000) / 1000)
-
-        if (horas > 0) {
-          return `${horas}h ${minutos}m ${segundos}s`
-        } else if (minutos > 0) {
-          return `${minutos}m ${segundos}s`
-        } else {
-          return `${segundos}s`
-        }
+        return `${horas}h ${minutos}m ${segundos}s`
       }
       return 'N/A'
     },
@@ -114,14 +134,10 @@ export const COLUMNAS_DISPONIBLES = {
   },
 
   'Condición de evento': {
-    key: 'condicionEvento',
+    key: 'condicion',
     label: 'Condición',
-    obtenerValor: (notificacion) => {
-      const accion = notificacion.accion || 'N/A'
-      const tipo = notificacion.tipoUbicacion || ''
-      return `${accion}${tipo ? ' en ' + tipo : ''}`
-    },
-    ancho: 180,
+    obtenerValor: (notificacion) => notificacion.accion || 'N/A',
+    ancho: 150,
     formato: 'texto',
   },
 
@@ -135,7 +151,7 @@ export const COLUMNAS_DISPONIBLES = {
 
   // ============ UBICACIÓN ============
   'Ubicación de eventos': {
-    key: 'ubicacionEvento',
+    key: 'ubicacion',
     label: 'Ubicación',
     obtenerValor: (notificacion) => notificacion.ubicacionNombre || 'Sin ubicación',
     ancho: 200,
@@ -146,7 +162,7 @@ export const COLUMNAS_DISPONIBLES = {
     key: 'tipoUbicacion',
     label: 'Tipo ubicación',
     obtenerValor: (notificacion) => notificacion.tipoUbicacion || 'N/A',
-    ancho: 130,
+    ancho: 120,
     formato: 'texto',
   },
 
@@ -181,7 +197,7 @@ export const COLUMNAS_DISPONIBLES = {
     label: 'Coordenadas',
     obtenerValor: (notificacion) => {
       if (notificacion.ubicacion?.lat && notificacion.ubicacion?.lng) {
-        return `${notificacion.ubicacion.lat.toFixed(6)}, ${notificacion.ubicacion.lng.toFixed(6)}`
+        return `${notificacion.ubicacion.lat}, ${notificacion.ubicacion.lng}`
       }
       return 'N/A'
     },
@@ -189,93 +205,22 @@ export const COLUMNAS_DISPONIBLES = {
     formato: 'texto',
   },
 
-  Latitud: {
-    key: 'latitud',
-    label: 'Latitud',
-    obtenerValor: (notificacion) => {
-      if (notificacion.ubicacion?.lat) {
-        return notificacion.ubicacion.lat.toFixed(6)
-      }
-      return 'N/A'
-    },
-    ancho: 120,
-    formato: 'numero',
-  },
-
-  Longitud: {
-    key: 'longitud',
-    label: 'Longitud',
-    obtenerValor: (notificacion) => {
-      if (notificacion.ubicacion?.lng) {
-        return notificacion.ubicacion.lng.toFixed(6)
-      }
-      return 'N/A'
-    },
-    ancho: 120,
-    formato: 'numero',
-  },
-
   Dirección: {
     key: 'direccion',
     label: 'Dirección',
     obtenerValor: (notificacion) => notificacion.direccion || 'N/A',
-    ancho: 300,
+    ancho: 250,
     formato: 'texto',
   },
 
-  // ============ CONDUCTOR Y VEHÍCULO ============
-  Conductor: {
-    key: 'conductor',
-    label: 'Conductor',
-    obtenerValor: (notificacion) => {
-      return notificacion.conductorNombre || notificacion.conductor || 'N/A'
-    },
-    ancho: 150,
-    formato: 'texto',
-  },
-
-  Vehículo: {
-    key: 'vehiculo',
-    label: 'Vehículo',
-    obtenerValor: (notificacion) => {
-      return notificacion.unidadNombre || notificacion.vehiculo || 'N/A'
-    },
-    ancho: 150,
-    formato: 'texto',
-  },
-
-  Placa: {
-    key: 'placa',
-    label: 'Placa',
-    obtenerValor: (notificacion) => {
-      return notificacion.unidadPlaca || notificacion.placa || 'N/A'
-    },
-    ancho: 120,
-    formato: 'texto',
-  },
-
-  // ============ DATOS DE VELOCIDAD Y MOVIMIENTO ============
+  // ============ DATOS TÉCNICOS ============
   Velocidad: {
     key: 'velocidad',
     label: 'Velocidad',
     obtenerValor: (notificacion) => {
-      if (notificacion.velocidad !== undefined && notificacion.velocidad !== null) {
-        return `${notificacion.velocidad} km/h`
-      }
-      return 'N/A'
-    },
-    ancho: 120,
-    formato: 'texto',
-  },
-
-  'Velocidad (número)': {
-    key: 'velocidadNumero',
-    label: 'Velocidad',
-    obtenerValor: (notificacion) => {
-      if (notificacion.velocidad !== undefined && notificacion.velocidad !== null) {
-        return notificacion.velocidad
-      }
-      return 0
+      return notificacion.velocidad !== null && notificacion.velocidad !== undefined
+        ? `${notificacion.velocidad} km/h`
+        : 'N/A'
     },
     ancho: 100,
     formato: 'numero',
@@ -285,8 +230,146 @@ export const COLUMNAS_DISPONIBLES = {
     key: 'kilometraje',
     label: 'Kilometraje',
     obtenerValor: (notificacion) => {
-      if (notificacion.kilometraje !== undefined && notificacion.kilometraje !== null) {
-        return `${notificacion.kilometraje.toFixed(2)} km`
+      return notificacion.kilometraje !== null && notificacion.kilometraje !== undefined
+        ? `${notificacion.kilometraje} km`
+        : 'N/A'
+    },
+    ancho: 120,
+    formato: 'numero',
+  },
+
+  Batería: {
+    key: 'bateria',
+    label: 'Batería',
+    obtenerValor: (notificacion) => {
+      return notificacion.bateria !== null && notificacion.bateria !== undefined
+        ? `${notificacion.bateria}%`
+        : 'N/A'
+    },
+    ancho: 100,
+    formato: 'numero',
+  },
+
+  'Estado del vehículo': {
+    key: 'estado',
+    label: 'Estado',
+    obtenerValor: (notificacion) => notificacion.estado || 'N/A',
+    ancho: 150,
+    formato: 'texto',
+  },
+
+  Ignición: {
+    key: 'ignicion',
+    label: 'Ignición',
+    obtenerValor: (notificacion) => {
+      if (notificacion.ignicion === true) return 'Encendida'
+      if (notificacion.ignicion === false) return 'Apagada'
+      return 'N/A'
+    },
+    ancho: 100,
+    formato: 'texto',
+  },
+
+  // Incluir columnas compartidas
+  ...COLUMNAS_COMPARTIDAS,
+}
+
+/**
+ * ============================================
+ * COLUMNAS PARA INFORME DE TRAYECTOS
+ * ============================================
+ */
+const COLUMNAS_TRAYECTOS = {
+  // ============ INICIO DEL TRAYECTO ============
+  'Hora de inicio de trabajo': {
+    key: 'horaInicioTrabajo',
+    label: 'Hora de inicio de trabajo',
+    obtenerValor: (trayecto) => {
+      if (!trayecto.inicioTimestamp) return 'N/A'
+      const fecha = new Date(trayecto.inicioTimestamp)
+      return fecha.toLocaleString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    },
+    ancho: 180,
+    formato: 'fecha',
+  },
+
+  'Ubicación de inicio de trabajo': {
+    key: 'ubicacionInicio',
+    label: 'Ubicación de inicio',
+    obtenerValor: (trayecto) => trayecto.inicioDireccion || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  'Kilometraje al inicio': {
+    key: 'kilometrajeInicio',
+    label: 'Kilometraje al inicio',
+    obtenerValor: (trayecto) => {
+      return trayecto.inicioKilometraje !== null && trayecto.inicioKilometraje !== undefined
+        ? `${trayecto.inicioKilometraje} km`
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
+  },
+
+  // ============ FIN DEL TRAYECTO ============
+  'Hora de fin de trabajo': {
+    key: 'horaFinTrabajo',
+    label: 'Hora de fin de trabajo',
+    obtenerValor: (trayecto) => {
+      if (!trayecto.finTimestamp) return 'N/A'
+      const fecha = new Date(trayecto.finTimestamp)
+      return fecha.toLocaleString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    },
+    ancho: 180,
+    formato: 'fecha',
+  },
+
+  'Ubicación de fin de trabajo': {
+    key: 'ubicacionFin',
+    label: 'Ubicación de fin',
+    obtenerValor: (trayecto) => trayecto.finDireccion || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  'Kilometraje al final': {
+    key: 'kilometrajeFinal',
+    label: 'Kilometraje al final',
+    obtenerValor: (trayecto) => {
+      return trayecto.finKilometraje !== null && trayecto.finKilometraje !== undefined
+        ? `${trayecto.finKilometraje} km`
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
+  },
+
+  // ============ DATOS CALCULADOS ============
+  'Duración del trayecto': {
+    key: 'duracionTrayecto',
+    label: 'Duración',
+    obtenerValor: (trayecto) => {
+      if (trayecto.duracion) {
+        const duracionMs = trayecto.duracion
+        const horas = Math.floor(duracionMs / 3600000)
+        const minutos = Math.floor((duracionMs % 3600000) / 60000)
+        return `${horas}h ${minutos}m`
       }
       return 'N/A'
     },
@@ -294,87 +377,252 @@ export const COLUMNAS_DISPONIBLES = {
     formato: 'texto',
   },
 
-  Batería: {
-    key: 'bateria',
-    label: 'Batería',
-    obtenerValor: (notificacion) => {
-      if (notificacion.bateria !== undefined && notificacion.bateria !== null) {
-        return `${notificacion.bateria}%`
-      }
-      return 'N/A'
+  'Kilometraje recorrido': {
+    key: 'kilometrajeRecorrido',
+    label: 'Kilometraje recorrido',
+    obtenerValor: (trayecto) => {
+      return trayecto.kilometrajeRecorrido !== null && trayecto.kilometrajeRecorrido !== undefined
+        ? `${trayecto.kilometrajeRecorrido} km`
+        : 'N/A'
     },
-    ancho: 100,
-    formato: 'texto',
+    ancho: 150,
+    formato: 'numero',
   },
 
-  Estado: {
-    key: 'estado',
-    label: 'Estado',
-    obtenerValor: (notificacion) => {
-      const estados = {
-        movimiento: 'En movimiento',
-        detenido: 'Detenido',
-        inactivo: 'Inactivo',
-      }
-      return estados[notificacion.estado] || 'N/A'
+  'Velocidad promedio': {
+    key: 'velocidadPromedio',
+    label: 'Velocidad promedio',
+    obtenerValor: (trayecto) => {
+      return trayecto.velocidadPromedio !== null && trayecto.velocidadPromedio !== undefined
+        ? `${trayecto.velocidadPromedio} km/h`
+        : 'N/A'
     },
-    ancho: 130,
-    formato: 'texto',
+    ancho: 150,
+    formato: 'numero',
   },
 
-  // ============ INFORMACIÓN ADICIONAL ============
-  'ID de evento': {
-    key: 'idEvento',
-    label: 'ID Evento',
-    obtenerValor: (notificacion) => notificacion.eventoId || 'N/A',
-    ancho: 200,
-    formato: 'texto',
+  'Velocidad máxima': {
+    key: 'velocidadMaxima',
+    label: 'Velocidad máxima',
+    obtenerValor: (trayecto) => {
+      return trayecto.velocidadMaxima !== null && trayecto.velocidadMaxima !== undefined
+        ? `${trayecto.velocidadMaxima} km/h`
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
   },
 
-  'ID de notificación': {
-    key: 'idNotificacion',
-    label: 'ID Notificación',
-    obtenerValor: (notificacion) => notificacion.id || 'N/A',
-    ancho: 200,
-    formato: 'texto',
+  'Odómetro virtual': {
+    key: 'odometroVirtual',
+    label: 'Odómetro virtual',
+    obtenerValor: (trayecto) => {
+      return trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined
+        ? `${trayecto.odometroVirtual} km`
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
   },
 
-  Leído: {
-    key: 'leido',
-    label: 'Leído',
-    obtenerValor: (notificacion) => (notificacion.leido ? 'Sí' : 'No'),
-    ancho: 80,
-    formato: 'texto',
-  },
+  // Incluir columnas compartidas
+  ...COLUMNAS_COMPARTIDAS,
 }
 
 /**
- * Composable para gestionar columnas de reportes
+ * ============================================
+ * COLUMNAS PARA INFORME DE HORAS DE TRABAJO
+ * ============================================
+ */
+const COLUMNAS_HORAS_TRABAJO = {
+  // ============ JORNADA LABORAL ============
+  Fecha: {
+    key: 'fecha',
+    label: 'Fecha',
+    obtenerValor: (registro) => {
+      if (!registro.fecha) return 'N/A'
+      const fecha = new Date(registro.fecha)
+      return fecha.toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    },
+    ancho: 120,
+    formato: 'fecha',
+  },
+
+  'Hora de inicio de trabajo': {
+    key: 'horaInicioTrabajo',
+    label: 'Hora de inicio',
+    obtenerValor: (registro) => registro.horaInicioTrabajo || 'N/A',
+    ancho: 120,
+    formato: 'texto',
+  },
+
+  'Ubicación de inicio de trabajo': {
+    key: 'ubicacionInicio',
+    label: 'Ubicación de inicio',
+    obtenerValor: (registro) => registro.ubicacionInicio || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  'Hora de fin de trabajo': {
+    key: 'horaFinTrabajo',
+    label: 'Hora de fin',
+    obtenerValor: (registro) => registro.horaFinTrabajo || 'N/A',
+    ancho: 120,
+    formato: 'texto',
+  },
+
+  'Ubicación de fin de trabajo': {
+    key: 'ubicacionFin',
+    label: 'Ubicación de fin',
+    obtenerValor: (registro) => registro.ubicacionFin || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  // ============ DURACIONES ============
+  'Duración total de trabajo': {
+    key: 'duracionTotal',
+    label: 'Duración total',
+    obtenerValor: (registro) => {
+      return registro.duracionTotal !== null && registro.duracionTotal !== undefined
+        ? `${registro.duracionTotal} horas`
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
+  },
+
+  'Duración dentro del horario comercial': {
+    key: 'duracionDentro',
+    label: 'Duración dentro horario',
+    obtenerValor: (registro) => {
+      return registro.duracionDentroHorario !== null && registro.duracionDentroHorario !== undefined
+        ? `${registro.duracionDentroHorario} horas`
+        : 'N/A'
+    },
+    ancho: 180,
+    formato: 'numero',
+  },
+
+  'Duración fuera del horario comercial': {
+    key: 'duracionFuera',
+    label: 'Duración fuera horario',
+    obtenerValor: (registro) => {
+      return registro.duracionFueraHorario !== null && registro.duracionFueraHorario !== undefined
+        ? `${registro.duracionFueraHorario} horas`
+        : 'N/A'
+    },
+    ancho: 180,
+    formato: 'numero',
+  },
+
+  // ============ VIAJES ============
+  'Total de viajes': {
+    key: 'totalViajes',
+    label: 'Total de viajes',
+    obtenerValor: (registro) => {
+      return registro.totalViajes !== null && registro.totalViajes !== undefined
+        ? registro.totalViajes
+        : 'N/A'
+    },
+    ancho: 120,
+    formato: 'numero',
+  },
+
+  'Viajes dentro del horario': {
+    key: 'viajesDentro',
+    label: 'Viajes dentro horario',
+    obtenerValor: (registro) => {
+      return registro.viajesDentroHorario !== null && registro.viajesDentroHorario !== undefined
+        ? registro.viajesDentroHorario
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
+  },
+
+  'Viajes fuera del horario': {
+    key: 'viajesFuera',
+    label: 'Viajes fuera horario',
+    obtenerValor: (registro) => {
+      return registro.viajesFueraHorario !== null && registro.viajesFueraHorario !== undefined
+        ? registro.viajesFueraHorario
+        : 'N/A'
+    },
+    ancho: 150,
+    formato: 'numero',
+  },
+
+  // Incluir solo Conductor (no vehículo ni placa)
+  Conductor: COLUMNAS_COMPARTIDAS['Conductor'],
+}
+
+/**
+ * ============================================
+ * CONFIGURACIÓN DE COLUMNAS POR TIPO
+ * ============================================
+ */
+export const COLUMNAS_POR_TIPO = {
+  eventos: COLUMNAS_EVENTOS,
+  trayectos: COLUMNAS_TRAYECTOS,
+  horas_trabajo: COLUMNAS_HORAS_TRABAJO,
+}
+
+/**
+ * ============================================
+ * COMPOSABLE PRINCIPAL
+ * ============================================
  */
 export function useColumnasReportes() {
-  // Columnas por defecto
-  const columnasSeleccionadas = ref([
-    'Nombre de evento',
-    'Hora de inicio de evento',
-    'Tipo de evento',
-    'Condición de evento',
-    'Ubicación de eventos',
-  ])
+  // Tipo de informe actual
+  const tipoInformeActivo = ref('eventos')
 
+  // Columnas seleccionadas por el usuario
+  const columnasSeleccionadas = ref([])
+
+  // Columna temporal para agregar
   const columnaAgregar = ref(null)
+
+  // Mostrar resumen
   const mostrarResumen = ref(true)
 
-  // Obtener lista de nombres de columnas disponibles
-  const nombresColumnasDisponibles = computed(() => {
-    return Object.keys(COLUMNAS_DISPONIBLES)
+  // Columnas disponibles filtradas (para el buscador)
+  const columnasDisponiblesFiltradas = ref([])
+
+  /**
+   * Obtener columnas disponibles según el tipo activo
+   */
+  const columnasDisponibles = computed(() => {
+    return COLUMNAS_POR_TIPO[tipoInformeActivo.value] || COLUMNAS_POR_TIPO.eventos
   })
 
-  // Filtrar columnas que no están seleccionadas
-  const columnasDisponiblesFiltradas = computed(() => {
-    return nombresColumnasDisponibles.value.filter(
-      (col) => !columnasSeleccionadas.value.includes(col),
-    )
+  /**
+   * Lista de nombres de columnas disponibles
+   */
+  const nombresColumnasDisponibles = computed(() => {
+    return Object.keys(columnasDisponibles.value)
   })
+
+  /**
+   * Cambiar tipo de informe y resetear columnas
+   */
+  const cambiarTipoInforme = (nuevoTipo) => {
+    tipoInformeActivo.value = nuevoTipo
+
+    // Resetear columnas seleccionadas
+    columnasSeleccionadas.value = []
+
+    // Resetear columnas filtradas
+    columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
+
+    console.log(`📊 Tipo de informe cambiado a: ${nuevoTipo}`)
+    console.log(`📊 ${nombresColumnasDisponibles.value.length} columnas disponibles`)
+  }
 
   /**
    * Agregar una columna
@@ -383,6 +631,7 @@ export function useColumnasReportes() {
     if (nombreColumna && !columnasSeleccionadas.value.includes(nombreColumna)) {
       columnasSeleccionadas.value.push(nombreColumna)
       columnaAgregar.value = null
+      console.log(`✅ Columna agregada: ${nombreColumna}`)
     }
   }
 
@@ -393,6 +642,7 @@ export function useColumnasReportes() {
     const index = columnasSeleccionadas.value.indexOf(nombreColumna)
     if (index > -1) {
       columnasSeleccionadas.value.splice(index, 1)
+      console.log(`❌ Columna removida: ${nombreColumna}`)
     }
   }
 
@@ -402,11 +652,13 @@ export function useColumnasReportes() {
   const filtrarColumnas = (val, update) => {
     update(() => {
       if (val === '') {
-        return columnasDisponiblesFiltradas.value
+        columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
+      } else {
+        const needle = val.toLowerCase()
+        columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value.filter(
+          (v) => v.toLowerCase().indexOf(needle) > -1,
+        )
       }
-
-      const needle = val.toLowerCase()
-      return columnasDisponiblesFiltradas.value.filter((col) => col.toLowerCase().includes(needle))
     })
   }
 
@@ -414,92 +666,126 @@ export function useColumnasReportes() {
    * Obtener configuración de columnas seleccionadas
    */
   const obtenerConfiguracionColumnas = () => {
-    return columnasSeleccionadas.value.map((nombre) => COLUMNAS_DISPONIBLES[nombre])
+    return columnasSeleccionadas.value
+      .map((nombreCol) => {
+        return columnasDisponibles.value[nombreCol]
+      })
+      .filter((col) => col !== undefined)
   }
 
   /**
-   * Procesar notificaciones para reporte
-   * Retorna array de objetos con solo las columnas seleccionadas
+   * Procesar datos con las columnas seleccionadas
    */
-  const procesarNotificacionesParaReporte = (notificaciones) => {
+  const procesarDatosParaReporte = (datos) => {
     const configuracion = obtenerConfiguracionColumnas()
 
-    return notificaciones.map((notificacion) => {
+    return datos.map((dato) => {
       const fila = {}
       configuracion.forEach((col) => {
-        fila[col.label] = col.obtenerValor(notificacion)
+        fila[col.label] = col.obtenerValor(dato)
       })
       return fila
     })
   }
 
   /**
+   * Alias para compatibilidad con código existente
+   */
+  const procesarNotificacionesParaReporte = procesarDatosParaReporte
+
+  /**
    * Generar resumen del reporte
    */
-  const generarResumen = (notificaciones) => {
+  const generarResumen = (datos) => {
     const resumen = {
-      totalEventos: notificaciones.length,
+      totalRegistros: datos.length,
       eventosPorTipo: {},
       eventosPorUbicacion: {},
       conductoresUnicos: new Set(),
       vehiculosUnicos: new Set(),
     }
 
-    notificaciones.forEach((notif) => {
+    datos.forEach((dato) => {
       // Contar por tipo
-      const tipo = notif.type || 'Sin tipo'
+      const tipo = dato.type || 'Sin tipo'
       resumen.eventosPorTipo[tipo] = (resumen.eventosPorTipo[tipo] || 0) + 1
 
       // Contar por ubicación
-      const ubicacion = notif.ubicacionNombre || 'Sin ubicación'
+      const ubicacion = dato.ubicacionNombre || 'Sin ubicación'
       resumen.eventosPorUbicacion[ubicacion] = (resumen.eventosPorUbicacion[ubicacion] || 0) + 1
 
       // Conductores únicos
-      if (notif.conductorNombre) {
-        resumen.conductoresUnicos.add(notif.conductorNombre)
+      if (dato.conductorNombre) {
+        resumen.conductoresUnicos.add(dato.conductorNombre)
       }
 
       // Vehículos únicos
-      if (notif.unidadNombre) {
-        resumen.vehiculosUnicos.add(notif.unidadNombre)
+      if (dato.unidadNombre) {
+        resumen.vehiculosUnicos.add(dato.unidadNombre)
       }
     })
 
     return {
-      ...resumen,
+      totalEventos: resumen.totalRegistros,
+      eventosPorTipo: resumen.eventosPorTipo,
+      eventosPorUbicacion: resumen.eventosPorUbicacion,
       conductoresUnicos: resumen.conductoresUnicos.size,
       vehiculosUnicos: resumen.vehiculosUnicos.size,
     }
   }
 
   /**
-   * Resetear a columnas por defecto
+   * Resetear columnas a valores por defecto según tipo
    */
   const resetearColumnas = () => {
-    columnasSeleccionadas.value = [
-      'Nombre de evento',
-      'Hora de inicio de evento',
-      'Tipo de evento',
-      'Condición de evento',
-      'Ubicación de eventos',
-    ]
+    const columnasPorDefecto = {
+      eventos: ['Nombre de evento', 'Hora de inicio de evento', 'Conductor', 'Vehículo'],
+      trayectos: [
+        'Hora de inicio de trabajo',
+        'Hora de fin de trabajo',
+        'Kilometraje recorrido',
+        'Conductor',
+      ],
+      horas_trabajo: [
+        'Fecha',
+        'Hora de inicio de trabajo',
+        'Duración total de trabajo',
+        'Conductor',
+      ],
+    }
+
+    columnasSeleccionadas.value = columnasPorDefecto[tipoInformeActivo.value] || []
+    console.log('🔄 Columnas reseteadas a valores por defecto')
   }
+
+  // Inicializar con columnas por defecto
+  resetearColumnas()
+  columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
 
   return {
     // Estado
+    tipoInformeActivo,
     columnasSeleccionadas,
     columnaAgregar,
     mostrarResumen,
-    nombresColumnasDisponibles,
     columnasDisponiblesFiltradas,
 
+    // Computados
+    columnasDisponibles,
+    nombresColumnasDisponibles,
+
     // Métodos
+    cambiarTipoInforme,
     agregarColumna,
     removerColumna,
     filtrarColumnas,
     obtenerConfiguracionColumnas,
+    procesarDatosParaReporte,
     procesarNotificacionesParaReporte,
     generarResumen,
     resetearColumnas,
   }
 }
+
+// Exportar columnas por tipo para uso directo si se necesita
+export { COLUMNAS_EVENTOS, COLUMNAS_TRAYECTOS, COLUMNAS_HORAS_TRABAJO, COLUMNAS_COMPARTIDAS }

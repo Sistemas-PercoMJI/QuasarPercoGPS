@@ -1,6 +1,6 @@
 // composables/useReporteExcel.js
 import ExcelJS from 'exceljs'
-import { COLUMNAS_DISPONIBLES } from './useColumnasReportes'
+import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
 export function useReporteExcel() {
   /**
@@ -191,7 +191,7 @@ export function useReporteExcel() {
 
     // 🔥 Ajustar anchos según configuración de columnas
     config.columnasSeleccionadas.forEach((nombreCol, index) => {
-      const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+      const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
       if (columnaConfig) {
         todosSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
       } else {
@@ -236,7 +236,7 @@ export function useReporteExcel() {
         // 🔥 Datos de eventos usando el sistema de columnas
         eventos.forEach((evento) => {
           const rowData = config.columnasSeleccionadas.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
             if (columnaConfig && columnaConfig.obtenerValor) {
               return columnaConfig.obtenerValor(evento)
             }
@@ -258,7 +258,7 @@ export function useReporteExcel() {
 
         // 🔥 Ajustar anchos según configuración
         config.columnasSeleccionadas.forEach((nombreCol, index) => {
-          const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+          const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
           if (columnaConfig) {
             detalleSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
           } else {
@@ -358,7 +358,7 @@ export function useReporteExcel() {
     // 🔥 NUEVO: Usar sistema de columnas dinámicas
     eventos.forEach((evento) => {
       const rowData = columnas.map((nombreCol) => {
-        const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+        const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
         if (columnaConfig && columnaConfig.obtenerValor) {
           return columnaConfig.obtenerValor(evento)
         }
@@ -369,7 +369,7 @@ export function useReporteExcel() {
 
     // 🔥 Ajustar anchos según configuración
     columnas.forEach((nombreCol, index) => {
-      const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+      const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
       if (columnaConfig) {
         sheet.getColumn(index + 1).width = columnaConfig.ancho / 7
       } else {

@@ -1,6 +1,5 @@
 // composables/useTiposInforme.js
 import { ref, computed } from 'vue'
-
 /**
  * Configuración de tipos de informe
  * Define qué opciones mostrar para cada tipo
@@ -130,6 +129,21 @@ export function useTiposInforme() {
   // Estado actual del tipo de informe seleccionado
   const tipoInformeSeleccionado = ref(TIPOS_INFORME.EVENTOS.id)
 
+  let instanciaColumnas = null
+
+  const setInstanciaColumnas = (instancia) => {
+    instanciaColumnas = instancia
+  }
+  const cambiarTipoInforme = (nuevoTipo) => {
+    tipoInformeSeleccionado.value = nuevoTipo
+    console.log('📊 Tipo de informe cambiado a:', nuevoTipo)
+
+    // 🔥 AGREGAR: Cambiar columnas también
+    if (instanciaColumnas && instanciaColumnas.cambiarTipoInforme) {
+      instanciaColumnas.cambiarTipoInforme(nuevoTipo)
+    }
+  }
+
   // Configuración del tipo actual
   const configuracionActual = computed(() => {
     return Object.values(TIPOS_INFORME).find((tipo) => tipo.id === tipoInformeSeleccionado.value)
@@ -150,24 +164,10 @@ export function useTiposInforme() {
     }))
   })
 
-  /**
-   * Cambiar tipo de informe
-   */
-  const cambiarTipoInforme = (nuevoTipo) => {
-    tipoInformeSeleccionado.value = nuevoTipo
-    console.log('📊 Tipo de informe cambiado a:', nuevoTipo)
-  }
-
-  /**
-   * Verificar si una opción está disponible
-   */
   const tieneOpcion = (nombreOpcion) => {
     return opcionesDisponibles.value[nombreOpcion] === true
   }
 
-  /**
-   * Obtener label del tipo actual
-   */
   const labelTipoActual = computed(() => {
     return configuracionActual.value?.label || ''
   })
@@ -200,5 +200,6 @@ export function useTiposInforme() {
     TIPOS_INFORME_COMERCIAL,
     TIPOS_DETALLE,
     DIAS_SEMANA,
+    setInstanciaColumnas,
   }
 }

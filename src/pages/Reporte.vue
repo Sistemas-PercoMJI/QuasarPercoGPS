@@ -445,7 +445,23 @@ const {
   TIPOS_INFORME_COMERCIAL,
   TIPOS_DETALLE,
   DIAS_SEMANA,
+  setInstanciaColumnas,
 } = useTiposInforme()
+
+const instanciaColumnas = useColumnasReportes()
+setInstanciaColumnas(instanciaColumnas)
+const {
+  columnasSeleccionadas,
+  columnaAgregar,
+  mostrarResumen,
+  columnasDisponiblesFiltradas,
+  agregarColumna,
+  removerColumna,
+  filtrarColumnas,
+  obtenerConfiguracionColumnas,
+  procesarNotificacionesParaReporte,
+  generarResumen,
+} = instanciaColumnas
 
 // Estados adicionales para las nuevas opciones
 const metodoAgrupacion = ref('objeto')
@@ -498,18 +514,6 @@ const rangoFechaFormateado = computed(() => {
 })
 
 // Columnas
-const {
-  columnasSeleccionadas,
-  columnaAgregar,
-  mostrarResumen,
-  columnasDisponiblesFiltradas,
-  agregarColumna,
-  removerColumna,
-  filtrarColumnas,
-  obtenerConfiguracionColumnas,
-  procesarNotificacionesParaReporte,
-  generarResumen,
-} = useColumnasReportes()
 
 // Historial
 const reportesAnteriores = ref([

@@ -1,7 +1,7 @@
 // composables/useReportePDF.js
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { COLUMNAS_DISPONIBLES } from './useColumnasReportes'
+import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
 export function useReportePDF() {
   /**
@@ -121,7 +121,7 @@ export function useReportePDF() {
       // 🔥 Configurar anchos de columna según las columnas
       const columnStyles = {}
       headers.forEach((nombreCol, index) => {
-        const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+        const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
         if (columnaConfig) {
           // Convertir ancho de pixels a mm (aproximado)
           columnStyles[index] = { cellWidth: columnaConfig.ancho / 4 }
@@ -182,7 +182,7 @@ export function useReportePDF() {
         // Procesar eventos del grupo con las columnas
         const tableData = eventos.map((evento) => {
           return headers.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
             if (columnaConfig && columnaConfig.obtenerValor) {
               return columnaConfig.obtenerValor(evento)
             }
@@ -253,7 +253,7 @@ export function useReportePDF() {
     // 🔥 NUEVO: Usar sistema de columnas dinámicas
     const tableData = eventos.map((evento) => {
       return columnas.map((nombreCol) => {
-        const columnaConfig = COLUMNAS_DISPONIBLES[nombreCol]
+        const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
         if (columnaConfig && columnaConfig.obtenerValor) {
           return columnaConfig.obtenerValor(evento)
         }
