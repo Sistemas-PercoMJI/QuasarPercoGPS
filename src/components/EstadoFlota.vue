@@ -3,12 +3,12 @@
     <!-- Header principal -->
     <div class="flota-header">
       <div class="header-content">
-        <q-btn 
+        <q-btn
           v-if="vehiculoSeleccionado"
-          flat 
-          dense 
-          round 
-          icon="arrow_back" 
+          flat
+          dense
+          round
+          icon="arrow_back"
           color="white"
           @click="volverALista"
           class="back-btn"
@@ -18,15 +18,7 @@
           <span v-else class="vehiculo-nombre">{{ vehiculoSeleccionado.nombre }}</span>
         </div>
       </div>
-      <q-btn 
-        flat 
-        dense 
-        round 
-        icon="close" 
-        color="white" 
-        @click="cerrarDrawer"
-        class="close-btn"
-      />
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
     </div>
 
     <!-- Vista de Lista de Vehículos -->
@@ -65,11 +57,11 @@
 
       <!-- Búsqueda -->
       <div class="search-container">
-        <q-input 
-          v-model="busqueda" 
-          outlined 
-          dense 
-          placeholder="Buscar vehículo..." 
+        <q-input
+          v-model="busqueda"
+          outlined
+          dense
+          placeholder="Buscar vehículo..."
           class="search-input"
         >
           <template v-slot:prepend>
@@ -99,9 +91,9 @@
             class="vehiculo-item"
           >
             <q-item-section avatar>
-              <q-avatar 
-                :style="{ backgroundColor: getColorHex(getColorEstado(vehiculo.estado)) }" 
-                text-color="white" 
+              <q-avatar
+                :style="{ backgroundColor: getColorHex(getColorEstado(vehiculo.estado)) }"
+                text-color="white"
                 size="44px"
               >
                 <q-icon :name="getIconoEstado(vehiculo.estado)" size="22px" />
@@ -131,319 +123,311 @@
     <!-- Vista de Detalles del Vehículo -->
     <transition name="slide-right">
       <div v-if="vehiculoSeleccionado" class="vista-detalles">
-      <!-- Tabs de navegación -->
-      <q-tabs
-        v-model="tabActual"
-        dense
-        class="tabs-vehiculo"
-        active-color="primary"
-        indicator-color="primary"
-        align="justify"
-      >
-        <q-tab name="resumen" icon="description" class="tab-item" />
-        <q-tab name="hoy" icon="schedule" class="tab-item" />
-        <q-tab name="notificaciones" class="tab-item">
-          <q-icon name="notifications" />
-          <q-badge 
-            v-if="vehiculoSeleccionado && vehiculoSeleccionado.notificaciones > 0" 
-            color="red" 
-            floating
-            rounded
-          >
-            {{ vehiculoSeleccionado.notificaciones }}
-          </q-badge>
-        </q-tab>
-        <q-tab name="combustible" icon="local_gas_station" class="tab-item" />
-      </q-tabs>
-
-      <!-- Contenido de las tabs -->
-      <q-scroll-area class="tab-content-scroll">
-        <q-tab-panels 
-          v-if="vehiculoSeleccionado"
-          v-model="tabActual" 
-          animated 
-          class="tab-panels-content"
+        <!-- Tabs de navegación -->
+        <q-tabs
+          v-model="tabActual"
+          dense
+          class="tabs-vehiculo"
+          active-color="primary"
+          indicator-color="primary"
+          align="justify"
         >
-          <!-- Tab Resumen -->
-          <q-tab-panel name="resumen" class="tab-panel-padding">
-            <div class="info-card ubicacion-card">
-              <div class="info-icon-wrapper">
-                <q-icon name="place" color="primary" size="24px" />
-              </div>
-              <div class="info-content">
-                <div class="info-label">Ubicación actual</div>
-                <div class="info-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
-                <div class="info-coordenadas">
-                  <q-icon name="my_location" size="14px" class="q-mr-xs" />
-                  {{ vehiculoSeleccionado.coordenadas }}
+          <q-tab name="resumen" icon="description" class="tab-item" />
+          <q-tab name="hoy" icon="schedule" class="tab-item" />
+          <q-tab name="notificaciones" icon="notifications" class="tab-item">
+            <q-badge
+              v-if="vehiculoSeleccionado && vehiculoSeleccionado.notificaciones > 0"
+              color="red"
+              floating
+              rounded
+            >
+              {{ vehiculoSeleccionado.notificaciones }}
+            </q-badge>
+          </q-tab>
+          <q-tab name="combustible" icon="local_gas_station" class="tab-item" />
+        </q-tabs>
+
+        <!-- Contenido de las tabs -->
+        <q-scroll-area class="tab-content-scroll">
+          <q-tab-panels
+            v-if="vehiculoSeleccionado"
+            v-model="tabActual"
+            animated
+            class="tab-panels-content"
+          >
+            <!-- Tab Resumen -->
+            <q-tab-panel name="resumen" class="tab-panel-padding">
+              <div class="info-card ubicacion-card">
+                <div class="info-icon-wrapper">
+                  <q-icon name="place" color="primary" size="24px" />
                 </div>
-              </div>
-            </div>
-
-            <div class="detalles-grid">
-              <div class="detalle-row">
-                <span class="detalle-label">Plan</span>
-                <q-chip dense color="blue-1" text-color="primary" class="detalle-chip">
-                  {{ vehiculoSeleccionado.plan }}
-                </q-chip>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">Estado actual</span>
-                <q-chip 
-                  dense 
-                  :style="{ backgroundColor: getColorHex(getColorEstado(vehiculoSeleccionado.estado)) }" 
-                  text-color="white"
-                >
-                  {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
-                </q-chip>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">Bloquear vehículo</span>
-                <q-toggle
-                  v-model="vehiculoSeleccionado.bloqueado"
-                  color="primary"
-                  @update:model-value="toggleBloqueo"
-                />
-              </div>
-
-              <q-separator class="separator" />
-
-              <div class="detalle-row">
-                <span class="detalle-label">Tiempo de conducción hoy</span>
-                <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionHoy }}</span>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">Tiempo esta semana</span>
-                <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionSemana }}</span>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">Duración de estado</span>
-                <span class="detalle-valor">{{ vehiculoSeleccionado.duracionEstado }}</span>
-              </div>
-
-              <q-separator class="separator" />
-
-              <div class="detalle-row">
-                <span class="detalle-label">
-                  <q-icon name="sync" size="16px" class="q-mr-xs" />
-                  Última sincronización
-                </span>
-                <span class="detalle-valor-small">
-                  {{ vehiculoSeleccionado.ultimaSincronizacion }}
-                </span>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">
-                  <q-icon name="schedule" size="16px" class="q-mr-xs" />
-                  Fecha y hora
-                </span>
-                <span class="detalle-valor-small">{{ vehiculoSeleccionado.fechaHora }}</span>
-              </div>
-
-              <div class="detalle-row">
-                <span class="detalle-label">
-                  <q-icon name="route" size="16px" class="q-mr-xs" />
-                  Tipo de trayecto
-                </span>
-                <span class="detalle-valor-small">{{ vehiculoSeleccionado.tipoTrayecto }}</span>
-              </div>
-            </div>
-
-            <q-btn 
-              unelevated
-              color="primary" 
-              label="Ver detalles completos" 
-              class="full-width btn-detalles"
-              icon="arrow_forward"
-              @click="verDetallesCompletos"
-            />
-          </q-tab-panel>
-
-          <!-- Tab Hoy -->
-          <q-tab-panel name="hoy" class="tab-panel-padding">
-            <div class="filtro-dia-card">
-              <q-btn flat dense round icon="chevron_left" size="sm" />
-              <div class="dia-actual">
-                <div class="dia-label">Hoy</div>
-                <div class="dia-fecha">{{ vehiculoSeleccionado.fechaTimeline }}</div>
-              </div>
-              <q-btn flat dense round icon="chevron_right" size="sm" />
-            </div>
-
-            <div class="resumen-dia-card">
-              <div class="card-title">Resumen del día</div>
-              <div class="resumen-grid">
-                <div class="resumen-item-card">
-                  <q-icon name="play_circle" color="green" size="20px" />
-                  <div class="resumen-content">
-                    <div class="resumen-label">Ubicación de inicio</div>
-                    <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
-                  </div>
-                </div>
-
-                <div class="resumen-item-card">
-                  <q-icon name="stop_circle" color="red" size="20px" />
-                  <div class="resumen-content">
-                    <div class="resumen-label">Ubicación de fin</div>
-                    <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
-                  </div>
-                </div>
-
-                <div class="resumen-stat">
-                  <q-icon name="work" color="blue" size="18px" />
-                  <div>
-                    <div class="stat-label">Duración de trabajo</div>
-                    <div class="stat-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
-                  </div>
-                </div>
-
-                <div class="resumen-stat">
-                  <q-icon name="pause_circle" color="orange" size="18px" />
-                  <div>
-                    <div class="stat-label">Duración de parada</div>
-                    <div class="stat-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
-                  </div>
-                </div>
-
-                <div class="resumen-stat">
-                  <q-icon name="speed" color="purple" size="18px" />
-                  <div>
-                    <div class="stat-label">Kilometraje</div>
-                    <div class="stat-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
+                <div class="info-content">
+                  <div class="info-label">Ubicación actual</div>
+                  <div class="info-valor">{{ vehiculoSeleccionado.ubicacion }}</div>
+                  <div class="info-coordenadas">
+                    <q-icon name="my_location" size="14px" class="q-mr-xs" />
+                    {{ vehiculoSeleccionado.coordenadas }}
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div class="timeline-section" v-if="vehiculoSeleccionado.actividades.length > 0">
-              <div class="section-title">Actividades</div>
-              <q-timeline color="primary" class="timeline-actividades">
-                <q-timeline-entry
-                  v-for="(actividad, index) in vehiculoSeleccionado.actividades"
-                  :key="index"
-                  :icon="actividad.icono"
-                  :color="actividad.color"
-                >
-                  <template v-slot:title>
-                    <div class="timeline-title">{{ actividad.titulo }}</div>
-                  </template>
-                  <template v-slot:subtitle>
-                    <div class="timeline-hora">{{ actividad.hora }}</div>
-                  </template>
-                  <div class="timeline-detalle-card">
-                    <div class="timeline-info">
-                      <span class="timeline-info-label">Duración</span>
-                      <span class="timeline-info-valor">{{ actividad.duracion }}</span>
-                    </div>
-                    <div class="timeline-info">
-                      <span class="timeline-info-label">Kilometraje</span>
-                      <span class="timeline-info-valor">{{ actividad.kilometraje }}</span>
+              <div class="detalles-grid">
+                <div class="detalle-row"></div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">Estado actual</span>
+                  <q-chip
+                    dense
+                    :style="{
+                      backgroundColor: getColorHex(getColorEstado(vehiculoSeleccionado.estado)),
+                    }"
+                    text-color="white"
+                  >
+                    {{ getEstadoTexto(vehiculoSeleccionado.estado) }}
+                  </q-chip>
+                </div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">Bloquear vehículo</span>
+                  <q-toggle
+                    v-model="vehiculoSeleccionado.bloqueado"
+                    color="primary"
+                    @update:model-value="toggleBloqueo"
+                  />
+                </div>
+
+                <q-separator class="separator" />
+
+                <div class="detalle-row">
+                  <span class="detalle-label">Tiempo de conducción hoy</span>
+                  <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionHoy }}</span>
+                </div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">Tiempo esta semana</span>
+                  <span class="detalle-valor">{{
+                    vehiculoSeleccionado.tiempoConductionSemana
+                  }}</span>
+                </div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">Duración de estado</span>
+                  <span class="detalle-valor">{{ vehiculoSeleccionado.duracionEstado }}</span>
+                </div>
+
+                <q-separator class="separator" />
+
+                <div class="detalle-row">
+                  <span class="detalle-label">
+                    <q-icon name="sync" size="16px" class="q-mr-xs" />
+                    Última sincronización
+                  </span>
+                  <span class="detalle-valor-small">
+                    {{ vehiculoSeleccionado.ultimaSincronizacion }}
+                  </span>
+                </div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">
+                    <q-icon name="schedule" size="16px" class="q-mr-xs" />
+                    Fecha y hora
+                  </span>
+                  <span class="detalle-valor-small">{{ vehiculoSeleccionado.fechaHora }}</span>
+                </div>
+
+                <div class="detalle-row">
+                  <span class="detalle-label">
+                    <q-icon name="route" size="16px" class="q-mr-xs" />
+                    Tipo de trayecto
+                  </span>
+                  <span class="detalle-valor-small">{{ vehiculoSeleccionado.tipoTrayecto }}</span>
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <!-- Tab Hoy -->
+            <q-tab-panel name="hoy" class="tab-panel-padding">
+              <div class="filtro-dia-card">
+                <q-btn flat dense round icon="chevron_left" size="sm" />
+                <div class="dia-actual">
+                  <div class="dia-label">Hoy</div>
+                  <div class="dia-fecha">{{ vehiculoSeleccionado.fechaTimeline }}</div>
+                </div>
+                <q-btn flat dense round icon="chevron_right" size="sm" />
+              </div>
+
+              <div class="resumen-dia-card">
+                <div class="card-title">Resumen del día</div>
+                <div class="resumen-grid">
+                  <div class="resumen-item-card">
+                    <q-icon name="play_circle" color="green" size="20px" />
+                    <div class="resumen-content">
+                      <div class="resumen-label">Ubicación de inicio</div>
+                      <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
                     </div>
                   </div>
-                </q-timeline-entry>
-              </q-timeline>
-            </div>
 
-            <div class="info-adicional-card">
-              <div class="info-item">
-                <q-icon name="person" color="grey-7" size="20px" />
-                <div>
-                  <div class="info-item-label">Conducido por</div>
-                  <div class="info-item-valor">{{ vehiculoSeleccionado.conductor }}</div>
+                  <div class="resumen-item-card">
+                    <q-icon name="stop_circle" color="red" size="20px" />
+                    <div class="resumen-content">
+                      <div class="resumen-label">Ubicación de fin</div>
+                      <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
+                    </div>
+                  </div>
+
+                  <div class="resumen-stat">
+                    <q-icon name="work" color="blue" size="18px" />
+                    <div>
+                      <div class="stat-label">Duración de trabajo</div>
+                      <div class="stat-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
+                    </div>
+                  </div>
+
+                  <div class="resumen-stat">
+                    <q-icon name="pause_circle" color="orange" size="18px" />
+                    <div>
+                      <div class="stat-label">Duración de parada</div>
+                      <div class="stat-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
+                    </div>
+                  </div>
+
+                  <div class="resumen-stat">
+                    <q-icon name="speed" color="purple" size="18px" />
+                    <div>
+                      <div class="stat-label">Kilometraje</div>
+                      <div class="stat-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <q-separator />
-
-              <div class="info-item">
-                <q-icon name="route" color="grey-7" size="20px" />
-                <div class="flex-grow">
-                  <div class="info-item-label">Tipo de trayecto</div>
-                  <div class="info-item-valor">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
-                </div>
-                <q-btn flat dense color="primary" label="Editar" size="sm" />
+              <div class="timeline-section" v-if="vehiculoSeleccionado.actividades.length > 0">
+                <div class="section-title">Actividades</div>
+                <q-timeline color="primary" class="timeline-actividades">
+                  <q-timeline-entry
+                    v-for="(actividad, index) in vehiculoSeleccionado.actividades"
+                    :key="index"
+                    :icon="actividad.icono"
+                    :color="actividad.color"
+                  >
+                    <template v-slot:title>
+                      <div class="timeline-title">{{ actividad.titulo }}</div>
+                    </template>
+                    <template v-slot:subtitle>
+                      <div class="timeline-hora">{{ actividad.hora }}</div>
+                    </template>
+                    <div class="timeline-detalle-card">
+                      <div class="timeline-info">
+                        <span class="timeline-info-label">Duración</span>
+                        <span class="timeline-info-valor">{{ actividad.duracion }}</span>
+                      </div>
+                      <div class="timeline-info">
+                        <span class="timeline-info-label">Kilometraje</span>
+                        <span class="timeline-info-valor">{{ actividad.kilometraje }}</span>
+                      </div>
+                    </div>
+                  </q-timeline-entry>
+                </q-timeline>
               </div>
 
-              <q-separator />
+              <div class="info-adicional-card">
+                <div class="info-item">
+                  <q-icon name="person" color="grey-7" size="20px" />
+                  <div>
+                    <div class="info-item-label">Conducido por</div>
+                    <div class="info-item-valor">{{ vehiculoSeleccionado.conductor }}</div>
+                  </div>
+                </div>
 
-              <div class="info-item-column">
-                <div class="info-item-header">
-                  <q-icon name="note" color="grey-7" size="20px" />
-                  <div class="info-item-label">Notas</div>
+                <q-separator />
+
+                <div class="info-item">
+                  <q-icon name="route" color="grey-7" size="20px" />
+                  <div class="flex-grow">
+                    <div class="info-item-label">Tipo de trayecto</div>
+                    <div class="info-item-valor">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
+                  </div>
                   <q-btn flat dense color="primary" label="Editar" size="sm" />
                 </div>
-                <q-input 
-                  v-model="vehiculoSeleccionado.notas" 
-                  outlined 
-                  type="textarea" 
-                  placeholder="Agregar nota..."
-                  rows="3"
-                  class="notas-input"
+
+                <q-separator />
+
+                <div class="info-item-column">
+                  <div class="info-item-header">
+                    <q-icon name="note" color="grey-7" size="20px" />
+                    <div class="info-item-label">Notas</div>
+                    <q-btn flat dense color="primary" label="Editar" size="sm" />
+                  </div>
+                  <q-input
+                    v-model="vehiculoSeleccionado.notas"
+                    outlined
+                    type="textarea"
+                    placeholder="Agregar nota..."
+                    rows="3"
+                    class="notas-input"
+                  />
+                </div>
+              </div>
+            </q-tab-panel>
+
+            <!-- Tab Notificaciones -->
+            <q-tab-panel name="notificaciones" class="tab-panel-padding">
+              <div class="filtro-container">
+                <q-select
+                  v-model="filtroNotificaciones"
+                  :options="['Todo', 'Alertas', 'Info', 'Eventos']"
+                  outlined
+                  dense
+                  label="Mostrar eventos"
+                  class="filtro-select"
                 />
               </div>
-            </div>
-          </q-tab-panel>
 
-          <!-- Tab Notificaciones -->
-          <q-tab-panel name="notificaciones" class="tab-panel-padding">
-            <div class="filtro-container">
-              <q-select
-                v-model="filtroNotificaciones"
-                :options="['Todo', 'Alertas', 'Info', 'Eventos']"
-                outlined
-                dense
-                label="Mostrar eventos"
-                class="filtro-select"
-              />
-            </div>
-
-            <div v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0" class="eventos-list">
               <div
-                v-for="(evento, index) in vehiculoSeleccionado.eventos"
-                :key="index"
-                class="evento-card"
+                v-if="vehiculoSeleccionado.eventos && vehiculoSeleccionado.eventos.length > 0"
+                class="eventos-list"
               >
-                <q-avatar 
-                  :style="{ backgroundColor: getColorHex(evento.color) }" 
-                  text-color="white" 
-                  size="44px"
+                <div
+                  v-for="(evento, index) in vehiculoSeleccionado.eventos"
+                  :key="index"
+                  class="evento-card"
                 >
-                  <q-icon :name="evento.icono" size="22px" />
-                </q-avatar>
-                <div class="evento-content">
-                  <div class="evento-titulo">{{ evento.titulo }}</div>
-                  <div class="evento-fecha">
-                    <q-icon name="schedule" size="14px" />
-                    {{ evento.fecha }}
+                  <q-avatar
+                    :style="{ backgroundColor: getColorHex(evento.color) }"
+                    text-color="white"
+                    size="44px"
+                  >
+                    <q-icon :name="evento.icono" size="22px" />
+                  </q-avatar>
+                  <div class="evento-content">
+                    <div class="evento-titulo">{{ evento.titulo }}</div>
+                    <div class="evento-fecha">
+                      <q-icon name="schedule" size="14px" />
+                      {{ evento.fecha }}
+                    </div>
                   </div>
+                  <q-btn flat dense round icon="expand_more" />
                 </div>
-                <q-btn flat dense round icon="expand_more" />
               </div>
-            </div>
 
-            <div v-else class="empty-state">
-              <q-icon name="notifications_none" size="80px" color="grey-4" />
-              <div class="empty-title">Sin notificaciones</div>
-              <div class="empty-subtitle">No hay eventos para mostrar en este momento</div>
-            </div>
-          </q-tab-panel>
+              <div v-else class="empty-state">
+                <q-icon name="notifications_none" size="80px" color="grey-4" />
+                <div class="empty-title">Sin notificaciones</div>
+                <div class="empty-subtitle">No hay eventos para mostrar en este momento</div>
+              </div>
+            </q-tab-panel>
 
-          <!-- Tab Combustible -->
-          <q-tab-panel name="combustible" class="tab-panel-padding">
-            <div class="empty-state">
-              <q-icon name="local_gas_station" size="80px" color="grey-4" />
-              <div class="empty-title">Sin información</div>
-              <div class="empty-subtitle">No hay datos de combustible disponibles</div>
-            </div>
-          </q-tab-panel>
-        </q-tab-panels>
-      </q-scroll-area>
-    </div>
+            <!-- Tab Combustible -->
+            <q-tab-panel name="combustible" class="tab-panel-padding">
+              <div class="empty-state">
+                <q-icon name="local_gas_station" size="80px" color="grey-4" />
+                <div class="empty-title">Sin información</div>
+                <div class="empty-subtitle">No hay datos de combustible disponibles</div>
+              </div>
+            </q-tab-panel>
+          </q-tab-panels>
+        </q-scroll-area>
+      </div>
     </transition>
   </div>
 </template>
@@ -453,12 +437,12 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
 // Composable de tracking
-const { 
-  unidadesActivas, 
-  //loading, 
-  iniciarTracking, 
+const {
+  unidadesActivas,
+  //loading,
+  iniciarTracking,
   detenerTracking,
-  contarPorEstado 
+  contarPorEstado,
 } = useTrackingUnidades()
 
 // Props y emits
@@ -474,7 +458,7 @@ const filtroNotificaciones = ref('todos')
 
 // Computed - Convertir unidades activas a formato de vehículos
 const vehiculos = computed(() => {
-  return unidadesActivas.value.map(unidad => ({
+  return unidadesActivas.value.map((unidad) => ({
     id: unidad.id,
     nombre: unidad.unidadNombre,
     ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
@@ -488,9 +472,9 @@ const vehiculos = computed(() => {
     bateria: unidad.bateria,
     timestamp: unidad.timestamp,
     ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
-    
+
     // Datos de ejemplo para tabs
-    plan: 'Plan Básico',
+
     bloqueado: false,
     tiempoConductionHoy: '3h 24m',
     tiempoConductionSemana: '18h 45m',
@@ -499,54 +483,78 @@ const vehiculos = computed(() => {
     fechaHora: new Date().toLocaleString('es-MX'),
     tipoTrayecto: 'Ruta comercial',
     notificaciones: 0,
-    
+
     // Timeline de ejemplo
     fechaTimeline: new Date().toLocaleDateString('es-MX'),
     ubicacionInicio: 'Zona Centro',
     ubicacionFin: unidad.direccionTexto,
     duracionTrabajo: '3h 24m',
-    
+
     actividades: [
       {
         titulo: 'Viaje iniciado',
         hora: '08:00 AM',
         ubicacion: 'Zona Centro',
         distancia: '0 km',
-        duracion: '0 min'
+        duracion: '0 min',
       },
       {
         titulo: 'En ruta',
-        hora: new Date(unidad.timestamp).toLocaleTimeString('es-MX', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        hora: new Date(unidad.timestamp).toLocaleTimeString('es-MX', {
+          hour: '2-digit',
+          minute: '2-digit',
         }),
         ubicacion: unidad.direccionTexto,
         distancia: '12 km',
-        duracion: `${Math.floor(Math.random() * 60)} min`
-      }
+        duracion: `${Math.floor(Math.random() * 60)} min`,
+      },
     ],
-    
+
     eventos: [],
-    
+
     combustible: {
       nivelActual: Math.floor(Math.random() * 40) + 60,
       capacidadTotal: 60,
       rendimiento: 12.5,
       ultimaCarga: 'Hace 2 días',
       consumoHoy: 8.5,
-      kmRestantes: 450
-    }
+      kmRestantes: 450,
+    },
   }))
 })
 // Computed para estados
 const estadosVehiculos = computed(() => {
   const conteo = contarPorEstado()
-  
+
   return [
-    { tipo: 'todos', nombre: 'Todos', icono: 'directions_car', color: 'blue', cantidad: conteo.todos },
-    { tipo: 'movimiento', nombre: 'En movimiento', icono: 'navigation', color: 'green', cantidad: conteo.movimiento },
-    { tipo: 'detenido', nombre: 'Detenido', icono: 'pause_circle', color: 'orange', cantidad: conteo.detenido },
-    { tipo: 'inactivo', nombre: 'Inactivo', icono: 'power_settings_new', color: 'blue-grey', cantidad: conteo.inactivo }
+    {
+      tipo: 'todos',
+      nombre: 'Todos',
+      icono: 'directions_car',
+      color: 'blue',
+      cantidad: conteo.todos,
+    },
+    {
+      tipo: 'movimiento',
+      nombre: 'En movimiento',
+      icono: 'navigation',
+      color: 'green',
+      cantidad: conteo.movimiento,
+    },
+    {
+      tipo: 'detenido',
+      nombre: 'Detenido',
+      icono: 'pause_circle',
+      color: 'orange',
+      cantidad: conteo.detenido,
+    },
+    {
+      tipo: 'inactivo',
+      nombre: 'Inactivo',
+      icono: 'power_settings_new',
+      color: 'blue-grey',
+      cantidad: conteo.inactivo,
+    },
   ]
 })
 
@@ -557,15 +565,16 @@ const vehiculosFiltrados = computed(() => {
 
   // Filtrar por estado
   if (estadoSeleccionado.value !== 'todos') {
-    resultado = resultado.filter(v => v.estado === estadoSeleccionado.value)
+    resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
   // Filtrar por búsqueda
   if (busqueda.value) {
-    resultado = resultado.filter(v => 
-      v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-      v.conductor.toLowerCase().includes(busqueda.value.toLowerCase())
+    resultado = resultado.filter(
+      (v) =>
+        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
+        v.conductor.toLowerCase().includes(busqueda.value.toLowerCase()),
     )
   }
 
@@ -574,13 +583,13 @@ const vehiculosFiltrados = computed(() => {
 
 /*const eventosFiltrados = computed(() => {
   if (!vehiculoSeleccionado.value) return []
-  
+
   const eventos = vehiculoSeleccionado.value.eventos || []
-  
+
   if (filtroNotificaciones.value === 'todos') {
     return eventos
   }
-  
+
   return eventos.filter(e => e.tipo === filtroNotificaciones.value)
 })*/
 
@@ -614,16 +623,12 @@ function toggleBloqueo(valor) {
   console.log('Toggle bloqueo:', valor)
 }
 
-function verDetallesCompletos() {
-  console.log('Ver detalles completos')
-}
-
 function getColorEstado(estado) {
   const colores = {
     todos: 'blue',
     movimiento: 'green',
     detenido: 'orange',
-    inactivo: 'blue-grey'
+    inactivo: 'blue-grey',
   }
   return colores[estado] || 'grey'
 }
@@ -633,7 +638,7 @@ function getIconoEstado(estado) {
     todos: 'directions_car',
     movimiento: 'navigation',
     detenido: 'pause_circle',
-    inactivo: 'power_settings_new'
+    inactivo: 'power_settings_new',
   }
   return iconos[estado] || 'directions_car'
 }
@@ -645,7 +650,7 @@ function getColorHex(color) {
     orange: '#FF9800',
     'blue-grey': '#607D8B',
     cyan: '#00BCD4',
-    red: '#F44336'
+    red: '#F44336',
   }
   return colores[color] || '#9E9E9E'
 }
@@ -654,7 +659,7 @@ function getEstadoTexto(estado) {
   const textos = {
     movimiento: 'En movimiento',
     detenido: 'Detenido',
-    inactivo: 'Inactivo'
+    inactivo: 'Inactivo',
   }
   return textos[estado] || 'Desconocido'
 }
@@ -669,7 +674,6 @@ onBeforeUnmount(() => {
   detenerTracking()
   console.log('🛑 Tracking detenido en EstadoFlota')
 })
-
 </script>
 
 <style scoped>
@@ -771,14 +775,14 @@ onBeforeUnmount(() => {
 }
 
 .estado-card:hover {
-  border-color: #2196F3;
+  border-color: #2196f3;
   background: #f5f9ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
 
 .estado-card.estado-activo {
-  border-color: #2196F3;
+  border-color: #2196f3;
   background: #e3f2fd;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
@@ -855,7 +859,7 @@ onBeforeUnmount(() => {
 
 .vehiculo-item:hover {
   background-color: #f5f9ff;
-  border-left: 4px solid #2196F3;
+  border-left: 4px solid #2196f3;
 }
 
 .vehiculo-nombre-item {
@@ -973,7 +977,7 @@ onBeforeUnmount(() => {
 }
 
 .ubicacion-card {
-  border-left: 4px solid #2196F3;
+  border-left: 4px solid #2196f3;
 }
 
 .info-icon-wrapper {
@@ -1135,11 +1139,11 @@ onBeforeUnmount(() => {
 }
 
 .resumen-item-card:nth-child(1) {
-  border-left-color: #4CAF50;
+  border-left-color: #4caf50;
 }
 
 .resumen-item-card:nth-child(2) {
-  border-left-color: #F44336;
+  border-left-color: #f44336;
 }
 
 .resumen-content {
