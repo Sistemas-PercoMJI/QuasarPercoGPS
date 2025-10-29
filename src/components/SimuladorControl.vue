@@ -154,6 +154,8 @@ import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import { onMounted } from 'vue'
+// 🔥 AÑADIR ESTA IMPORTACIÓN
+import { useEventDetection } from 'src/composables/useEventDetection'
 
 const $q = useQuasar()
 
@@ -161,6 +163,9 @@ const $q = useQuasar()
 const { simulacionActiva, toggleSimulacion: toggleSim } = useSimuladorUnidades()
 const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
+
+// 🔥 AÑADIR ESTA LÍNEA DESPUÉS DE LAS IMPORTACIONES
+const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
 
 // Estado local
 const expanded = ref(false)
@@ -182,10 +187,18 @@ const recargarDatos = async () => {
       obtenerUnidades()
     ])
     
-    // 🆕 NUEVO: Recargar POIs y Geozonas
-    const { pois: poisData, geozonas: geozonasData } = await emit('recargar-datos')
-    pois.value = poisData || []
-    geozonas.value = geozonasData || []
+    // 🆕 CORREGIDO: Recargar POIs y Geozonas con manejo de errores
+    try {
+      const resultado = await emit('recargar-datos')
+      if (resultado && resultado.pois && resultado.geozonas) {
+        pois.value = resultado.pois
+        geozonas.value = resultado.geozonas
+      } else {
+        console.warn('⚠️ No se recibieron datos de POIs y Geozonas')
+      }
+    } catch (error) {
+      console.error('Error al obtener POIs y Geozonas:', error)
+    }
     
     console.log('🔄 Datos recargados:', {
       conductores: conductores.value.length,
@@ -213,90 +226,146 @@ const recargarDatos = async () => {
   }
 }
 
-// 🆕 NUEVO: Función para generar rutas que pasen por POIs y Geozonas
+// 🆕 NUEVO: Función para generar rutas inteligentes que pasen por POIs y Geozonas
 const generarRutasParaUnidades = () => {
-  if (!conductores.value || !unidades.value || pois.value.length === 0) return
+  if (!conductores.value || !unidades.value || (pois.value.length === 0 && geozonas.value.length === 0)) {
+    console.warn('⚠️ No hay conductores, unidades o ubicaciones para generar rutas')
+    return
+  }
   
-  // Obtener todas las ubicaciones (POIs y centros de geozonas)
-  const ubicaciones = []
+  // 🔥 NUEVO: Crear lista de destinos (POIs y Geozonas)
+  const destinos = []
   
-  // Agregar POIs
+  // Agregar POIs como destinos
   pois.value.forEach(poi => {
     if (poi.coordenadas) {
-      ubicaciones.push({
+      destinos.push({
+        id: poi.id,
         lat: poi.coordenadas.lat,
         lng: poi.coordenadas.lng,
         nombre: poi.nombre,
-        tipo: 'poi'
+        tipo: 'poi',
+        radio: poi.radio || 100,
+        prioridad: 1 // Las POIs tienen prioridad 1
       })
     }
   })
   
-  // Agregar centros de geozonas
+  // Agregar Geozonas como destinos
   geozonas.value.forEach(geozona => {
+    let centro = null
+    
     if (geozona.tipoGeozona === 'circular' && geozona.centro) {
-      ubicaciones.push({
-        lat: geozona.centro.lat,
-        lng: geozona.centro.lng,
-        nombre: geozona.nombre,
-        tipo: 'geozona'
-      })
+      centro = geozona.centro
     } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
-      // Calcular centro del polígono
-      const centro = calcularCentroPoligono(geozona.puntos)
-      ubicaciones.push({
+      centro = calcularCentroPoligono(geozona.puntos)
+    }
+    
+    if (centro) {
+      destinos.push({
+        id: geozona.id,
         lat: centro.lat,
         lng: centro.lng,
         nombre: geozona.nombre,
-        tipo: 'geozona'
+        tipo: 'geozona',
+        radio: geozona.radio || 100,
+        prioridad: 2 // Las geozonas tienen prioridad 2
       })
     }
   })
   
-  // Si no hay suficientes ubicaciones, agregar algunas por defecto
-  if (ubicaciones.length < 2) {
-    ubicaciones.push(
-      { lat: 32.504421823945805, lng: -116.9514484543167, nombre: 'MJ Industrias', tipo: 'defecto' },
+  // Si no hay suficientes destinos, agregar puntos por defecto
+  if (destinos.length < 2) {
+    destinos.push(
+      { 
+        id: 'defecto1', 
+        lat: 32.504421823945805, 
+        lng: -116.9514484543167, 
+        nombre: 'MJ Industrias', 
+        tipo: 'defecto',
+        prioridad: 3
+      },
+      { 
+        id: 'defecto2', 
+        lat: 32.51442183945805, 
+        lng: -116.9414484543167, 
+        nombre: 'Punto 2', 
+        tipo: 'defecto',
+        prioridad: 3
+      }
     )
   }
   
-  // Asignar rutas a las unidades de los conductores
-  conductores.value.forEach(conductor => {
+  console.log(`🎯 Se encontraron ${destinos.length} destinos para las rutas`)
+  
+  // Asignar rutas inteligentes a cada unidad
+  conductores.value.forEach((conductor, index) => {
     if (conductor.UnidadAsignada) {
-      // Crear una ruta aleatoria para esta unidad
-      const ruta = []
-      const indicesUsados = new Set()
-      
-      // Seleccionar entre 3 y 6 puntos para la ruta
-      const numPuntos = Math.min(Math.max(3, Math.floor(Math.random() * 4) + 3), ubicaciones.length)
-      
-      while (ruta.length < numPuntos) {
-        const indice = Math.floor(Math.random() * ubicaciones.length)
-        if (!indicesUsados.has(indice)) {
-          indicesUsados.add(indice)
-          ruta.push(ubicaciones[indice])
-        }
-      }
-      
-      // Guardar la ruta en la unidad
       const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
-      if (unidad) {
-        unidad.ruta = ruta
-        unidad.indiceRutaActual = 0
-        unidad.ultimoPuntoTiempo = Date.now()
-        
-        // Establecer posición inicial en el primer punto de la ruta
-        if (ruta.length > 0) {
-          unidad.lat = ruta[0].lat
-          unidad.lng = ruta[0].lng
-          unidad.estado = 'movimiento' // Siempre en movimiento
-          unidad.velocidad = Math.floor(Math.random() * 30) + 40 // 40-70 km/h
-        }
-        
-        console.log(`🚗 Ruta asignada a unidad ${unidad.nombre}: ${ruta.length} puntos`)
+      if (!unidad) return
+      
+      // 🔥 NUEVO: Crear ruta personalizada para cada unidad (sin el parámetro unidad)
+      const ruta = crearRutaInteligente(destinos, index)
+      
+      // Asignar la ruta a la unidad
+      unidad.ruta = ruta
+      unidad.indiceRutaActual = 0
+      unidad.destinoActual = ruta[0]
+      unidad.ultimoPuntoTiempo = Date.now()
+      unidad.ultimoCambioDestino = Date.now()
+      
+      // Establecer posición inicial en el primer punto de la ruta
+      if (ruta.length > 0) {
+        unidad.lat = ruta[0].lat
+        unidad.lng = ruta[0].lng
+        unidad.estado = 'movimiento'
+        unidad.velocidad = Math.floor(Math.random() * 20) + 40 // 40-60 km/h
+        unidad.velocidadBase = unidad.velocidad
       }
+      
+      console.log(`🚗 Ruta inteligente asignada a unidad ${unidad.nombre}:`)
+      console.log(`   📍 Destinos: ${ruta.map(d => d.nombre).join(' → ')}`)
     }
   })
+}
+
+// 🔥 NUEVO: Función para crear rutas inteligentes
+const crearRutaInteligente = (destinos, indexUnidad) => {
+  const ruta = []
+  const destinosDisponibles = [...destinos]
+  
+  // 🔥 ESTRATEGIA 1: Cada unidad tiene un conjunto preferido de destinos
+  const numDestinosPorUnidad = Math.min(5, Math.max(3, Math.floor(destinos.length / Math.max(1, conductores.value.length))))
+  
+  // Ordenar destinos por prioridad (POIs primero, luego Geozonas)
+  destinosDisponibles.sort((a, b) => a.prioridad - b.prioridad)
+  
+  // 🔥 ESTRATEGIA 2: Asignar destinos basados en el índice de la unidad
+  // Cada unidad empieza desde un punto diferente
+  const indiceInicio = (indexUnidad * 2) % destinosDisponibles.length
+  
+  // Seleccionar destinos para esta unidad
+  for (let i = 0; i < numDestinosPorUnidad && i < destinosDisponibles.length; i++) {
+    const indiceDestino = (indiceInicio + i) % destinosDisponibles.length
+    const destino = destinosDisponibles[indiceDestino]
+    
+    ruta.push({
+      ...destino,
+      ordenVisita: i,
+      tiempoEstimadoLlegada: Date.now() + (i * 5 * 60 * 1000) // 5 minutos entre destinos
+    })
+  }
+  
+  // 🔥 ESTRATEGIA 3: Agregar punto de retorno al inicio
+  if (ruta.length > 1) {
+    ruta.push({
+      ...ruta[0],
+      esRetorno: true,
+      ordenVisita: ruta.length
+    })
+  }
+  
+  return ruta
 }
 
 // 🆕 NUEVO: Función para calcular el centro de un polígono
@@ -310,6 +379,80 @@ const calcularCentroPoligono = (puntos) => {
     lat: lat / puntos.length,
     lng: lng / puntos.length
   }
+}
+
+// 🔥 NUEVO: Función para mover unidades hacia sus destinos
+const moverUnidadHaciaDestino = (unidad) => {
+  if (!unidad.destinoActual || !unidad.ruta || unidad.ruta.length === 0) return
+  
+  const ahora = Date.now()
+  const tiempoTranscurrido = (ahora - unidad.ultimoPuntoTiempo) / 1000 // segundos
+  
+  // Velocidad en metros por segundo
+  const velocidadMs = (unidad.velocidad * 1000) / 3600
+  const distanciaAMover = velocidadMs * tiempoTranscurrido
+  
+  // Calcular distancia al destino actual
+  const distanciaAlDestino = calcularDistancia(
+    unidad.lat, unidad.lng,
+    unidad.destinoActual.lat, unidad.destinoActual.lng
+  )
+  
+  // Si llegamos al destino
+  if (distanciaAMover >= distanciaAlDestino) {
+    // Mover al destino exacto
+    unidad.lat = unidad.destinoActual.lat
+    unidad.lng = unidad.destinoActual.lng
+    
+    console.log(`📍 Unidad ${unidad.nombre} llegó a: ${unidad.destinoActual.nombre} (${unidad.destinoActual.tipo})`)
+    
+    // 🔥 CORREGIDO: Usar la función importada directamente
+    evaluarEventosParaUnidadesSimulacion([unidad])
+    
+    // Cambiar al siguiente destino
+    unidad.indiceRutaActual = (unidad.indiceRutaActual + 1) % unidad.ruta.length
+    unidad.destinoActual = unidad.ruta[unidad.indiceRutaActual]
+    unidad.ultimoCambioDestino = ahora
+    
+    // 🔥 NUEVO: Pequeña pausa en cada destino (simula parada)
+    unidad.estado = 'detenido'
+    unidad.velocidad = 0
+    
+    setTimeout(() => {
+      unidad.estado = 'movimiento'
+      unidad.velocidad = unidad.velocidadBase
+      console.log(`🚗 Unidad ${unidad.nombre} reanudando viaje hacia: ${unidad.destinoActual.nombre}`)
+    }, 3000) // 3 segundos de parada
+    
+  } else {
+    // Moverse hacia el destino
+    const proporcion = distanciaAMover / distanciaAlDestino
+    unidad.lat = unidad.lat + (unidad.destinoActual.lat - unidad.lat) * proporcion
+    unidad.lng = unidad.lng + (unidad.destinoActual.lng - unidad.lng) * proporcion
+    
+    // 🔥 NUEVO: Variar velocidad ligeramente para hacerlo más realista
+    if (Math.random() < 0.1) { // 10% de probabilidad
+      unidad.velocidad = Math.max(30, Math.min(70, unidad.velocidad + (Math.random() - 0.5) * 10))
+    }
+  }
+  
+  unidad.ultimoPuntoTiempo = ahora
+}
+
+// 🔥 NUEVO: Función para calcular distancia
+const calcularDistancia = (lat1, lng1, lat2, lng2) => {
+  const R = 6371e3 // Radio de la Tierra en metros
+  const φ1 = (lat1 * Math.PI) / 180
+  const φ2 = (lat2 * Math.PI) / 180
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180
+  const Δλ = ((lng2 - lng1) * Math.PI) / 180
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return R * c
 }
 
 // Computed
@@ -347,7 +490,7 @@ const toggleSimulacion = async () => {
 
   loading.value = true
   try {
-    // 🆕 NUEVO: Generar rutas si no existen
+    // Generar rutas inteligentes si no existen
     if (!unidades.value.some(u => u.ruta && u.ruta.length > 0)) {
       generarRutasParaUnidades()
     }
@@ -355,7 +498,7 @@ const toggleSimulacion = async () => {
     await toggleSim(conductores.value, unidades.value)
     
     const message = simulacionActiva.value 
-      ? `Simulación iniciada con ${conductoresConUnidad.value} unidades`
+      ? `Simulación iniciada con ${conductoresConUnidad.value} unidades en ruta`
       : 'Simulación detenida'
     
     addLog(
@@ -408,6 +551,24 @@ recargarDatos()
 watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
     addLog('directions_car', `${newVal} en movimiento`, 'primary')
+  }
+})
+
+// 🔥 NUEVO: Watch para mover unidades cuando la simulación está activa
+watch(() => simulacionActiva.value, (isActive) => {
+  if (isActive) {
+    // Iniciar intervalo para mover unidades
+    const intervaloMovimiento = setInterval(() => {
+      if (simulacionActiva.value) {
+        unidades.value.forEach(unidad => {
+          if (unidad.estado === 'movimiento' && unidad.destinoActual) {
+            moverUnidadHaciaDestino(unidad)
+          }
+        })
+      } else {
+        clearInterval(intervaloMovimiento)
+      }
+    }, 2000) // Actualizar cada 2 segundos
   }
 })
 </script>
