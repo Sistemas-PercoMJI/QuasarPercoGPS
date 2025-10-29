@@ -158,9 +158,9 @@
           <q-tooltip>Información</q-tooltip>
 
           <q-menu
-            anchor="bottom middle"
-            self="top middle"
-            :offset="[0, 8]"
+            anchor="bottom right"
+            self="top left"
+            :offset="[-16, 8]"
             transition-show="jump-down"
             transition-hide="jump-up"
           >
@@ -216,14 +216,10 @@
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
 
-          <q-menu anchor="bottom middle" self="top middle" :offset="[0, 8]">
+          <q-menu anchor="bottom right" self="top right" :offset="[-16, 8]">
             <NotificacionesPanel />
           </q-menu>
         </q-btn>
-
-        <q-chip outline color="white" text-color="white" icon="bug_report">
-          Quasar v{{ $q.version }}
-        </q-chip>
       </q-toolbar>
     </q-header>
 
