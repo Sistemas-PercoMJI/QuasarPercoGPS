@@ -334,7 +334,13 @@
             :loading="generando"
             :disable="generando"
           />
-          <q-btn outline color="grey-7" label="Cancelar" style="width: 200px" />
+          <q-btn
+            outline
+            color="grey-7"
+            label="Cancelar"
+            style="width: 200px"
+            @click="cancelarReporte"
+          />
         </div>
       </q-tab-panel>
 
@@ -515,6 +521,67 @@ const rangoFechaFormateado = computed(() => {
 
 // Columnas
 
+/**
+ * Cancela y limpia el formulario de reporte
+ */
+/**
+ * Cancela y limpia el formulario de reporte
+ */
+const cancelarReporte = () => {
+  // Limpiar tipo de informe
+  tipoInformeSeleccionado.value = null
+
+  // Limpiar selector principal
+  reportarPor.value = 'Objetos'
+  elementosSeleccionados.value = []
+
+  // Limpiar eventos
+  eventos.value = []
+
+  // Limpiar rango de fechas
+  rangoFecha.value = null
+  rangoFechaTemporal.value = null
+
+  // Limpiar opciones de agrupación y métodos
+  metodoAgrupacion.value = 'objeto'
+  agruparPor.value = 'Objetos'
+
+  // Limpiar días laborables (volver a lun-vie)
+  diasLaborablesSeleccionados.value = [1, 2, 3, 4, 5]
+
+  // Limpiar horario laboral
+  horarioInicio.value = '08:00'
+  horarioFin.value = '17:00'
+
+  // Limpiar tipos de informe
+  tipoInformeComercial.value = 'todos'
+  tipoDetalle.value = 'dias_detallados'
+
+  // Limpiar opciones de mapa
+  mostrarMapaTrayecto.value = false
+  mostrarUnidadesMapa.value = true
+  mostrarPlacaMapa.value = true
+  mostrarMapaZona.value = false
+
+  // Limpiar columnas seleccionadas
+  columnasSeleccionadas.value = []
+  columnaAgregar.value = null
+  mostrarResumen.value = false
+
+  // Limpiar listas de opciones cargadas
+  opcionesSelector.value = []
+
+  // Notificación de éxito
+  $q.notify({
+    message: 'Formulario reiniciado',
+    color: 'info',
+    icon: 'refresh',
+    position: 'top',
+    timeout: 2000,
+  })
+
+  console.log('✅ Formulario de reporte cancelado y limpiado')
+}
 // Historial
 const reportesAnteriores = ref([
   {
