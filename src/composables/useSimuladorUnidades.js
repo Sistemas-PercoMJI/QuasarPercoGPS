@@ -1,12 +1,16 @@
-// src/composables/useSimuladorUnidades.js - Versión 1.0
+// src/composables/useSimuladorUnidades.js - Versión 2.0 CORREGIDA
 import { ref } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, set, update, onValue, remove } from 'firebase/database'
+import { useEventDetection } from 'src/composables/useEventDetection' // 🔧 NUEVO
 
 export function useSimuladorUnidades() {
   const simulacionActiva = ref(false)
   const intervalos = ref([])
   const unidadesSimuladas = ref([])
+  
+  // 🔧 NUEVO: Obtener función para evaluar eventos
+  const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   
   // Coordenadas base de Tijuana, BC
   const CENTRO_TIJUANA = {
@@ -34,7 +38,7 @@ export function useSimuladorUnidades() {
    * Calcula distancia entre dos puntos en metros
    */
   const calcularDistancia = (lat1, lng1, lat2, lng2) => {
-    const R = 6371e3 // Radio de la Tierra en metros
+    const R = 6371e3
     const φ1 = (lat1 * Math.PI) / 180
     const φ2 = (lat2 * Math.PI) / 180
     const Δφ = ((lat2 - lat1) * Math.PI) / 180
@@ -49,11 +53,9 @@ export function useSimuladorUnidades() {
   }
 
   /**
-   * 🔧 CORREGIDO: Mueve una unidad hacia su destino actual
-   * Ahora retorna siempre un objeto válido con ubicacion definida
+   * Mueve una unidad hacia su destino actual
    */
   const moverUnidadHaciaDestino = (unidad, estadoActual) => {
-    // 🔧 VALIDACIÓN: Verificar que estadoActual tenga ubicacion
     if (!estadoActual.ubicacion || !estadoActual.ubicacion.lat || !estadoActual.ubicacion.lng) {
       console.error('❌ Estado actual sin ubicación válida:', estadoActual)
       return {
@@ -65,7 +67,6 @@ export function useSimuladorUnidades() {
     }
 
     if (!unidad.destinoActual || !unidad.ruta || unidad.ruta.length === 0) {
-      // Si no hay ruta, usar el movimiento aleatorio original
       return generarMovimiento(
         { ...estadoActual.ubicacion, direccion: estadoActual.direccion },
         estadoActual.velocidad
@@ -73,13 +74,11 @@ export function useSimuladorUnidades() {
     }
     
     const ahora = Date.now()
-    const tiempoTranscurrido = (ahora - (estadoActual.ultimoPuntoTiempo || ahora)) / 1000 // segundos
+    const tiempoTranscurrido = (ahora - (estadoActual.ultimoPuntoTiempo || ahora)) / 1000
     
-    // Velocidad en metros por segundo
     const velocidadMs = (estadoActual.velocidad * 1000) / 3600
     const distanciaAMover = velocidadMs * tiempoTranscurrido
     
-    // Calcular distancia al destino actual
     const distanciaAlDestino = calcularDistancia(
       estadoActual.ubicacion.lat, 
       estadoActual.ubicacion.lng,
@@ -87,9 +86,7 @@ export function useSimuladorUnidades() {
       unidad.destinoActual.lng
     )
     
-    // Si llegamos al destino
     if (distanciaAMover >= distanciaAlDestino) {
-      // Mover al destino exacto
       const nuevaUbicacion = {
         lat: unidad.destinoActual.lat,
         lng: unidad.destinoActual.lng
@@ -97,18 +94,14 @@ export function useSimuladorUnidades() {
       
       console.log(`📍 Unidad ${unidad.unidadNombre} llegó a: ${unidad.destinoActual.nombre} (${unidad.destinoActual.tipo})`)
       
-      // Cambiar al siguiente destino
       unidad.indiceRutaActual = (unidad.indiceRutaActual + 1) % unidad.ruta.length
       unidad.destinoActual = unidad.ruta[unidad.indiceRutaActual]
       unidad.ultimoCambioDestino = ahora
       
-      // Pequeña pausa en cada destino (simula parada)
       const nuevoEstado = 'detenido'
       const nuevaVelocidad = 0
       
-      // Programar reanudación del movimiento después de 3 segundos
       setTimeout(() => {
-        // Actualizar a estado de movimiento
         const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidad.unidadId}`)
         update(unidadRef, {
           estado: 'movimiento',
@@ -127,19 +120,16 @@ export function useSimuladorUnidades() {
         velocidad: nuevaVelocidad
       }
     } else {
-      // Moverse hacia el destino
       const proporcion = distanciaAMover / distanciaAlDestino
       const nuevaLat = estadoActual.ubicacion.lat + (unidad.destinoActual.lat - estadoActual.ubicacion.lat) * proporcion
       const nuevaLng = estadoActual.ubicacion.lng + (unidad.destinoActual.lng - estadoActual.ubicacion.lng) * proporcion
       
-      // Calcular nueva dirección hacia el destino
       const deltaLat = unidad.destinoActual.lat - nuevaLat
       const deltaLng = unidad.destinoActual.lng - nuevaLng
       const nuevaDireccion = (Math.atan2(deltaLng, deltaLat) * 180) / Math.PI
       
-      // Variar velocidad ligeramente
       let nuevaVelocidad = estadoActual.velocidad
-      if (Math.random() < 0.1) { // 10% de probabilidad
+      if (Math.random() < 0.1) {
         nuevaVelocidad = Math.max(30, Math.min(70, nuevaVelocidad + (Math.random() - 0.5) * 10))
       }
       
@@ -154,18 +144,11 @@ export function useSimuladorUnidades() {
       }
     }
   }
-
-  /**
-   * Genera movimiento realista desde una posición
-   */
+  
   const generarMovimiento = (ubicacionActual, velocidad) => {
-    // Velocidad en km/h convertida a grados por segundo aproximadamente
-    const velocidadGrados = (velocidad / 111000) * 5 // 5 segundos
-    
-    // Dirección aleatoria pero más suave (bias hacia la dirección anterior)
-    const variacionAngulo = (Math.random() - 0.5) * (Math.PI / 4) // ±45 grados
+    const velocidadGrados = (velocidad / 111000) * 5
+    const variacionAngulo = (Math.random() - 0.5) * (Math.PI / 4)
     const direccion = (ubicacionActual.direccion || Math.random() * 360) + (variacionAngulo * 180 / Math.PI)
-    
     const radianes = (direccion * Math.PI) / 180
     
     return {
@@ -179,9 +162,6 @@ export function useSimuladorUnidades() {
     }
   }
 
-  /**
-   * Obtiene direcciones de calles reales de Tijuana
-   */
   const DIRECCIONES_TIJUANA = [
     'Av. Revolución, Centro',
     'Blvd. Agua Caliente',
@@ -196,30 +176,32 @@ export function useSimuladorUnidades() {
   ]
 
   /**
-   * 🔧 CORREGIDO: Inicia la simulación de una unidad específica con rutas inteligentes
+   * 🔧 CORREGIDO: Inicia la simulación de una unidad con DETECCIÓN DE EVENTOS
    */
-  const iniciarSimulacionUnidad = async (conductor, unidad, rutaAsignada = null) => {
+  const iniciarSimulacionUnidad = async (conductor, unidad, rutaAsignada = null, indiceUnidad = 0) => {
     const unidadId = `unidad_${unidad.id}`
     
-    // Usar ruta asignada si existe, sino generar ubicación aleatoria
+    // 🔧 FIX 1: Cada unidad empieza en un punto DIFERENTE de su ruta
     let ubicacionInicial
     if (rutaAsignada && rutaAsignada.length > 0) {
+      // Usar el índice de la unidad para determinar punto de inicio
+      const puntoInicio = indiceUnidad % rutaAsignada.length
       ubicacionInicial = {
-        lat: rutaAsignada[0].lat,
-        lng: rutaAsignada[0].lng
+        lat: rutaAsignada[puntoInicio].lat,
+        lng: rutaAsignada[puntoInicio].lng
       }
+      console.log(`🎯 Unidad ${unidad.Unidad} inicia en punto ${puntoInicio}: ${rutaAsignada[puntoInicio].nombre}`)
     } else {
       ubicacionInicial = generarUbicacionAleatoria()
     }
     
-    // 🔧 VALIDACIÓN: Asegurar que ubicacionInicial sea válida
     if (!ubicacionInicial.lat || !ubicacionInicial.lng) {
       console.error('❌ Ubicación inicial inválida, generando nueva')
       ubicacionInicial = generarUbicacionAleatoria()
     }
     
-    // Estado inicial de la unidad
     const estadoInicial = {
+      id: unidad.id, // 🔧 AÑADIDO para evitar warnings
       conductorId: conductor.id,
       conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
       conductorFoto: conductor.LicenciaConducirFoto || null,
@@ -227,30 +209,28 @@ export function useSimuladorUnidades() {
       unidadNombre: unidad.Unidad,
       unidadPlaca: unidad.Placa || 'N/A',
       ubicacion: ubicacionInicial,
-      velocidad: Math.floor(Math.random() * 20) + 40, // 40-60 km/h
-      direccion: Math.floor(Math.random() * 360), // 0-360 grados
+      velocidad: Math.floor(Math.random() * 20) + 40,
+      direccion: Math.floor(Math.random() * 360),
       estado: 'movimiento',
       direccionTexto: DIRECCIONES_TIJUANA[Math.floor(Math.random() * DIRECCIONES_TIJUANA.length)],
-      bateria: Math.floor(Math.random() * 30) + 70, // 70-100%
+      bateria: Math.floor(Math.random() * 30) + 70,
       ignicion: true,
       timestamp: Date.now(),
       ultimaActualizacion: new Date().toISOString(),
       ultimoPuntoTiempo: Date.now(),
       velocidadBase: Math.floor(Math.random() * 20) + 40,
-      // Datos de la ruta
       ruta: rutaAsignada || [],
-      indiceRutaActual: 0,
-      destinoActual: rutaAsignada && rutaAsignada.length > 0 ? rutaAsignada[0] : null
+      indiceRutaActual: indiceUnidad % (rutaAsignada?.length || 1), // 🔧 Cada uno empieza en índice diferente
+      destinoActual: rutaAsignada && rutaAsignada.length > 0 ? 
+        rutaAsignada[(indiceUnidad + 1) % rutaAsignada.length] : null // 🔧 Siguiente destino diferente
     }
 
-    // Guardar en Realtime Database
     const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
     await set(unidadRef, estadoInicial)
     
-    // Crear intervalo para actualizar cada 2 segundos
+    // 🔧 FIX 2: Intervalo CON detección de eventos
     const intervalo = setInterval(async () => {
       try {
-        // Leer estado actual
         const snapshot = await new Promise((resolve, reject) => {
           onValue(unidadRef, (snap) => {
             resolve(snap)
@@ -260,31 +240,41 @@ export function useSimuladorUnidades() {
         const estadoActual = snapshot.val()
         if (!estadoActual) return
 
-        // 🔧 VALIDACIÓN: Verificar que estadoActual tenga datos válidos
         if (!estadoActual.ubicacion || !estadoActual.ubicacion.lat || !estadoActual.ubicacion.lng) {
           console.error('❌ Estado sin ubicación válida, regenerando:', unidadId)
           estadoActual.ubicacion = generarUbicacionAleatoria()
         }
 
-        // Usar movimiento hacia destino si hay ruta
         let nuevoMovimiento
         if (estadoActual.ruta && estadoActual.ruta.length > 0 && estadoActual.destinoActual) {
           nuevoMovimiento = moverUnidadHaciaDestino(estadoActual, estadoActual)
         } else {
-          // Movimiento aleatorio original si no hay ruta
           nuevoMovimiento = generarMovimiento(
             { ...estadoActual.ubicacion, direccion: estadoActual.direccion },
             estadoActual.velocidad
           )
         }
 
-        // 🔧 VALIDACIÓN CRÍTICA: Asegurar que ubicacion nunca sea undefined
         if (!nuevoMovimiento.ubicacion || !nuevoMovimiento.ubicacion.lat || !nuevoMovimiento.ubicacion.lng) {
           console.error('❌ Nuevo movimiento sin ubicación válida, usando ubicación actual')
           nuevoMovimiento.ubicacion = estadoActual.ubicacion
         }
 
-        // Actualizar en Firebase con datos validados
+        // 🔧 FIX 3: Crear objeto para evaluación de eventos
+        const unidadParaEvaluar = {
+          id: unidad.id,
+          conductorId: estadoActual.conductorId,
+          conductorNombre: estadoActual.conductorNombre,
+          unidadNombre: estadoActual.unidadNombre,
+          ubicacion: {
+            lat: nuevoMovimiento.ubicacion.lat,
+            lng: nuevoMovimiento.ubicacion.lng
+          },
+          estado: nuevoMovimiento.estado || estadoActual.estado,
+          velocidad: nuevoMovimiento.velocidad || estadoActual.velocidad
+        }
+
+        // Actualizar en Firebase
         await update(unidadRef, {
           ubicacion: {
             lat: nuevoMovimiento.ubicacion.lat,
@@ -301,7 +291,14 @@ export function useSimuladorUnidades() {
           destinoActual: estadoActual.destinoActual || null
         })
 
-        console.log(`✅ Unidad ${unidad.Unidad} actualizada - Estado: ${nuevoMovimiento.estado || estadoActual.estado}, Vel: ${nuevoMovimiento.velocidad || estadoActual.velocidad} km/h`)
+        // 🔧 FIX 4: EVALUAR EVENTOS después de actualizar
+        try {
+          await evaluarEventosParaUnidadesSimulacion([unidadParaEvaluar])
+        } catch (errorEvento) {
+          console.error('⚠️ Error evaluando eventos para unidad:', errorEvento)
+        }
+
+        console.log(`✅ Unidad ${unidad.Unidad} actualizada - ${nuevoMovimiento.estado} - ${nuevoMovimiento.velocidad} km/h - Eventos evaluados`)
         
       } catch (error) {
         console.error(`Error actualizando unidad ${unidadId}:`, error)
@@ -319,7 +316,7 @@ export function useSimuladorUnidades() {
   }
 
   /**
-   * Inicia simulación para múltiples conductores con unidades asignadas
+   * Inicia simulación para múltiples conductores
    */
   const iniciarSimulacion = async (conductores, unidades) => {
     if (simulacionActiva.value) {
@@ -327,7 +324,6 @@ export function useSimuladorUnidades() {
       return
     }
 
-    // Filtrar solo conductores que tienen unidad asignada
     const conductoresConUnidad = conductores.filter(c => c.UnidadAsignada)
     
     if (conductoresConUnidad.length === 0) {
@@ -337,28 +333,28 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
     
-    // Iniciar simulación para cada conductor
+    // 🔧 FIX 5: Pasar índice a cada unidad para que empiecen en puntos diferentes
+    let indice = 0
     for (const conductor of conductoresConUnidad) {
       const unidad = unidades.find(u => u.id === conductor.UnidadAsignada)
       if (unidad) {
         const rutaAsignada = unidad.ruta || null
-        await iniciarSimulacionUnidad(conductor, unidad, rutaAsignada)
+        await iniciarSimulacionUnidad(conductor, unidad, rutaAsignada, indice)
+        indice++
       }
     }
     
-    console.log(`✅ Simulación iniciada para ${conductoresConUnidad.length} unidades`)
+    console.log(`✅ Simulación iniciada para ${conductoresConUnidad.length} unidades con detección de eventos activa`)
   }
 
   /**
    * Detiene la simulación
    */
   const detenerSimulacion = async () => {
-    // Detener todos los intervalos
     intervalos.value.forEach(({ intervalo }) => {
       clearInterval(intervalo)
     })
     
-    // Limpiar unidades de Firebase
     for (const { unidadId } of unidadesSimuladas.value) {
       const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
       await remove(unidadRef)
@@ -368,7 +364,7 @@ export function useSimuladorUnidades() {
     unidadesSimuladas.value = []
     simulacionActiva.value = false
     
-    console.log('🛑 Simulación detenida')
+    console.log('🛑 Simulación detenida - Eventos desactivados')
   }
 
   /**

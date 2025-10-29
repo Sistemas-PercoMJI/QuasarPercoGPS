@@ -1,4 +1,4 @@
-// src/composables/useTrackingUnidades.js
+// src/composables/useTrackingUnidades.js - CORREGIDO
 import { ref, onUnmounted } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
@@ -24,13 +24,48 @@ export function useTrackingUnidades() {
         const data = snapshot.val()
         
         if (data) {
-          // Convertir objeto a array
-          unidadesActivas.value = Object.entries(data).map(([key, value]) => ({
-            id: key,
-            ...value
-          }))
+          // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
+          const unidadesValidas = Object.entries(data)
+            .filter(([key, value]) => {
+              // Validar que tenga estructura completa
+              const esValida = value && 
+                              value.ubicacion && 
+                              typeof value.ubicacion.lat === 'number' &&
+                              typeof value.ubicacion.lng === 'number' &&
+                              !isNaN(value.ubicacion.lat) &&
+                              !isNaN(value.ubicacion.lng) &&
+                              value.conductorNombre &&
+                              value.unidadNombre
+              
+              if (!esValida) {
+                console.warn(`⚠️ Unidad inválida ignorada: ${key}`, {
+                  key,
+                  tieneUbicacion: !!value?.ubicacion,
+                  tieneLat: value?.ubicacion?.lat,
+                  tieneLng: value?.ubicacion?.lng,
+                  tieneConductor: !!value?.conductorNombre,
+                  tieneUnidad: !!value?.unidadNombre
+                })
+              }
+              
+              return esValida
+            })
+            .map(([key, value]) => ({
+              // 🔧 FIX: Usar el ID correcto del objeto
+              id: value.unidadId || value.id || key,
+              ...value
+            }))
           
-          console.log(`📡 ${unidadesActivas.value.length} unidades activas detectadas`)
+          unidadesActivas.value = unidadesValidas
+          
+          console.log(`📡 ${unidadesValidas.length} unidades válidas detectadas (${Object.keys(data).length} totales en Firebase)`)
+          
+          // 🔧 DEBUG: Mostrar qué unidades son válidas
+          if (unidadesValidas.length > 0) {
+            unidadesValidas.forEach(u => {
+              console.log(`✅ Unidad válida: ${u.conductorNombre} - ${u.unidadNombre} en [${u.ubicacion.lat.toFixed(4)}, ${u.ubicacion.lng.toFixed(4)}]`)
+            })
+          }
         } else {
           unidadesActivas.value = []
           console.log('📡 No hay unidades activas')
@@ -38,15 +73,15 @@ export function useTrackingUnidades() {
         
         loading.value = false
       }, (err) => {
-        console.error('Error en tracking:', err)
+        console.error('❌ Error en tracking:', err)
         error.value = err.message
         loading.value = false
       })
 
-      console.log('✅ Tracking iniciado')
+      console.log('✅ Tracking iniciado con filtrado de unidades válidas')
       
     } catch (err) {
-      console.error('Error al iniciar tracking:', err)
+      console.error('❌ Error al iniciar tracking:', err)
       error.value = err.message
       loading.value = false
     }
@@ -101,7 +136,7 @@ export function useTrackingUnidades() {
     return conteo
   }
 
-  /*
+  /**
    * Obtiene estadísticas generales
    */
   const estadisticas = () => {
