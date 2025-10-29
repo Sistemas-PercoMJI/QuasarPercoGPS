@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <!-- 🔧 CAMBIADO: Mostrar info de destinos -->
+      <!-- Info de destinos -->
       <div class="info-section">
         <q-icon name="info" color="blue-grey" size="16px" class="q-mr-sm" />
         <span class="info-text">
@@ -154,11 +154,9 @@ import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import { onMounted } from 'vue'
-import { useEventDetection } from 'src/composables/useEventDetection'
 
 const $q = useQuasar()
 
-// 🔧 NUEVO: Recibir POIs y Geozonas como props
 const props = defineProps({
   poisIniciales: {
     type: Array,
@@ -170,63 +168,26 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
+
 // Composables
 const { simulacionActiva, toggleSimulacion: toggleSim } = useSimuladorUnidades()
 const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
-const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
 
 // Estado local
 const expanded = ref(false)
 const loading = ref(false)
 const activityLogs = ref([])
-const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
 
-// 🔧 CORREGIDO: Usar props en lugar de refs vacíos
 const pois = computed(() => props.poisIniciales)
 const geozonas = computed(() => props.geozonasIniciales)
 
-// 🔧 NUEVO: Computed para total de destinos
 const totalDestinos = computed(() => {
   return pois.value.length + geozonas.value.length
 })
 
-// 🔧 SIMPLIFICADO: Recargar solo conductores y unidades
-const recargarDatos = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      obtenerConductores(),
-      obtenerUnidades()
-    ])
-    
-    console.log('🔄 Datos recargados:', {
-      conductores: conductores.value.length,
-      unidades: unidades.value.length,
-      pois: pois.value.length,
-      geozonas: geozonas.value.length
-    })
-    
-    $q.notify({
-      type: 'positive',
-      message: 'Datos recargados',
-      position: 'top'
-    })
-    
-    addLog('refresh', 'Datos actualizados', 'blue')
-  } catch (error) {
-    console.error('Error al recargar datos:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al recargar datos',
-      position: 'top'
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
-// Función para generar rutas inteligentes que pasen por POIs y Geozonas
+// 🔧 FUNCIÓN MEJORADA: Genera rutas ÚNICAS para cada unidad
 const generarRutasParaUnidades = () => {
   if (!conductores.value || !unidades.value) {
     console.warn('⚠️ No hay conductores o unidades para generar rutas')
@@ -290,22 +251,39 @@ const generarRutasParaUnidades = () => {
         id: 'defecto2', 
         lat: 32.51442183945805, 
         lng: -116.9414484543167, 
-        nombre: 'Punto 2', 
+        nombre: 'Punto Norte', 
+        tipo: 'defecto',
+        prioridad: 3
+      },
+      { 
+        id: 'defecto3', 
+        lat: 32.52442183945805, 
+        lng: -116.9614484543167, 
+        nombre: 'Punto Este', 
         tipo: 'defecto',
         prioridad: 3
       }
     )
   }
   
-  console.log(`🎯 Se encontraron ${destinos.length} destinos para las rutas`)
+  console.log(`🎯 ${destinos.length} destinos disponibles para las rutas`)
+  console.log('📍 Destinos:', destinos.map(d => `${d.nombre} (${d.tipo})`).join(', '))
   
-  // Asignar rutas inteligentes a cada unidad
-  conductores.value.forEach((conductor, index) => {
+  // 🔧 CRÍTICO: Mezclar destinos para que cada unidad tenga ruta diferente
+  const destinosMezclados = [...destinos]
+  for (let i = destinosMezclados.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [destinosMezclados[i], destinosMezclados[j]] = [destinosMezclados[j], destinosMezclados[i]]
+  }
+  
+  // Asignar rutas ÚNICAS a cada unidad
+  conductores.value.forEach((conductor, indexConductor) => {
     if (conductor.UnidadAsignada) {
       const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
       if (!unidad) return
       
-      const ruta = crearRutaInteligente(destinos, index)
+      // 🔧 NUEVO: Crear ruta DIFERENTE para cada unidad
+      const ruta = crearRutaUnicaParaUnidad(destinosMezclados, indexConductor, destinos.length)
       
       // Asignar la ruta a la unidad
       unidad.ruta = ruta
@@ -323,27 +301,22 @@ const generarRutasParaUnidades = () => {
         unidad.velocidadBase = unidad.velocidad
       }
       
-      console.log(`🚗 Ruta inteligente asignada a unidad ${unidad.Unidad}:`)
+      console.log(`🚗 Ruta ÚNICA asignada a ${unidad.Unidad}:`)
       console.log(`   📍 Destinos: ${ruta.map(d => d.nombre).join(' → ')}`)
     }
   })
 }
 
-// Función para crear rutas inteligentes
-const crearRutaInteligente = (destinos, indexUnidad) => {
+// 🔧 NUEVA FUNCIÓN: Crear ruta única para cada unidad
+const crearRutaUnicaParaUnidad = (destinosDisponibles, indexUnidad, totalDestinos) => {
   const ruta = []
-  const destinosDisponibles = [...destinos]
+  const numDestinos = Math.min(4, Math.max(2, totalDestinos))
   
-  const numDestinosPorUnidad = Math.min(5, Math.max(3, Math.floor(destinos.length / Math.max(1, conductores.value.length))))
+  // 🔧 CLAVE: Cada unidad empieza en un offset diferente en la lista de destinos
+  const offset = (indexUnidad * 3) % destinosDisponibles.length
   
-  // Ordenar destinos por prioridad (POIs primero, luego Geozonas)
-  destinosDisponibles.sort((a, b) => a.prioridad - b.prioridad)
-  
-  const indiceInicio = (indexUnidad * 2) % destinosDisponibles.length
-  
-  // Seleccionar destinos para esta unidad
-  for (let i = 0; i < numDestinosPorUnidad && i < destinosDisponibles.length; i++) {
-    const indiceDestino = (indiceInicio + i) % destinosDisponibles.length
+  for (let i = 0; i < numDestinos; i++) {
+    const indiceDestino = (offset + i) % destinosDisponibles.length
     const destino = destinosDisponibles[indiceDestino]
     
     ruta.push({
@@ -353,7 +326,7 @@ const crearRutaInteligente = (destinos, indexUnidad) => {
     })
   }
   
-  // Agregar punto de retorno al inicio
+  // Agregar punto de retorno al inicio para hacer la ruta circular
   if (ruta.length > 1) {
     ruta.push({
       ...ruta[0],
@@ -378,79 +351,46 @@ const calcularCentroPoligono = (puntos) => {
   }
 }
 
-// Función para mover unidades hacia sus destinos
-const moverUnidadHaciaDestino = (unidad) => {
-  if (!unidad.destinoActual || !unidad.ruta || unidad.ruta.length === 0) return
-  
-  const ahora = Date.now()
-  const tiempoTranscurrido = (ahora - unidad.ultimoPuntoTiempo) / 1000
-  
-  const velocidadMs = (unidad.velocidad * 1000) / 3600
-  const distanciaAMover = velocidadMs * tiempoTranscurrido
-  
-  const distanciaAlDestino = calcularDistancia(
-    unidad.lat, unidad.lng,
-    unidad.destinoActual.lat, unidad.destinoActual.lng
-  )
-  
-  if (distanciaAMover >= distanciaAlDestino) {
-    unidad.lat = unidad.destinoActual.lat
-    unidad.lng = unidad.destinoActual.lng
+const recargarDatos = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      obtenerConductores(),
+      obtenerUnidades()
+    ])
     
-    console.log(`📍 Unidad ${unidad.nombre} llegó a: ${unidad.destinoActual.nombre} (${unidad.destinoActual.tipo})`)
+    console.log('🔄 Datos recargados:', {
+      conductores: conductores.value.length,
+      unidades: unidades.value.length,
+      pois: pois.value.length,
+      geozonas: geozonas.value.length
+    })
     
-    evaluarEventosParaUnidadesSimulacion([unidad])
+    $q.notify({
+      type: 'positive',
+      message: 'Datos recargados',
+      position: 'top'
+    })
     
-    unidad.indiceRutaActual = (unidad.indiceRutaActual + 1) % unidad.ruta.length
-    unidad.destinoActual = unidad.ruta[unidad.indiceRutaActual]
-    unidad.ultimoCambioDestino = ahora
-    
-    unidad.estado = 'detenido'
-    unidad.velocidad = 0
-    
-    setTimeout(() => {
-      unidad.estado = 'movimiento'
-      unidad.velocidad = unidad.velocidadBase
-      console.log(`🚗 Unidad ${unidad.nombre} reanudando viaje hacia: ${unidad.destinoActual.nombre}`)
-    }, 3000)
-    
-  } else {
-    const proporcion = distanciaAMover / distanciaAlDestino
-    unidad.lat = unidad.lat + (unidad.destinoActual.lat - unidad.lat) * proporcion
-    unidad.lng = unidad.lng + (unidad.destinoActual.lng - unidad.lng) * proporcion
-    
-    if (Math.random() < 0.1) {
-      unidad.velocidad = Math.max(30, Math.min(70, unidad.velocidad + (Math.random() - 0.5) * 10))
-    }
+    addLog('refresh', 'Datos actualizados', 'blue')
+  } catch (error) {
+    console.error('Error al recargar datos:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al recargar datos',
+      position: 'top'
+    })
+  } finally {
+    loading.value = false
   }
-  
-  unidad.ultimoPuntoTiempo = ahora
 }
 
-// Función para calcular distancia
-const calcularDistancia = (lat1, lng1, lat2, lng2) => {
-  const R = 6371e3
-  const φ1 = (lat1 * Math.PI) / 180
-  const φ2 = (lat2 * Math.PI) / 180
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180
-  const Δλ = ((lng2 - lng1) * Math.PI) / 180
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-  return R * c
-}
-
-// Computed
 const stats = computed(() => estadisticas())
 
 const conductoresConUnidad = computed(() => {
   return conductores.value.filter(c => c.UnidadAsignada).length
 })
 
-// 🔧 NUEVO: Watch para debug de datos
 watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
   console.log('📊 Datos actualizados en SimuladorControl:', {
     pois: nuevoPois.length,
@@ -459,20 +399,15 @@ watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
 }, { immediate: true })
 
 onMounted(async () => {
-  // Esperar a que se carguen los datos iniciales
   await recargarDatos()
   
-  // Si hay conductores con unidades asignadas, iniciar simulación automáticamente
   if (conductoresConUnidad.value > 0) {
     console.log('✅ Iniciando simulación automáticamente...')
-    
     generarRutasParaUnidades()
-    
     await toggleSimulacion()
   }
 })
 
-// Métodos
 const toggleSimulacion = async () => {
   if (conductoresConUnidad.value === 0) {
     $q.notify({
@@ -485,7 +420,7 @@ const toggleSimulacion = async () => {
 
   loading.value = true
   try {
-    // Generar rutas inteligentes si no existen
+    // 🔧 IMPORTANTE: Generar rutas si no existen
     if (!unidades.value.some(u => u.ruta && u.ruta.length > 0)) {
       generarRutasParaUnidades()
     }
@@ -508,7 +443,6 @@ const toggleSimulacion = async () => {
       position: 'top'
     })
 
-    // 🔧 NUEVO: Emitir evento
     emit('iniciar-simulacion', {
       activa: simulacionActiva.value,
       unidades: conductoresConUnidad.value
@@ -544,33 +478,14 @@ const addLog = (icon, message, color) => {
   }
 }
 
-// Watch para agregar logs automáticos
 watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
     addLog('directions_car', `${newVal} en movimiento`, 'primary')
   }
 })
-
-// Watch para mover unidades cuando la simulación está activa
-watch(() => simulacionActiva.value, (isActive) => {
-  if (isActive) {
-    const intervaloMovimiento = setInterval(() => {
-      if (simulacionActiva.value) {
-        unidades.value.forEach(unidad => {
-          if (unidad.estado === 'movimiento' && unidad.destinoActual) {
-            moverUnidadHaciaDestino(unidad)
-          }
-        })
-      } else {
-        clearInterval(intervaloMovimiento)
-      }
-    }, 2000)
-  }
-})
 </script>
 
 <style scoped>
-/* Botón flotante (FAB) */
 .simulador-fab {
   box-shadow: 0 4px 12px rgba(103, 58, 183, 0.4);
   transition: all 0.3s ease;
@@ -581,7 +496,6 @@ watch(() => simulacionActiva.value, (isActive) => {
   box-shadow: 0 6px 16px rgba(103, 58, 183, 0.6);
 }
 
-/* Card expandido */
 .simulador-card-expandido {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border-radius: 12px;
