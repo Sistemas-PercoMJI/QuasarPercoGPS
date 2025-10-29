@@ -123,6 +123,7 @@
                     Búsquedas recientes
                   </q-item-label>
                   <q-item
+                    class="text-black"
                     v-for="(reciente, index) in busquedasRecientes"
                     :key="index"
                     clickable
