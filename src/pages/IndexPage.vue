@@ -13,9 +13,13 @@
       <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
     </q-btn>
 
-    <!-- SimuladorControl - Justo debajo del botón de tráfico -->
+    <!-- 🔧 ÚNICO CAMBIO: Agregar props al SimuladorControl -->
     <div class="simulador-container">
-      <SimuladorControl />
+      <SimuladorControl 
+        :pois-iniciales="poisCargados"
+        :geozonas-iniciales="geozonasCargadas"
+        @iniciar-simulacion="manejarInicioSimulacion"
+      />
     </div>
 
     <transition name="fade-scale">
@@ -91,6 +95,11 @@ const geozonasCargadas = ref([])
 // Variables para GPS
 let watchId = null
 let mapaAPI = null
+
+// 🔧 NUEVO: Handler para inicio de simulación
+const manejarInicioSimulacion = (data) => {
+  console.log('🚀 Evento de simulación recibido en IndexPage:', data)
+}
 
 // 🔧 CAMBIO 1: Watch movido FUERA de dibujarTodosEnMapa para que siempre esté activo
 // Este watch se ejecutará cada vez que cambien las unidades activas
@@ -1101,7 +1110,7 @@ const manejarToggleTrafico = () => {
   z-index: 1000;
 }
 
-/* Cuando está expandido, darle ancho fijo sisisiis  */
+/* Cuando está expandido, darle ancho fijo */
 .simulador-container :deep(.simulador-card-expandido) {
   width: 350px;
 }
@@ -1117,7 +1126,7 @@ const manejarToggleTrafico = () => {
   }
 }
 
-/* 🆕 Estilos para marcadores GPS */
+/* Estilos para marcadores GPS */
 :deep(.custom-marker-unidad) {
   background: none !important;
   border: none !important;
@@ -1142,6 +1151,4 @@ const manejarToggleTrafico = () => {
 :deep(.popup-unidad .leaflet-popup-content) {
   margin: 0;
 }
-
-
 </style>

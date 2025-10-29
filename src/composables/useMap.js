@@ -1,5 +1,5 @@
 // src/composables/useMap.js
-// 🔧 SOLUCIÓN AL PROBLEMA: Los cambios clave están en la función toggleTrafico()
+// 🔧 SOLUCIÓN AL PROBLEMA: Los cambios clave están en actualizarMarcadoresUnidades()
 
 import { ref } from 'vue'
 import L from 'leaflet'
@@ -12,7 +12,6 @@ const ubicacionSeleccionada = ref(null)
 const modoSeleccionActivo = ref(false)
 const marcadoresUnidades = ref({})
 
-// 🔧 CAMBIO 1: Convertir capaTrafico a ref para reactividad
 const capaTrafico = ref(null)
 
 // Nuevas referencias para geozonas
@@ -162,24 +161,41 @@ export function useMap() {
     `
   }
 
+  // 🔧 FUNCIÓN CORREGIDA: Validación completa de ubicación
   const actualizarMarcadoresUnidades = (unidades) => {
-    if (!map.value) return
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
 
-    const idsActuales = new Set(unidades.map(u => u.id))
+    console.log(`🔄 Actualizando marcadores GPS - ${unidades.length} unidades`)
+
+    const idsActuales = new Set()
     
-    Object.keys(marcadoresUnidades.value).forEach(id => {
-      if (!idsActuales.has(id)) {
-        map.value.removeLayer(marcadoresUnidades.value[id])
-        delete marcadoresUnidades.value[id]
-        console.log(`🗑️ Marcador GPS removido: ${id}`)
-      }
-    })
-    
+    // 🔧 VALIDACIÓN Y FILTRADO: Solo procesar unidades con ubicación válida
     unidades.forEach(unidad => {
+      // Validar que la unidad tenga ubicación válida
+      if (!unidad.ubicacion || 
+          typeof unidad.ubicacion.lat !== 'number' || 
+          typeof unidad.ubicacion.lng !== 'number' ||
+          isNaN(unidad.ubicacion.lat) ||
+          isNaN(unidad.ubicacion.lng)) {
+        console.warn(`⚠️ Unidad sin ubicación válida:`, {
+          id: unidad.unidadId || unidad.id,
+          nombre: unidad.unidadNombre,
+          ubicacion: unidad.ubicacion
+        })
+        return // Saltar esta unidad
+      }
+
+      const unidadId = unidad.unidadId || unidad.id
+      idsActuales.add(unidadId)
+      
       const { lat, lng } = unidad.ubicacion
       
-      if (marcadoresUnidades.value[unidad.id]) {
-        const marcador = marcadoresUnidades.value[unidad.id]
+      // Actualizar o crear marcador
+      if (marcadoresUnidades.value[unidadId]) {
+        const marcador = marcadoresUnidades.value[unidadId]
         marcador.setLatLng([lat, lng])
         marcador.setIcon(crearIconoUnidad(unidad.estado))
         marcador.setPopupContent(crearPopupUnidad(unidad))
@@ -187,13 +203,15 @@ export function useMap() {
         if (marcador._icon?.style) {
           marcador._icon.style.transition = 'all 0.5s ease-out'
         }
+        
+        console.log(`✅ Marcador actualizado: ${unidad.conductorNombre}`)
       } else {
-        // 🔧 ÚNICO CAMBIO: zIndexOffset de 1000 → 5000 y agregar className
+        // Crear nuevo marcador
         const icono = crearIconoUnidad(unidad.estado)
         const marcador = L.marker([lat, lng], { 
           icon: icono,
-          zIndexOffset: 5000, // 🔧 CAMBIO: de 1000 a 5000
-          className: 'marker-vehiculo-gps' // 🔧 NUEVO: clase para identificación
+          zIndexOffset: 5000,
+          className: 'marker-vehiculo-gps'
         })
           .addTo(map.value)
           .bindPopup(crearPopupUnidad(unidad), {
@@ -201,10 +219,21 @@ export function useMap() {
             className: 'popup-unidad'
           })
         
-        marcadoresUnidades.value[unidad.id] = marcador
-        console.log(`✅ Marcador GPS creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
+        marcadoresUnidades.value[unidadId] = marcador
+        console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
       }
     })
+    
+    // Limpiar marcadores de unidades que ya no están activas
+    Object.keys(marcadoresUnidades.value).forEach(id => {
+      if (!idsActuales.has(id)) {
+        map.value.removeLayer(marcadoresUnidades.value[id])
+        delete marcadoresUnidades.value[id]
+        console.log(`🗑️ Marcador GPS removido: ${id}`)
+      }
+    })
+
+    console.log(`✅ Actualización completa - ${idsActuales.size} marcadores activos`)
   }
 
   const limpiarMarcadoresUnidades = () => {
@@ -614,7 +643,6 @@ export function useMap() {
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
-
       }
       window.mapaGlobal = mapaAPI
       window.L = L
@@ -664,7 +692,6 @@ export function useMap() {
 
   const cleanup = () => {
     if (map.value) {
-      // 🔧 CAMBIO 2: Limpiar listener de zoom antes de remover el mapa
       map.value.off('zoomend')
       map.value.remove()
       map.value = null
@@ -685,10 +712,9 @@ export function useMap() {
     puntosPoligono.value = []
     marcadoresPoligono.value = []
     poligonoFinalizado.value = false
-    capaTrafico.value = null // 🔧 Limpiar referencia
+    capaTrafico.value = null
     limpiarMarcadoresUnidades()
     console.log('🧹 Mapa limpiado')
-    
   }
 
   // 🚦 TRAFICO - SOLUCIÓN PRINCIPAL
@@ -700,7 +726,7 @@ export function useMap() {
 
     if (capaTrafico.value) {
       // Desactivar tráfico
-      map.value.off('zoomend', actualizarCapaTrafico) // 🔧 Remover listener
+      map.value.off('zoomend', actualizarCapaTrafico)
       map.value.removeLayer(capaTrafico.value)
       capaTrafico.value = null
       console.log('🚦 Capa de tráfico DESACTIVADA')
@@ -715,14 +741,12 @@ export function useMap() {
           zoomOffset: -1,
           opacity: 1,
           className: 'traffic-layer-blend',
-          // 🔧 SOLUCIÓN 1: Configurar para actualización inmediata
-          updateWhenIdle: false, // NO esperar a que termine el zoom
-          updateWhenZooming: true, // Actualizar DURANTE el zoom
-          keepBuffer: 2, // Mantener buffer de tiles
+          updateWhenIdle: false,
+          updateWhenZooming: true,
+          keepBuffer: 2,
         },
       ).addTo(map.value)
 
-      // 🔧 SOLUCIÓN 2: Forzar redibujado en cada zoom
       map.value.on('zoomend', actualizarCapaTrafico)
 
       console.log('🚦 Capa de tráfico ACTIVADA')
@@ -730,10 +754,8 @@ export function useMap() {
     }
   }
 
-  // 🔧 SOLUCIÓN 3: Función dedicada para actualizar la capa
   const actualizarCapaTrafico = () => {
     if (capaTrafico.value) {
-      // Forzar redibujado de todos los tiles
       capaTrafico.value.redraw()
       console.log('🔄 Capa de tráfico actualizada en zoom:', map.value.getZoom())
     }

@@ -85,11 +85,11 @@
         </div>
       </div>
 
-      <!-- Información de conductores -->
+      <!-- 🔧 CAMBIADO: Mostrar info de destinos -->
       <div class="info-section">
         <q-icon name="info" color="blue-grey" size="16px" class="q-mr-sm" />
         <span class="info-text">
-          {{ conductoresConUnidad }} conductores con unidad asignada
+          {{ conductoresConUnidad }} conductores • {{ totalDestinos }} destinos disponibles
         </span>
       </div>
 
@@ -154,51 +154,51 @@ import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import { onMounted } from 'vue'
-// 🔥 AÑADIR ESTA IMPORTACIÓN
 import { useEventDetection } from 'src/composables/useEventDetection'
 
 const $q = useQuasar()
+
+// 🔧 NUEVO: Recibir POIs y Geozonas como props
+const props = defineProps({
+  poisIniciales: {
+    type: Array,
+    default: () => []
+  },
+  geozonasIniciales: {
+    type: Array,
+    default: () => []
+  }
+})
 
 // Composables
 const { simulacionActiva, toggleSimulacion: toggleSim } = useSimuladorUnidades()
 const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
-
-// 🔥 AÑADIR ESTA LÍNEA DESPUÉS DE LAS IMPORTACIONES
 const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
 
 // Estado local
 const expanded = ref(false)
 const loading = ref(false)
 const activityLogs = ref([])
-const emit = defineEmits(['recargar-datos'])
+const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
 
-// 🆕 NUEVO: Variables para POIs y Geozonas
-const pois = ref([])
-const geozonas = ref([])
+// 🔧 CORREGIDO: Usar props en lugar de refs vacíos
+const pois = computed(() => props.poisIniciales)
+const geozonas = computed(() => props.geozonasIniciales)
 
-// 🆕 NUEVO: Función para recargar datos incluyendo POIs y Geozonas
+// 🔧 NUEVO: Computed para total de destinos
+const totalDestinos = computed(() => {
+  return pois.value.length + geozonas.value.length
+})
+
+// 🔧 SIMPLIFICADO: Recargar solo conductores y unidades
 const recargarDatos = async () => {
   loading.value = true
   try {
-    // Recargar datos existentes
     await Promise.all([
       obtenerConductores(),
       obtenerUnidades()
     ])
-    
-    // 🆕 CORREGIDO: Recargar POIs y Geozonas con manejo de errores
-    try {
-      const resultado = await emit('recargar-datos')
-      if (resultado && resultado.pois && resultado.geozonas) {
-        pois.value = resultado.pois
-        geozonas.value = resultado.geozonas
-      } else {
-        console.warn('⚠️ No se recibieron datos de POIs y Geozonas')
-      }
-    } catch (error) {
-      console.error('Error al obtener POIs y Geozonas:', error)
-    }
     
     console.log('🔄 Datos recargados:', {
       conductores: conductores.value.length,
@@ -226,14 +226,14 @@ const recargarDatos = async () => {
   }
 }
 
-// 🆕 NUEVO: Función para generar rutas inteligentes que pasen por POIs y Geozonas
+// Función para generar rutas inteligentes que pasen por POIs y Geozonas
 const generarRutasParaUnidades = () => {
-  if (!conductores.value || !unidades.value || (pois.value.length === 0 && geozonas.value.length === 0)) {
-    console.warn('⚠️ No hay conductores, unidades o ubicaciones para generar rutas')
+  if (!conductores.value || !unidades.value) {
+    console.warn('⚠️ No hay conductores o unidades para generar rutas')
     return
   }
-  
-  // 🔥 NUEVO: Crear lista de destinos (POIs y Geozonas)
+
+  // Crear lista de destinos (POIs y Geozonas)
   const destinos = []
   
   // Agregar POIs como destinos
@@ -246,7 +246,7 @@ const generarRutasParaUnidades = () => {
         nombre: poi.nombre,
         tipo: 'poi',
         radio: poi.radio || 100,
-        prioridad: 1 // Las POIs tienen prioridad 1
+        prioridad: 1
       })
     }
   })
@@ -269,13 +269,14 @@ const generarRutasParaUnidades = () => {
         nombre: geozona.nombre,
         tipo: 'geozona',
         radio: geozona.radio || 100,
-        prioridad: 2 // Las geozonas tienen prioridad 2
+        prioridad: 2
       })
     }
   })
   
   // Si no hay suficientes destinos, agregar puntos por defecto
   if (destinos.length < 2) {
+    console.warn('⚠️ No hay suficientes POIs/Geozonas, usando destinos por defecto')
     destinos.push(
       { 
         id: 'defecto1', 
@@ -304,7 +305,6 @@ const generarRutasParaUnidades = () => {
       const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
       if (!unidad) return
       
-      // 🔥 NUEVO: Crear ruta personalizada para cada unidad (sin el parámetro unidad)
       const ruta = crearRutaInteligente(destinos, index)
       
       // Asignar la ruta a la unidad
@@ -319,29 +319,26 @@ const generarRutasParaUnidades = () => {
         unidad.lat = ruta[0].lat
         unidad.lng = ruta[0].lng
         unidad.estado = 'movimiento'
-        unidad.velocidad = Math.floor(Math.random() * 20) + 40 // 40-60 km/h
+        unidad.velocidad = Math.floor(Math.random() * 20) + 40
         unidad.velocidadBase = unidad.velocidad
       }
       
-      console.log(`🚗 Ruta inteligente asignada a unidad ${unidad.nombre}:`)
+      console.log(`🚗 Ruta inteligente asignada a unidad ${unidad.Unidad}:`)
       console.log(`   📍 Destinos: ${ruta.map(d => d.nombre).join(' → ')}`)
     }
   })
 }
 
-// 🔥 NUEVO: Función para crear rutas inteligentes
+// Función para crear rutas inteligentes
 const crearRutaInteligente = (destinos, indexUnidad) => {
   const ruta = []
   const destinosDisponibles = [...destinos]
   
-  // 🔥 ESTRATEGIA 1: Cada unidad tiene un conjunto preferido de destinos
   const numDestinosPorUnidad = Math.min(5, Math.max(3, Math.floor(destinos.length / Math.max(1, conductores.value.length))))
   
   // Ordenar destinos por prioridad (POIs primero, luego Geozonas)
   destinosDisponibles.sort((a, b) => a.prioridad - b.prioridad)
   
-  // 🔥 ESTRATEGIA 2: Asignar destinos basados en el índice de la unidad
-  // Cada unidad empieza desde un punto diferente
   const indiceInicio = (indexUnidad * 2) % destinosDisponibles.length
   
   // Seleccionar destinos para esta unidad
@@ -352,11 +349,11 @@ const crearRutaInteligente = (destinos, indexUnidad) => {
     ruta.push({
       ...destino,
       ordenVisita: i,
-      tiempoEstimadoLlegada: Date.now() + (i * 5 * 60 * 1000) // 5 minutos entre destinos
+      tiempoEstimadoLlegada: Date.now() + (i * 5 * 60 * 1000)
     })
   }
   
-  // 🔥 ESTRATEGIA 3: Agregar punto de retorno al inicio
+  // Agregar punto de retorno al inicio
   if (ruta.length > 1) {
     ruta.push({
       ...ruta[0],
@@ -368,7 +365,7 @@ const crearRutaInteligente = (destinos, indexUnidad) => {
   return ruta
 }
 
-// 🆕 NUEVO: Función para calcular el centro de un polígono
+// Función para calcular el centro de un polígono
 const calcularCentroPoligono = (puntos) => {
   let lat = 0, lng = 0
   puntos.forEach(punto => {
@@ -381,40 +378,33 @@ const calcularCentroPoligono = (puntos) => {
   }
 }
 
-// 🔥 NUEVO: Función para mover unidades hacia sus destinos
+// Función para mover unidades hacia sus destinos
 const moverUnidadHaciaDestino = (unidad) => {
   if (!unidad.destinoActual || !unidad.ruta || unidad.ruta.length === 0) return
   
   const ahora = Date.now()
-  const tiempoTranscurrido = (ahora - unidad.ultimoPuntoTiempo) / 1000 // segundos
+  const tiempoTranscurrido = (ahora - unidad.ultimoPuntoTiempo) / 1000
   
-  // Velocidad en metros por segundo
   const velocidadMs = (unidad.velocidad * 1000) / 3600
   const distanciaAMover = velocidadMs * tiempoTranscurrido
   
-  // Calcular distancia al destino actual
   const distanciaAlDestino = calcularDistancia(
     unidad.lat, unidad.lng,
     unidad.destinoActual.lat, unidad.destinoActual.lng
   )
   
-  // Si llegamos al destino
   if (distanciaAMover >= distanciaAlDestino) {
-    // Mover al destino exacto
     unidad.lat = unidad.destinoActual.lat
     unidad.lng = unidad.destinoActual.lng
     
     console.log(`📍 Unidad ${unidad.nombre} llegó a: ${unidad.destinoActual.nombre} (${unidad.destinoActual.tipo})`)
     
-    // 🔥 CORREGIDO: Usar la función importada directamente
     evaluarEventosParaUnidadesSimulacion([unidad])
     
-    // Cambiar al siguiente destino
     unidad.indiceRutaActual = (unidad.indiceRutaActual + 1) % unidad.ruta.length
     unidad.destinoActual = unidad.ruta[unidad.indiceRutaActual]
     unidad.ultimoCambioDestino = ahora
     
-    // 🔥 NUEVO: Pequeña pausa en cada destino (simula parada)
     unidad.estado = 'detenido'
     unidad.velocidad = 0
     
@@ -422,16 +412,14 @@ const moverUnidadHaciaDestino = (unidad) => {
       unidad.estado = 'movimiento'
       unidad.velocidad = unidad.velocidadBase
       console.log(`🚗 Unidad ${unidad.nombre} reanudando viaje hacia: ${unidad.destinoActual.nombre}`)
-    }, 3000) // 3 segundos de parada
+    }, 3000)
     
   } else {
-    // Moverse hacia el destino
     const proporcion = distanciaAMover / distanciaAlDestino
     unidad.lat = unidad.lat + (unidad.destinoActual.lat - unidad.lat) * proporcion
     unidad.lng = unidad.lng + (unidad.destinoActual.lng - unidad.lng) * proporcion
     
-    // 🔥 NUEVO: Variar velocidad ligeramente para hacerlo más realista
-    if (Math.random() < 0.1) { // 10% de probabilidad
+    if (Math.random() < 0.1) {
       unidad.velocidad = Math.max(30, Math.min(70, unidad.velocidad + (Math.random() - 0.5) * 10))
     }
   }
@@ -439,9 +427,9 @@ const moverUnidadHaciaDestino = (unidad) => {
   unidad.ultimoPuntoTiempo = ahora
 }
 
-// 🔥 NUEVO: Función para calcular distancia
+// Función para calcular distancia
 const calcularDistancia = (lat1, lng1, lat2, lng2) => {
-  const R = 6371e3 // Radio de la Tierra en metros
+  const R = 6371e3
   const φ1 = (lat1 * Math.PI) / 180
   const φ2 = (lat2 * Math.PI) / 180
   const Δφ = ((lat2 - lat1) * Math.PI) / 180
@@ -462,15 +450,22 @@ const conductoresConUnidad = computed(() => {
   return conductores.value.filter(c => c.UnidadAsignada).length
 })
 
+// 🔧 NUEVO: Watch para debug de datos
+watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
+  console.log('📊 Datos actualizados en SimuladorControl:', {
+    pois: nuevoPois.length,
+    geozonas: nuevasGeozonas.length
+  })
+}, { immediate: true })
+
 onMounted(async () => {
   // Esperar a que se carguen los datos iniciales
   await recargarDatos()
   
   // Si hay conductores con unidades asignadas, iniciar simulación automáticamente
   if (conductoresConUnidad.value > 0) {
-    console.log('Iniciando simulación automáticamente...')
+    console.log('✅ Iniciando simulación automáticamente...')
     
-    // 🆕 NUEVO: Generar rutas antes de iniciar la simulación
     generarRutasParaUnidades()
     
     await toggleSimulacion()
@@ -512,6 +507,12 @@ const toggleSimulacion = async () => {
       message,
       position: 'top'
     })
+
+    // 🔧 NUEVO: Emitir evento
+    emit('iniciar-simulacion', {
+      activa: simulacionActiva.value,
+      unidades: conductoresConUnidad.value
+    })
   } catch (error) {
     console.error('Error al toggle simulación:', error)
     $q.notify({
@@ -538,14 +539,10 @@ const addLog = (icon, message, color) => {
     time
   })
   
-  // Mantener solo los últimos 5 logs
   if (activityLogs.value.length > 5) {
     activityLogs.value.pop()
   }
 }
-
-// Cargar datos iniciales
-recargarDatos()
 
 // Watch para agregar logs automáticos
 watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
@@ -554,10 +551,9 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   }
 })
 
-// 🔥 NUEVO: Watch para mover unidades cuando la simulación está activa
+// Watch para mover unidades cuando la simulación está activa
 watch(() => simulacionActiva.value, (isActive) => {
   if (isActive) {
-    // Iniciar intervalo para mover unidades
     const intervaloMovimiento = setInterval(() => {
       if (simulacionActiva.value) {
         unidades.value.forEach(unidad => {
@@ -568,7 +564,7 @@ watch(() => simulacionActiva.value, (isActive) => {
       } else {
         clearInterval(intervaloMovimiento)
       }
-    }, 2000) // Actualizar cada 2 segundos
+    }, 2000)
   }
 })
 </script>
