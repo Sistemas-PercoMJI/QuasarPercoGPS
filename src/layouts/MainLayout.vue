@@ -485,6 +485,7 @@ import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
+import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -516,6 +517,9 @@ const searchInput = ref(null)
 const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
   useConductoresFirebase()
 
+const { obtenerUnidades, buscarUnidadesPorTermino } = useUnidadesFirebase()
+const unidadesCargadas = ref(false)
+
 const conductoresCargados = ref(false)
 
 //para geozonas y pois
@@ -536,6 +540,18 @@ const cargarDatosConductores = async () => {
       console.log('✅ Datos de conductores cargados para búsqueda')
     } catch (error) {
       console.error('❌ Error al cargar datos de conductores:', error)
+    }
+  }
+}
+
+const cargarDatosUnidades = async () => {
+  if (!unidadesCargadas.value) {
+    try {
+      await obtenerUnidades()
+      unidadesCargadas.value = true
+      console.log('✅ Datos de unidades cargados para búsqueda')
+    } catch (error) {
+      console.error('❌ Error al cargar datos de unidades:', error)
     }
   }
 }
@@ -704,11 +720,46 @@ async function buscarDirecciones(termino) {
   }
 }
 
-// 🚗 BÚSQUEDA DE VEHÍCULOS - Placeholder
 async function buscarVehiculos(termino) {
-  console.log('🚗 Buscando vehículos para:', termino)
-  // TODO: Implementar cuando tengas vehículos en Firebase
-  return []
+  try {
+    console.log('🚗 Buscando vehículos para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosUnidades()
+
+    const resultados = []
+
+    // Buscar en todas las unidades
+    const unidadesEncontradas = buscarUnidadesPorTermino(termino)
+
+    for (const unidad of unidadesEncontradas) {
+      // Formatear la información de la unidad
+      let detalle = `ID: ${unidad.Id || 'N/A'}`
+
+      if (unidad.SeguroUnidad) {
+        detalle += ` | Seguro: ${unidad.SeguroUnidad}`
+      }
+
+      if (unidad.TargetaCirculacion) {
+        detalle += ` | Tarjeta: ${unidad.TargetaCirculacion}`
+      }
+
+      resultados.push({
+        id: `unidad-${unidad.id}`,
+        tipo: 'vehiculo',
+        nombre: unidad.Unidad || 'Sin nombre',
+        detalle: detalle,
+        unidadId: unidad.id,
+        datosUnidad: unidad,
+      })
+    }
+
+    console.log('🚗 Vehículos encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando vehículos:', error)
+    return []
+  }
 }
 
 // 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
