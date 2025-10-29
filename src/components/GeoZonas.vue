@@ -121,6 +121,7 @@
             }"
             :data-ubicacion-id="poi.id"
             @click="seleccionarItem(poi)"
+            @dblclick="verEnMapaEnDirecto(poi)"
           >
             <q-card-section class="row items-center q-pa-md">
               <q-avatar size="48px" :color="getColorGrupo(poi.grupoId)" text-color="white">
@@ -255,6 +256,7 @@
             }"
             :data-ubicacion-id="geozona.id"
             @click="seleccionarItem(geozona)"
+            @dblclick="verEnMapaEnDirecto(geozona)"
           >
             <q-card-section class="row items-center q-pa-md">
               <q-avatar size="48px" :color="getColorGrupo(geozona.grupoId)" text-color="white">
@@ -1265,6 +1267,20 @@ function verEnMapa() {
 
   emit('item-seleccionado', itemMenu.value)
 }
+function verEnMapaEnDirecto(item) {
+  console.log('🗺️ Doble clic detectado en:', item.nombre)
+
+  // Establecer el item temporalmente en itemMenu
+  itemMenu.value = item
+
+  // Llamar a la función verEnMapa existente
+  verEnMapa()
+
+  // Opcional: Limpiar itemMenu después de un breve delay
+  setTimeout(() => {
+    itemMenu.value = null
+  }, 100)
+}
 
 function editarItem() {
   if (!itemMenu.value) return
@@ -2150,9 +2166,8 @@ defineExpose({
   pois: computed(() => pois.value),
   geozonas: computed(() => geozonas.value),
   obtenerPOIs,
-  obtenerGeozonas
+  obtenerGeozonas,
 })
-
 </script>
 
 <style scoped>
