@@ -3,8 +3,6 @@
     <q-header elevated class="bg-gradient">
       <q-toolbar class="toolbar-custom">
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
-
-        <!-- Búsqueda Mejorada -->
         <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
