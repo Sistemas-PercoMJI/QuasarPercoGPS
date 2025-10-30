@@ -1,4 +1,4 @@
-// src/composables/useEventDetection.js - LIMPIO
+// src/composables/useEventDetection.js - CORREGIDO FINAL
 import { ref } from 'vue'
 import { useNotifications } from './useNotifications'
 
@@ -10,10 +10,8 @@ const ubicacionActual = ref(null)
 const eventosDisparados = ref(new Set())
 const estadoUbicaciones = ref(new Map())
 
-
 // 🔧 Integración con notificaciones
 const { agregarNotificacion } = useNotifications()
-
 
 export function useEventDetection() {
   /**
@@ -57,12 +55,18 @@ export function useEventDetection() {
     
     if (tipo === 'POI') {
       const poi = poisMapeados.value.get(ubicacionId)
-      if (!poi) return false
+      if (!poi) {
+        console.warn(`⚠️ POI no encontrado: ${ubicacionId}`)
+        return false
+      }
       nombreUbicacion = poi.nombre
       estaDentro = estaDentroDelPOI(unidad.lat, unidad.lng, poi)
     } else if (tipo === 'Geozona') {
       const geozona = geozonasMapeadas.value.get(ubicacionId)
-      if (!geozona) return false
+      if (!geozona) {
+        console.warn(`⚠️ Geozona no encontrada: ${ubicacionId}`)
+        return false
+      }
       nombreUbicacion = geozona.nombre
       estaDentro = estaDentroDeGeozona(unidad.lat, unidad.lng, geozona)
     } else {
@@ -72,7 +76,7 @@ export function useEventDetection() {
     // Obtenemos el estado anterior
     const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
 
-    // ✅ SOLO LOGS DE DETECCIÓN IMPORTANTE
+    // ✅ CORREGIDO: Usar 'Entrada' y 'Salida' con mayúscula inicial
     if (activacion === 'Entrada' && estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
       console.log(`✅ ENTRADA detectada: Unidad ${unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
@@ -99,26 +103,40 @@ export function useEventDetection() {
    * Verifica si está dentro de un POI (círculo)
    */
   function estaDentroDelPOI(lat, lng, poi) {
-    if (!poi.coordenadas) return false
+    if (!poi.coordenadas) {
+      console.warn(`⚠️ POI sin coordenadas: ${poi.nombre}`)
+      return false
+    }
 
     const { lat: poiLat, lng: poiLng } = poi.coordenadas
     const radio = poi.radio || 100
 
     const distancia = calcularDistancia(lat, lng, poiLat, poiLng)
-    return distancia <= radio
+    const dentro = distancia <= radio
+    
+    if (dentro) {
+      console.log(`📍 Unidad dentro de POI "${poi.nombre}" (distancia: ${Math.round(distancia)}m, radio: ${radio}m)`)
+    }
+    
+    return dentro
   }
 
   /**
-   * Verifica si está dentro de una geozona
+   * ✅ CORREGIDO: Verifica si está dentro de una geozona (solo poligonales)
    */
   function estaDentroDeGeozona(lat, lng, geozona) {
-    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
-      const { lat: centroLat, lng: centroLng } = geozona.centro
-      const distancia = calcularDistancia(lat, lng, centroLat, centroLng)
-      return distancia <= geozona.radio
-    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
-      return puntoEnPoligono({ lat, lng }, geozona.puntos)
+    // ✅ SIMPLIFICADO: Todas las geozonas son poligonales
+    if (geozona.puntos && Array.isArray(geozona.puntos) && geozona.puntos.length > 0) {
+      const dentro = puntoEnPoligono({ lat, lng }, geozona.puntos)
+      
+      if (dentro) {
+        console.log(`🔷 Unidad dentro de Geozona poligonal "${geozona.nombre}"`)
+      }
+      
+      return dentro
     }
+    
+    console.warn(`⚠️ Geozona sin puntos válidos: ${geozona.nombre}`, geozona)
     return false
   }
 
@@ -160,14 +178,12 @@ export function useEventDetection() {
   }
 
   /**
-   * 🔧 NUEVO: Evalúa eventos para todas las unidades activas
+   * 🔧 CORREGIDO: Evalúa eventos para todas las unidades activas
    */
   function evaluarEventosParaUnidadesSimulacion(unidades) {
     if (!unidades || unidades.length === 0) {
       return
     }
-    
-    // ❌ LOGS ELIMINADOS: Ya no mostramos conteos en cada ciclo
     
     unidades.forEach(unidad => {
       // ✅ VALIDACIÓN MEJORADA: Usar ubicacion.lat y ubicacion.lng
@@ -175,6 +191,7 @@ export function useEventDetection() {
       const lng = unidad.ubicacion?.lng || unidad.lng
       
       if (!lat || !lng) {
+        console.warn(`⚠️ Unidad sin coordenadas válidas:`, unidad)
         return
       }
       
@@ -183,7 +200,7 @@ export function useEventDetection() {
         ...unidad,
         lat,
         lng,
-        nombre: unidad.conductorNombre || unidad.nombre || unidad.id
+        nombre: unidad.conductorNombre || unidad.unidadNombre || unidad.nombre || unidad.id
       }
       
       // Evaluar todos los eventos activos para esta unidad
@@ -194,34 +211,31 @@ export function useEventDetection() {
   }
 
   /**
-   * 🔧 NUEVO: Evalúa si un evento debe dispararse para una unidad simulada
+   * 🔧 CORREGIDO: Evalúa cada condición INDEPENDIENTEMENTE
    */
   function evaluarEventoParaUnidadSimulada(evento, unidad) {
     if (!evento.condiciones || evento.condiciones.length === 0) {
       return
     }
 
-    let todasCondicionesCumplidas = true
-
-    for (const condicion of evento.condiciones) {
+    // 🔧 CAMBIO CRÍTICO: Evaluar cada condición por separado
+    // En lugar de requerir que TODAS se cumplan, cada una dispara el evento independientemente
+    evento.condiciones.forEach(condicion => {
       const cumplida = evaluarCondicionParaUnidad(condicion, unidad)
       
-      if (!cumplida) {
-        todasCondicionesCumplidas = false
-        break
+      if (cumplida) {
+        console.log(`🎯 Condición cumplida para evento "${evento.nombre}" (${condicion.tipo} - ${condicion.activacion})`)
+        dispararEventoParaUnidadSimulada(evento, unidad, condicion)
       }
-    }
-
-    if (todasCondicionesCumplidas) {
-      dispararEventoParaUnidadSimulada(evento, unidad)
-    }
+    })
   }
 
   /**
-   * 🔧 NUEVO: Dispara el evento para una unidad simulada
+   * 🔧 CORREGIDO: Dispara el evento para una unidad simulada
    */
-  function dispararEventoParaUnidadSimulada(evento, unidad) {
-    const claveEvento = `${evento.id}-unidad-${unidad.id}`
+  function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
+    // Crear clave única que incluya la condición específica
+    const claveEvento = `${evento.id}-${condicion.tipo}-${condicion.ubicacionId}-${condicion.activacion}-unidad-${unidad.id}`
     
     if (eventosDisparados.value.has(claveEvento)) {
       return
@@ -229,30 +243,31 @@ export function useEventDetection() {
     
     eventosDisparados.value.add(claveEvento)
     
+    // Remover después de 10 segundos para permitir re-disparo
     setTimeout(() => {
       eventosDisparados.value.delete(claveEvento)
     }, 10000)
 
-    // ✅ LOG IMPORTANTE: Evento disparado
-    console.log(`🔔 Evento disparado: "${evento.nombre}" para unidad ${unidad.nombre}`)
-
-    const primeraCondicion = evento.condiciones[0]
+    // Obtener información de la ubicación
     let ubicacionNombre = 'Ubicación desconocida'
     let tipoUbicacion = ''
 
-    if (primeraCondicion.tipo === 'POI') {
-      const poi = poisMapeados.value.get(primeraCondicion.ubicacionId)
+    if (condicion.tipo === 'POI') {
+      const poi = poisMapeados.value.get(condicion.ubicacionId)
       ubicacionNombre = poi?.nombre || 'POI'
       tipoUbicacion = 'POI'
-    } else if (primeraCondicion.tipo === 'Geozona') {
-      const geozona = geozonasMapeadas.value.get(primeraCondicion.ubicacionId)
+    } else if (condicion.tipo === 'Geozona') {
+      const geozona = geozonasMapeadas.value.get(condicion.ubicacionId)
       ubicacionNombre = geozona?.nombre || 'Geozona'
       tipoUbicacion = 'Geozona'
     }
 
     const tipoNotificacion = 'positive'
-    const accionTexto = primeraCondicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
-    const mensaje = `${unidad.nombre} ${accionTexto} ${ubicacionNombre}`
+    const accionTexto = condicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
+    const mensaje = `${unidad.nombre} ${accionTexto} ${tipoUbicacion}: ${ubicacionNombre}`
+
+    // ✅ LOG IMPORTANTE: Evento disparado
+    console.log(`🔔 EVENTO DISPARADO: "${evento.nombre}" - ${mensaje}`)
 
     agregarNotificacion({
       type: tipoNotificacion,
@@ -262,14 +277,14 @@ export function useEventDetection() {
       eventoNombre: evento.nombre,
       ubicacionNombre: ubicacionNombre,
       tipoUbicacion: tipoUbicacion,
-      accion: primeraCondicion.activacion,
+      accion: condicion.activacion,
       sujeto: 'unidad',
       unidadId: unidad.id,
       unidadNombre: unidad.nombre
     })
 
     // ✅ LOG IMPORTANTE: Notificación creada
-    console.log(`📢 Notificación creada: ${mensaje}`)
+    console.log(`📢 NOTIFICACIÓN CREADA: ${mensaje}`)
   }
 
   /**
