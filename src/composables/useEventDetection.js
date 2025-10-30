@@ -1,4 +1,4 @@
-// src/composables/useEventDetection.js
+// src/composables/useEventDetection.js - LIMPIO
 import { ref } from 'vue'
 import { useNotifications } from './useNotifications'
 
@@ -7,13 +7,13 @@ const eventosActivos = ref([])
 const poisMapeados = ref(new Map())
 const geozonasMapeadas = ref(new Map())
 const ubicacionActual = ref(null)
-const eventosDisparados = ref(new Set()) // Para evitar duplicados
+const eventosDisparados = ref(new Set())
+const estadoUbicaciones = ref(new Map())
 
-// 🔧 NUEVO: Estado para saber si ya estamos dentro de una ubicación (para detectar salidas correctamente)
-const estadoUbicaciones = ref(new Map()) // Almacena 'dentro' o 'fuera' para cada ubicaciónId
 
-// 🔧 NUEVO: Integración con notificaciones
+// 🔧 Integración con notificaciones
 const { agregarNotificacion } = useNotifications()
+
 
 export function useEventDetection() {
   /**
@@ -22,24 +22,20 @@ export function useEventDetection() {
   function inicializar(eventos, pois, geozonas) {
     console.log('🚀 Inicializando sistema de detección de eventos...')
     
-    // Filtrar solo eventos activos
     eventosActivos.value = eventos.filter(e => e.activo)
     
-    // Mapear POIs por ID para búsqueda rápida
     poisMapeados.value.clear()
     pois.forEach(poi => {
       poisMapeados.value.set(poi.id, poi)
     })
     
-    // Mapear Geozonas por ID
     geozonasMapeadas.value.clear()
     geozonas.forEach(geozona => {
       geozonasMapeadas.value.set(geozona.id, geozona)
     })
     
-    // Limpiar estados al reinicializar
     eventosDisparados.value.clear()
-    estadoUbicaciones.value.clear() // Limpiar también el nuevo estado
+    estadoUbicaciones.value.clear()
     
     console.log('✅ Sistema de detección inicializado')
     console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
@@ -48,77 +44,52 @@ export function useEventDetection() {
   }
 
   /**
-   * Actualiza la ubicación actual y evalúa eventos
+   * 🔧 CORREGIDO: Evalúa una condición específica
    */
-  function actualizarUbicacion(lat, lng) {
-    ubicacionActual.value = { lat, lng }
+  function evaluarCondicionParaUnidad(condicion, unidad) {
+    const { tipo, ubicacionId, activacion } = condicion
     
-    // Evaluar todos los eventos activos
-    eventosActivos.value.forEach(evento => {
-      evaluarEvento(evento, lat, lng)
-    })
-  }
-
-  /**
-   * Evalúa si un evento debe dispararse
-   */
-  function evaluarEvento(evento, lat, lng) {
-    if (!evento.condiciones || evento.condiciones.length === 0) {
-      return
-    }
-
-    let todasCondicionesCumplidas = true
-
-    // Evaluar cada condición del evento
-    for (const condicion of evento.condiciones) {
-      const cumplida = evaluarCondicion(condicion, lat, lng)
-      
-      if (!cumplida) {
-        todasCondicionesCumplidas = false
-        break
-      }
-    }
-
-    // Si todas las condiciones se cumplen, disparar el evento
-    if (todasCondicionesCumplidas) {
-      dispararEvento(evento)
-    }
-  }
-
-  /**
-   * ✨ MEJORADA: Evalúa una condición específica, detectando correctamente la entrada y salida.
-   */
-  function evaluarCondicion(condicion, lat, lng) {
-    const { tipo, ubicacionId, accion } = condicion
-    // Creamos una clave única para el estado (ej: "POI-123" o "Geozona-456")
-    const claveUbicacion = `${tipo}-${ubicacionId}`
+    // Creamos una clave única para esta unidad y ubicación
+    const claveUbicacion = `unidad-${unidad.id}-${tipo}-${ubicacionId}`
 
     let estaDentro = false
+    let nombreUbicacion = 'Ubicación'
+    
     if (tipo === 'POI') {
       const poi = poisMapeados.value.get(ubicacionId)
       if (!poi) return false
-      estaDentro = estaDentroDelPOI(lat, lng, poi)
+      nombreUbicacion = poi.nombre
+      estaDentro = estaDentroDelPOI(unidad.lat, unidad.lng, poi)
     } else if (tipo === 'Geozona') {
       const geozona = geozonasMapeadas.value.get(ubicacionId)
       if (!geozona) return false
-      estaDentro = estaDentroDeGeozona(lat, lng, geozona)
+      nombreUbicacion = geozona.nombre
+      estaDentro = estaDentroDeGeozona(unidad.lat, unidad.lng, geozona)
     } else {
       return false
     }
 
-    // Obtenemos el estado anterior de esta ubicación
+    // Obtenemos el estado anterior
     const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
 
-    // Lógica para ENTRADA: debe estar dentro ahora y antes no estarlo.
-    if (accion === 'entrada' && estaDentro && estadoAnterior !== 'dentro') {
+    // ✅ SOLO LOGS DE DETECCIÓN IMPORTANTE
+    if (activacion === 'Entrada' && estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
+      console.log(`✅ ENTRADA detectada: Unidad ${unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
       return true
     }
     
-    // Lógica para SALIDA: debe estar fuera ahora y antes estar dentro.
-    if (accion === 'salida' && !estaDentro && estadoAnterior === 'dentro') {
+    if (activacion === 'Salida' && !estaDentro && estadoAnterior === 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'fuera')
+      console.log(`🚪 SALIDA detectada: Unidad ${unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`)
       return true
+    }
+
+    // Actualizar estado actual aunque no se dispare evento
+    if (estaDentro && estadoAnterior !== 'dentro') {
+      estadoUbicaciones.value.set(claveUbicacion, 'dentro')
+    } else if (!estaDentro && estadoAnterior !== 'fuera') {
+      estadoUbicaciones.value.set(claveUbicacion, 'fuera')
     }
 
     return false
@@ -131,7 +102,7 @@ export function useEventDetection() {
     if (!poi.coordenadas) return false
 
     const { lat: poiLat, lng: poiLng } = poi.coordenadas
-    const radio = poi.radio || 100 // Radio en metros
+    const radio = poi.radio || 100
 
     const distancia = calcularDistancia(lat, lng, poiLat, poiLng)
     return distancia <= radio
@@ -155,7 +126,7 @@ export function useEventDetection() {
    * Calcula distancia entre dos puntos (en metros)
    */
   function calcularDistancia(lat1, lng1, lat2, lng2) {
-    const R = 6371e3 // Radio de la Tierra en metros
+    const R = 6371e3
     const φ1 = (lat1 * Math.PI) / 180
     const φ2 = (lat2 * Math.PI) / 180
     const Δφ = ((lat2 - lat1) * Math.PI) / 180
@@ -189,93 +160,35 @@ export function useEventDetection() {
   }
 
   /**
-   * ✨ CORREGIDA: Dispara el evento y crea notificación (sin la variable no usada).
+   * 🔧 NUEVO: Evalúa eventos para todas las unidades activas
    */
-  function dispararEvento(evento) {
-    // Evitar disparar el mismo evento múltiples veces en poco tiempo
-    if (eventosDisparados.value.has(evento.id)) {
+  function evaluarEventosParaUnidadesSimulacion(unidades) {
+    if (!unidades || unidades.length === 0) {
       return
     }
     
-    eventosDisparados.value.add(evento.id)
-    
-    // Remover después de 10 segundos para permitir re-disparado
-    setTimeout(() => {
-      eventosDisparados.value.delete(evento.id)
-    }, 10000)
-
-    console.log('🔔 Evento disparado:', evento.nombre)
-
-    // Obtener información de la primera condición para el mensaje
-    const primeraCondicion = evento.condiciones[0]
-    let ubicacionNombre = 'Ubicación desconocida'
-    let tipoUbicacion = ''
-
-    if (primeraCondicion.tipo === 'POI') {
-      const poi = poisMapeados.value.get(primeraCondicion.ubicacionId)
-      ubicacionNombre = poi?.nombre || 'POI'
-      tipoUbicacion = 'POI'
-    } else if (primeraCondicion.tipo === 'Geozona') {
-      const geozona = geozonasMapeadas.value.get(primeraCondicion.ubicacionId)
-      ubicacionNombre = geozona?.nombre || 'Geozona'
-      tipoUbicacion = 'Geozona'
-    }
-
-    // 🔧 CREAR NOTIFICACIÓN
-    const tipoNotificacion = obtenerTipoNotificacion(evento.tipo)
-    const mensaje = construirMensaje(evento, ubicacionNombre, primeraCondicion.accion)
-
-    agregarNotificacion({
-      type: tipoNotificacion,
-      title: evento.nombre,
-      message: mensaje,
-      eventoId: evento.id,
-      eventoNombre: evento.nombre,
-      ubicacionNombre: ubicacionNombre,
-      tipoUbicacion: tipoUbicacion,
-      accion: primeraCondicion.accion
-    })
-
-    console.log(`📢 Notificación creada para evento: ${evento.nombre}`)
-  }
-
-  function obtenerTipoNotificacion(tipoEvento) {
-    switch (tipoEvento) {
-      case 'alerta':
-        return 'negative'
-      case 'advertencia':
-        return 'warning'
-      case 'informacion':
-        return 'info'
-      default:
-        return 'positive'
-    }
-  }
-
-  /**
-   * Construye el mensaje de la notificación
-   */
-  function construirMensaje(evento, ubicacionNombre, accion) {
-    const accionTexto = accion === 'entrada' ? 'entró a' : 'salió de'
-    return `Un vehículo ${accionTexto} ${ubicacionNombre}`
-  }
-
-  // 🔧 NUEVAS FUNCIONES PARA UNIDADES SIMULADAS 🔧
-
-  /**
-   * 🔧 NUEVO: Evalúa eventos para todas las unidades activas (solo simulación)
-   */
-  function evaluarEventosParaUnidadesSimulacion(unidades) {
-    if (!unidades || unidades.length === 0) return
-    
-    console.log(`🎮 Evaluando eventos para ${unidades.length} unidades simuladas...`)
+    // ❌ LOGS ELIMINADOS: Ya no mostramos conteos en cada ciclo
     
     unidades.forEach(unidad => {
-      if (!unidad.lat || !unidad.lng) return
+      // ✅ VALIDACIÓN MEJORADA: Usar ubicacion.lat y ubicacion.lng
+      const lat = unidad.ubicacion?.lat || unidad.lat
+      const lng = unidad.ubicacion?.lng || unidad.lng
+      
+      if (!lat || !lng) {
+        return
+      }
+      
+      // Crear objeto normalizado para evaluación
+      const unidadNormalizada = {
+        ...unidad,
+        lat,
+        lng,
+        nombre: unidad.conductorNombre || unidad.nombre || unidad.id
+      }
       
       // Evaluar todos los eventos activos para esta unidad
       eventosActivos.value.forEach(evento => {
-        evaluarEventoParaUnidadSimulada(evento, unidad)
+        evaluarEventoParaUnidadSimulada(evento, unidadNormalizada)
       })
     })
   }
@@ -305,67 +218,24 @@ export function useEventDetection() {
   }
 
   /**
-   * 🔧 NUEVO: Evalúa una condición para una unidad simulada
-   */
-  function evaluarCondicionParaUnidad(condicion, unidad) {
-    const { tipo, ubicacionId, accion } = condicion
-    
-    // Creamos una clave única para esta unidad y ubicación
-    const claveUbicacion = `unidad-${unidad.id}-${tipo}-${ubicacionId}`
-
-    let estaDentro = false
-    if (tipo === 'POI') {
-      const poi = poisMapeados.value.get(ubicacionId)
-      if (!poi) return false
-      estaDentro = estaDentroDelPOI(unidad.lat, unidad.lng, poi)
-    } else if (tipo === 'Geozona') {
-      const geozona = geozonasMapeadas.value.get(ubicacionId)
-      if (!geozona) return false
-      estaDentro = estaDentroDeGeozona(unidad.lat, unidad.lng, geozona)
-    } else {
-      return false
-    }
-
-    // Obtenemos el estado anterior
-    const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
-
-    // Lógica para ENTRADA
-    if (accion === 'entrada' && estaDentro && estadoAnterior !== 'dentro') {
-      estadoUbicaciones.value.set(claveUbicacion, 'dentro')
-      return true
-    }
-    
-    // Lógica para SALIDA
-    if (accion === 'salida' && !estaDentro && estadoAnterior === 'dentro') {
-      estadoUbicaciones.value.set(claveUbicacion, 'fuera')
-      return true
-    }
-
-    return false
-  }
-
-  /**
    * 🔧 NUEVO: Dispara el evento para una unidad simulada
    */
   function dispararEventoParaUnidadSimulada(evento, unidad) {
-    // Crear clave única para evitar duplicados
     const claveEvento = `${evento.id}-unidad-${unidad.id}`
     
-    // Evitar disparar el mismo evento múltiples veces
     if (eventosDisparados.value.has(claveEvento)) {
       return
     }
     
     eventosDisparados.value.add(claveEvento)
     
-    // Remover después de 10 segundos
     setTimeout(() => {
       eventosDisparados.value.delete(claveEvento)
     }, 10000)
 
-    console.log('🎮 Evento simulado disparado:', evento.nombre, `para unidad ${unidad.nombre || unidad.id}`)
+    // ✅ LOG IMPORTANTE: Evento disparado
+    console.log(`🔔 Evento disparado: "${evento.nombre}" para unidad ${unidad.nombre}`)
 
-    // Obtener información de la primera condición
     const primeraCondicion = evento.condiciones[0]
     let ubicacionNombre = 'Ubicación desconocida'
     let tipoUbicacion = ''
@@ -380,10 +250,9 @@ export function useEventDetection() {
       tipoUbicacion = 'Geozona'
     }
 
-    // Crear notificación
-    const tipoNotificacion = obtenerTipoNotificacion(evento.tipo)
-    const accionTexto = primeraCondicion.accion === 'entrada' ? 'entró a' : 'salió de'
-    const mensaje = `Unidad ${unidad.nombre || unidad.id} ${accionTexto} ${ubicacionNombre}`
+    const tipoNotificacion = 'positive'
+    const accionTexto = primeraCondicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
+    const mensaje = `${unidad.nombre} ${accionTexto} ${ubicacionNombre}`
 
     agregarNotificacion({
       type: tipoNotificacion,
@@ -393,13 +262,14 @@ export function useEventDetection() {
       eventoNombre: evento.nombre,
       ubicacionNombre: ubicacionNombre,
       tipoUbicacion: tipoUbicacion,
-      accion: primeraCondicion.accion,
+      accion: primeraCondicion.activacion,
       sujeto: 'unidad',
       unidadId: unidad.id,
       unidadNombre: unidad.nombre
     })
 
-    console.log(`📢 Notificación de simulación creada: ${mensaje}`)
+    // ✅ LOG IMPORTANTE: Notificación creada
+    console.log(`📢 Notificación creada: ${mensaje}`)
   }
 
   /**
@@ -411,14 +281,13 @@ export function useEventDetection() {
     geozonasMapeadas.value.clear()
     ubicacionActual.value = null
     eventosDisparados.value.clear()
-    estadoUbicaciones.value.clear() // Limpiar también el nuevo estado
+    estadoUbicaciones.value.clear()
     console.log('🔄 Sistema de detección reseteado')
   }
 
   return {
     inicializar,
-    actualizarUbicacion,
-    evaluarEventosParaUnidadesSimulacion, // 🔧 NUEVO: Exponer función para simulación
+    evaluarEventosParaUnidadesSimulacion,
     resetear,
     eventosActivos,
     ubicacionActual

@@ -267,7 +267,7 @@ export function useSimuladorUnidades() {
       } catch (error) {
         console.error(`❌ Error actualizando ${unidadId}:`, error)
       }
-    }, 2000) // Actualizar cada 2 segundos
+    }, 10000) // Actualizar cada 2 segundos
 
     intervalos.value.push({ unidadId, intervalo })
     unidadesSimuladas.value.push({ 

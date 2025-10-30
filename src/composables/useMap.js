@@ -1,5 +1,4 @@
-// src/composables/useMap.js
-// 🔧 SOLUCIÓN AL PROBLEMA: Los cambios clave están en actualizarMarcadoresUnidades()
+// src/composables/useMap.js - LIMPIO
 
 import { ref } from 'vue'
 import L from 'leaflet'
@@ -161,14 +160,12 @@ export function useMap() {
     `
   }
 
-  // 🔧 FUNCIÓN CORREGIDA: Validación completa de ubicación
+  // 🔧 FUNCIÓN LIMPIA: Solo procesar unidades válidas, sin logs de actualización
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
       console.warn('⚠️ Mapa no disponible')
       return
     }
-
-    console.log(`🔄 Actualizando marcadores GPS - ${unidades.length} unidades`)
 
     const idsActuales = new Set()
     
@@ -204,7 +201,7 @@ export function useMap() {
           marcador._icon.style.transition = 'all 0.5s ease-out'
         }
         
-        console.log(`✅ Marcador actualizado: ${unidad.conductorNombre}`)
+        // ❌ LOG ELIMINADO
       } else {
         // Crear nuevo marcador
         const icono = crearIconoUnidad(unidad.estado)
@@ -233,7 +230,7 @@ export function useMap() {
       }
     })
 
-    console.log(`✅ Actualización completa - ${idsActuales.size} marcadores activos`)
+    // ❌ LOG ELIMINADO
   }
 
   const limpiarMarcadoresUnidades = () => {
@@ -258,7 +255,6 @@ export function useMap() {
         duration: 1
       })
       marcador.openPopup()
-      console.log(`🎯 Mapa centrado en unidad: ${unidadId}`)
     }
   }
 
@@ -311,7 +307,6 @@ export function useMap() {
     }).addTo(map.value)
     limpiarCirculoTemporalPOI()
     ubicacionSeleccionada.value = null
-    console.log(`✅ POI confirmado con círculo de ${radio}m`)
   }
 
   function actualizarMarcadorConCirculo(lat, lng, nombre, direccion, radio) {
@@ -717,7 +712,7 @@ export function useMap() {
     console.log('🧹 Mapa limpiado')
   }
 
-  // 🚦 TRAFICO - SOLUCIÓN PRINCIPAL
+  // 🚦 TRAFICO
   const toggleTrafico = () => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
@@ -725,14 +720,12 @@ export function useMap() {
     }
 
     if (capaTrafico.value) {
-      // Desactivar tráfico
       map.value.off('zoomend', actualizarCapaTrafico)
       map.value.removeLayer(capaTrafico.value)
       capaTrafico.value = null
       console.log('🚦 Capa de tráfico DESACTIVADA')
       return false
     } else {
-      // Activar tráfico
       capaTrafico.value = L.tileLayer(
         `https://api.mapbox.com/styles/v1/mapbox/traffic-day-v2/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
         {

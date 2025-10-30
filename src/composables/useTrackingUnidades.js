@@ -1,4 +1,4 @@
-// src/composables/useTrackingUnidades.js - CORREGIDO
+// src/composables/useTrackingUnidades.js - LIMPIO
 import { ref, onUnmounted } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
@@ -26,7 +26,7 @@ export function useTrackingUnidades() {
         if (data) {
           // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
           const unidadesValidas = Object.entries(data)
-            .filter(([key, value]) => {
+            .filter(([/*key*/, value]) => {
               // Validar que tenga estructura completa
               const esValida = value && 
                               value.ubicacion && 
@@ -37,16 +37,7 @@ export function useTrackingUnidades() {
                               value.conductorNombre &&
                               value.unidadNombre
               
-              if (!esValida) {
-                console.warn(`⚠️ Unidad inválida ignorada: ${key}`, {
-                  key,
-                  tieneUbicacion: !!value?.ubicacion,
-                  tieneLat: value?.ubicacion?.lat,
-                  tieneLng: value?.ubicacion?.lng,
-                  tieneConductor: !!value?.conductorNombre,
-                  tieneUnidad: !!value?.unidadNombre
-                })
-              }
+              // ❌ LOGS ELIMINADOS: Ya no mostramos unidades inválidas
               
               return esValida
             })
@@ -58,14 +49,11 @@ export function useTrackingUnidades() {
           
           unidadesActivas.value = unidadesValidas
           
-          console.log(`📡 ${unidadesValidas.length} unidades válidas detectadas (${Object.keys(data).length} totales en Firebase)`)
+          // 🔧 NUEVO: Guardar globalmente para evaluación de eventos
+          window._unidadesTrackeadas = unidadesValidas
           
-          // 🔧 DEBUG: Mostrar qué unidades son válidas
-          if (unidadesValidas.length > 0) {
-            unidadesValidas.forEach(u => {
-              console.log(`✅ Unidad válida: ${u.conductorNombre} - ${u.unidadNombre} en [${u.ubicacion.lat.toFixed(4)}, ${u.ubicacion.lng.toFixed(4)}]`)
-            })
-          }
+          // ❌ LOGS ELIMINADOS: Ya no mostramos conteo de unidades válidas
+          
         } else {
           unidadesActivas.value = []
           console.log('📡 No hay unidades activas')
@@ -78,7 +66,7 @@ export function useTrackingUnidades() {
         loading.value = false
       })
 
-      console.log('✅ Tracking iniciado con filtrado de unidades válidas')
+      console.log('✅ Tracking GPS iniciado')
       
     } catch (err) {
       console.error('❌ Error al iniciar tracking:', err)
