@@ -17,7 +17,7 @@
       <SimuladorControl 
         :pois-iniciales="poisCargados"
         :geozonas-iniciales="geozonasCargadas"
-        @iniciar-simulacion="manejarInicioSimulacion"
+       
       />
     </div>
 

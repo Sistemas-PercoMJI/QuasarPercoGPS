@@ -168,6 +168,33 @@ const props = defineProps({
   }
 })
 
+watch(
+  () => [props.poisIniciales, props.geozonasIniciales],
+  ([nuevosPois, nuevasGeozonas]) => {
+    if (nuevosPois.length > 0 || nuevasGeozonas.length > 0) {
+      console.log('✅ Props recibidas en SimuladorControl:')
+      console.log('  📍 POIs:', nuevosPois.length)
+      console.log('  🗺️ Geozonas:', nuevasGeozonas.length)
+      
+      // Actualizar los refs locales
+      pois.value = nuevosPois
+      geozonas.value = nuevasGeozonas
+      
+      // 🔧 INICIAR simulación si hay conductores y aún no está activa
+      if (conductoresConUnidad.value > 0 && !simulacionActiva.value) {
+        console.log('🔄 Generando rutas e iniciando simulación...')
+        generarRutasParaUnidades()
+        
+        // Iniciar simulación automáticamente
+        setTimeout(() => {
+          toggleSimulacion()
+        }, 500)
+      }
+    }
+  },
+  { deep: true, immediate: true }
+)
+
 const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
 
 // Composables
@@ -401,10 +428,20 @@ watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
 onMounted(async () => {
   await recargarDatos()
   
+  // 🔧 ESPERAR a que lleguen los props antes de generar rutas
   if (conductoresConUnidad.value > 0) {
-    console.log('✅ Iniciando simulación automáticamente...')
-    generarRutasParaUnidades()
-    await toggleSimulacion()
+    // Esperar un tick para que el watch procese los props
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Verificar si los datos llegaron
+    if (pois.value.length > 0 || geozonas.value.length > 0) {
+      console.log('✅ Iniciando simulación con datos reales...')
+      generarRutasParaUnidades()
+      await toggleSimulacion()
+    } else {
+      console.log('⚠️ Esperando datos de POIs/Geozonas...')
+      // El watch se encargará cuando lleguen
+    }
   }
 })
 
