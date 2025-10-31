@@ -14,11 +14,7 @@
     </q-btn>
 
     <div class="simulador-container">
-      <SimuladorControl 
-        :pois-iniciales="poisCargados"
-        :geozonas-iniciales="geozonasCargadas"
-       
-      />
+      <SimuladorControl :pois-iniciales="poisCargados" :geozonas-iniciales="geozonasCargadas" />
     </div>
 
     <transition name="fade-scale">
@@ -66,7 +62,14 @@ import { auth } from 'src/firebase/firebaseConfig'
 import SimuladorControl from 'src/components/SimuladorControl.vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
-const { initMap, addMarker, cleanup, toggleTrafico, actualizarMarcadoresUnidades, limpiarMarcadoresUnidades } = useMap()
+const {
+  initMap,
+  addMarker,
+  cleanup,
+  toggleTrafico,
+  actualizarMarcadoresUnidades,
+  limpiarMarcadoresUnidades,
+} = useMap()
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
 
@@ -89,10 +92,8 @@ let watchId = null
 let mapaAPI = null
 let intervaloEvaluacionEventos = null
 
-
-
 watch(
-  unidadesActivas, 
+  unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) {
       return
@@ -103,8 +104,8 @@ watch(
     } else {
       limpiarMarcadoresUnidades()
     }
-  }, 
-  { deep: true, immediate: false }
+  },
+  { deep: true, immediate: false },
 )
 
 // 🔧 NUEVA FUNCIÓN: Iniciar evaluación continua de eventos
@@ -118,7 +119,7 @@ function iniciarEvaluacionContinuaEventos() {
   intervaloEvaluacionEventos = setInterval(() => {
     // 🔧 FIX: Usar unidades trackeadas globalmente
     const unidadesParaEvaluar = window._unidadesTrackeadas || unidadesActivas.value
-    
+
     if (unidadesParaEvaluar && unidadesParaEvaluar.length > 0) {
       evaluarEventosParaUnidadesSimulacion(unidadesParaEvaluar)
     }
@@ -301,11 +302,11 @@ async function inicializarSistemaDeteccion() {
     console.log('  📊 Eventos activos:', eventosActivos.length)
     console.log('  📍 POIs:', pois.length)
     console.log('  🗺️ Geozonas:', geozonas.length)
-    
+
     // 🔧 NUEVO: Log de eventos para debug
     if (eventosActivos.length > 0) {
       console.log('📋 Eventos configurados:')
-      eventosActivos.forEach(evento => {
+      eventosActivos.forEach((evento) => {
         console.log(`  - ${evento.nombre}:`, evento.condiciones)
       })
     } else {
@@ -324,6 +325,9 @@ const dibujarTodosEnMapa = async () => {
   }
 
   mapaAPI = mapPage._mapaAPI
+  if (mapaAPI.map) {
+    mapaAPI.map.closePopup()
+  }
 
   try {
     const eventosActivos = await obtenerEventos()
@@ -612,7 +616,7 @@ const dibujarTodosEnMapa = async () => {
         }
       }
     })
-    
+
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
@@ -699,31 +703,40 @@ onMounted(async () => {
   window.addEventListener('redibujarMapa', async () => {
     const mapPage = document.getElementById('map-page')
     if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+      // 🔧 FIX CRÍTICO: Cerrar todos los popups primero
+      mapPage._mapaAPI.map.closePopup()
+
       const marcadoresGPSTemporales = []
-      
+
       mapPage._mapaAPI.map.eachLayer((layer) => {
         if (layer instanceof mapPage._mapaAPI.L.Marker) {
-          const esMarkerVehiculo = layer.options?.className === 'marker-vehiculo-gps' || 
-                                   layer.options?.icon?.options?.className === 'custom-marker-unidad' ||
-                                   layer.options?.zIndexOffset === 5000
-          
+          const esMarkerVehiculo =
+            layer.options?.className === 'marker-vehiculo-gps' ||
+            layer.options?.icon?.options?.className === 'custom-marker-unidad' ||
+            layer.options?.zIndexOffset === 5000
+
           if (esMarkerVehiculo) {
             marcadoresGPSTemporales.push(layer)
           }
         }
       })
-      
+
       mapPage._mapaAPI.map.eachLayer((layer) => {
         if (
           layer instanceof mapPage._mapaAPI.L.Marker ||
           layer instanceof mapPage._mapaAPI.L.Circle ||
           layer instanceof mapPage._mapaAPI.L.Polygon
         ) {
-          const esMarkerPrincipal = layer.getPopup()?.getContent() === '<b>MJ Industrias</b><br>Ubicación principal'
+          const esMarkerPrincipal =
+            layer.getPopup()?.getContent() === '<b>MJ Industrias</b><br>Ubicación principal'
           const esMarkerUsuario = layer === marcadorUsuario.value
           const esMarkerVehiculo = marcadoresGPSTemporales.includes(layer)
-          
+
           if (!esMarkerPrincipal && !esMarkerUsuario && !esMarkerVehiculo) {
+            // 🔧 FIX: Desligar popup antes de eliminar capa
+            if (layer.getPopup()) {
+              layer.unbindPopup()
+            }
             mapPage._mapaAPI.map.removeLayer(layer)
           }
         }
@@ -735,17 +748,16 @@ onMounted(async () => {
     // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
-    
-    // 🔧 NUEVO: Reiniciar evaluación de eventos
+
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
-    
+
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   })
-  
+
   console.log('🚀 Iniciando tracking GPS...')
   iniciarTracking()
 })
@@ -803,7 +815,7 @@ onUnmounted(() => {
 
   // 🔧 NUEVO: Detener evaluación de eventos
   detenerEvaluacionEventos()
-  
+
   detenerTracking()
   limpiarMarcadoresUnidades()
   resetear()
@@ -1033,7 +1045,7 @@ const manejarToggleTrafico = () => {
   .simulador-container :deep(.simulador-card-expandido) {
     width: 320px;
   }
-  
+
   .simulador-container {
     right: 10px;
   }
@@ -1045,7 +1057,8 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse-gps {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
