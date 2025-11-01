@@ -1,5 +1,4 @@
-// src/composables/useMap.js
-// 🔧 SOLUCIÓN AL PROBLEMA: Los cambios clave están en la función toggleTrafico()
+// src/composables/useMap.js - LIMPIO
 
 import { ref } from 'vue'
 import L from 'leaflet'
@@ -12,7 +11,6 @@ const ubicacionSeleccionada = ref(null)
 const modoSeleccionActivo = ref(false)
 const marcadoresUnidades = ref({})
 
-// 🔧 CAMBIO 1: Convertir capaTrafico a ref para reactividad
 const capaTrafico = ref(null)
 
 // Nuevas referencias para geozonas
@@ -32,9 +30,6 @@ export function useMap() {
   // Variable para almacenar el círculo temporal del POI
   let circuloTemporalPOI = null
 
-  // ... (mantén todas tus funciones anteriores igual)
-  // Solo modificaremos toggleTrafico y cleanup
-
   function crearCirculoTemporalPOI(lat, lng, radio) {
     if (!map.value || !L) return
     if (circuloTemporalPOI) {
@@ -51,7 +46,7 @@ export function useMap() {
     console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
   }
 
-    // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
+  // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
   
   const crearIconoUnidad = (estado) => {
     const colores = {
@@ -165,24 +160,39 @@ export function useMap() {
     `
   }
 
+  // 🔧 FUNCIÓN LIMPIA: Solo procesar unidades válidas, sin logs de actualización
   const actualizarMarcadoresUnidades = (unidades) => {
-    if (!map.value) return
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
 
-    const idsActuales = new Set(unidades.map(u => u.id))
+    const idsActuales = new Set()
     
-    Object.keys(marcadoresUnidades.value).forEach(id => {
-      if (!idsActuales.has(id)) {
-        map.value.removeLayer(marcadoresUnidades.value[id])
-        delete marcadoresUnidades.value[id]
-        console.log(`🗑️ Marcador GPS removido: ${id}`)
-      }
-    })
-    
+    // 🔧 VALIDACIÓN Y FILTRADO: Solo procesar unidades con ubicación válida
     unidades.forEach(unidad => {
+      // Validar que la unidad tenga ubicación válida
+      if (!unidad.ubicacion || 
+          typeof unidad.ubicacion.lat !== 'number' || 
+          typeof unidad.ubicacion.lng !== 'number' ||
+          isNaN(unidad.ubicacion.lat) ||
+          isNaN(unidad.ubicacion.lng)) {
+        console.warn(`⚠️ Unidad sin ubicación válida:`, {
+          id: unidad.unidadId || unidad.id,
+          nombre: unidad.unidadNombre,
+          ubicacion: unidad.ubicacion
+        })
+        return // Saltar esta unidad
+      }
+
+      const unidadId = unidad.unidadId || unidad.id
+      idsActuales.add(unidadId)
+      
       const { lat, lng } = unidad.ubicacion
       
-      if (marcadoresUnidades.value[unidad.id]) {
-        const marcador = marcadoresUnidades.value[unidad.id]
+      // Actualizar o crear marcador
+      if (marcadoresUnidades.value[unidadId]) {
+        const marcador = marcadoresUnidades.value[unidadId]
         marcador.setLatLng([lat, lng])
         marcador.setIcon(crearIconoUnidad(unidad.estado))
         marcador.setPopupContent(crearPopupUnidad(unidad))
@@ -190,11 +200,15 @@ export function useMap() {
         if (marcador._icon?.style) {
           marcador._icon.style.transition = 'all 0.5s ease-out'
         }
+        
+        // ❌ LOG ELIMINADO
       } else {
+        // Crear nuevo marcador
         const icono = crearIconoUnidad(unidad.estado)
         const marcador = L.marker([lat, lng], { 
           icon: icono,
-          zIndexOffset: 1000
+          zIndexOffset: 5000,
+          className: 'marker-vehiculo-gps'
         })
           .addTo(map.value)
           .bindPopup(crearPopupUnidad(unidad), {
@@ -202,10 +216,21 @@ export function useMap() {
             className: 'popup-unidad'
           })
         
-        marcadoresUnidades.value[unidad.id] = marcador
-        console.log(`✅ Marcador GPS creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
+        marcadoresUnidades.value[unidadId] = marcador
+        console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
       }
     })
+    
+    // Limpiar marcadores de unidades que ya no están activas
+    Object.keys(marcadoresUnidades.value).forEach(id => {
+      if (!idsActuales.has(id)) {
+        map.value.removeLayer(marcadoresUnidades.value[id])
+        delete marcadoresUnidades.value[id]
+        console.log(`🗑️ Marcador GPS removido: ${id}`)
+      }
+    })
+
+    // ❌ LOG ELIMINADO
   }
 
   const limpiarMarcadoresUnidades = () => {
@@ -230,7 +255,6 @@ export function useMap() {
         duration: 1
       })
       marcador.openPopup()
-      console.log(`🎯 Mapa centrado en unidad: ${unidadId}`)
     }
   }
 
@@ -283,7 +307,6 @@ export function useMap() {
     }).addTo(map.value)
     limpiarCirculoTemporalPOI()
     ubicacionSeleccionada.value = null
-    console.log(`✅ POI confirmado con círculo de ${radio}m`)
   }
 
   function actualizarMarcadorConCirculo(lat, lng, nombre, direccion, radio) {
@@ -423,41 +446,39 @@ export function useMap() {
     })
   }
 
-  // Busca esta función
-const onMapClickGeozonaPoligonal = (e) => {
-  if (!modoSeleccionGeozonaPoligonal.value || !map.value) return
-  const { lat, lng } = e.latlng
-  const punto = { lat, lng }
-  puntosPoligono.value.push(punto)
-  const marcador = L.marker([lat, lng], {
-    icon: L.divIcon({
-      className: 'punto-poligono',
-      html: `<div style="
-        width: 12px;
-        height: 12px;
-        background: #3388ff;
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-    }),
-  }).addTo(map.value)
-  marcadoresPoligono.value.push(marcador)
-  if (puntosPoligono.value.length >= 2) {
-    actualizarPoligonoTemporal(puntosPoligono.value)
-  }
-  console.log(`📍 Punto ${puntosPoligono.value.length} agregado al polígono`)
+  const onMapClickGeozonaPoligonal = (e) => {
+    if (!modoSeleccionGeozonaPoligonal.value || !map.value) return
+    const { lat, lng } = e.latlng
+    const punto = { lat, lng }
+    puntosPoligono.value.push(punto)
+    const marcador = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'punto-poligono',
+        html: `<div style="
+          width: 12px;
+          height: 12px;
+          background: #3388ff;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        "></div>`,
+        iconSize: [12, 12],
+        iconAnchor: [6, 6],
+      }),
+    }).addTo(map.value)
+    marcadoresPoligono.value.push(marcador)
+    if (puntosPoligono.value.length >= 2) {
+      actualizarPoligonoTemporal(puntosPoligono.value)
+    }
+    console.log(`📍 Punto ${puntosPoligono.value.length} agregado al polígono`)
 
-  // >>>> AÑADE ESTE CÓDIGO JUSTO AQUÍ <<<<
-  if (puntosPoligono.value.length >= 3) {
-    console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
-    window.dispatchEvent(new CustomEvent('mostrarBotonConfirmarGeozona', {
-      detail: { mostrar: true }
-    }))
+    if (puntosPoligono.value.length >= 3) {
+      console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
+      window.dispatchEvent(new CustomEvent('mostrarBotonConfirmarGeozona', {
+        detail: { mostrar: true }
+      }))
+    }
   }
-}
 
   const finalizarPoligonoTemporal = () => {
     if (puntosPoligono.value.length < 3) {
@@ -617,7 +638,6 @@ const onMapClickGeozonaPoligonal = (e) => {
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
-
       }
       window.mapaGlobal = mapaAPI
       window.L = L
@@ -667,7 +687,6 @@ const onMapClickGeozonaPoligonal = (e) => {
 
   const cleanup = () => {
     if (map.value) {
-      // 🔧 CAMBIO 2: Limpiar listener de zoom antes de remover el mapa
       map.value.off('zoomend')
       map.value.remove()
       map.value = null
@@ -688,13 +707,12 @@ const onMapClickGeozonaPoligonal = (e) => {
     puntosPoligono.value = []
     marcadoresPoligono.value = []
     poligonoFinalizado.value = false
-    capaTrafico.value = null // 🔧 Limpiar referencia
+    capaTrafico.value = null
     limpiarMarcadoresUnidades()
     console.log('🧹 Mapa limpiado')
-    
   }
 
-  // 🚦 TRAFICO - SOLUCIÓN PRINCIPAL
+  // 🚦 TRAFICO
   const toggleTrafico = () => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
@@ -702,14 +720,12 @@ const onMapClickGeozonaPoligonal = (e) => {
     }
 
     if (capaTrafico.value) {
-      // Desactivar tráfico
-      map.value.off('zoomend', actualizarCapaTrafico) // 🔧 Remover listener
+      map.value.off('zoomend', actualizarCapaTrafico)
       map.value.removeLayer(capaTrafico.value)
       capaTrafico.value = null
       console.log('🚦 Capa de tráfico DESACTIVADA')
       return false
     } else {
-      // Activar tráfico
       capaTrafico.value = L.tileLayer(
         `https://api.mapbox.com/styles/v1/mapbox/traffic-day-v2/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
         {
@@ -718,14 +734,12 @@ const onMapClickGeozonaPoligonal = (e) => {
           zoomOffset: -1,
           opacity: 1,
           className: 'traffic-layer-blend',
-          // 🔧 SOLUCIÓN 1: Configurar para actualización inmediata
-          updateWhenIdle: false, // NO esperar a que termine el zoom
-          updateWhenZooming: true, // Actualizar DURANTE el zoom
-          keepBuffer: 2, // Mantener buffer de tiles
+          updateWhenIdle: false,
+          updateWhenZooming: true,
+          keepBuffer: 2,
         },
       ).addTo(map.value)
 
-      // 🔧 SOLUCIÓN 2: Forzar redibujado en cada zoom
       map.value.on('zoomend', actualizarCapaTrafico)
 
       console.log('🚦 Capa de tráfico ACTIVADA')
@@ -733,10 +747,8 @@ const onMapClickGeozonaPoligonal = (e) => {
     }
   }
 
-  // 🔧 SOLUCIÓN 3: Función dedicada para actualizar la capa
   const actualizarCapaTrafico = () => {
     if (capaTrafico.value) {
-      // Forzar redibujado de todos los tiles
       capaTrafico.value.redraw()
       console.log('🔄 Capa de tráfico actualizada en zoom:', map.value.getZoom())
     }

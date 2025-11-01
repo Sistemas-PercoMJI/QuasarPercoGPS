@@ -1,408 +1,310 @@
-// src/composables/useEventDetection.js
+// src/composables/useEventDetection.js - CORREGIDO FINAL
 import { ref } from 'vue'
-import * as turf from '@turf/turf'
 import { useNotifications } from './useNotifications'
 
+// Estado del sistema de detección
+const eventosActivos = ref([])
+const poisMapeados = ref(new Map())
+const geozonasMapeadas = ref(new Map())
+const ubicacionActual = ref(null)
+const eventosDisparados = ref(new Set())
+const estadoUbicaciones = ref(new Map())
+
+// 🔧 Integración con notificaciones
+const { agregarNotificacion } = useNotifications()
+
 export function useEventDetection() {
-  const { agregarNotificacion } = useNotifications()
-
-  const eventos = ref([])
-  const pois = ref([])
-  const geozonas = ref([])
-  const ubicacionActual = ref(null)
-  const estadosAnteriores = ref({}) // Estado anterior: dentro/fuera de cada ubicación
-  const ultimasAlertas = ref({}) // Control de frecuencia de alertas
-
   /**
-   * Inicializa el sistema con datos
+   * Inicializa el sistema con eventos, POIs y geozonas
    */
-  function inicializar(eventosData, poisData, geozonaData) {
-    eventos.value = eventosData || []
-    pois.value = poisData || []
-    geozonas.value = geozonaData || []
-
-    console.log('🎯 Detección de eventos inicializada')
-    console.log('  📊 Eventos activos:', eventos.value.filter((e) => e.activo).length)
-    console.log('  📍 POIs:', pois.value.length)
-    console.log('  🗺️ Geozonas:', geozonas.value.length)
-  }
-
-  /**
-   * Actualiza la ubicación y evalúa eventos
-   */
-  function actualizarUbicacion(lat, lng) {
-    // 🔧 VALIDACIÓN 1: Verificar que las coordenadas son números válidos
-    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
-      console.warn('⚠️ Coordenadas inválidas recibidas:', { lat, lng })
-      return
-    }
-
-    // 🔧 VALIDACIÓN 2: Verificar rangos válidos
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      console.warn('⚠️ Coordenadas fuera de rango:', { lat, lng })
-      return
-    }
-
-    ubicacionActual.value = { lat, lng }
-    evaluarEventos()
-  }
-
-  /**
-   * Evalúa todos los eventos activos
-   */
-  function evaluarEventos() {
-    if (!ubicacionActual.value) return
-
-    const eventosActivos = eventos.value.filter((e) => e.activo)
-
-    eventosActivos.forEach((evento) => {
-      try {
-        if (!estaEnHorario(evento)) return
-
-        const cumpleCondiciones = evaluarCondiciones(evento)
-
-        if (cumpleCondiciones) {
-          dispararAlerta(evento)
-        }
-      } catch (error) {
-        console.error(`❌ Error evaluando evento "${evento.nombre}":`, error.message)
-      }
+  function inicializar(eventos, pois, geozonas) {
+    console.log('🚀 Inicializando sistema de detección de eventos...')
+    
+    eventosActivos.value = eventos.filter(e => e.activo)
+    
+    poisMapeados.value.clear()
+    pois.forEach(poi => {
+      poisMapeados.value.set(poi.id, poi)
     })
+    
+    geozonasMapeadas.value.clear()
+    geozonas.forEach(geozona => {
+      geozonasMapeadas.value.set(geozona.id, geozona)
+    })
+    
+    eventosDisparados.value.clear()
+    estadoUbicaciones.value.clear()
+    
+    console.log('✅ Sistema de detección inicializado')
+    console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
+    console.log(`  📍 POIs: ${poisMapeados.value.size}`)
+    console.log(`  🗺️ Geozonas: ${geozonasMapeadas.value.size}`)
   }
 
   /**
-   * Verifica horario del evento
+   * 🔧 CORREGIDO: Evalúa una condición específica
    */
-  function estaEnHorario(evento) {
-    if (evento.aplicacion === 'siempre') return true
+  function evaluarCondicionParaUnidad(condicion, unidad) {
+    const { tipo, ubicacionId, activacion } = condicion
+    
+    // Creamos una clave única para esta unidad y ubicación
+    const claveUbicacion = `unidad-${unidad.id}-${tipo}-${ubicacionId}`
 
-    const ahora = new Date()
-    const diaActual = ahora.getDay()
-
-    if (!evento.diasSemana || !evento.diasSemana.includes(diaActual)) {
-      return false
-    }
-
-    if (evento.horaInicio && evento.horaFin) {
-      const horaActual = ahora.getHours() * 60 + ahora.getMinutes()
-      const [hi, mi] = evento.horaInicio.split(':').map(Number)
-      const [hf, mf] = evento.horaFin.split(':').map(Number)
-      const inicio = hi * 60 + mi
-      const fin = hf * 60 + mf
-
-      if (horaActual < inicio || horaActual > fin) {
+    let estaDentro = false
+    let nombreUbicacion = 'Ubicación'
+    
+    if (tipo === 'POI') {
+      const poi = poisMapeados.value.get(ubicacionId)
+      if (!poi) {
+        console.warn(`⚠️ POI no encontrado: ${ubicacionId}`)
         return false
       }
-    }
-
-    return true
-  }
-
-  /**
-   * Evalúa las condiciones del evento con operadores lógicos
-   */
-  function evaluarCondiciones(evento) {
-    if (!evento.condiciones || evento.condiciones.length === 0) return false
-
-    try {
-      const resultados = evento.condiciones.map((condicion) =>
-        evaluarCondicionIndividual(evento, condicion),
-      )
-
-      // Si solo hay una condición
-      if (resultados.length === 1) {
-        return resultados[0]
+      nombreUbicacion = poi.nombre
+      estaDentro = estaDentroDelPOI(unidad.lat, unidad.lng, poi)
+    } else if (tipo === 'Geozona') {
+      const geozona = geozonasMapeadas.value.get(ubicacionId)
+      if (!geozona) {
+        console.warn(`⚠️ Geozona no encontrada: ${ubicacionId}`)
+        return false
       }
-
-      // Evaluar con operadores lógicos
-      let resultado = resultados[0]
-      for (let i = 0; i < evento.operadoresLogicos.length; i++) {
-        const operador = evento.operadoresLogicos[i] || 'AND'
-        if (operador === 'AND') {
-          resultado = resultado && resultados[i + 1]
-        } else if (operador === 'OR') {
-          resultado = resultado || resultados[i + 1]
-        }
-      }
-
-      return resultado
-    } catch (error) {
-      console.error('❌ Error evaluando condiciones:', error.message)
-      return false
-    }
-  }
-
-  /**
-   * Evalúa una condición individual
-   */
-  function evaluarCondicionIndividual(evento, condicion) {
-    // 🔧 VALIDACIÓN: Verificar ubicación actual
-    if (
-      !ubicacionActual.value ||
-      typeof ubicacionActual.value.lat !== 'number' ||
-      typeof ubicacionActual.value.lng !== 'number'
-    ) {
-      console.warn('⚠️ Sin ubicación válida para evaluar condición')
-      return false
-    }
-
-    const { lat, lng } = ubicacionActual.value
-    const ubicacion = obtenerUbicacion(condicion)
-
-    if (!ubicacion) {
-      console.warn(`⚠️ Ubicación no encontrada para condición:`, condicion)
-      return false
-    }
-
-    try {
-      const estaDentro = verificarDentro(lat, lng, ubicacion, condicion.tipo)
-      const keyEstado = `${evento.id}_${condicion.ubicacionId}`
-      const estadoAnterior = estadosAnteriores.value[keyEstado]
-
-      // Actualizar estado
-      estadosAnteriores.value[keyEstado] = estaDentro
-
-      // Evaluar según tipo de activación
-      switch (condicion.activacion) {
-        case 'Entrada':
-          return !estadoAnterior && estaDentro
-        case 'Salida':
-          return estadoAnterior && !estaDentro
-        case 'Dentro':
-          return estaDentro
-        case 'Fuera':
-          return !estaDentro
-        default:
-          return false
-      }
-    } catch (error) {
-      console.error('❌ Error en evaluarCondicionIndividual:', error.message)
-      console.error('   Ubicación:', ubicacion)
-      console.error('   Condición:', condicion)
-      return false
-    }
-  }
-
-  /**
-   * Obtiene la ubicación (POI o Geozona)
-   */
-  function obtenerUbicacion(condicion) {
-    if (condicion.tipo === 'POI') {
-      return pois.value.find((p) => p.id === condicion.ubicacionId)
+      nombreUbicacion = geozona.nombre
+      estaDentro = estaDentroDeGeozona(unidad.lat, unidad.lng, geozona)
     } else {
-      return geozonas.value.find((g) => g.id === condicion.ubicacionId)
+      return false
     }
+
+    // Obtenemos el estado anterior
+    const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
+
+    // ✅ CORREGIDO: Usar 'Entrada' y 'Salida' con mayúscula inicial
+    if (activacion === 'Entrada' && estaDentro && estadoAnterior !== 'dentro') {
+      estadoUbicaciones.value.set(claveUbicacion, 'dentro')
+      console.log(`✅ ENTRADA detectada: Unidad ${unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
+      return true
+    }
+    
+    if (activacion === 'Salida' && !estaDentro && estadoAnterior === 'dentro') {
+      estadoUbicaciones.value.set(claveUbicacion, 'fuera')
+      console.log(`🚪 SALIDA detectada: Unidad ${unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`)
+      return true
+    }
+
+    // Actualizar estado actual aunque no se dispare evento
+    if (estaDentro && estadoAnterior !== 'dentro') {
+      estadoUbicaciones.value.set(claveUbicacion, 'dentro')
+    } else if (!estaDentro && estadoAnterior !== 'fuera') {
+      estadoUbicaciones.value.set(claveUbicacion, 'fuera')
+    }
+
+    return false
   }
 
   /**
-   * Verifica si está dentro de una ubicación
-   * 🔧 FUNCIÓN COMPLETAMENTE CORREGIDA
+   * Verifica si está dentro de un POI (círculo)
    */
-  function verificarDentro(lat, lng, ubicacion, tipo) {
-    // 🔧 VALIDACIÓN 1: Coordenadas del punto actual
-    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
-      console.warn('⚠️ Coordenadas inválidas en verificarDentro:', { lat, lng })
+  function estaDentroDelPOI(lat, lng, poi) {
+    if (!poi.coordenadas) {
+      console.warn(`⚠️ POI sin coordenadas: ${poi.nombre}`)
       return false
     }
 
-    // 🔧 VALIDACIÓN 2: Ubicación existe
-    if (!ubicacion) {
-      console.warn('⚠️ Ubicación no definida en verificarDentro')
-      return false
+    const { lat: poiLat, lng: poiLng } = poi.coordenadas
+    const radio = poi.radio || 100
+
+    const distancia = calcularDistancia(lat, lng, poiLat, poiLng)
+    const dentro = distancia <= radio
+    
+    if (dentro) {
+      console.log(`📍 Unidad dentro de POI "${poi.nombre}" (distancia: ${Math.round(distancia)}m, radio: ${radio}m)`)
     }
+    
+    return dentro
+  }
 
-    try {
-      const punto = turf.point([lng, lat])
-
-      if (tipo === 'POI') {
-        // 🔧 FIX PRINCIPAL: Soportar múltiples formatos de POI
-        let poiLng, poiLat
-
-        // Intentar diferentes formatos de coordenadas
-        if (ubicacion.ubicacion) {
-          // Formato: { ubicacion: { lat, lng } }
-          poiLat = ubicacion.ubicacion.lat || ubicacion.ubicacion.latitud
-          poiLng = ubicacion.ubicacion.lng || ubicacion.ubicacion.longitud
-        } else {
-          // Formato directo: { lat, lng } o { latitud, longitud }
-          poiLat = ubicacion.lat || ubicacion.latitud
-          poiLng = ubicacion.lng || ubicacion.longitud
-        }
-
-        // 🔧 VALIDACIÓN 3: Verificar coordenadas del POI
-        if (
-          typeof poiLat !== 'number' ||
-          typeof poiLng !== 'number' ||
-          isNaN(poiLat) ||
-          isNaN(poiLng)
-        ) {
-          console.warn('⚠️ POI con coordenadas inválidas:', ubicacion)
-          return false
-        }
-
-        const poiPunto = turf.point([poiLng, poiLat])
-        const distancia = turf.distance(punto, poiPunto, { units: 'meters' })
-        const radio = ubicacion.radio || 100
-
-        return distancia <= radio
-      } else {
-        // Geozona (polígono o círculo)
-
-        // 🔧 Soporte para geozonas circulares
-        if (ubicacion.tipo === 'circular' || ubicacion.tipo === 'circulo') {
-          let centroLat, centroLng
-
-          if (ubicacion.centro) {
-            centroLat = ubicacion.centro.lat || ubicacion.centro.latitud
-            centroLng = ubicacion.centro.lng || ubicacion.centro.longitud
-          } else {
-            centroLat = ubicacion.lat || ubicacion.latitud
-            centroLng = ubicacion.lng || ubicacion.longitud
-          }
-
-          // 🔧 VALIDACIÓN 4: Centro de geozona circular
-          if (
-            typeof centroLat !== 'number' ||
-            typeof centroLng !== 'number' ||
-            isNaN(centroLat) ||
-            isNaN(centroLng)
-          ) {
-            console.warn('⚠️ Geozona circular con centro inválido:', ubicacion)
-            return false
-          }
-
-          const centroPunto = turf.point([centroLng, centroLat])
-          const distancia = turf.distance(punto, centroPunto, { units: 'meters' })
-          const radio = ubicacion.radio || 100
-
-          return distancia <= radio
-        }
-
-        // 🔧 Geozona poligonal
-        let coordenadas
-
-        // Soportar diferentes formatos de coordenadas
-        if (ubicacion.coordenadas) {
-          coordenadas = ubicacion.coordenadas
-        } else if (ubicacion.puntos) {
-          coordenadas = ubicacion.puntos
-        } else {
-          console.warn('⚠️ Geozona sin coordenadas:', ubicacion)
-          return false
-        }
-
-        // 🔧 VALIDACIÓN 5: Verificar que hay suficientes puntos
-        if (!Array.isArray(coordenadas) || coordenadas.length < 3) {
-          console.warn('⚠️ Geozona poligonal con puntos insuficientes:', coordenadas)
-          return false
-        }
-
-        // Convertir coordenadas al formato de Turf [lng, lat]
-        const puntosPoligono = coordenadas.map((c) => {
-          const cLng = c.lng || c.longitud || c[0]
-          const cLat = c.lat || c.latitud || c[1]
-
-          // 🔧 VALIDACIÓN 6: Cada punto debe ser válido
-          if (typeof cLng !== 'number' || typeof cLat !== 'number' || isNaN(cLng) || isNaN(cLat)) {
-            throw new Error(`Coordenada inválida en polígono: ${JSON.stringify(c)}`)
-          }
-
-          return [cLng, cLat]
-        })
-
-        // Cerrar el polígono si no está cerrado
-        const primerPunto = puntosPoligono[0]
-        const ultimoPunto = puntosPoligono[puntosPoligono.length - 1]
-        if (primerPunto[0] !== ultimoPunto[0] || primerPunto[1] !== ultimoPunto[1]) {
-          puntosPoligono.push([...primerPunto])
-        }
-
-        const poligono = turf.polygon([puntosPoligono])
-        return turf.booleanPointInPolygon(punto, poligono)
+  /**
+   * ✅ CORREGIDO: Verifica si está dentro de una geozona (solo poligonales)
+   */
+  function estaDentroDeGeozona(lat, lng, geozona) {
+    // ✅ SIMPLIFICADO: Todas las geozonas son poligonales
+    if (geozona.puntos && Array.isArray(geozona.puntos) && geozona.puntos.length > 0) {
+      const dentro = puntoEnPoligono({ lat, lng }, geozona.puntos)
+      
+      if (dentro) {
+        console.log(`🔷 Unidad dentro de Geozona poligonal "${geozona.nombre}"`)
       }
-    } catch (error) {
-      console.error('❌ Error en verificarDentro:', error.message)
-      console.error('   Tipo:', tipo)
-      console.error('   Ubicación:', ubicacion)
-      console.error('   Coordenadas actuales:', { lat, lng })
-      return false
+      
+      return dentro
     }
+    
+    console.warn(`⚠️ Geozona sin puntos válidos: ${geozona.nombre}`, geozona)
+    return false
   }
 
   /**
-   * Dispara la alerta si cumple con la frecuencia
+   * Calcula distancia entre dos puntos (en metros)
    */
-  function dispararAlerta(evento) {
-    const ahora = Date.now()
-    const ultimaAlerta = ultimasAlertas.value[evento.id] || 0
+  function calcularDistancia(lat1, lng1, lat2, lng2) {
+    const R = 6371e3
+    const φ1 = (lat1 * Math.PI) / 180
+    const φ2 = (lat2 * Math.PI) / 180
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180
+    const Δλ = ((lng2 - lng1) * Math.PI) / 180
 
-    // Control de frecuencia
-    let debeAlertar = false
-    switch (evento.activacionAlerta) {
-      case 'Al inicio':
-        if (ultimaAlerta === 0) debeAlertar = true
-        break
-      case 'Cada vez':
-        debeAlertar = true
-        break
-      case 'Una vez al día': {
-        const hace24h = ahora - 24 * 60 * 60 * 1000
-        if (ultimaAlerta < hace24h) debeAlertar = true
-        break
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c
+  }
+
+  /**
+   * Verifica si un punto está dentro de un polígono (Ray Casting)
+   */
+  function puntoEnPoligono(punto, poligono) {
+    let dentroPoligono = false
+    for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+      const xi = poligono[i].lat
+      const yi = poligono[i].lng
+      const xj = poligono[j].lat
+      const yj = poligono[j].lng
+
+      const intersect =
+        yi > punto.lng !== yj > punto.lng &&
+        punto.lat < ((xj - xi) * (punto.lng - yi)) / (yj - yi) + xi
+      if (intersect) dentroPoligono = !dentroPoligono
+    }
+    return dentroPoligono
+  }
+
+  /**
+   * 🔧 CORREGIDO: Evalúa eventos para todas las unidades activas
+   */
+  function evaluarEventosParaUnidadesSimulacion(unidades) {
+    if (!unidades || unidades.length === 0) {
+      return
+    }
+    
+    unidades.forEach(unidad => {
+      // ✅ VALIDACIÓN MEJORADA: Usar ubicacion.lat y ubicacion.lng
+      const lat = unidad.ubicacion?.lat || unidad.lat
+      const lng = unidad.ubicacion?.lng || unidad.lng
+      
+      if (!lat || !lng) {
+        console.warn(`⚠️ Unidad sin coordenadas válidas:`, unidad)
+        return
       }
-    }
-
-    if (debeAlertar) {
-      crearNotificacion(evento)
-      ultimasAlertas.value[evento.id] = ahora
-    }
+      
+      // Crear objeto normalizado para evaluación
+      const unidadNormalizada = {
+        ...unidad,
+        lat,
+        lng,
+        nombre: unidad.conductorNombre || unidad.unidadNombre || unidad.nombre || unidad.id
+      }
+      
+      // Evaluar todos los eventos activos para esta unidad
+      eventosActivos.value.forEach(evento => {
+        evaluarEventoParaUnidadSimulada(evento, unidadNormalizada)
+      })
+    })
   }
 
   /**
-   * Crea la notificación del evento
+   * 🔧 CORREGIDO: Evalúa cada condición INDEPENDIENTEMENTE
    */
-  function crearNotificacion(evento) {
-    const primeraCondicion = evento.condiciones[0]
-    const ubicacion = obtenerUbicacion(primeraCondicion)
-
-    const tipoMap = {
-      Entrada: { type: 'positive', icon: '🟢', texto: 'Entrada detectada' },
-      Salida: { type: 'warning', icon: '🟠', texto: 'Salida detectada' },
-      Dentro: { type: 'info', icon: '🔵', texto: 'Dentro de zona' },
-      Fuera: { type: 'negative', icon: '🔴', texto: 'Fuera de zona' },
+  function evaluarEventoParaUnidadSimulada(evento, unidad) {
+    if (!evento.condiciones || evento.condiciones.length === 0) {
+      return
     }
 
-    const config = tipoMap[primeraCondicion.activacion] || tipoMap['Entrada']
+    // 🔧 CAMBIO CRÍTICO: Evaluar cada condición por separado
+    // En lugar de requerir que TODAS se cumplan, cada una dispara el evento independientemente
+    evento.condiciones.forEach(condicion => {
+      const cumplida = evaluarCondicionParaUnidad(condicion, unidad)
+      
+      if (cumplida) {
+        console.log(`🎯 Condición cumplida para evento "${evento.nombre}" (${condicion.tipo} - ${condicion.activacion})`)
+        dispararEventoParaUnidadSimulada(evento, unidad, condicion)
+      }
+    })
+  }
+
+  /**
+   * 🔧 CORREGIDO: Dispara el evento para una unidad simulada
+   */
+  function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
+    // Crear clave única que incluya la condición específica
+    const claveEvento = `${evento.id}-${condicion.tipo}-${condicion.ubicacionId}-${condicion.activacion}-unidad-${unidad.id}`
+    
+    if (eventosDisparados.value.has(claveEvento)) {
+      return
+    }
+    
+    eventosDisparados.value.add(claveEvento)
+    
+    // Remover después de 10 segundos para permitir re-disparo
+    setTimeout(() => {
+      eventosDisparados.value.delete(claveEvento)
+    }, 10000)
+
+    // Obtener información de la ubicación
+    let ubicacionNombre = 'Ubicación desconocida'
+    let tipoUbicacion = ''
+
+    if (condicion.tipo === 'POI') {
+      const poi = poisMapeados.value.get(condicion.ubicacionId)
+      ubicacionNombre = poi?.nombre || 'POI'
+      tipoUbicacion = 'POI'
+    } else if (condicion.tipo === 'Geozona') {
+      const geozona = geozonasMapeadas.value.get(condicion.ubicacionId)
+      ubicacionNombre = geozona?.nombre || 'Geozona'
+      tipoUbicacion = 'Geozona'
+    }
+
+    const tipoNotificacion = 'positive'
+    const accionTexto = condicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
+    const mensaje = `${unidad.nombre} ${accionTexto} ${tipoUbicacion}: ${ubicacionNombre}`
+
+    // ✅ LOG IMPORTANTE: Evento disparado
+    console.log(`🔔 EVENTO DISPARADO: "${evento.nombre}" - ${mensaje}`)
 
     agregarNotificacion({
-      type: config.type,
-      title: `${config.icon} ${evento.nombre}`,
-      message: `${config.texto} en ${ubicacion?.nombre || 'ubicación desconocida'}`,
+      type: tipoNotificacion,
+      title: evento.nombre,
+      message: mensaje,
       eventoId: evento.id,
       eventoNombre: evento.nombre,
-      ubicacionNombre: ubicacion?.nombre || '',
-      tipoUbicacion: primeraCondicion.tipo,
-      accion: primeraCondicion.activacion,
+      ubicacionNombre: ubicacionNombre,
+      tipoUbicacion: tipoUbicacion,
+      accion: condicion.activacion,
+      sujeto: 'unidad',
+      unidadId: unidad.id,
+      unidadNombre: unidad.nombre
     })
 
-    console.log(`🔔 Alerta disparada: ${evento.nombre}`)
+    // ✅ LOG IMPORTANTE: Notificación creada
+    console.log(`📢 NOTIFICACIÓN CREADA: ${mensaje}`)
   }
 
   /**
-   * Resetea el sistema
+   * Resetea el sistema de detección 
    */
   function resetear() {
-    estadosAnteriores.value = {}
-    ultimasAlertas.value = {}
+    eventosActivos.value = []
+    poisMapeados.value.clear()
+    geozonasMapeadas.value.clear()
+    ubicacionActual.value = null
+    eventosDisparados.value.clear()
+    estadoUbicaciones.value.clear()
     console.log('🔄 Sistema de detección reseteado')
   }
 
   return {
     inicializar,
-    actualizarUbicacion,
+    evaluarEventosParaUnidadesSimulacion,
     resetear,
-    eventos,
-    pois,
-    geozonas,
+    eventosActivos,
+    ubicacionActual
   }
 }

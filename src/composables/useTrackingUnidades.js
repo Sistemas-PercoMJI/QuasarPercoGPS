@@ -1,4 +1,4 @@
-// src/composables/useTrackingUnidades.js
+// src/composables/useTrackingUnidades.js - LIMPIO
 import { ref, onUnmounted } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
@@ -24,13 +24,36 @@ export function useTrackingUnidades() {
         const data = snapshot.val()
         
         if (data) {
-          // Convertir objeto a array
-          unidadesActivas.value = Object.entries(data).map(([key, value]) => ({
-            id: key,
-            ...value
-          }))
+          // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
+          const unidadesValidas = Object.entries(data)
+            .filter(([/*key*/, value]) => {
+              // Validar que tenga estructura completa
+              const esValida = value && 
+                              value.ubicacion && 
+                              typeof value.ubicacion.lat === 'number' &&
+                              typeof value.ubicacion.lng === 'number' &&
+                              !isNaN(value.ubicacion.lat) &&
+                              !isNaN(value.ubicacion.lng) &&
+                              value.conductorNombre &&
+                              value.unidadNombre
+              
+              // ❌ LOGS ELIMINADOS: Ya no mostramos unidades inválidas
+              
+              return esValida
+            })
+            .map(([key, value]) => ({
+              // 🔧 FIX: Usar el ID correcto del objeto
+              id: value.unidadId || value.id || key,
+              ...value
+            }))
           
-          console.log(`📡 ${unidadesActivas.value.length} unidades activas detectadas`)
+          unidadesActivas.value = unidadesValidas
+          
+          // 🔧 NUEVO: Guardar globalmente para evaluación de eventos
+          window._unidadesTrackeadas = unidadesValidas
+          
+          // ❌ LOGS ELIMINADOS: Ya no mostramos conteo de unidades válidas
+          
         } else {
           unidadesActivas.value = []
           console.log('📡 No hay unidades activas')
@@ -38,15 +61,15 @@ export function useTrackingUnidades() {
         
         loading.value = false
       }, (err) => {
-        console.error('Error en tracking:', err)
+        console.error('❌ Error en tracking:', err)
         error.value = err.message
         loading.value = false
       })
 
-      console.log('✅ Tracking iniciado')
+      console.log('✅ Tracking GPS iniciado')
       
     } catch (err) {
-      console.error('Error al iniciar tracking:', err)
+      console.error('❌ Error al iniciar tracking:', err)
       error.value = err.message
       loading.value = false
     }
@@ -101,7 +124,7 @@ export function useTrackingUnidades() {
     return conteo
   }
 
-  /*
+  /**
    * Obtiene estadísticas generales
    */
   const estadisticas = () => {
