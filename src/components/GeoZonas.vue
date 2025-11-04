@@ -1631,13 +1631,17 @@ const activarSeleccionGeozonaPoligonal = async () => {
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
-      mapaAPI.activarModoSeleccionGeozonaPoligonal()
+      // ✅ MODIFICADO: Pasar los puntos existentes si los hay
+      if (nuevaGeozona.value.puntos && nuevaGeozona.value.puntos.length > 0) {
+        console.log('🔄 Reactivando con puntos existentes:', nuevaGeozona.value.puntos.length)
+        mapaAPI.activarModoSeleccionGeozonaPoligonal(nuevaGeozona.value.puntos)
+      } else {
+        mapaAPI.activarModoSeleccionGeozonaPoligonal()
+      }
 
       if (mapaAPI.map) {
         mapaAPI.map.on('mousemove', manejarMovimientoMouse)
       }
-
-      // ✅ NUEVO: Ya no esperamos los puntos aquí, el botón flotante lo manejará
     } else {
       if (componentDialog) {
         componentDialog.style.opacity = '1'
