@@ -47,16 +47,16 @@ export function useMap() {
   }
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
-  
+
   const crearIconoUnidad = (estado) => {
     const colores = {
       movimiento: '#4CAF50',
       detenido: '#FF9800',
-      inactivo: '#9E9E9E'
+      inactivo: '#9E9E9E',
     }
-    
+
     const color = colores[estado] || '#9E9E9E'
-    
+
     return L.divIcon({
       className: 'custom-marker-unidad',
       html: `
@@ -90,7 +90,7 @@ export function useMap() {
       `,
       iconSize: [36, 36],
       iconAnchor: [18, 18],
-      popupAnchor: [0, -18]
+      popupAnchor: [0, -18],
     })
   }
 
@@ -98,53 +98,54 @@ export function useMap() {
     const estadoTexto = {
       movimiento: 'En movimiento',
       detenido: 'Detenido',
-      inactivo: 'Inactivo'
+      inactivo: 'Inactivo',
     }
-    
+
     const estadoColor = {
       movimiento: '#4CAF50',
       detenido: '#FF9800',
-      inactivo: '#9E9E9E'
+      inactivo: '#9E9E9E',
     }
 
     return `
       <div style="min-width: 220px; font-family: 'Roboto', sans-serif;">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee;">
-          ${unidad.conductorFoto 
-            ? `<img src="${unidad.conductorFoto}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid ${estadoColor[unidad.estado]};">`
-            : `<div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">${unidad.conductorNombre.charAt(0)}</div>`
+          ${
+            unidad.conductorFoto
+              ? `<img src="${unidad.conductorFoto}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid ${estadoColor[unidad.estado]};">`
+              : `<div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">${unidad.conductorNombre.charAt(0)}</div>`
           }
           <div style="flex: 1;">
             <strong style="font-size: 15px; color: #212121;">${unidad.conductorNombre}</strong>
             <div style="font-size: 12px; color: #666; margin-top: 2px;">${unidad.unidadNombre}</div>
           </div>
         </div>
-        
+
         <div style="background: #f5f7fa; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
             <div style="width: 8px; height: 8px; border-radius: 50%; background: ${estadoColor[unidad.estado]};"></div>
             <span style="font-size: 13px; font-weight: 600; color: ${estadoColor[unidad.estado]};">${estadoTexto[unidad.estado]}</span>
           </div>
-          
+
           <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px; font-size: 12px; color: #424242;">
             <div style="display: flex; align-items: center; gap: 4px;">
               <span>⚡</span>
               <strong>Velocidad:</strong>
             </div>
             <span>${unidad.velocidad} km/h</span>
-            
+
             <div style="display: flex; align-items: center; gap: 4px;">
               <span>📍</span>
               <strong>Ubicación:</strong>
             </div>
             <span>${unidad.direccionTexto}</span>
-            
+
             <div style="display: flex; align-items: center; gap: 4px;">
               <span>🔋</span>
               <strong>Batería:</strong>
             </div>
             <span>${unidad.bateria}%</span>
-            
+
             <div style="display: flex; align-items: center; gap: 4px;">
               <span>🔑</span>
               <strong>Placa:</strong>
@@ -152,7 +153,7 @@ export function useMap() {
             <span>${unidad.unidadPlaca}</span>
           </div>
         </div>
-        
+
         <div style="font-size: 11px; color: #999; text-align: center; margin-top: 8px;">
           Última actualización: ${new Date(unidad.timestamp).toLocaleTimeString('es-MX')}
         </div>
@@ -168,61 +169,63 @@ export function useMap() {
     }
 
     const idsActuales = new Set()
-    
+
     // 🔧 VALIDACIÓN Y FILTRADO: Solo procesar unidades con ubicación válida
-    unidades.forEach(unidad => {
+    unidades.forEach((unidad) => {
       // Validar que la unidad tenga ubicación válida
-      if (!unidad.ubicacion || 
-          typeof unidad.ubicacion.lat !== 'number' || 
-          typeof unidad.ubicacion.lng !== 'number' ||
-          isNaN(unidad.ubicacion.lat) ||
-          isNaN(unidad.ubicacion.lng)) {
+      if (
+        !unidad.ubicacion ||
+        typeof unidad.ubicacion.lat !== 'number' ||
+        typeof unidad.ubicacion.lng !== 'number' ||
+        isNaN(unidad.ubicacion.lat) ||
+        isNaN(unidad.ubicacion.lng)
+      ) {
         console.warn(`⚠️ Unidad sin ubicación válida:`, {
           id: unidad.unidadId || unidad.id,
           nombre: unidad.unidadNombre,
-          ubicacion: unidad.ubicacion
+          ubicacion: unidad.ubicacion,
         })
         return // Saltar esta unidad
       }
 
       const unidadId = unidad.unidadId || unidad.id
       idsActuales.add(unidadId)
-      
+
       const { lat, lng } = unidad.ubicacion
-      
+
       // Actualizar o crear marcador
       if (marcadoresUnidades.value[unidadId]) {
         const marcador = marcadoresUnidades.value[unidadId]
         marcador.setLatLng([lat, lng])
         marcador.setIcon(crearIconoUnidad(unidad.estado))
         marcador.setPopupContent(crearPopupUnidad(unidad))
-        
+
         if (marcador._icon?.style) {
           marcador._icon.style.transition = 'all 0.5s ease-out'
         }
-        
+
         // ❌ LOG ELIMINADO
       } else {
         // Crear nuevo marcador
         const icono = crearIconoUnidad(unidad.estado)
-        const marcador = L.marker([lat, lng], { 
+        const marcador = L.marker([lat, lng], {
           icon: icono,
           zIndexOffset: 5000,
-          className: 'marker-vehiculo-gps'
+          className: 'marker-vehiculo-gps',
         })
           .addTo(map.value)
           .bindPopup(crearPopupUnidad(unidad), {
             maxWidth: 300,
-            className: 'popup-unidad'
+            className: 'popup-unidad',
           })
-        
+
         marcadoresUnidades.value[unidadId] = marcador
         console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
       }
     })
-    
+
     // Limpiar marcadores de unidades que ya no están activas
-    Object.keys(marcadoresUnidades.value).forEach(id => {
+    Object.keys(marcadoresUnidades.value).forEach((id) => {
       if (!idsActuales.has(id)) {
         map.value.removeLayer(marcadoresUnidades.value[id])
         delete marcadoresUnidades.value[id]
@@ -235,24 +238,24 @@ export function useMap() {
 
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
-    
-    Object.values(marcadoresUnidades.value).forEach(marcador => {
+
+    Object.values(marcadoresUnidades.value).forEach((marcador) => {
       map.value.removeLayer(marcador)
     })
-    
+
     marcadoresUnidades.value = {}
     console.log('🧹 Marcadores GPS limpiados')
   }
 
   const centrarEnUnidad = (unidadId) => {
     if (!map.value) return
-    
+
     const marcador = marcadoresUnidades.value[unidadId]
     if (marcador) {
       const latlng = marcador.getLatLng()
       map.value.setView(latlng, 16, {
         animate: true,
-        duration: 1
+        duration: 1,
       })
       marcador.openPopup()
     }
@@ -382,14 +385,24 @@ export function useMap() {
     return true
   }
 
-  const activarModoSeleccionGeozonaPoligonal = () => {
+  const activarModoSeleccionGeozonaPoligonal = (puntosExistentes = null) => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
       return false
     }
+
     modoSeleccionGeozonaPoligonal.value = true
-    puntosPoligono.value = []
-    marcadoresPoligono.value = []
+
+    // ✅ NUEVO: Si hay puntos existentes, no resetear
+    if (puntosExistentes && puntosExistentes.length > 0) {
+      console.log('🔄 Restaurando puntos existentes:', puntosExistentes.length)
+      setPuntosSeleccionados(puntosExistentes)
+    } else {
+      // Solo resetear si es nuevo
+      puntosPoligono.value = []
+      marcadoresPoligono.value = []
+    }
+
     poligonoFinalizado.value = false
     map.value.getContainer().style.cursor = 'crosshair'
     map.value.off('click')
@@ -474,9 +487,11 @@ export function useMap() {
 
     if (puntosPoligono.value.length >= 3) {
       console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
-      window.dispatchEvent(new CustomEvent('mostrarBotonConfirmarGeozona', {
-        detail: { mostrar: true }
-      }))
+      window.dispatchEvent(
+        new CustomEvent('mostrarBotonConfirmarGeozona', {
+          detail: { mostrar: true },
+        }),
+      )
     }
   }
 
@@ -608,6 +623,7 @@ export function useMap() {
       const mapaAPI = {
         map: map.value,
         L: L,
+        setPuntosSeleccionados,
         activarModoSeleccion,
         desactivarModoSeleccion,
         getUbicacionSeleccionada,
@@ -754,6 +770,47 @@ export function useMap() {
     }
   }
 
+  const setPuntosSeleccionados = (puntos) => {
+    if (!map.value || !puntos || puntos.length === 0) {
+      console.warn('⚠️ No hay puntos para restaurar')
+      return
+    }
+
+    // Limpiar puntos anteriores primero
+    limpiarPoligonoTemporal()
+
+    // Restaurar los puntos
+    puntosPoligono.value = [...puntos]
+
+    // Redibujar los marcadores en el mapa
+    puntos.forEach((punto) => {
+      const marcador = L.marker([punto.lat, punto.lng], {
+        icon: L.divIcon({
+          className: 'punto-poligono',
+          html: `<div style="
+          width: 12px;
+          height: 12px;
+          background: #3388ff;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        "></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        }),
+      }).addTo(map.value)
+
+      marcadoresPoligono.value.push(marcador)
+    })
+
+    // Redibujar el polígono
+    if (puntos.length >= 2) {
+      actualizarPoligonoTemporal(puntos)
+    }
+
+    console.log(`✅ ${puntos.length} puntos restaurados en el mapa`)
+  }
+
   return {
     map,
     initMap,
@@ -788,6 +845,7 @@ export function useMap() {
     toggleTrafico,
     actualizarMarcadoresUnidades,
     limpiarMarcadoresUnidades,
-    centrarEnUnidad
+    centrarEnUnidad,
+    setPuntosSeleccionados,
   }
 }
