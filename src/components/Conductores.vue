@@ -12,11 +12,8 @@
       </div>
     </div>
 
-    <!-- Botones de acción - Solo en la parte superior -->
+    <!-- Botones de acción - Solo crear grupo -->
     <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
-      <q-btn flat dense round icon="person_add" size="sm" @click="abrirDialogNuevoConductor">
-        <q-tooltip>Agregar conductor</q-tooltip>
-      </q-btn>
       <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
         <q-tooltip>Crear grupo</q-tooltip>
       </q-btn>
@@ -31,10 +28,7 @@
       </q-input>
     </div>
 
-    <!-- Filtro por grupo - ELIMINADO porque no se necesita -->
-    <!-- Los grupos se seleccionan haciendo clic en la lista de carpetas -->
-
-    <!-- Lista de grupos (tipo carpetas) -->
+    <!-- Lista de grupos -->
     <div class="grupos-lista q-px-md q-pb-sm" v-if="gruposConductores.length > 0">
       <div class="text-caption text-grey-7 q-mb-xs">GRUPOS</div>
       <q-list dense bordered class="rounded-borders">
@@ -89,6 +83,7 @@
           @click="seleccionarConductor(conductor)"
           :active="conductorSeleccionado?.id === conductor.id"
           class="conductor-item"
+          :data-conductor-id="conductor.id"
         >
           <q-item-section avatar>
             <q-avatar color="primary" text-color="white" size="40px">
@@ -148,7 +143,7 @@
 
     <!-- Dialog: Detalles del Conductor -->
     <q-dialog v-model="dialogDetallesConductor" position="right" seamless>
-      <q-card style="width: 400px; max-width: 90vw">
+      <q-card style="width: 500px; max-width: 90vw">
         <!-- Header del card -->
         <q-card-section class="bg-gradient text-white row items-center">
           <div class="col">
@@ -160,7 +155,7 @@
         <q-separator />
 
         <!-- Contenido -->
-        <q-card-section style="max-height: 60vh" class="scroll">
+        <q-card-section style="max-height: 70vh" class="scroll">
           <!-- Nombre completo -->
           <div class="detalle-section">
             <div class="detalle-label">Nombre completo</div>
@@ -204,20 +199,54 @@
 
           <q-separator class="q-my-md" />
 
-          <!-- Licencia de conducir - SOLO VISUALIZACIÓN -->
-          <div class="detalle-section" v-if="conductorEditando?.LicenciaConducirFoto">
-            <div class="detalle-label">Licencia de conducir</div>
-            <q-btn
-              outline
-              color="primary"
-              label="Ver licencia"
-              icon="image"
-              class="full-width"
-              @click="verLicencia"
-            />
+          <!-- 📸 FOTOS DE LICENCIA DE CONDUCIR -->
+          <div class="detalle-section">
+            <div class="detalle-label">
+              <q-icon name="image" class="q-mr-xs" />
+              Fotos de Licencia de Conducir
+            </div>
+            <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
+              <q-spinner color="primary" size="30px" />
+            </div>
+            <div v-else-if="fotosLicencia.length > 0" class="fotos-grid">
+              <div v-for="foto in fotosLicencia" :key="foto.fullPath" class="foto-card">
+                <q-img
+                  :src="foto.url"
+                  class="foto-thumbnail"
+                  @click="verFotoEnGrande(foto.url)"
+                  style="cursor: pointer"
+                />
+                <div class="foto-actions">
+                  <q-btn
+                    flat
+                    dense
+                    icon="visibility"
+                    size="sm"
+                    color="primary"
+                    @click="verFotoEnGrande(foto.url)"
+                  >
+                    <q-tooltip>Ver</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    icon="download"
+                    size="sm"
+                    color="positive"
+                    @click="descargarFotoHandler(foto.url, foto.name)"
+                  >
+                    <q-tooltip>Descargar</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+            </div>
+            <div v-else class="no-fotos">
+              <q-icon name="image_not_supported" size="32px" color="grey-4" />
+              <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de licencia</div>
+            </div>
           </div>
 
-          <q-separator class="q-my-md" v-if="conductorEditando?.LicenciaConducirFoto" />
+          <q-separator class="q-my-md" />
 
           <!-- Fecha de vencimiento -->
           <div class="detalle-section">
@@ -285,6 +314,55 @@
 
             <q-separator class="q-my-sm" />
 
+            <!-- 📸 FOTOS DE SEGURO -->
+            <div class="detalle-section">
+              <div class="detalle-label">
+                <q-icon name="image" class="q-mr-xs" />
+                Fotos del Seguro
+              </div>
+              <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
+                <q-spinner color="primary" size="30px" />
+              </div>
+              <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
+                <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
+                  <q-img
+                    :src="foto.url"
+                    class="foto-thumbnail"
+                    @click="verFotoEnGrande(foto.url)"
+                    style="cursor: pointer"
+                  />
+                  <div class="foto-actions">
+                    <q-btn
+                      flat
+                      dense
+                      icon="visibility"
+                      size="sm"
+                      color="primary"
+                      @click="verFotoEnGrande(foto.url)"
+                    >
+                      <q-tooltip>Ver</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      dense
+                      icon="download"
+                      size="sm"
+                      color="positive"
+                      @click="descargarFotoHandler(foto.url, foto.name)"
+                    >
+                      <q-tooltip>Descargar</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="no-fotos">
+                <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
+              </div>
+            </div>
+
+            <q-separator class="q-my-sm" />
+
             <!-- Fecha de vencimiento del seguro -->
             <div class="detalle-section">
               <div class="detalle-label">Vencimiento del seguro</div>
@@ -315,6 +393,55 @@
                 dense
                 readonly
               />
+            </div>
+
+            <q-separator class="q-my-sm" />
+
+            <!-- 📸 FOTOS DE TARJETA DE CIRCULACIÓN -->
+            <div class="detalle-section">
+              <div class="detalle-label">
+                <q-icon name="image" class="q-mr-xs" />
+                Fotos de Tarjeta de Circulación
+              </div>
+              <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
+                <q-spinner color="primary" size="30px" />
+              </div>
+              <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
+                <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
+                  <q-img
+                    :src="foto.url"
+                    class="foto-thumbnail"
+                    @click="verFotoEnGrande(foto.url)"
+                    style="cursor: pointer"
+                  />
+                  <div class="foto-actions">
+                    <q-btn
+                      flat
+                      dense
+                      icon="visibility"
+                      size="sm"
+                      color="primary"
+                      @click="verFotoEnGrande(foto.url)"
+                    >
+                      <q-tooltip>Ver</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      dense
+                      icon="download"
+                      size="sm"
+                      color="positive"
+                      @click="descargarFotoHandler(foto.url, foto.name)"
+                    >
+                      <q-tooltip>Descargar</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="no-fotos">
+                <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
+              </div>
             </div>
 
             <q-separator class="q-my-sm" />
@@ -429,67 +556,17 @@
       </q-card>
     </q-dialog>
 
-    <!-- Dialog: Nuevo Conductor -->
-    <q-dialog v-model="dialogNuevoConductor">
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Nuevo conductor</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none q-gutter-md">
-          <q-input
-            v-model="nuevoConductor.Nombre"
-            label="Nombre completo"
-            outlined
-            dense
-            autofocus
-            :rules="[(val) => !!val || 'El nombre es requerido']"
-          />
-
-          <q-input
-            v-model="nuevoConductor.Telefono"
-            label="Teléfono"
-            outlined
-            dense
-            mask="(###) ### ####"
-            placeholder="(664) 123 4567"
-          />
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="grey" v-close-popup />
-          <q-btn
-            flat
-            label="Crear"
-            color="primary"
-            @click="crearNuevoConductor"
-            :disable="!nuevoConductor.Nombre"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Dialog: Ver licencia -->
-    <q-dialog v-model="dialogVerLicencia">
-      <q-card style="min-width: 400px">
+    <!-- Dialog: Ver foto en grande -->
+    <q-dialog v-model="dialogVerFoto">
+      <q-card style="min-width: 600px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Licencia de conducir</div>
+          <div class="text-h6">Vista de imagen</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
-          <div v-if="conductorEditando?.LicenciaConducirFoto" class="text-center">
-            <q-img
-              :src="conductorEditando.LicenciaConducirFoto"
-              style="max-height: 500px"
-              fit="contain"
-            />
-          </div>
-          <div v-else class="text-center q-pa-lg">
-            <q-icon name="image_not_supported" size="64px" color="grey-4" />
-            <div class="text-grey-6 q-mt-md">No hay licencia cargada</div>
-          </div>
+          <q-img :src="fotoSeleccionada" style="max-height: 70vh" fit="contain" />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -545,42 +622,32 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 import { useEventBus } from 'src/composables/useEventBus.js'
-import { watch } from 'vue'
 
 const { estadoCompartido, resetAbrirConductores } = useEventBus()
 
-// ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
   console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
 }
 
-// ✅ CÓDIGO CORRECTO - AÑADIR ESTO
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
     if (newValue && newValue.conductor) {
-      console.log('🎯 Conductores: Detectado cambio en estadoCompartido, procesando conductor')
-      console.log('✅ Conductor recibido:', newValue.conductor)
-
-      // Seleccionar el grupo si es necesario
       if (newValue.conductor.grupoId && newValue.conductor.grupoId !== grupoSeleccionado.value) {
         grupoSeleccionado.value = newValue.conductor.grupoId
       }
 
-      // Buscar el conductor en la lista
       const conductorEncontrado = conductores.value.find(
         (c) => c.id === newValue.conductor.id && c.grupoId === newValue.conductor.grupoId,
       )
 
       if (conductorEncontrado) {
-        console.log('✅ Conductor encontrado, seleccionando...')
         seleccionarConductor(conductorEncontrado)
 
-        // Hacer scroll y resaltar
         setTimeout(() => {
           const elemento = document.querySelector(`[data-conductor-id="${conductorEncontrado.id}"]`)
           if (elemento) {
@@ -590,7 +657,6 @@ watch(
           }
         }, 300)
 
-        // Mostrar notificación
         Notify.create({
           type: 'positive',
           message: `👤 Conductor seleccionado: ${conductorEncontrado.Nombre}`,
@@ -600,7 +666,6 @@ watch(
           position: 'top',
         })
       } else {
-        console.error('❌ No se encontró el conductor con los datos:', newValue.conductor)
         Notify.create({
           type: 'warning',
           message: 'No se encontró el conductor seleccionado',
@@ -608,11 +673,11 @@ watch(
         })
       }
 
-      // Limpiar después de procesar
       resetAbrirConductores()
     }
   },
 )
+
 // Emits
 const emit = defineEmits(['close', 'conductor-seleccionado'])
 
@@ -627,29 +692,29 @@ const {
   obtenerUnidades,
   obtenerGruposConductores,
   escucharGrupos,
-  crearGrupo,
   actualizarGrupo,
   eliminarGrupo,
-  agregarConductor,
   actualizarConductor,
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
   asignarUnidad,
   obtenerUnidadDeConductor,
+  obtenerFotosLicencia,
+  obtenerFotosSeguroUnidad,
+  obtenerFotosTargetaCirculacion,
+  descargarFoto,
 } = useConductoresFirebase()
 
 // Estado local
-const todosConductores = ref(false)
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
 const conductorEditando = ref({})
 const grupoSeleccionado = ref('todos')
 const dialogNuevoGrupo = ref(false)
-const dialogNuevoConductor = ref(false)
 const dialogDetallesConductor = ref(false)
-const dialogVerLicencia = ref(false)
+const dialogVerFoto = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
 const menuGrupoTarget = ref(null)
@@ -658,6 +723,15 @@ const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
 const conductoresSeleccionados = ref([])
+const fotoSeleccionada = ref('')
+
+// Estados para fotos
+const fotosLicencia = ref([])
+const fotosSeguro = ref([])
+const fotosTargeta = ref([])
+const cargandoFotosLicencia = ref(false)
+const cargandoFotosSeguro = ref(false)
+const cargandoFotosTargeta = ref(false)
 
 // Listeners de Firebase
 let unsubscribeConductores = null
@@ -666,11 +740,6 @@ let unsubscribeGrupos = null
 const nuevoGrupo = ref({
   Nombre: '',
   ConductoresIds: [],
-})
-
-const nuevoConductor = ref({
-  Nombre: '',
-  Telefono: '',
 })
 
 // Computed
@@ -684,14 +753,12 @@ const opcionesUnidades = computed(() => {
 const conductoresFiltrados = computed(() => {
   let resultado = []
 
-  // Filtrar por grupo
   if (grupoSeleccionado.value === 'todos') {
     resultado = []
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
-  // Filtrar por búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -707,7 +774,6 @@ const conductoresFiltrados = computed(() => {
 const conductoresDisponiblesParaGrupo = computed(() => {
   let disponibles = conductores.value
 
-  // Filtrar por búsqueda
   if (busquedaConductoresGrupo.value) {
     const busquedaLower = busquedaConductoresGrupo.value.toLowerCase()
     disponibles = disponibles.filter(
@@ -723,7 +789,6 @@ const conductoresDisponiblesParaGrupo = computed(() => {
 const fechaVencimientoFormato = computed(() => {
   if (!conductorEditando.value?.LicenciaConducirFecha) return ''
 
-  // Convertir Timestamp de Firebase a Date
   let fecha
   if (conductorEditando.value.LicenciaConducirFecha.toDate) {
     fecha = conductorEditando.value.LicenciaConducirFecha.toDate()
@@ -747,7 +812,6 @@ const esLicenciaVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
-// Computed para la unidad asignada
 const unidadAsignadaData = computed(() => {
   if (!conductorEditando.value?.UnidadAsignada) return null
   return obtenerUnidadDeConductor(conductorEditando.value.id)
@@ -805,6 +869,13 @@ const esTarjetaCirculacionVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
+// Watch para cargar fotos cuando se selecciona un conductor
+watch(conductorEditando, async (newValue) => {
+  if (newValue?.id) {
+    await cargarFotosConductor()
+  }
+})
+
 // Methods
 function obtenerIniciales(nombre) {
   if (!nombre) return '??'
@@ -815,15 +886,13 @@ function obtenerIniciales(nombre) {
 
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
-  todosConductores.value = false
 }
 
 function verTodosConductores() {
   grupoSeleccionado.value = 'todos'
-  todosConductores.value = true
 }
 
-function seleccionarConductor(conductor) {
+async function seleccionarConductor(conductor) {
   if (conductorSeleccionado.value?.id === conductor.id && dialogDetallesConductor.value) {
     dialogDetallesConductor.value = false
     conductorSeleccionado.value = null
@@ -922,6 +991,9 @@ async function asignarUnidadAConductor(unidadId) {
       message: 'Unidad asignada correctamente',
       icon: 'check_circle',
     })
+
+    // Recargar fotos de la nueva unidad
+    await cargarFotosConductor()
   } catch (error) {
     Notify.create({
       type: 'negative',
@@ -931,8 +1003,70 @@ async function asignarUnidadAConductor(unidadId) {
   }
 }
 
-function verLicencia() {
-  dialogVerLicencia.value = true
+// 📸 Cargar todas las fotos del conductor y su unidad
+async function cargarFotosConductor() {
+  if (!conductorEditando.value?.id) return
+
+  // Cargar fotos de licencia
+  cargandoFotosLicencia.value = true
+  try {
+    fotosLicencia.value = await obtenerFotosLicencia(conductorEditando.value.id)
+  } catch (error) {
+    console.error('Error al cargar fotos de licencia:', error)
+    fotosLicencia.value = []
+  } finally {
+    cargandoFotosLicencia.value = false
+  }
+
+  // Cargar fotos de la unidad si está asignada
+  if (unidadAsignadaData.value?.id) {
+    // Fotos de seguro
+    cargandoFotosSeguro.value = true
+    try {
+      fotosSeguro.value = await obtenerFotosSeguroUnidad(unidadAsignadaData.value.id)
+    } catch (error) {
+      console.error('Error al cargar fotos de seguro:', error)
+      fotosSeguro.value = []
+    } finally {
+      cargandoFotosSeguro.value = false
+    }
+
+    // Fotos de tarjeta de circulación
+    cargandoFotosTargeta.value = true
+    try {
+      fotosTargeta.value = await obtenerFotosTargetaCirculacion(unidadAsignadaData.value.id)
+    } catch (error) {
+      console.error('Error al cargar fotos de tarjeta:', error)
+      fotosTargeta.value = []
+    } finally {
+      cargandoFotosTargeta.value = false
+    }
+  } else {
+    fotosSeguro.value = []
+    fotosTargeta.value = []
+  }
+}
+
+function verFotoEnGrande(url) {
+  fotoSeleccionada.value = url
+  dialogVerFoto.value = true
+}
+
+async function descargarFotoHandler(url, nombreArchivo) {
+  try {
+    await descargarFoto(url, nombreArchivo)
+    Notify.create({
+      type: 'positive',
+      message: 'Foto descargada correctamente',
+      icon: 'download',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al descargar: ' + error.message,
+      icon: 'error',
+    })
+  }
 }
 
 function abrirDialogNuevoGrupo() {
@@ -941,36 +1075,6 @@ function abrirDialogNuevoGrupo() {
   conductoresSeleccionados.value = []
   busquedaConductoresGrupo.value = ''
   dialogNuevoGrupo.value = true
-}
-
-function abrirDialogNuevoConductor() {
-  nuevoConductor.value = { Nombre: '', Telefono: '' }
-  dialogNuevoConductor.value = true
-}
-
-async function crearNuevoConductor() {
-  try {
-    await agregarConductor({
-      Nombre: nuevoConductor.value.Nombre,
-      Telefono: nuevoConductor.value.Telefono,
-      LicenciaConducirFoto: '',
-      LicenciaConducirFecha: null,
-    })
-
-    Notify.create({
-      type: 'positive',
-      message: 'Conductor creado correctamente',
-      icon: 'check_circle',
-    })
-
-    dialogNuevoConductor.value = false
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al crear conductor: ' + error.message,
-      icon: 'error',
-    })
-  }
 }
 
 function toggleConductor(conductorId) {
@@ -985,7 +1089,6 @@ function toggleConductor(conductorId) {
 async function guardarGrupo() {
   try {
     if (modoEdicion.value && grupoMenu.value) {
-      // Actualizar grupo existente
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
         ConductoresIds: conductoresSeleccionados.value,
@@ -997,16 +1100,10 @@ async function guardarGrupo() {
         icon: 'check_circle',
       })
     } else {
-      // Crear nuevo grupo
-      await crearGrupo({
-        Nombre: nuevoGrupo.value.Nombre,
-        ConductoresIds: conductoresSeleccionados.value,
-      })
-
       Notify.create({
-        type: 'positive',
-        message: 'Grupo creado correctamente',
-        icon: 'check_circle',
+        type: 'warning',
+        message: 'No se pueden crear nuevos grupos desde aquí',
+        icon: 'warning',
       })
     }
 
@@ -1022,13 +1119,15 @@ async function guardarGrupo() {
 }
 
 function mostrarMenuGrupo(event, grupo) {
-  menuGrupoTarget.value = event.target
+  event.stopPropagation()
+  menuGrupoTarget.value = event.currentTarget
   grupoMenu.value = grupo
   menuGrupoVisible.value = true
 }
 
 function mostrarMenuConductor(event, conductor) {
-  menuConductorTarget.value = event.target
+  event.stopPropagation()
+  menuConductorTarget.value = event.currentTarget
   conductorMenu.value = conductor
   menuConductorVisible.value = true
 }
@@ -1036,7 +1135,6 @@ function mostrarMenuConductor(event, conductor) {
 function editarGrupo() {
   modoEdicion.value = true
   nuevoGrupo.value = { Nombre: grupoMenu.value.Nombre }
-  // Pre-seleccionar los conductores que ya están en el grupo
   conductoresSeleccionados.value = [...(grupoMenu.value.ConductoresIds || [])]
   busquedaConductoresGrupo.value = ''
   dialogNuevoGrupo.value = true
@@ -1044,13 +1142,10 @@ function editarGrupo() {
 
 async function confirmarEliminarGrupo() {
   try {
-    // Eliminar directamente sin confirmación
     await eliminarGrupo(grupoMenu.value.id)
 
-    // Si estábamos viendo este grupo, cambiar a "todos"
     if (grupoSeleccionado.value === grupoMenu.value.id) {
       grupoSeleccionado.value = 'todos'
-      todosConductores.value = false
     }
 
     Notify.create({
@@ -1104,10 +1199,8 @@ onMounted(async () => {
   try {
     console.log('🔄 Iniciando carga de datos de Firebase...')
 
-    // Cargar datos iniciales
     await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
-    // Configurar listeners en tiempo real
     unsubscribeConductores = escucharConductores()
     unsubscribeGrupos = escucharGrupos()
 
@@ -1129,14 +1222,12 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Limpiar listeners de Firebase
   if (unsubscribeConductores) unsubscribeConductores()
   if (unsubscribeGrupos) unsubscribeGrupos()
 })
 </script>
 
 <style scoped>
-/* 🆕 EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -1248,6 +1339,8 @@ onUnmounted(() => {
   color: #757575;
   margin-bottom: 8px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
 }
 
 .detalle-valor {
@@ -1256,17 +1349,53 @@ onUnmounted(() => {
   padding: 8px 0;
 }
 
-.detalle-campo {
-  margin-top: 4px;
-}
-
-.detalle-campo .q-btn {
-  justify-content: space-between;
-  padding: 8px 12px;
-}
-
 .bordered {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
 }
-</style>
+
+/* Estilos para las fotos */
+.fotos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.foto-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: all 0.2s;
+}
+
+.foto-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.foto-thumbnail {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.foto-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 4px;
+  background: #f5f5f5;
+}
+
+.no-fotos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #fafafa;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+</style>    
