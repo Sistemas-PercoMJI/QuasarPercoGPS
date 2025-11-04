@@ -12,8 +12,7 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore'
-import { ref as storageRef, listAll, getDownloadURL, getMetadata } from 'firebase/storage'
-import { db, storage, auth } from 'src/firebase/firebaseConfig'
+import { db, auth } from 'src/firebase/firebaseConfig'
 
 export function useConductoresFirebase() {
   // Estado reactivo
@@ -129,94 +128,114 @@ export function useConductoresFirebase() {
     }
   }
 
-  // === FOTOS DE STORAGE ===
+  // === OBTENER FOTOS DESDE FIRESTORE ===
 
+  // Obtener fotos de licencia de conductor desde Firestore
   const obtenerFotosLicencia = async (conductorId) => {
     try {
-      console.log('📸 Obteniendo fotos de licencia para:', conductorId)
-      const folderRef = storageRef(storage, `LicenciaConducirFotos/${conductorId}`)
-      const result = await listAll(folderRef)
+      console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
       
-      const fotosPromises = result.items.map(async (itemRef) => {
-        const url = await getDownloadURL(itemRef)
-        const metadata = await getMetadata(itemRef)
-        return {
-          name: itemRef.name,
-          url: url,
-          fullPath: itemRef.fullPath,
-          size: metadata.size,
-          contentType: metadata.contentType,
-          timeCreated: metadata.timeCreated,
-        }
-      })
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
 
-      const fotos = await Promise.all(fotosPromises)
+      if (!conductorSnap.exists()) {
+        console.warn('⚠️ Conductor no encontrado')
+        return []
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosArray = conductorData.LicenciaConducirFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `licencia_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
       console.log('✅ Fotos de licencia obtenidas:', fotos.length)
       return fotos
     } catch (err) {
-      console.error('Error al obtener fotos de licencia:', err)
+      console.error('❌ Error al obtener fotos de licencia:', err)
       return []
     }
   }
 
+  // Obtener fotos de seguro de unidad desde Firestore
   const obtenerFotosSeguroUnidad = async (unidadId) => {
     try {
-      console.log('📸 Obteniendo fotos de seguro para:', unidadId)
-      const folderRef = storageRef(storage, `SeguroUnidadFotos/${unidadId}`)
-      const result = await listAll(folderRef)
+      console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
       
-      const fotosPromises = result.items.map(async (itemRef) => {
-        const url = await getDownloadURL(itemRef)
-        const metadata = await getMetadata(itemRef)
-        return {
-          name: itemRef.name,
-          url: url,
-          fullPath: itemRef.fullPath,
-          size: metadata.size,
-          contentType: metadata.contentType,
-          timeCreated: metadata.timeCreated,
-        }
-      })
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
 
-      const fotos = await Promise.all(fotosPromises)
+      if (!unidadSnap.exists()) {
+        console.warn('⚠️ Unidad no encontrada')
+        return []
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosArray = unidadData.SeguroUnidadFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `seguro_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
       console.log('✅ Fotos de seguro obtenidas:', fotos.length)
       return fotos
     } catch (err) {
-      console.error('Error al obtener fotos de seguro:', err)
+      console.error('❌ Error al obtener fotos de seguro:', err)
       return []
     }
   }
 
+  // Obtener fotos de tarjeta de circulación desde Firestore
   const obtenerFotosTargetaCirculacion = async (unidadId) => {
     try {
-      console.log('📸 Obteniendo fotos de tarjeta para:', unidadId)
-      const folderRef = storageRef(storage, `TargetaCirculacionFotos/${unidadId}`)
-      const result = await listAll(folderRef)
+      console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
       
-      const fotosPromises = result.items.map(async (itemRef) => {
-        const url = await getDownloadURL(itemRef)
-        const metadata = await getMetadata(itemRef)
-        return {
-          name: itemRef.name,
-          url: url,
-          fullPath: itemRef.fullPath,
-          size: metadata.size,
-          contentType: metadata.contentType,
-          timeCreated: metadata.timeCreated,
-        }
-      })
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
 
-      const fotos = await Promise.all(fotosPromises)
+      if (!unidadSnap.exists()) {
+        console.warn('⚠️ Unidad no encontrada')
+        return []
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosArray = unidadData.TargetaCirculacionFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `tarjeta_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
       console.log('✅ Fotos de tarjeta obtenidas:', fotos.length)
       return fotos
     } catch (err) {
-      console.error('Error al obtener fotos de tarjeta:', err)
+      console.error('❌ Error al obtener fotos de tarjeta:', err)
       return []
     }
   }
 
+  // Descargar foto
   const descargarFoto = async (url, nombreArchivo) => {
     try {
+      console.log('⬇️ Descargando foto:', nombreArchivo)
       const response = await fetch(url)
       const blob = await response.blob()
       const link = document.createElement('a')
@@ -224,8 +243,9 @@ export function useConductoresFirebase() {
       link.download = nombreArchivo
       link.click()
       window.URL.revokeObjectURL(link.href)
+      console.log('✅ Foto descargada correctamente')
     } catch (err) {
-      console.error('Error al descargar foto:', err)
+      console.error('❌ Error al descargar foto:', err)
       throw err
     }
   }
@@ -429,7 +449,7 @@ export function useConductoresFirebase() {
     actualizarConductor,
     eliminarConductor,
 
-    // Métodos de fotos
+    // Métodos de fotos (ahora desde Firestore)
     obtenerFotosLicencia,
     obtenerFotosSeguroUnidad,
     obtenerFotosTargetaCirculacion,
