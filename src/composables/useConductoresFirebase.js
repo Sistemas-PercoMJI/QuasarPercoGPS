@@ -1,5 +1,9 @@
 // src/composables/useConductoresFirebase.js
+import { ref as storageRef, getBlob } from 'firebase/storage'
+import { storage } from 'src/firebase/firebaseConfig' // ✅ Importar storage
 import { ref } from 'vue'
+//import { ref as storageRef, getBlob } from 'firebase/storage'
+//import { storage } from 'src/firebase/firebaseConfig' // Ajusta la ruta según tu proyecto
 import {
   collection,
   doc,
@@ -134,7 +138,7 @@ export function useConductoresFirebase() {
   const obtenerFotosLicencia = async (conductorId) => {
     try {
       console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
-      
+
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -148,7 +152,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `licencia_${index + 1}`,
           url: url,
@@ -168,7 +172,7 @@ export function useConductoresFirebase() {
   const obtenerFotosSeguroUnidad = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
-      
+
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -182,7 +186,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `seguro_${index + 1}`,
           url: url,
@@ -202,7 +206,7 @@ export function useConductoresFirebase() {
   const obtenerFotosTargetaCirculacion = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
-      
+
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -216,7 +220,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `tarjeta_${index + 1}`,
           url: url,
@@ -233,16 +237,75 @@ export function useConductoresFirebase() {
   }
 
   // Descargar foto
+
   const descargarFoto = async (url, nombreArchivo) => {
     try {
       console.log('⬇️ Descargando foto:', nombreArchivo)
-      const response = await fetch(url)
-      const blob = await response.blob()
+      console.log('🔗 URL completa:', url)
+
+      // Extraer la ruta del archivo desde la URL de Firebase
+      const urlObj = new URL(url)
+      console.log('📋 pathname:', urlObj.pathname)
+
+      const pathMatch = urlObj.pathname.match(/\/o\/(.+?)\?/)
+      console.log('🔍 pathMatch:', pathMatch)
+
+      if (!pathMatch) {
+        // ✅ NUEVA FORMA: Extraer directamente del pathname
+        // Firebase Storage URL format: /v0/b/BUCKET/o/PATH
+        const pathParts = urlObj.pathname.split('/o/')
+        console.log('📂 pathParts:', pathParts)
+
+        if (pathParts.length < 2) {
+          throw new Error('URL de Firebase Storage inválida')
+        }
+
+        const filePath = decodeURIComponent(pathParts[1])
+        console.log('📂 Ruta del archivo (método alternativo):', filePath)
+
+        // Obtener referencia al archivo
+        const fileRef = storageRef(storage, filePath)
+
+        // Descargar como blob
+        const blob = await getBlob(fileRef)
+
+        // Crear URL temporal y descargar
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = nombreArchivo || 'licencia.jpg'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        // Limpiar URL temporal
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+
+        console.log('✅ Foto descargada correctamente')
+        return
+      }
+
+      const filePath = decodeURIComponent(pathMatch[1])
+      console.log('📂 Ruta del archivo:', filePath)
+
+      // Obtener referencia al archivo
+      const fileRef = storageRef(storage, filePath)
+
+      // Descargar como blob
+      const blob = await getBlob(fileRef)
+
+      // Crear URL temporal y descargar
+      const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.href = window.URL.createObjectURL(blob)
-      link.download = nombreArchivo
+      link.href = blobUrl
+      link.download = nombreArchivo || 'licencia.jpg'
+      document.body.appendChild(link)
       link.click()
-      window.URL.revokeObjectURL(link.href)
+      document.body.removeChild(link)
+
+      // Limpiar URL temporal
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+
       console.log('✅ Foto descargada correctamente')
     } catch (err) {
       console.error('❌ Error al descargar foto:', err)
