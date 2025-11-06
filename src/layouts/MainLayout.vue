@@ -240,7 +240,7 @@
       <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded || dialogAbierto }">
         <q-avatar :size="drawerExpanded && !dialogAbierto ? '100px' : '40px'" class="q-mb-md">
           <img
-            src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
+            src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2Fseguro_2.png?alt=media&token=6085f543-4e36-4791-8dcd-6709a781f83d"
             alt="Logo"
           />
         </q-avatar>
