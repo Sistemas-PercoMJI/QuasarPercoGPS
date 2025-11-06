@@ -1,9 +1,5 @@
 // src/composables/useConductoresFirebase.js
-import { ref as storageRef, getBlob } from 'firebase/storage'
-import { storage } from 'src/firebase/firebaseConfig' // ✅ Importar storage
 import { ref } from 'vue'
-//import { ref as storageRef, getBlob } from 'firebase/storage'
-//import { storage } from 'src/firebase/firebaseConfig' // Ajusta la ruta según tu proyecto
 import {
   collection,
   doc,
@@ -138,7 +134,7 @@ export function useConductoresFirebase() {
   const obtenerFotosLicencia = async (conductorId) => {
     try {
       console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
-
+      
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -152,7 +148,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `licencia_${index + 1}`,
           url: url,
@@ -172,7 +168,7 @@ export function useConductoresFirebase() {
   const obtenerFotosSeguroUnidad = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
-
+      
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -186,7 +182,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `seguro_${index + 1}`,
           url: url,
@@ -206,7 +202,7 @@ export function useConductoresFirebase() {
   const obtenerFotosTargetaCirculacion = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
-
+      
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -220,7 +216,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `tarjeta_${index + 1}`,
           url: url,
@@ -237,79 +233,369 @@ export function useConductoresFirebase() {
   }
 
   // Descargar foto
-
   const descargarFoto = async (url, nombreArchivo) => {
     try {
       console.log('⬇️ Descargando foto:', nombreArchivo)
-      console.log('🔗 URL completa:', url)
-
-      // Extraer la ruta del archivo desde la URL de Firebase
-      const urlObj = new URL(url)
-      console.log('📋 pathname:', urlObj.pathname)
-
-      const pathMatch = urlObj.pathname.match(/\/o\/(.+?)\?/)
-      console.log('🔍 pathMatch:', pathMatch)
-
-      if (!pathMatch) {
-        // ✅ NUEVA FORMA: Extraer directamente del pathname
-        // Firebase Storage URL format: /v0/b/BUCKET/o/PATH
-        const pathParts = urlObj.pathname.split('/o/')
-        console.log('📂 pathParts:', pathParts)
-
-        if (pathParts.length < 2) {
-          throw new Error('URL de Firebase Storage inválida')
-        }
-
-        const filePath = decodeURIComponent(pathParts[1])
-        console.log('📂 Ruta del archivo (método alternativo):', filePath)
-
-        // Obtener referencia al archivo
-        const fileRef = storageRef(storage, filePath)
-
-        // Descargar como blob
-        const blob = await getBlob(fileRef)
-
-        // Crear URL temporal y descargar
-        const blobUrl = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = nombreArchivo || 'licencia.jpg'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-
-        // Limpiar URL temporal
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
-
-        console.log('✅ Foto descargada correctamente')
-        return
-      }
-
-      const filePath = decodeURIComponent(pathMatch[1])
-      console.log('📂 Ruta del archivo:', filePath)
-
-      // Obtener referencia al archivo
-      const fileRef = storageRef(storage, filePath)
-
-      // Descargar como blob
-      const blob = await getBlob(fileRef)
-
-      // Crear URL temporal y descargar
-      const blobUrl = URL.createObjectURL(blob)
+      const response = await fetch(url)
+      const blob = await response.blob()
       const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = nombreArchivo || 'licencia.jpg'
-      document.body.appendChild(link)
+      link.href = window.URL.createObjectURL(blob)
+      link.download = nombreArchivo
       link.click()
-      document.body.removeChild(link)
-
-      // Limpiar URL temporal
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
-
+      window.URL.revokeObjectURL(link.href)
       console.log('✅ Foto descargada correctamente')
     } catch (err) {
       console.error('❌ Error al descargar foto:', err)
       throw err
+    }
+  }
+
+  // === SUBIR Y ELIMINAR FOTOS ===
+
+  // Subir foto de licencia de conductor
+  const subirFotoLicencia = async (conductorId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📤 Subiendo foto de licencia...')
+      
+      // Importar dinámicamente storage
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
+      const timestamp = Date.now()
+      const fileName = `LicenciaConducirFotos/${conductorId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      // Subir archivo
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      // Obtener conductor actual
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosActuales = conductorData.LicenciaConducirFotos || []
+
+      // Agregar nueva URL al array
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      // Actualizar Firestore
+      await updateDoc(conductorDocRef, {
+        LicenciaConducirFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      // Actualizar estado local
+      await obtenerConductores()
+
+      console.log('✅ Foto de licencia subida correctamente')
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de licencia:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Subir foto de seguro de unidad
+  const subirFotoSeguroUnidad = async (unidadId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📤 Subiendo foto de seguro...')
+      
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
+      const timestamp = Date.now()
+      const fileName = `SeguroUnidadFotos/${unidadId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.SeguroUnidadFotos || []
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      await updateDoc(unidadDocRef, {
+        SeguroUnidadFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de seguro subida correctamente')
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de seguro:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Subir foto de tarjeta de circulación
+  const subirFotoTargetaCirculacion = async (unidadId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📤 Subiendo foto de tarjeta...')
+      
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
+      const timestamp = Date.now()
+      const fileName = `TargetaCirculacionFotos/${unidadId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.TargetaCirculacionFotos || []
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      await updateDoc(unidadDocRef, {
+        TargetaCirculacionFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de tarjeta subida correctamente')
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de tarjeta:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de licencia (solo si está expirada)
+  const eliminarFotoLicencia = async (conductorId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      // Validar si la licencia está expirada
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: La licencia aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de licencia expirada...')
+
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosActuales = conductorData.LicenciaConducirFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(conductorDocRef, {
+        LicenciaConducirFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      // Eliminar del Storage
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      // Extraer la ruta del archivo de la URL
+      // Formato esperado de la URL: https://firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/RUTA_ARCHIVO?alt=media&token=TOKEN
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerConductores()
+
+      console.log('✅ Foto de licencia eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de licencia:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de seguro (solo si está expirado)
+  const eliminarFotoSeguroUnidad = async (unidadId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: El seguro aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de seguro expirado...')
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.SeguroUnidadFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(unidadDocRef, {
+        SeguroUnidadFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de seguro eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de seguro:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de tarjeta (solo si está expirada)
+  const eliminarFotoTargetaCirculacion = async (unidadId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: La tarjeta aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de tarjeta expirada...')
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.TargetaCirculacionFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(unidadDocRef, {
+        TargetaCirculacionFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de tarjeta eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de tarjeta:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -517,6 +803,16 @@ export function useConductoresFirebase() {
     obtenerFotosSeguroUnidad,
     obtenerFotosTargetaCirculacion,
     descargarFoto,
+
+    // Métodos para subir fotos
+    subirFotoLicencia,
+    subirFotoSeguroUnidad,
+    subirFotoTargetaCirculacion,
+
+    // Métodos para eliminar fotos (con validación de fecha)
+    eliminarFotoLicencia,
+    eliminarFotoSeguroUnidad,
+    eliminarFotoTargetaCirculacion,
 
     // Métodos de unidades
     obtenerUnidades,

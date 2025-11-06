@@ -204,6 +204,25 @@
             <div class="detalle-label">
               <q-icon name="image" class="q-mr-xs" />
               Fotos de Licencia de Conducir
+              <q-space />
+              <q-btn
+                flat
+                dense
+                round
+                icon="add_photo_alternate"
+                size="sm"
+                color="primary"
+                @click="abrirSelectorFotoLicencia"
+              >
+                <q-tooltip>Subir nueva foto</q-tooltip>
+              </q-btn>
+              <input
+                ref="inputFotoLicencia"
+                type="file"
+                accept="image/*"
+                style="display: none"
+                @change="subirNuevaFotoLicencia"
+              />
             </div>
             <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
               <q-spinner color="primary" size="30px" />
@@ -236,6 +255,19 @@
                     @click="descargarFotoHandler(foto.url, foto.name)"
                   >
                     <q-tooltip>Descargar</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    icon="delete"
+                    size="sm"
+                    :color="esLicenciaVigente ? 'grey-5' : 'negative'"
+                    :disable="esLicenciaVigente"
+                    @click="eliminarFotoLicenciaHandler(foto.url)"
+                  >
+                    <q-tooltip>
+                      {{ esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar' }}
+                    </q-tooltip>
                   </q-btn>
                 </div>
               </div>
@@ -319,6 +351,25 @@
               <div class="detalle-label">
                 <q-icon name="image" class="q-mr-xs" />
                 Fotos del Seguro
+                <q-space />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="add_photo_alternate"
+                  size="sm"
+                  color="primary"
+                  @click="abrirSelectorFotoSeguro"
+                >
+                  <q-tooltip>Subir nueva foto</q-tooltip>
+                </q-btn>
+                <input
+                  ref="inputFotoSeguro"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="subirNuevaFotoSeguro"
+                />
               </div>
               <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
                 <q-spinner color="primary" size="30px" />
@@ -351,6 +402,19 @@
                       @click="descargarFotoHandler(foto.url, foto.name)"
                     >
                       <q-tooltip>Descargar</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      dense
+                      icon="delete"
+                      size="sm"
+                      :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
+                      :disable="esSeguroUnidadVigente"
+                      @click="eliminarFotoSeguroHandler(foto.url)"
+                    >
+                      <q-tooltip>
+                        {{ esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar' }}
+                      </q-tooltip>
                     </q-btn>
                   </div>
                 </div>
@@ -402,6 +466,25 @@
               <div class="detalle-label">
                 <q-icon name="image" class="q-mr-xs" />
                 Fotos de Tarjeta de Circulación
+                <q-space />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="add_photo_alternate"
+                  size="sm"
+                  color="primary"
+                  @click="abrirSelectorFotoTargeta"
+                >
+                  <q-tooltip>Subir nueva foto</q-tooltip>
+                </q-btn>
+                <input
+                  ref="inputFotoTargeta"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="subirNuevaFotoTargeta"
+                />
               </div>
               <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
                 <q-spinner color="primary" size="30px" />
@@ -434,6 +517,23 @@
                       @click="descargarFotoHandler(foto.url, foto.name)"
                     >
                       <q-tooltip>Descargar</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      flat
+                      dense
+                      icon="delete"
+                      size="sm"
+                      :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
+                      :disable="esTarjetaCirculacionVigente"
+                      @click="eliminarFotoTargetaHandler(foto.url)"
+                    >
+                      <q-tooltip>
+                        {{
+                          esTarjetaCirculacionVigente
+                            ? 'No se puede eliminar (vigente)'
+                            : 'Eliminar'
+                        }}
+                      </q-tooltip>
                     </q-btn>
                   </div>
                 </div>
@@ -682,6 +782,8 @@ watch(
 const emit = defineEmits(['close', 'conductor-seleccionado'])
 
 // Composable de Firebase
+const composable = useConductoresFirebase()
+
 const {
   conductores,
   unidades,
@@ -700,11 +802,19 @@ const {
   conductoresPorGrupo,
   asignarUnidad,
   obtenerUnidadDeConductor,
-  obtenerFotosLicencia,
-  obtenerFotosSeguroUnidad,
-  obtenerFotosTargetaCirculacion,
-  descargarFoto,
-} = useConductoresFirebase()
+} = composable
+
+// Funciones de fotos
+const obtenerFotosLicencia = composable.obtenerFotosLicencia
+const obtenerFotosSeguroUnidad = composable.obtenerFotosSeguroUnidad
+const obtenerFotosTargetaCirculacion = composable.obtenerFotosTargetaCirculacion
+const descargarFoto = composable.descargarFoto
+const subirFotoLicencia = composable.subirFotoLicencia
+const subirFotoSeguroUnidad = composable.subirFotoSeguroUnidad
+const subirFotoTargetaCirculacion = composable.subirFotoTargetaCirculacion
+const eliminarFotoLicencia = composable.eliminarFotoLicencia
+const eliminarFotoSeguroUnidad = composable.eliminarFotoSeguroUnidad
+const eliminarFotoTargetaCirculacion = composable.eliminarFotoTargetaCirculacion
 
 // Estado local
 const busqueda = ref('')
@@ -732,6 +842,11 @@ const fotosTargeta = ref([])
 const cargandoFotosLicencia = ref(false)
 const cargandoFotosSeguro = ref(false)
 const cargandoFotosTargeta = ref(false)
+
+// Referencias para inputs de archivo
+const inputFotoLicencia = ref(null)
+const inputFotoSeguro = ref(null)
+const inputFotoTargeta = ref(null)
 
 // Listeners de Firebase
 let unsubscribeConductores = null
@@ -1069,6 +1184,201 @@ async function descargarFotoHandler(url, nombreArchivo) {
   }
 }
 
+// === FUNCIONES PARA SUBIR FOTOS ===
+
+function abrirSelectorFotoLicencia() {
+  inputFotoLicencia.value?.click()
+}
+
+function abrirSelectorFotoSeguro() {
+  inputFotoSeguro.value?.click()
+}
+
+function abrirSelectorFotoTargeta() {
+  inputFotoTargeta.value?.click()
+}
+
+async function subirNuevaFotoLicencia(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    cargandoFotosLicencia.value = true
+    await subirFotoLicencia(conductorEditando.value.id, file)
+    
+    // Recargar fotos
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de licencia subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosLicencia.value = false
+    // Limpiar input
+    if (inputFotoLicencia.value) {
+      inputFotoLicencia.value.value = ''
+    }
+  }
+}
+
+async function subirNuevaFotoSeguro(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosSeguro.value = true
+    await subirFotoSeguroUnidad(unidadAsignadaData.value.id, file)
+    
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de seguro subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosSeguro.value = false
+    if (inputFotoSeguro.value) {
+      inputFotoSeguro.value.value = ''
+    }
+  }
+}
+
+async function subirNuevaFotoTargeta(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosTargeta.value = true
+    await subirFotoTargetaCirculacion(unidadAsignadaData.value.id, file)
+    
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de tarjeta subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosTargeta.value = false
+    if (inputFotoTargeta.value) {
+      inputFotoTargeta.value.value = ''
+    }
+  }
+}
+
+// === FUNCIONES PARA ELIMINAR FOTOS ===
+
+async function eliminarFotoLicenciaHandler(fotoUrl) {
+  try {
+    await eliminarFotoLicencia(
+      conductorEditando.value.id,
+      fotoUrl,
+      conductorEditando.value.LicenciaConducirFecha
+    )
+    
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de licencia eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoSeguroHandler(fotoUrl) {
+  try {
+    await eliminarFotoSeguroUnidad(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.SeguroUnidadFecha
+    )
+    
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de seguro eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoTargetaHandler(fotoUrl) {
+  try {
+    await eliminarFotoTargetaCirculacion(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.TargetaCirculacionFecha
+    )
+    
+    await cargarFotosConductor()
+    
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de tarjeta eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
 function abrirDialogNuevoGrupo() {
   modoEdicion.value = false
   nuevoGrupo.value = { Nombre: '', ConductoresIds: [] }
@@ -1398,4 +1708,4 @@ onUnmounted(() => {
   border-radius: 8px;
   margin-top: 8px;
 }
-</style>    
+</style>
