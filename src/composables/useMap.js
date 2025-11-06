@@ -1,4 +1,4 @@
-// src/composables/useMap.js - LIMPIO
+// src/composables/useMap.js - MEJORADO CON TILES DE ALTA CALIDAD
 
 import { ref } from 'vue'
 import L from 'leaflet'
@@ -662,17 +662,19 @@ export function useMap() {
         mapPage._mapaAPI = mapaAPI
         console.log('✅ _mapaAPI expuesto en map-page')
       }
+
+      // 🎨 CAMBIO PRINCIPAL: Tiles de 256px en alta resolución (@2x)
       L.tileLayer(
-        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
         {
           maxZoom: 22,
-          tileSize: 512,
-          zoomOffset: -1,
+          tileSize: 256,
           attribution:
             '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         },
       ).addTo(map.value)
-      console.log('✅ Mapa Mapbox satelital inicializado correctamente')
+
+      console.log('✅ Mapa Mapbox satelital MEJORADO inicializado correctamente')
       console.log('✅ API del mapa expuesta en window.mapaGlobal y map-page._mapaAPI')
       return map.value
     } catch (error) {
@@ -728,7 +730,7 @@ export function useMap() {
     console.log('🧹 Mapa limpiado')
   }
 
-  // 🚦 TRAFICO
+  // 🚦 TRAFICO - TAMBIÉN MEJORADO
   const toggleTrafico = () => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
@@ -742,12 +744,12 @@ export function useMap() {
       console.log('🚦 Capa de tráfico DESACTIVADA')
       return false
     } else {
+      // 🎨 TRAFICO EN ALTA RESOLUCIÓN
       capaTrafico.value = L.tileLayer(
-        `https://api.mapbox.com/styles/v1/mapbox/traffic-day-v2/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+        `https://api.mapbox.com/styles/v1/mapbox/traffic-day-v2/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
         {
           maxZoom: 22,
-          tileSize: 512,
-          zoomOffset: -1,
+          tileSize: 256,
           opacity: 1,
           className: 'traffic-layer-blend',
           updateWhenIdle: false,
