@@ -3,8 +3,6 @@
     <q-header elevated class="bg-gradient">
       <q-toolbar class="toolbar-custom">
         <q-toolbar-title class="text-weight-bold">MJ GPS</q-toolbar-title>
-
-        <!-- Búsqueda Mejorada -->
         <!-- Búsqueda Mejorada -->
         <div class="search-container">
           <q-input
@@ -123,6 +121,7 @@
                     Búsquedas recientes
                   </q-item-label>
                   <q-item
+                    class="text-grey"
                     v-for="(reciente, index) in busquedasRecientes"
                     :key="index"
                     clickable
@@ -157,9 +156,9 @@
           <q-tooltip>Información</q-tooltip>
 
           <q-menu
-            anchor="bottom middle"
-            self="top middle"
-            :offset="[0, 8]"
+            anchor="bottom right"
+            self="top left"
+            :offset="[-16, 8]"
             transition-show="jump-down"
             transition-hide="jump-up"
           >
@@ -215,14 +214,10 @@
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
 
-          <q-menu anchor="bottom middle" self="top middle" :offset="[0, 8]">
+          <q-menu anchor="bottom right" self="top right" :offset="[-16, 8]">
             <NotificacionesPanel />
           </q-menu>
         </q-btn>
-
-        <q-chip outline color="white" text-color="white" icon="bug_report">
-          Quasar v{{ $q.version }}
-        </q-chip>
       </q-toolbar>
     </q-header>
 
@@ -245,7 +240,7 @@
       <div class="drawer-header" :class="{ 'mini-header': !drawerExpanded || dialogAbierto }">
         <q-avatar :size="drawerExpanded && !dialogAbierto ? '100px' : '40px'" class="q-mb-md">
           <img
-            src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2FLogoGPS.png?alt=media&token=4e08d6e6-40ee-481b-9757-a9b58febc42a"
+            src="https://firebasestorage.googleapis.com/v0/b/gpsmjindust.firebasestorage.app/o/iconos%2Fseguro_2.png?alt=media&token=6085f543-4e36-4791-8dcd-6709a781f83d"
             alt="Logo"
           />
         </q-avatar>
@@ -384,18 +379,6 @@
                     <q-item-label class="q-pb-md" caption>Salir de tu cuenta</q-item-label>
                   </q-item-section>
                 </q-item>
-
-                <q-item clickable>
-                  <q-item-section avatar>
-                    <q-avatar color="negative" text-color="white" size="sm">
-                      <q-icon name="directions_car" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Estado de la Unidad</q-item-label>
-                    <q-item-label class="q-pb-md" caption>Seleccionar Unidad</q-item-label>
-                  </q-item-section>
-                </q-item>
               </q-list>
             </q-card>
           </q-menu>
@@ -446,7 +429,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Dialog Geozonas -->
     <q-dialog
       v-model="geozonaDrawerOpen"
       position="left"
@@ -456,7 +438,10 @@
       @hide="onDialogHide"
     >
       <q-card class="component-card">
-        <GeoZonas @close="cerrarGeozonas" />
+        <GeoZonas 
+          @close="cerrarGeozonas" 
+          @crear-evento-ubicacion="abrirEventosConUbicacion"
+        />
       </q-card>
     </q-dialog>
 
@@ -497,6 +482,7 @@ import Eventos from 'src/components/Eventos.vue'
 import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
+import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -528,6 +514,9 @@ const searchInput = ref(null)
 const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
   useConductoresFirebase()
 
+const { obtenerUnidades, buscarUnidadesPorTermino } = useUnidadesFirebase()
+const unidadesCargadas = ref(false)
+
 const conductoresCargados = ref(false)
 
 //para geozonas y pois
@@ -539,6 +528,41 @@ const geozonasCargadas = ref(false)
 const pois = ref([])
 const geozonas = ref([])
 
+// AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
+
+function abrirEventosConUbicacion(data) {
+  console.log('4️⃣ MainLayout: Recibido evento crear-evento-ubicacion')
+  console.log('📦 Data recibida:', data)
+  
+  if (!data || !data.ubicacion || !data.tipo) {
+    console.error('❌ Datos incompletos:', data)
+    $q.notify({
+      type: 'negative',
+      message: 'Error: Datos de ubicación incompletos',
+      icon: 'error'
+    })
+    return
+  }
+  
+  console.log('5️⃣ MainLayout: Datos validados')
+  
+  window._ubicacionParaEvento = {
+    ubicacion: data.ubicacion,
+    tipo: data.tipo
+  }
+  
+  console.log('6️⃣ MainLayout: Datos guardados')
+  
+  geozonaDrawerOpen.value = false
+  console.log('7️⃣ MainLayout: Drawer cerrado')
+  
+  setTimeout(() => {
+    console.log('8️⃣ MainLayout: Abriendo Eventos')
+    eventosDrawerOpen.value = true
+    console.log('9️⃣ MainLayout: Eventos abierto')
+  }, 350)
+}
+
 // Función para cargar datos de conductores si no están cargados
 const cargarDatosConductores = async () => {
   if (!conductoresCargados.value) {
@@ -548,6 +572,18 @@ const cargarDatosConductores = async () => {
       console.log('✅ Datos de conductores cargados para búsqueda')
     } catch (error) {
       console.error('❌ Error al cargar datos de conductores:', error)
+    }
+  }
+}
+
+const cargarDatosUnidades = async () => {
+  if (!unidadesCargadas.value) {
+    try {
+      await obtenerUnidades()
+      unidadesCargadas.value = true
+      console.log('✅ Datos de unidades cargados para búsqueda')
+    } catch (error) {
+      console.error('❌ Error al cargar datos de unidades:', error)
     }
   }
 }
@@ -716,11 +752,46 @@ async function buscarDirecciones(termino) {
   }
 }
 
-// 🚗 BÚSQUEDA DE VEHÍCULOS - Placeholder
 async function buscarVehiculos(termino) {
-  console.log('🚗 Buscando vehículos para:', termino)
-  // TODO: Implementar cuando tengas vehículos en Firebase
-  return []
+  try {
+    console.log('🚗 Buscando vehículos para:', termino)
+
+    // Asegurarnos de que los datos estén cargados
+    await cargarDatosUnidades()
+
+    const resultados = []
+
+    // Buscar en todas las unidades
+    const unidadesEncontradas = buscarUnidadesPorTermino(termino)
+
+    for (const unidad of unidadesEncontradas) {
+      // Formatear la información de la unidad
+      let detalle = `ID: ${unidad.Id || 'N/A'}`
+
+      if (unidad.SeguroUnidad) {
+        detalle += ` | Seguro: ${unidad.SeguroUnidad}`
+      }
+
+      if (unidad.TargetaCirculacion) {
+        detalle += ` | Tarjeta: ${unidad.TargetaCirculacion}`
+      }
+
+      resultados.push({
+        id: `unidad-${unidad.id}`,
+        tipo: 'vehiculo',
+        nombre: unidad.Unidad || 'Sin nombre',
+        detalle: detalle,
+        unidadId: unidad.id,
+        datosUnidad: unidad,
+      })
+    }
+
+    console.log('🚗 Vehículos encontrados:', resultados.length)
+    return resultados
+  } catch (error) {
+    console.error('❌ Error buscando vehículos:', error)
+    return []
+  }
 }
 
 // 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN

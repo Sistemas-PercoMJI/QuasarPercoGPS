@@ -85,11 +85,11 @@
         </div>
       </div>
 
-      <!-- Información de conductores -->
+      <!-- Info de destinos -->
       <div class="info-section">
         <q-icon name="info" color="blue-grey" size="16px" class="q-mr-sm" />
         <span class="info-text">
-          {{ conductoresConUnidad }} conductores con unidad asignada
+          {{ conductoresConUnidad }} conductores • {{ totalDestinos }} destinos disponibles
         </span>
       </div>
 
@@ -153,8 +153,49 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
+import { onMounted } from 'vue'
 
 const $q = useQuasar()
+
+const props = defineProps({
+  poisIniciales: {
+    type: Array,
+    default: () => []
+  },
+  geozonasIniciales: {
+    type: Array,
+    default: () => []
+  }
+})
+
+watch(
+  () => [props.poisIniciales, props.geozonasIniciales],
+  ([nuevosPois, nuevasGeozonas]) => {
+    if (nuevosPois.length > 0 || nuevasGeozonas.length > 0) {
+      console.log('✅ Props recibidas en SimuladorControl:')
+      console.log('  📍 POIs:', nuevosPois.length)
+      console.log('  🗺️ Geozonas:', nuevasGeozonas.length)
+      
+      // Actualizar los refs locales
+      pois.value = nuevosPois
+      geozonas.value = nuevasGeozonas
+      
+      // 🔧 INICIAR simulación si hay conductores y aún no está activa
+      if (conductoresConUnidad.value > 0 && !simulacionActiva.value) {
+        console.log('🔄 Generando rutas e iniciando simulación...')
+        generarRutasParaUnidades()
+        
+        // Iniciar simulación automáticamente
+        setTimeout(() => {
+          toggleSimulacion()
+        }, 500)
+      }
+    }
+  },
+  { deep: true, immediate: true }
+)
+
+const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
 
 // Composables
 const { simulacionActiva, toggleSimulacion: toggleSim } = useSimuladorUnidades()
@@ -162,56 +203,178 @@ const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
 
 // Estado local
-const expanded = ref(false) // 🆕 Iniciar colapsado
+const expanded = ref(false)
 const loading = ref(false)
 const activityLogs = ref([])
 
-// Computed
-const stats = computed(() => estadisticas())
+const pois = computed(() => props.poisIniciales)
+const geozonas = computed(() => props.geozonasIniciales)
 
-const conductoresConUnidad = computed(() => {
-  return conductores.value.filter(c => c.UnidadAsignada).length
+const totalDestinos = computed(() => {
+  return pois.value.length + geozonas.value.length
 })
 
-// Métodos
-const toggleSimulacion = async () => {
-  if (conductoresConUnidad.value === 0) {
-    $q.notify({
-      type: 'warning',
-      message: 'No hay conductores con unidades asignadas',
-      position: 'top'
-    })
+// 🔧 FUNCIÓN MEJORADA: Genera rutas ÚNICAS para cada unidad
+const generarRutasParaUnidades = () => {
+  if (!conductores.value || !unidades.value) {
+    console.warn('⚠️ No hay conductores o unidades para generar rutas')
     return
   }
 
-  loading.value = true
-  try {
-    await toggleSim(conductores.value, unidades.value)
+  // Crear lista de destinos (POIs y Geozonas)
+  const destinos = []
+  
+  // Agregar POIs como destinos
+  pois.value.forEach(poi => {
+    if (poi.coordenadas) {
+      destinos.push({
+        id: poi.id,
+        lat: poi.coordenadas.lat,
+        lng: poi.coordenadas.lng,
+        nombre: poi.nombre,
+        tipo: 'poi',
+        radio: poi.radio || 100,
+        prioridad: 1
+      })
+    }
+  })
+  
+  // Agregar Geozonas como destinos
+  geozonas.value.forEach(geozona => {
+    let centro = null
     
-    const message = simulacionActiva.value 
-      ? `Simulación iniciada con ${conductoresConUnidad.value} unidades`
-      : 'Simulación detenida'
+    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+      centro = geozona.centro
+    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+      centro = calcularCentroPoligono(geozona.puntos)
+    }
     
-    addLog(
-      simulacionActiva.value ? 'play_circle' : 'stop_circle',
-      message,
-      simulacionActiva.value ? 'green' : 'red'
+    if (centro) {
+      destinos.push({
+        id: geozona.id,
+        lat: centro.lat,
+        lng: centro.lng,
+        nombre: geozona.nombre,
+        tipo: 'geozona',
+        radio: geozona.radio || 100,
+        prioridad: 2
+      })
+    }
+  })
+  
+  // Si no hay suficientes destinos, agregar puntos por defecto
+  if (destinos.length < 2) {
+    console.warn('⚠️ No hay suficientes POIs/Geozonas, usando destinos por defecto')
+    destinos.push(
+      { 
+        id: 'defecto1', 
+        lat: 32.504421823945805, 
+        lng: -116.9514484543167, 
+        nombre: 'MJ Industrias', 
+        tipo: 'defecto',
+        prioridad: 3
+      },
+      { 
+        id: 'defecto2', 
+        lat: 32.51442183945805, 
+        lng: -116.9414484543167, 
+        nombre: 'Punto Norte', 
+        tipo: 'defecto',
+        prioridad: 3
+      },
+      { 
+        id: 'defecto3', 
+        lat: 32.52442183945805, 
+        lng: -116.9614484543167, 
+        nombre: 'Punto Este', 
+        tipo: 'defecto',
+        prioridad: 3
+      }
     )
+  }
+  
+  console.log(`🎯 ${destinos.length} destinos disponibles para las rutas`)
+  console.log('📍 Destinos:', destinos.map(d => `${d.nombre} (${d.tipo})`).join(', '))
+  
+  // 🔧 CRÍTICO: Mezclar destinos para que cada unidad tenga ruta diferente
+  const destinosMezclados = [...destinos]
+  for (let i = destinosMezclados.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [destinosMezclados[i], destinosMezclados[j]] = [destinosMezclados[j], destinosMezclados[i]]
+  }
+  
+  // Asignar rutas ÚNICAS a cada unidad
+  conductores.value.forEach((conductor, indexConductor) => {
+    if (conductor.UnidadAsignada) {
+      const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
+      if (!unidad) return
+      
+      // 🔧 NUEVO: Crear ruta DIFERENTE para cada unidad
+      const ruta = crearRutaUnicaParaUnidad(destinosMezclados, indexConductor, destinos.length)
+      
+      // Asignar la ruta a la unidad
+      unidad.ruta = ruta
+      unidad.indiceRutaActual = 0
+      unidad.destinoActual = ruta[0]
+      unidad.ultimoPuntoTiempo = Date.now()
+      unidad.ultimoCambioDestino = Date.now()
+      
+      // Establecer posición inicial en el primer punto de la ruta
+      if (ruta.length > 0) {
+        unidad.lat = ruta[0].lat
+        unidad.lng = ruta[0].lng
+        unidad.estado = 'movimiento'
+        unidad.velocidad = Math.floor(Math.random() * 20) + 40
+        unidad.velocidadBase = unidad.velocidad
+      }
+      
+      console.log(`🚗 Ruta ÚNICA asignada a ${unidad.Unidad}:`)
+      console.log(`   📍 Destinos: ${ruta.map(d => d.nombre).join(' → ')}`)
+    }
+  })
+}
+
+// 🔧 NUEVA FUNCIÓN: Crear ruta única para cada unidad
+const crearRutaUnicaParaUnidad = (destinosDisponibles, indexUnidad, totalDestinos) => {
+  const ruta = []
+  const numDestinos = Math.min(4, Math.max(2, totalDestinos))
+  
+  // 🔧 CLAVE: Cada unidad empieza en un offset diferente en la lista de destinos
+  const offset = (indexUnidad * 3) % destinosDisponibles.length
+  
+  for (let i = 0; i < numDestinos; i++) {
+    const indiceDestino = (offset + i) % destinosDisponibles.length
+    const destino = destinosDisponibles[indiceDestino]
     
-    $q.notify({
-      type: simulacionActiva.value ? 'positive' : 'info',
-      message,
-      position: 'top'
+    ruta.push({
+      ...destino,
+      ordenVisita: i,
+      tiempoEstimadoLlegada: Date.now() + (i * 5 * 60 * 1000)
     })
-  } catch (error) {
-    console.error('Error al toggle simulación:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al controlar la simulación',
-      position: 'top'
+  }
+  
+  // Agregar punto de retorno al inicio para hacer la ruta circular
+  if (ruta.length > 1) {
+    ruta.push({
+      ...ruta[0],
+      esRetorno: true,
+      ordenVisita: ruta.length
     })
-  } finally {
-    loading.value = false
+  }
+  
+  return ruta
+}
+
+// Función para calcular el centro de un polígono
+const calcularCentroPoligono = (puntos) => {
+  let lat = 0, lng = 0
+  puntos.forEach(punto => {
+    lat += punto.lat
+    lng += punto.lng
+  })
+  return {
+    lat: lat / puntos.length,
+    lng: lng / puntos.length
   }
 }
 
@@ -222,6 +385,13 @@ const recargarDatos = async () => {
       obtenerConductores(),
       obtenerUnidades()
     ])
+    
+    console.log('🔄 Datos recargados:', {
+      conductores: conductores.value.length,
+      unidades: unidades.value.length,
+      pois: pois.value.length,
+      geozonas: geozonas.value.length
+    })
     
     $q.notify({
       type: 'positive',
@@ -235,6 +405,90 @@ const recargarDatos = async () => {
     $q.notify({
       type: 'negative',
       message: 'Error al recargar datos',
+      position: 'top'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const stats = computed(() => estadisticas())
+
+const conductoresConUnidad = computed(() => {
+  return conductores.value.filter(c => c.UnidadAsignada).length
+})
+
+watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
+  console.log('📊 Datos actualizados en SimuladorControl:', {
+    pois: nuevoPois.length,
+    geozonas: nuevasGeozonas.length
+  })
+}, { immediate: true })
+
+onMounted(async () => {
+  await recargarDatos()
+  
+  // 🔧 ESPERAR a que lleguen los props antes de generar rutas
+  if (conductoresConUnidad.value > 0) {
+    // Esperar un tick para que el watch procese los props
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Verificar si los datos llegaron
+    if (pois.value.length > 0 || geozonas.value.length > 0) {
+      console.log('✅ Iniciando simulación con datos reales...')
+      generarRutasParaUnidades()
+      await toggleSimulacion()
+    } else {
+      console.log('⚠️ Esperando datos de POIs/Geozonas...')
+      // El watch se encargará cuando lleguen
+    }
+  }
+})
+
+const toggleSimulacion = async () => {
+  if (conductoresConUnidad.value === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No hay conductores con unidades asignadas',
+      position: 'top'
+    })
+    return
+  }
+
+  loading.value = true
+  try {
+    // 🔧 IMPORTANTE: Generar rutas si no existen
+    if (!unidades.value.some(u => u.ruta && u.ruta.length > 0)) {
+      generarRutasParaUnidades()
+    }
+    
+    await toggleSim(conductores.value, unidades.value)
+    
+    const message = simulacionActiva.value 
+      ? `Simulación iniciada con ${conductoresConUnidad.value} unidades en ruta`
+      : 'Simulación detenida'
+    
+    addLog(
+      simulacionActiva.value ? 'play_circle' : 'stop_circle',
+      message,
+      simulacionActiva.value ? 'green' : 'red'
+    )
+    
+    $q.notify({
+      type: simulacionActiva.value ? 'positive' : 'info',
+      message,
+      position: 'top'
+    })
+
+    emit('iniciar-simulacion', {
+      activa: simulacionActiva.value,
+      unidades: conductoresConUnidad.value
+    })
+  } catch (error) {
+    console.error('Error al toggle simulación:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al controlar la simulación',
       position: 'top'
     })
   } finally {
@@ -256,16 +510,11 @@ const addLog = (icon, message, color) => {
     time
   })
   
-  // Mantener solo los últimos 5 logs
   if (activityLogs.value.length > 5) {
     activityLogs.value.pop()
   }
 }
 
-// Cargar datos iniciales
-recargarDatos()
-
-// Watch para agregar logs automáticos
 watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
     addLog('directions_car', `${newVal} en movimiento`, 'primary')
@@ -274,7 +523,6 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
 </script>
 
 <style scoped>
-/* Botón flotante (FAB) */
 .simulador-fab {
   box-shadow: 0 4px 12px rgba(103, 58, 183, 0.4);
   transition: all 0.3s ease;
@@ -285,7 +533,6 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   box-shadow: 0 6px 16px rgba(103, 58, 183, 0.6);
 }
 
-/* Card expandido */
 .simulador-card-expandido {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border-radius: 12px;

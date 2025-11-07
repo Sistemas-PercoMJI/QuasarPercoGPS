@@ -5,7 +5,6 @@ import {
   doc,
   getDocs,
   getDoc,
-  addDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -13,8 +12,7 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { db, storage, auth } from 'src/firebase/firebaseConfig'
+import { db, auth } from 'src/firebase/firebaseConfig'
 
 export function useConductoresFirebase() {
   // Estado reactivo
@@ -42,7 +40,6 @@ export function useConductoresFirebase() {
 
   // === CONDUCTORES ===
 
-  // Obtener todos los conductores
   const obtenerConductores = async () => {
     loading.value = true
     error.value = null
@@ -63,7 +60,6 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Escuchar cambios en tiempo real de conductores
   const escucharConductores = () => {
     const q = query(conductoresRef, orderBy('Nombre'))
     return onSnapshot(
@@ -81,51 +77,6 @@ export function useConductoresFirebase() {
     )
   }
 
-  // Agregar conductor
-  // Agregar conductor
-  const agregarConductor = async (conductorData) => {
-    loading.value = true
-    error.value = null
-    try {
-      // 1️⃣ Obtener todos los conductores para encontrar el último Id
-      const snapshot = await getDocs(conductoresRef)
-
-      // 2️⃣ Encontrar el Id más alto
-      let maxId = 0
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        const currentId = parseInt(data.Id) || 0
-        if (currentId > maxId) {
-          maxId = currentId
-        }
-      })
-
-      // 3️⃣ El nuevo Id será el siguiente número
-      const nuevoId = maxId + 1
-
-      console.log('🔢 Último Id:', maxId, '→ Nuevo Id:', nuevoId)
-
-      // 4️⃣ Crear el documento con el Id secuencial
-      const docRef = await addDoc(conductoresRef, {
-        ...conductorData,
-        Id: nuevoId.toString(), // Guardar como string para mantener consistencia
-        createdAt: Timestamp.now(),
-      })
-
-      console.log('✅ Conductor creado con Id:', nuevoId)
-
-      await obtenerConductores()
-      return docRef.id
-    } catch (err) {
-      console.error('Error al agregar conductor:', err)
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Actualizar conductor
   const actualizarConductor = async (conductorId, data) => {
     loading.value = true
     error.value = null
@@ -145,12 +96,10 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Eliminar conductor
   const eliminarConductor = async (conductorId) => {
     loading.value = true
     error.value = null
     try {
-      // 1. Obtener los datos del conductor para encontrar la URL de la foto
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -158,20 +107,6 @@ export function useConductoresFirebase() {
         throw new Error('El conductor no existe.')
       }
 
-      const conductorData = conductorSnap.data()
-
-      // 2. Eliminar la foto de licencia de Storage si existe
-      if (conductorData.LicenciaConducirFoto) {
-        try {
-          const fotoRef = storageRef(storage, conductorData.LicenciaConducirFoto)
-          await deleteObject(fotoRef)
-          console.log('Foto de licencia eliminada de Storage.')
-        } catch (storageError) {
-          console.warn('Error al eliminar foto (puede que ya no exista):', storageError)
-        }
-      }
-
-      // 3. Eliminar al conductor de todos los grupos donde esté asignado
       const grupos = await obtenerGruposConductores()
       for (const grupo of grupos) {
         if (grupo.ConductoresIds?.includes(conductorId)) {
@@ -179,10 +114,7 @@ export function useConductoresFirebase() {
         }
       }
 
-      // 4. Eliminar el documento del conductor de Firestore
       await deleteDoc(conductorDocRef)
-
-      // 5. Actualizar el estado local de forma eficiente (sin recargar todo)
       conductores.value = conductores.value.filter((c) => c.id !== conductorId)
 
       console.log('Conductor eliminado correctamente.')
@@ -196,28 +128,470 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Subir foto de licencia
+  // === OBTENER FOTOS DESDE FIRESTORE ===
+
+  // Obtener fotos de licencia de conductor desde Firestore
+  const obtenerFotosLicencia = async (conductorId) => {
+    try {
+      console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
+      
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        console.warn('⚠️ Conductor no encontrado')
+        return []
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosArray = conductorData.LicenciaConducirFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `licencia_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
+      console.log('✅ Fotos de licencia obtenidas:', fotos.length)
+      return fotos
+    } catch (err) {
+      console.error('❌ Error al obtener fotos de licencia:', err)
+      return []
+    }
+  }
+
+  // Obtener fotos de seguro de unidad desde Firestore
+  const obtenerFotosSeguroUnidad = async (unidadId) => {
+    try {
+      console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
+      
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        console.warn('⚠️ Unidad no encontrada')
+        return []
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosArray = unidadData.SeguroUnidadFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `seguro_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
+      console.log('✅ Fotos de seguro obtenidas:', fotos.length)
+      return fotos
+    } catch (err) {
+      console.error('❌ Error al obtener fotos de seguro:', err)
+      return []
+    }
+  }
+
+  // Obtener fotos de tarjeta de circulación desde Firestore
+  const obtenerFotosTargetaCirculacion = async (unidadId) => {
+    try {
+      console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
+      
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        console.warn('⚠️ Unidad no encontrada')
+        return []
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosArray = unidadData.TargetaCirculacionFotos || []
+
+      // Convertir el array de URLs a objetos con más información
+      const fotos = fotosArray
+        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .map((url, index) => ({
+          name: `tarjeta_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
+      console.log('✅ Fotos de tarjeta obtenidas:', fotos.length)
+      return fotos
+    } catch (err) {
+      console.error('❌ Error al obtener fotos de tarjeta:', err)
+      return []
+    }
+  }
+
+  // Descargar foto
+  const descargarFoto = async (url, nombreArchivo) => {
+    try {
+      console.log('⬇️ Descargando foto:', nombreArchivo)
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const link = document.createElement('a')
+      link.href = window.URL.createObjectURL(blob)
+      link.download = nombreArchivo
+      link.click()
+      window.URL.revokeObjectURL(link.href)
+      console.log('✅ Foto descargada correctamente')
+    } catch (err) {
+      console.error('❌ Error al descargar foto:', err)
+      throw err
+    }
+  }
+
+  // === SUBIR Y ELIMINAR FOTOS ===
+
+  // Subir foto de licencia de conductor
   const subirFotoLicencia = async (conductorId, file) => {
     loading.value = true
     error.value = null
     try {
-      // Crear referencia en Storage
+      console.log('📤 Subiendo foto de licencia...')
+      
+      // Importar dinámicamente storage
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
       const timestamp = Date.now()
-      const fileName = `licencias/${conductorId}_${timestamp}.${file.name.split('.').pop()}`
+      const fileName = `LicenciaConducirFotos/${conductorId}/${timestamp}_${file.name}`
       const fileRef = storageRef(storage, fileName)
 
       // Subir archivo
-      const snapshot = await uploadBytes(fileRef, file)
-      const downloadURL = await getDownloadURL(snapshot.ref)
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
 
-      // Actualizar conductor con la URL
-      await actualizarConductor(conductorId, {
-        LicenciaConducirFoto: downloadURL,
+      // Obtener conductor actual
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosActuales = conductorData.LicenciaConducirFotos || []
+
+      // Agregar nueva URL al array
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      // Actualizar Firestore
+      await updateDoc(conductorDocRef, {
+        LicenciaConducirFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
       })
 
+      // Actualizar estado local
+      await obtenerConductores()
+
+      console.log('✅ Foto de licencia subida correctamente')
       return downloadURL
     } catch (err) {
-      console.error('Error al subir foto:', err)
+      console.error('❌ Error al subir foto de licencia:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Subir foto de seguro de unidad
+  const subirFotoSeguroUnidad = async (unidadId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📤 Subiendo foto de seguro...')
+      
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
+      const timestamp = Date.now()
+      const fileName = `SeguroUnidadFotos/${unidadId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.SeguroUnidadFotos || []
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      await updateDoc(unidadDocRef, {
+        SeguroUnidadFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de seguro subida correctamente')
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de seguro:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Subir foto de tarjeta de circulación
+  const subirFotoTargetaCirculacion = async (unidadId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      console.log('📤 Subiendo foto de tarjeta...')
+      
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      
+      const timestamp = Date.now()
+      const fileName = `TargetaCirculacionFotos/${unidadId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.TargetaCirculacionFotos || []
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      await updateDoc(unidadDocRef, {
+        TargetaCirculacionFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de tarjeta subida correctamente')
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de tarjeta:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de licencia (solo si está expirada)
+  const eliminarFotoLicencia = async (conductorId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      // Validar si la licencia está expirada
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: La licencia aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de licencia expirada...')
+
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const fotosActuales = conductorData.LicenciaConducirFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(conductorDocRef, {
+        LicenciaConducirFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      // Eliminar del Storage
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      // Extraer la ruta del archivo de la URL
+      // Formato esperado de la URL: https://firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/RUTA_ARCHIVO?alt=media&token=TOKEN
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerConductores()
+
+      console.log('✅ Foto de licencia eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de licencia:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de seguro (solo si está expirado)
+  const eliminarFotoSeguroUnidad = async (unidadId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: El seguro aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de seguro expirado...')
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.SeguroUnidadFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(unidadDocRef, {
+        SeguroUnidadFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de seguro eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de seguro:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Eliminar foto de tarjeta (solo si está expirada)
+  const eliminarFotoTargetaCirculacion = async (unidadId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: La tarjeta aún está vigente')
+      }
+
+      console.log('🗑️ Eliminando foto de tarjeta expirada...')
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.TargetaCirculacionFotos || []
+      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+
+      await updateDoc(unidadDocRef, {
+        TargetaCirculacionFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+      
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+        
+        await deleteObject(fotoRef)
+        console.log('✅ Foto eliminada del Storage')
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerUnidades()
+
+      console.log('✅ Foto de tarjeta eliminada correctamente')
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de tarjeta:', err)
       error.value = err.message
       throw err
     } finally {
@@ -227,7 +601,6 @@ export function useConductoresFirebase() {
 
   // === UNIDADES ===
 
-  // Obtener todas las unidades
   const obtenerUnidades = async () => {
     loading.value = true
     error.value = null
@@ -248,7 +621,6 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Asignar unidad a conductor
   const asignarUnidad = async (conductorId, unidadId) => {
     loading.value = true
     error.value = null
@@ -265,9 +637,8 @@ export function useConductoresFirebase() {
     }
   }
 
-  // === GRUPOS DE CONDUCTORES ===
+  // === GRUPOS ===
 
-  // Obtener grupos del usuario
   const obtenerGruposConductores = async () => {
     loading.value = true
     error.value = null
@@ -289,7 +660,6 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Escuchar cambios en grupos
   const escucharGrupos = () => {
     try {
       const gruposRef = getGruposRef()
@@ -313,29 +683,6 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Crear grupo
-  const crearGrupo = async (grupoData) => {
-    loading.value = true
-    error.value = null
-    try {
-      const gruposRef = getGruposRef()
-      const docRef = await addDoc(gruposRef, {
-        Nombre: grupoData.Nombre,
-        ConductoresIds: grupoData.ConductoresIds || [],
-        createdAt: Timestamp.now(),
-      })
-      await obtenerGruposConductores()
-      return docRef.id
-    } catch (err) {
-      console.error('Error al crear grupo:', err)
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Actualizar grupo
   const actualizarGrupo = async (grupoId, data) => {
     loading.value = true
     error.value = null
@@ -343,7 +690,6 @@ export function useConductoresFirebase() {
       const gruposRef = getGruposRef()
       const docRef = doc(gruposRef, grupoId)
 
-      // Preparar datos para actualizar
       const updateData = {
         ...data,
         updatedAt: Timestamp.now(),
@@ -351,7 +697,6 @@ export function useConductoresFirebase() {
 
       await updateDoc(docRef, updateData)
 
-      // Actualizar el estado local inmediatamente
       const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
       if (grupoIndex !== -1) {
         gruposConductores.value[grupoIndex] = {
@@ -361,7 +706,6 @@ export function useConductoresFirebase() {
         }
       }
 
-      console.log('Grupo actualizado correctamente')
       return true
     } catch (err) {
       console.error('Error al actualizar grupo:', err)
@@ -372,18 +716,13 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Eliminar grupo
   const eliminarGrupo = async (grupoId) => {
     loading.value = true
     error.value = null
     try {
       const gruposRef = getGruposRef()
       await deleteDoc(doc(gruposRef, grupoId))
-
-      // Actualizar el estado local inmediatamente
       gruposConductores.value = gruposConductores.value.filter((g) => g.id !== grupoId)
-
-      console.log('Grupo eliminado correctamente')
       return true
     } catch (err) {
       console.error('Error al eliminar grupo:', err)
@@ -394,44 +733,6 @@ export function useConductoresFirebase() {
     }
   }
 
-  // Agregar conductores a grupo
-  const agregarConductoresAGrupo = async (grupoId, conductoresIds) => {
-    loading.value = true
-    error.value = null
-    try {
-      const gruposRef = getGruposRef()
-      const docRef = doc(gruposRef, grupoId)
-      const grupoDoc = await getDoc(docRef)
-
-      if (!grupoDoc.exists()) {
-        throw new Error('Grupo no encontrado')
-      }
-
-      const conductoresActuales = grupoDoc.data().ConductoresIds || []
-      const nuevosIds = [...new Set([...conductoresActuales, ...conductoresIds])]
-
-      await updateDoc(docRef, {
-        ConductoresIds: nuevosIds,
-        updatedAt: Timestamp.now(),
-      })
-
-      // Actualizar el estado local inmediatamente
-      const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
-      if (grupoIndex !== -1) {
-        gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
-      }
-
-      return true
-    } catch (err) {
-      console.error('Error al agregar conductores a grupo:', err)
-      error.value = err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Remover conductor de grupo
   const removerConductorDeGrupo = async (grupoId, conductorId) => {
     error.value = null
     try {
@@ -451,13 +752,11 @@ export function useConductoresFirebase() {
         updatedAt: Timestamp.now(),
       })
 
-      // Actualizar el estado local inmediatamente
       const grupoIndex = gruposConductores.value.findIndex((g) => g.id === grupoId)
       if (grupoIndex !== -1) {
         gruposConductores.value[grupoIndex].ConductoresIds = nuevosIds
       }
 
-      console.log('Conductor removido del grupo correctamente')
       return true
     } catch (err) {
       console.error('Error al remover conductor de grupo:', err)
@@ -468,25 +767,20 @@ export function useConductoresFirebase() {
 
   // === UTILIDADES ===
 
-  // Obtener conductores de un grupo
   const conductoresPorGrupo = (grupoId) => {
     const grupo = gruposConductores.value.find((g) => g.id === grupoId)
     if (!grupo) return []
-
     return conductores.value.filter((c) => grupo.ConductoresIds?.includes(c.id))
   }
 
-  // Contar conductores por grupo
   const contarConductoresPorGrupo = (grupoId) => {
     const grupo = gruposConductores.value.find((g) => g.id === grupoId)
     return grupo?.ConductoresIds?.length || 0
   }
 
-  // Obtener unidad asignada a conductor
   const obtenerUnidadDeConductor = (conductorId) => {
     const conductor = conductores.value.find((c) => c.id === conductorId)
     if (!conductor?.UnidadAsignada) return null
-
     return unidades.value.find((u) => u.id === conductor.UnidadAsignada)
   }
 
@@ -501,10 +795,24 @@ export function useConductoresFirebase() {
     // Métodos de conductores
     obtenerConductores,
     escucharConductores,
-    agregarConductor,
     actualizarConductor,
     eliminarConductor,
+
+    // Métodos de fotos (ahora desde Firestore)
+    obtenerFotosLicencia,
+    obtenerFotosSeguroUnidad,
+    obtenerFotosTargetaCirculacion,
+    descargarFoto,
+
+    // Métodos para subir fotos
     subirFotoLicencia,
+    subirFotoSeguroUnidad,
+    subirFotoTargetaCirculacion,
+
+    // Métodos para eliminar fotos (con validación de fecha)
+    eliminarFotoLicencia,
+    eliminarFotoSeguroUnidad,
+    eliminarFotoTargetaCirculacion,
 
     // Métodos de unidades
     obtenerUnidades,
@@ -514,10 +822,8 @@ export function useConductoresFirebase() {
     // Métodos de grupos
     obtenerGruposConductores,
     escucharGrupos,
-    crearGrupo,
     actualizarGrupo,
     eliminarGrupo,
-    agregarConductoresAGrupo,
     removerConductorDeGrupo,
 
     // Utilidades

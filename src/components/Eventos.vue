@@ -844,8 +844,88 @@ async function eliminarEventoSeleccionado() {
 
 // Cargar datos al montar el componente
 onMounted(async () => {
+  console.log('🔟 Eventos: Componente montado')
+  
   await cargarDatos()
+  
+  // 🆕 AGREGAR ESTA VERIFICACIÓN:
+  console.log('1️⃣1️⃣ Eventos: Verificando window._ubicacionParaEvento')
+  console.log('📦 Valor:', window._ubicacionParaEvento)
+  
+  if (window._ubicacionParaEvento) {
+    const data = window._ubicacionParaEvento
+    console.log('1️⃣2️⃣ Eventos: ¡Ubicación preseleccionada detectada!')
+    console.log('📍 Ubicación:', data.ubicacion.nombre)
+    console.log('🏷️ Tipo:', data.tipo)
+    
+    // Limpiar inmediatamente
+    delete window._ubicacionParaEvento
+    console.log('1️⃣3️⃣ Eventos: window._ubicacionParaEvento limpiado')
+    
+    // Esperar un momento antes de abrir el diálogo
+    setTimeout(() => {
+      console.log('1️⃣4️⃣ Eventos: Ejecutando crearEventoConUbicacionPreseleccionada')
+      crearEventoConUbicacionPreseleccionada(data)
+    }, 500)
+  } else {
+    console.log('ℹ️ Eventos: No hay ubicación preseleccionada')
+  }
 })
+
+function crearEventoConUbicacionPreseleccionada(data) {
+  console.log('1️⃣5️⃣ Eventos: Configurando evento con ubicación')
+  console.log('📦 Data:', data)
+  
+  modoEdicion.value = false
+  
+  const nombreUbicacion = data.ubicacion.nombre
+  const tipoUbicacion = data.tipo
+  
+  console.log('1️⃣6️⃣ Eventos: Preparando nuevoEvento.value')
+  
+  nuevoEvento.value = {
+    nombre: `Evento en ${nombreUbicacion}`,
+    descripcion: `Evento automático para ${tipoUbicacion === 'POI' ? 'punto de interés' : 'geozona'} "${nombreUbicacion}"`,
+    activo: true,
+    condicionTiempo: false,
+    condiciones: [
+      {
+        tipo: tipoUbicacion, // 'POI' o 'Geozona'
+        activacion: 'Entrada',
+        ubicacionId: data.ubicacion.id
+      }
+    ],
+    operadoresLogicos: [],
+    activacionAlerta: 'Al inicio',
+    aplicacion: 'siempre',
+    diasSemana: [],
+    horaInicio: '',
+    horaFin: ''
+  }
+  
+  console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado:', nuevoEvento.value)
+  console.log('1️⃣8️⃣ Eventos: Abriendo dialogNuevoEvento')
+  
+  // Abrir el diálogo
+  dialogNuevoEvento.value = true
+  
+  console.log('1️⃣9️⃣ Eventos: dialogNuevoEvento.value =', dialogNuevoEvento.value)
+  
+  // Notificación
+  if ($q && $q.notify) {
+    $q.notify({
+      type: 'positive',
+      message: `✅ Evento configurado`,
+      caption: `Ubicación: ${nombreUbicacion} (${tipoUbicacion})`,
+      icon: 'check_circle',
+      position: 'top',
+      timeout: 3000
+    })
+  }
+  
+  console.log('2️⃣0️⃣ Eventos: Proceso completado')
+}
+
 
 // SOLUCIÓN: Usamos solo cargarDatos y eliminamos recargarDatos
 async function cargarDatos() {
