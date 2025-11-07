@@ -429,7 +429,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Dialog Geozonas -->
     <q-dialog
       v-model="geozonaDrawerOpen"
       position="left"
@@ -439,7 +438,10 @@
       @hide="onDialogHide"
     >
       <q-card class="component-card">
-        <GeoZonas @close="cerrarGeozonas" />
+        <GeoZonas 
+          @close="cerrarGeozonas" 
+          @crear-evento-ubicacion="abrirEventosConUbicacion"
+        />
       </q-card>
     </q-dialog>
 
@@ -525,6 +527,41 @@ const poisCargados = ref(false)
 const geozonasCargadas = ref(false)
 const pois = ref([])
 const geozonas = ref([])
+
+// AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
+
+function abrirEventosConUbicacion(data) {
+  console.log('4️⃣ MainLayout: Recibido evento crear-evento-ubicacion')
+  console.log('📦 Data recibida:', data)
+  
+  if (!data || !data.ubicacion || !data.tipo) {
+    console.error('❌ Datos incompletos:', data)
+    $q.notify({
+      type: 'negative',
+      message: 'Error: Datos de ubicación incompletos',
+      icon: 'error'
+    })
+    return
+  }
+  
+  console.log('5️⃣ MainLayout: Datos validados')
+  
+  window._ubicacionParaEvento = {
+    ubicacion: data.ubicacion,
+    tipo: data.tipo
+  }
+  
+  console.log('6️⃣ MainLayout: Datos guardados')
+  
+  geozonaDrawerOpen.value = false
+  console.log('7️⃣ MainLayout: Drawer cerrado')
+  
+  setTimeout(() => {
+    console.log('8️⃣ MainLayout: Abriendo Eventos')
+    eventosDrawerOpen.value = true
+    console.log('9️⃣ MainLayout: Eventos abierto')
+  }, 350)
+}
 
 // Función para cargar datos de conductores si no están cargados
 const cargarDatosConductores = async () => {
