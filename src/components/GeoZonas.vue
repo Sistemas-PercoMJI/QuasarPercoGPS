@@ -645,68 +645,87 @@
       </q-card>
     </q-dialog>
 
-    <!-- Menú contextual -->
-    <q-dialog
-      v-model="menuContextualVisible"
-      position="bottom"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
-        <!-- Header opcional -->
-        <q-card-section class="q-pa-md bg-grey-1">
-          <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
-        </q-card-section>
+    <!-- Menú contextual MODIFICADO en GeoZonas.vue -->
+<q-dialog
+  v-model="menuContextualVisible"
+  position="bottom"
+  transition-show="slide-up"
+  transition-hide="slide-down"
+>
+  <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
+    <!-- Header -->
+    <q-card-section class="q-pa-md bg-grey-1">
+      <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
+    </q-card-section>
 
-        <q-separator />
+    <q-separator />
 
-        <!-- Opciones -->
-        <q-list padding>
-          <q-item clickable v-ripple @click="(editarItem(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="primary" text-color="white">
-                <q-icon name="edit" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Editar</q-item-label>
-              <q-item-label caption>Modificar información</q-item-label>
-            </q-item-section>
-          </q-item>
+<!-- Opciones -->
+    <q-list padding>
+      <!-- 🆕 NUEVA OPCIÓN: Crear Evento -->
+      <q-item 
+        clickable 
+        v-ripple 
+        @click="crearEventoParaUbicacion()"
+      >
+        <q-item-section avatar>
+          <q-avatar color="deep-orange" text-color="white">
+            <q-icon name="notifications_active" />
+          </q-avatar>
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>Crear Evento</q-item-label>
+          <q-item-label caption>Nuevo evento para esta ubicación</q-item-label>
+        </q-item-section>
+      </q-item>
 
-          <q-item clickable v-ripple @click="(verEnMapa(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="positive" text-color="white">
-                <q-icon name="map" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Ver en mapa</q-item-label>
-              <q-item-label caption>Centrar en ubicación</q-item-label>
-            </q-item-section>
-          </q-item>
+      <q-separator class="q-my-sm" />
 
-          <q-separator class="q-my-sm" />
+      <q-item clickable v-ripple @click="editarItem(); menuContextualVisible = false">
+        <q-item-section avatar>
+          <q-avatar color="primary" text-color="white">
+            <q-icon name="edit" />
+          </q-avatar>
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>Editar</q-item-label>
+          <q-item-label caption>Modificar información</q-item-label>
+        </q-item-section>
+      </q-item>
 
-          <q-item clickable v-ripple @click="(eliminarItem(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="negative" text-color="white">
-                <q-icon name="delete" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-negative">Eliminar</q-item-label>
-              <q-item-label caption>Eliminar permanentemente</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
+      <q-item clickable v-ripple @click="verEnMapa(); menuContextualVisible = false">
+        <q-item-section avatar>
+          <q-avatar color="positive" text-color="white">
+            <q-icon name="map" />
+          </q-avatar>
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>Ver en mapa</q-item-label>
+          <q-item-label caption>Centrar en ubicación</q-item-label>
+        </q-item-section>
+      </q-item>
 
-        <!-- Botón cancelar -->
-        <q-card-actions class="q-pa-md">
-          <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <q-separator class="q-my-sm" />
+
+      <q-item clickable v-ripple @click="eliminarItem(); menuContextualVisible = false">
+        <q-item-section avatar>
+          <q-avatar color="negative" text-color="white">
+            <q-icon name="delete" />
+          </q-avatar>
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-negative">Eliminar</q-item-label>
+          <q-item-label caption>Eliminar permanentemente</q-item-label>
+        </q-item-section>
+      </q-item>
+    </q-list>
+
+    <!-- Botón cancelar -->
+    <q-card-actions class="q-pa-md">
+      <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
+    </q-card-actions>
+  </q-card>
+</q-dialog>
   </div>
 </template>
 
@@ -721,8 +740,9 @@ import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useEventBus } from 'src/composables/useEventBus.js'
 
+
 const userId = ref(auth.currentUser?.uid || '')
-const emit = defineEmits(['close', 'item-seleccionado'])
+const emit = defineEmits(['close', 'item-seleccionado', 'crear-evento-ubicacion'])
 const $q = useQuasar()
 // 🆕 AGREGAR esta línea
 const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
@@ -793,6 +813,28 @@ const grupos = ref([
 const items = ref([])
 
 const mostrarSliderRadio = ref(false)
+
+// 🆕 NUEVA FUNCIÓN: Crear evento para la ubicación seleccionada
+function crearEventoParaUbicacion() {
+  if (!itemMenu.value) return
+  
+  console.log('🎯 Creando evento para ubicación:', itemMenu.value)
+  
+  menuContextualVisible.value = false
+  
+  // Emitir evento con los datos de la ubicación
+  emit('crear-evento-ubicacion', {
+    ubicacion: itemMenu.value,
+    tipo: itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona'
+  })
+  
+  $q.notify({
+    type: 'info',
+    message: `Preparando evento para ${itemMenu.value.nombre}`,
+    icon: 'notifications_active',
+    timeout: 1500
+  })
+}
 
 // ✅ NUEVA FUNCIÓN: Continuar al dialog después de ajustar el radio
 function continuarAlDialog() {
