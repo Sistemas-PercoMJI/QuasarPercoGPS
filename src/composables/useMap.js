@@ -21,6 +21,7 @@ const marcadoresPoligono = ref([])
 const modoSeleccionGeozonaCircular = ref(false)
 const modoSeleccionGeozonaPoligonal = ref(false)
 const poligonoFinalizado = ref(false)
+const colorGeozonaActual = ref('#4ECDC4')
 
 // 🔑 Tu API key de Mapbox
 const MAPBOX_TOKEN =
@@ -385,20 +386,19 @@ export function useMap() {
     return true
   }
 
-  const activarModoSeleccionGeozonaPoligonal = (puntosExistentes = null) => {
+  const activarModoSeleccionGeozonaPoligonal = (puntosExistentes = [], color = '#4ECDC4') => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
       return false
     }
 
     modoSeleccionGeozonaPoligonal.value = true
+    colorGeozonaActual.value = color // ✅ GUARDAR el color para usarlo después
 
-    // ✅ NUEVO: Si hay puntos existentes, no resetear
     if (puntosExistentes && puntosExistentes.length > 0) {
       console.log('🔄 Restaurando puntos existentes:', puntosExistentes.length)
       setPuntosSeleccionados(puntosExistentes)
     } else {
-      // Solo resetear si es nuevo
       puntosPoligono.value = []
       marcadoresPoligono.value = []
     }
@@ -407,7 +407,7 @@ export function useMap() {
     map.value.getContainer().style.cursor = 'crosshair'
     map.value.off('click')
     map.value.on('click', onMapClickGeozonaPoligonal)
-    console.log('✅ Modo selección geozona poligonal activado')
+    console.log('✅ Modo selección geozona poligonal activado con color:', color)
     return true
   }
 
@@ -461,29 +461,55 @@ export function useMap() {
 
   const onMapClickGeozonaPoligonal = (e) => {
     if (!modoSeleccionGeozonaPoligonal.value || !map.value) return
+
     const { lat, lng } = e.latlng
     const punto = { lat, lng }
     puntosPoligono.value.push(punto)
+
+    // ✅ Función helper para oscurecer color
+    const oscurecerColor = (hex, porcentaje = 40) => {
+      hex = hex.replace('#', '')
+      let r = parseInt(hex.substring(0, 2), 16)
+      let g = parseInt(hex.substring(2, 4), 16)
+      let b = parseInt(hex.substring(4, 6), 16)
+      r = Math.floor(r * (1 - porcentaje / 100))
+      g = Math.floor(g * (1 - porcentaje / 100))
+      b = Math.floor(b * (1 - porcentaje / 100))
+      const rHex = r.toString(16).padStart(2, '0')
+      const gHex = g.toString(16).padStart(2, '0')
+      const bHex = b.toString(16).padStart(2, '0')
+      return `#${rHex}${gHex}${bHex}`
+    }
+
+    // ✅ Usar el color guardado
+    const fillColor = colorGeozonaActual.value
+    const borderColor = oscurecerColor(fillColor, 40)
+
     const marcador = L.marker([lat, lng], {
       icon: L.divIcon({
         className: 'punto-poligono',
         html: `<div style="
-          width: 12px;
-          height: 12px;
-          background: #3388ff;
-          border: 2px solid white;
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        "></div>`,
+        width: 12px;
+        height: 12px;
+        background: ${fillColor};
+        border: 2px solid ${borderColor};
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>`,
         iconSize: [12, 12],
         iconAnchor: [6, 6],
       }),
     }).addTo(map.value)
+
     marcadoresPoligono.value.push(marcador)
+
     if (puntosPoligono.value.length >= 2) {
       actualizarPoligonoTemporal(puntosPoligono.value)
     }
-    console.log(`📍 Punto ${puntosPoligono.value.length} agregado al polígono`)
+
+    console.log(
+      `📍 Punto ${puntosPoligono.value.length} agregado al polígono con color: ${fillColor}`,
+    )
 
     if (puntosPoligono.value.length >= 3) {
       console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
@@ -578,27 +604,128 @@ export function useMap() {
     console.log(`🔄 Actualizando marcador: ${nombre} en ${lat}, ${lng} con dirección: ${direccion}`)
   }
 
-  const actualizarCirculo = (id, centro, radio, nombre) => {
-    console.log(
-      `🔄 Actualizando círculo: ${nombre} en ${centro.lat}, ${centro.lng} con radio ${radio}`,
-    )
+  const actualizarCirculo = (id, centro, radio, nombre, color = '#4ECDC4') => {
+    if (!map.value || !L) return
+
+    // Buscar y eliminar el círculo existente
+    map.value.eachLayer((layer) => {
+      if (layer._geozonaId === id) {
+        map.value.removeLayer(layer)
+      }
+    })
+
+    // Calcular color del borde (30% más oscuro)
+    const oscurecerColor = (hex, porcentaje = 30) => {
+      hex = hex.replace('#', '')
+      let r = parseInt(hex.substring(0, 2), 16)
+      let g = parseInt(hex.substring(2, 4), 16)
+      let b = parseInt(hex.substring(4, 6), 16)
+      r = Math.floor(r * (1 - porcentaje / 100))
+      g = Math.floor(g * (1 - porcentaje / 100))
+      b = Math.floor(b * (1 - porcentaje / 100))
+      const rHex = r.toString(16).padStart(2, '0')
+      const gHex = g.toString(16).padStart(2, '0')
+      const bHex = b.toString(16).padStart(2, '0')
+      return `#${rHex}${gHex}${bHex}`
+    }
+
+    const borderColor = oscurecerColor(color, 30)
+
+    // Crear nuevo círculo con el color actualizado
+    const nuevoCirculo = L.circle([centro.lat, centro.lng], {
+      radius: radio,
+      color: borderColor,
+      fillColor: color,
+      fillOpacity: 0.2,
+      weight: 3,
+    }).addTo(map)
+
+    nuevoCirculo._geozonaId = id
+    nuevoCirculo.bindPopup(`<b>🔵 ${nombre}</b><p>Radio: ${radio}m</p>`)
+
+    console.log(`✅ Círculo actualizado con color: ${color}`)
   }
 
-  const actualizarPoligono = (id, puntos, nombre) => {
-    console.log(`🔄 Actualizando polígono: ${nombre} con ${puntos.length} puntos`)
-  }
+  const actualizarPoligono = (id, puntos, nombre, color = '#4ECDC4') => {
+    if (!map.value || !L) return
 
+    // Buscar y eliminar el polígono existente
+    map.value.eachLayer((layer) => {
+      if (layer._geozonaId === id) {
+        map.value.removeLayer(layer)
+      }
+    })
+
+    // Calcular color del borde (30% más oscuro)
+    const oscurecerColor = (hex, porcentaje = 30) => {
+      hex = hex.replace('#', '')
+      let r = parseInt(hex.substring(0, 2), 16)
+      let g = parseInt(hex.substring(2, 4), 16)
+      let b = parseInt(hex.substring(4, 6), 16)
+      r = Math.floor(r * (1 - porcentaje / 100))
+      g = Math.floor(g * (1 - porcentaje / 100))
+      b = Math.floor(b * (1 - porcentaje / 100))
+      const rHex = r.toString(16).padStart(2, '0')
+      const gHex = g.toString(16).padStart(2, '0')
+      const bHex = b.toString(16).padStart(2, '0')
+      return `#${rHex}${gHex}${bHex}`
+    }
+
+    const borderColor = oscurecerColor(color, 30)
+
+    // Crear nuevo polígono con el color actualizado
+    const puntosLatLng = puntos.map((p) => [p.lat, p.lng])
+    const nuevoPoligono = L.polygon(puntosLatLng, {
+      color: borderColor,
+      fillColor: color,
+      fillOpacity: 0.2,
+      weight: 3,
+    }).addTo(map)
+
+    nuevoPoligono._geozonaId = id
+    nuevoPoligono.bindPopup(`<b>🔷 ${nombre}</b><p>${puntos.length} puntos</p>`)
+
+    console.log(`✅ Polígono actualizado con color: ${color}`)
+  }
   const actualizarPoligonoTemporal = (puntos) => {
-    if (!map.value) return
+    if (!map.value || !puntos || puntos.length < 2) return
+
+    // Remover polígono anterior si existe
     if (poligonoTemporal.value) {
       map.value.removeLayer(poligonoTemporal.value)
     }
-    if (puntos.length >= 2) {
-      poligonoTemporal.value = L.polygon(puntos, {
-        color: '#3388ff',
-        fillColor: '#3388ff',
+
+    // ✅ Función helper para oscurecer color
+    const oscurecerColor = (hex, porcentaje = 30) => {
+      hex = hex.replace('#', '')
+      let r = parseInt(hex.substring(0, 2), 16)
+      let g = parseInt(hex.substring(2, 4), 16)
+      let b = parseInt(hex.substring(4, 6), 16)
+      r = Math.floor(r * (1 - porcentaje / 100))
+      g = Math.floor(g * (1 - porcentaje / 100))
+      b = Math.floor(b * (1 - porcentaje / 100))
+      const rHex = r.toString(16).padStart(2, '0')
+      const gHex = g.toString(16).padStart(2, '0')
+      const bHex = b.toString(16).padStart(2, '0')
+      return `#${rHex}${gHex}${bHex}`
+    }
+
+    // ✅ Usar el color guardado
+    const fillColor = colorGeozonaActual.value
+    const borderColor = oscurecerColor(fillColor, 30)
+
+    // Solo dibujar polígono si hay al menos 3 puntos
+    if (puntos.length >= 3) {
+      const puntosLatLng = puntos.map((p) => [p.lat, p.lng])
+
+      poligonoTemporal.value = L.polygon(puntosLatLng, {
+        color: borderColor, // ✅ Borde oscuro
+        fillColor: fillColor, // ✅ Relleno con color seleccionado
         fillOpacity: 0.2,
+        weight: 3,
       }).addTo(map.value)
+
+      console.log(`🔷 Polígono temporal actualizado con color: ${fillColor}`)
     }
   }
 

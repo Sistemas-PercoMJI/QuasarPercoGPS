@@ -619,6 +619,73 @@
             </template>
           </q-select>
 
+          <!-- 🎨 Selector de Color -->
+          <div class="q-mb-md">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
+              <q-icon name="palette" size="16px" class="q-mr-xs" />
+              COLOR DE LA GEOZONA
+            </div>
+
+            <!-- Paleta de colores predefinida -->
+            <div class="color-palette q-mb-sm">
+              <div
+                v-for="color in paletaColores"
+                :key="color.valor"
+                class="color-chip"
+                :class="{ 'color-chip-selected': nuevaGeozona.color === color.valor }"
+                :style="{ background: color.valor }"
+                @click="nuevaGeozona.color = color.valor"
+              >
+                <q-icon
+                  v-if="nuevaGeozona.color === color.valor"
+                  name="check"
+                  size="18px"
+                  color="white"
+                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
+                />
+                <q-tooltip>{{ color.nombre }}</q-tooltip>
+              </div>
+            </div>
+
+            <!-- Botón para abrir color picker personalizado -->
+            <q-btn
+              outline
+              dense
+              icon="colorize"
+              label="Color personalizado"
+              color="grey-7"
+              size="sm"
+              @click="mostrarColorPicker = true"
+              class="full-width"
+            />
+
+            <!-- Vista previa del color seleccionado -->
+            <div class="color-preview q-mt-sm">
+              <div class="preview-box" :style="{ background: nuevaGeozona.color }"></div>
+              <span class="text-caption text-grey-7">{{ nuevaGeozona.color.toUpperCase() }}</span>
+            </div>
+          </div>
+
+          <!-- Dialog del Color Picker -->
+          <q-dialog v-model="mostrarColorPicker">
+            <q-card style="min-width: 300px">
+              <q-card-section class="row items-center q-pb-none">
+                <div class="text-h6">Elige un color</div>
+                <q-space />
+                <q-btn icon="close" flat round dense v-close-popup />
+              </q-card-section>
+
+              <q-card-section>
+                <q-color v-model="nuevaGeozona.color" format-model="hex" default-view="palette" />
+              </q-card-section>
+
+              <q-card-actions align="right">
+                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
+
           <q-input
             v-model="nuevaGeozona.notas"
             label="Notas adicionales"
@@ -646,86 +713,82 @@
     </q-dialog>
 
     <!-- Menú contextual MODIFICADO en GeoZonas.vue -->
-<q-dialog
-  v-model="menuContextualVisible"
-  position="bottom"
-  transition-show="slide-up"
-  transition-hide="slide-down"
->
-  <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
-    <!-- Header -->
-    <q-card-section class="q-pa-md bg-grey-1">
-      <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
-    </q-card-section>
+    <q-dialog
+      v-model="menuContextualVisible"
+      position="bottom"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
+        <!-- Header -->
+        <q-card-section class="q-pa-md bg-grey-1">
+          <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
+        </q-card-section>
 
-    <q-separator />
+        <q-separator />
 
-<!-- Opciones -->
-    <q-list padding>
-      <!-- 🆕 NUEVA OPCIÓN: Crear Evento -->
-      <q-item 
-        clickable 
-        v-ripple 
-        @click="crearEventoParaUbicacion()"
-      >
-        <q-item-section avatar>
-          <q-avatar color="deep-orange" text-color="white">
-            <q-icon name="notifications_active" />
-          </q-avatar>
-        </q-item-section>
-        <q-item-section>
-          <q-item-label>Crear Evento</q-item-label>
-          <q-item-label caption>Nuevo evento para esta ubicación</q-item-label>
-        </q-item-section>
-      </q-item>
+        <!-- Opciones -->
+        <q-list padding>
+          <!-- 🆕 NUEVA OPCIÓN: Crear Evento -->
+          <q-item clickable v-ripple @click="crearEventoParaUbicacion()">
+            <q-item-section avatar>
+              <q-avatar color="deep-orange" text-color="white">
+                <q-icon name="notifications_active" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Crear Evento</q-item-label>
+              <q-item-label caption>Nuevo evento para esta ubicación</q-item-label>
+            </q-item-section>
+          </q-item>
 
-      <q-separator class="q-my-sm" />
+          <q-separator class="q-my-sm" />
 
-      <q-item clickable v-ripple @click="editarItem(); menuContextualVisible = false">
-        <q-item-section avatar>
-          <q-avatar color="primary" text-color="white">
-            <q-icon name="edit" />
-          </q-avatar>
-        </q-item-section>
-        <q-item-section>
-          <q-item-label>Editar</q-item-label>
-          <q-item-label caption>Modificar información</q-item-label>
-        </q-item-section>
-      </q-item>
+          <q-item clickable v-ripple @click="(editarItem(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="primary" text-color="white">
+                <q-icon name="edit" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Editar</q-item-label>
+              <q-item-label caption>Modificar información</q-item-label>
+            </q-item-section>
+          </q-item>
 
-      <q-item clickable v-ripple @click="verEnMapa(); menuContextualVisible = false">
-        <q-item-section avatar>
-          <q-avatar color="positive" text-color="white">
-            <q-icon name="map" />
-          </q-avatar>
-        </q-item-section>
-        <q-item-section>
-          <q-item-label>Ver en mapa</q-item-label>
-          <q-item-label caption>Centrar en ubicación</q-item-label>
-        </q-item-section>
-      </q-item>
+          <q-item clickable v-ripple @click="(verEnMapa(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="positive" text-color="white">
+                <q-icon name="map" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Ver en mapa</q-item-label>
+              <q-item-label caption>Centrar en ubicación</q-item-label>
+            </q-item-section>
+          </q-item>
 
-      <q-separator class="q-my-sm" />
+          <q-separator class="q-my-sm" />
 
-      <q-item clickable v-ripple @click="eliminarItem(); menuContextualVisible = false">
-        <q-item-section avatar>
-          <q-avatar color="negative" text-color="white">
-            <q-icon name="delete" />
-          </q-avatar>
-        </q-item-section>
-        <q-item-section>
-          <q-item-label class="text-negative">Eliminar</q-item-label>
-          <q-item-label caption>Eliminar permanentemente</q-item-label>
-        </q-item-section>
-      </q-item>
-    </q-list>
+          <q-item clickable v-ripple @click="(eliminarItem(), (menuContextualVisible = false))">
+            <q-item-section avatar>
+              <q-avatar color="negative" text-color="white">
+                <q-icon name="delete" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-negative">Eliminar</q-item-label>
+              <q-item-label caption>Eliminar permanentemente</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
 
-    <!-- Botón cancelar -->
-    <q-card-actions class="q-pa-md">
-      <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
-    </q-card-actions>
-  </q-card>
-</q-dialog>
+        <!-- Botón cancelar -->
+        <q-card-actions class="q-pa-md">
+          <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -739,7 +802,6 @@ import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useEventBus } from 'src/composables/useEventBus.js'
-
 
 const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado', 'crear-evento-ubicacion'])
@@ -795,14 +857,29 @@ const nuevoPOI = ref({
 
 const nuevaGeozona = ref({
   nombre: '',
-  tipo: null, // 'circular' o 'poligono'
+  tipo: null,
   direccion: '',
   radio: 50,
   grupoId: null,
   notas: '',
-  puntos: [], // Para geozonas poligonales
-  centro: null, // Para geozonas circulares
+  puntos: [],
+  centro: null,
+  color: '#4ECDC4', // ✅ Color por defecto
 })
+
+const paletaColores = [
+  { nombre: 'Turquesa', valor: '#4ECDC4' },
+  { nombre: 'Azul', valor: '#3498DB' },
+  { nombre: 'Verde', valor: '#2ECC71' },
+  { nombre: 'Morado', valor: '#9B59B6' },
+  { nombre: 'Naranja', valor: '#E67E22' },
+  { nombre: 'Rojo', valor: '#E74C3C' },
+  { nombre: 'Amarillo', valor: '#F39C12' },
+  { nombre: 'Rosa', valor: '#FF6B9D' },
+]
+
+// 🎨 Estado para el selector de color personalizado
+const mostrarColorPicker = ref(false)
 
 const grupos = ref([
   { id: 'grupo1', nombre: 'Clientes', color: 'blue' },
@@ -817,22 +894,22 @@ const mostrarSliderRadio = ref(false)
 // 🆕 NUEVA FUNCIÓN: Crear evento para la ubicación seleccionada
 function crearEventoParaUbicacion() {
   if (!itemMenu.value) return
-  
+
   console.log('🎯 Creando evento para ubicación:', itemMenu.value)
-  
+
   menuContextualVisible.value = false
-  
+
   // Emitir evento con los datos de la ubicación
   emit('crear-evento-ubicacion', {
     ubicacion: itemMenu.value,
-    tipo: itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona'
+    tipo: itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona',
   })
-  
+
   $q.notify({
     type: 'info',
     message: `Preparando evento para ${itemMenu.value.nombre}`,
     icon: 'notifications_active',
-    timeout: 1500
+    timeout: 1500,
   })
 }
 
@@ -1019,8 +1096,26 @@ const actualizarVistaPrevia = () => {
 
   // Dibujar línea desde el último punto hasta el cursor
 
+  // ✅ Obtener color seleccionado
+  const colorSeleccionado = nuevaGeozona.value?.color || '#4ECDC4'
+  const oscurecerColor = (hex, porcentaje = 30) => {
+    hex = hex.replace('#', '')
+    let r = parseInt(hex.substring(0, 2), 16)
+    let g = parseInt(hex.substring(2, 4), 16)
+    let b = parseInt(hex.substring(4, 6), 16)
+    r = Math.floor(r * (1 - porcentaje / 100))
+    g = Math.floor(g * (1 - porcentaje / 100))
+    b = Math.floor(b * (1 - porcentaje / 100))
+    const rHex = r.toString(16).padStart(2, '0')
+    const gHex = g.toString(16).padStart(2, '0')
+    const bHex = b.toString(16).padStart(2, '0')
+    return `#${rHex}${gHex}${bHex}`
+  }
+  const borderColor = oscurecerColor(colorSeleccionado, 30)
+
+  // Dibujar línea desde el último punto hasta el cursor
   lineaPreview.value = L.polyline([ultimoPunto, posicionMouseActual.value], {
-    color: '#1976d2',
+    color: borderColor, // ✅ Color del borde
     weight: 2,
     opacity: 0.7,
     dashArray: '10, 10',
@@ -1031,11 +1126,11 @@ const actualizarVistaPrevia = () => {
     const puntosPreview = [...puntosActuales, posicionMouseActual.value]
 
     poligonoPreview.value = L.polygon(puntosPreview, {
-      color: '#1976d2',
-      fillColor: '#1976d2',
-      fillOpacity: 0.15,
+      color: borderColor, // ✅ Borde con color oscurecido
+      fillColor: colorSeleccionado, // ✅ Relleno con color seleccionado
+      fillOpacity: 0.2,
       weight: 2,
-      opacity: 0.5,
+      opacity: 0.7,
       dashArray: '10, 10',
     }).addTo(mapa)
   }
@@ -1350,6 +1445,7 @@ function editarItem() {
         radio: itemMenu.value.radio,
         grupoId: itemMenu.value.grupoId,
         notas: itemMenu.value.notas || '',
+        color: itemMenu.value.color || '#4ECDC4', // ✅ NUEVO
       }
     } else if (itemMenu.value.tipoGeozona === 'poligono') {
       nuevaGeozona.value = {
@@ -1360,6 +1456,7 @@ function editarItem() {
         puntos: itemMenu.value.puntos,
         grupoId: itemMenu.value.grupoId,
         notas: itemMenu.value.notas || '',
+        color: itemMenu.value.color || '#4ECDC4', // ✅ NUEVO
       }
     }
     dialogNuevaGeozona.value = true
@@ -1635,6 +1732,7 @@ function cancelarNuevaGeozona() {
     grupoId: null,
     notas: '',
     puntos: [],
+    color: '#4ECDC4', // ✅ NUEVO
   }
 }
 
@@ -1673,12 +1771,13 @@ const activarSeleccionGeozonaPoligonal = async () => {
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
-      // ✅ MODIFICADO: Pasar los puntos existentes si los hay
+      const colorSeleccionado = nuevaGeozona.value.color || '#4ECDC4' // ✅ Obtener color
+
       if (nuevaGeozona.value.puntos && nuevaGeozona.value.puntos.length > 0) {
         console.log('🔄 Reactivando con puntos existentes:', nuevaGeozona.value.puntos.length)
-        mapaAPI.activarModoSeleccionGeozonaPoligonal(nuevaGeozona.value.puntos)
+        mapaAPI.activarModoSeleccionGeozonaPoligonal(nuevaGeozona.value.puntos, colorSeleccionado) // ✅ Pasar color
       } else {
-        mapaAPI.activarModoSeleccionGeozonaPoligonal()
+        mapaAPI.activarModoSeleccionGeozonaPoligonal([], colorSeleccionado) // ✅ Pasar color
       }
 
       if (mapaAPI.map) {
@@ -1752,6 +1851,7 @@ const guardarGeozona = async () => {
       tipo: nuevaGeozona.value.tipo,
       grupoId: nuevaGeozona.value.grupoId,
       notas: nuevaGeozona.value.notas || '',
+      color: nuevaGeozona.value.color || '#4ECDC4',
     }
 
     if (nuevaGeozona.value.tipo === 'circular') {
@@ -1812,12 +1912,14 @@ const guardarGeozona = async () => {
             nuevaGeozona.value.centro,
             nuevaGeozona.value.radio,
             nuevaGeozona.value.nombre,
+            nuevaGeozona.value.color, // ✅ AGREGAR COLOR
           )
         } else if (nuevaGeozona.value.tipo === 'poligono') {
           mapPage._mapaAPI.actualizarPoligono(
             nuevaGeozona.value.id,
             nuevaGeozona.value.puntos,
             nuevaGeozona.value.nombre,
+            nuevaGeozona.value.color, // ✅ AGREGAR COLOR
           )
         }
       }
@@ -1902,6 +2004,7 @@ const guardarGeozona = async () => {
       notas: '',
       puntos: [],
       centro: null,
+      color: '#4ECDC4',
     }
 
     dialogNuevaGeozona.value = false
@@ -2546,5 +2649,58 @@ defineExpose({
 .slide-up-leave-to {
   opacity: 0;
   transform: translateX(100px);
+}
+
+/* ============================================ */
+/* ESTILOS PARA SELECTOR DE COLOR */
+/* ============================================ */
+
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.color-chip {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid transparent;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-chip:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.color-chip-selected {
+  border: 3px solid white;
+  box-shadow:
+    0 0 0 2px #1976d2,
+    0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.color-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.preview-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 </style>

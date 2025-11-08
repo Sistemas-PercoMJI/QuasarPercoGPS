@@ -66,6 +66,7 @@ export function useGeozonas(userId) {
     try {
       const dataConUsuario = {
         ...geozonaData,
+        color: geozonaData.color || '#4ECDC4', // ✅ Color por defecto
         fechaCreacion: new Date(),
       }
 
