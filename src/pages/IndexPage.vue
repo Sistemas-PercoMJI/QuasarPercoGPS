@@ -402,13 +402,15 @@ const dibujarTodosEnMapa = async () => {
 
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
-        const color = '#FF6B6B'
-        const fillColor = '#FF6B6B'
+
+        const fillColor = geozona.color || '#4ECDC4' // ✅ Color de Firebase o por defecto
+        const borderColor = oscurecerColor(fillColor, 30) // ✅ Borde más oscuro
 
         const circle = mapaAPI.L.circle([lat, lng], {
           radius: geozona.radio,
-          color: color,
+          color: borderColor, // ✅ Borde oscuro
           fillColor: fillColor,
+
           fillOpacity: 0.15,
           weight: 2,
         }).addTo(mapaAPI.map)
@@ -508,14 +510,14 @@ const dibujarTodosEnMapa = async () => {
         }
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
-        const color = '#4ECDC4'
-        const fillColor = '#4ECDC4'
+        const fillColor = geozona.color || '#4ECDC4' // ✅ Color de Firebase o por defecto
+        const borderColor = oscurecerColor(fillColor, 30) // ✅ Borde más oscuro
 
         const polygon = mapaAPI.L.polygon(puntos, {
-          color: color,
-          fillColor: fillColor,
-          fillOpacity: 0.15,
-          weight: 2,
+          color: borderColor, // ✅ Borde oscuro
+          fillColor: fillColor, // ✅ Relleno con color personalizado
+          fillOpacity: 0.2,
+          weight: 3,
         }).addTo(mapaAPI.map)
 
         const popupContent = `
@@ -624,6 +626,29 @@ const dibujarTodosEnMapa = async () => {
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
+}
+
+// 🎨 Función para oscurecer un color hexadecimal (para el borde)
+function oscurecerColor(hex, porcentaje = 20) {
+  // Remover el # si existe
+  hex = hex.replace('#', '')
+
+  // Convertir a RGB
+  let r = parseInt(hex.substring(0, 2), 16)
+  let g = parseInt(hex.substring(2, 4), 16)
+  let b = parseInt(hex.substring(4, 6), 16)
+
+  // Oscurecer
+  r = Math.floor(r * (1 - porcentaje / 100))
+  g = Math.floor(g * (1 - porcentaje / 100))
+  b = Math.floor(b * (1 - porcentaje / 100))
+
+  // Convertir de vuelta a hex
+  const rHex = r.toString(16).padStart(2, '0')
+  const gHex = g.toString(16).padStart(2, '0')
+  const bHex = b.toString(16).padStart(2, '0')
+
+  return `#${rHex}${gHex}${bHex}`
 }
 
 onMounted(async () => {
