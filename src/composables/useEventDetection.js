@@ -1,6 +1,8 @@
-// src/composables/useEventDetection.js - CORREGIDO FINAL
+// src/composables/useEventDetection.js - CON INTEGRACIÓN FIREBASE
 import { ref } from 'vue'
 import { useNotifications } from './useNotifications'
+import { useRutaDiaria } from './useRutaDiaria'
+import { useEventoDiario } from './useEventoDiario'
 
 // Estado del sistema de detección
 const eventosActivos = ref([])
@@ -10,8 +12,13 @@ const ubicacionActual = ref(null)
 const eventosDisparados = ref(new Set())
 const estadoUbicaciones = ref(new Map())
 
-// 🔧 Integración con notificaciones
+// 🆕 Mapa para rastrear eventos de ENTRADA activos (para calcular duración)
+const eventosEnCurso = ref(new Map())
+
+// 🔧 Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
+const { iniciarOActualizarRutaDiaria, obtenerIdRutaDiaria } = useRutaDiaria()
+const { registrarEventoDiario, finalizarEventoDiario, actualizarDuracionEvento } = useEventoDiario()
 
 export function useEventDetection() {
   /**
@@ -34,6 +41,7 @@ export function useEventDetection() {
     
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
+    eventosEnCurso.value.clear() // 🆕 Limpiar eventos en curso
     
     console.log('✅ Sistema de detección inicializado')
     console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
@@ -231,9 +239,9 @@ export function useEventDetection() {
   }
 
   /**
-   * 🔧 CORREGIDO: Dispara el evento para una unidad simulada
+   * 🔧 MEJORADO: Dispara el evento Y lo registra en Firebase
    */
-  function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
+  async function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
     // Crear clave única que incluya la condición específica
     const claveEvento = `${evento.id}-${condicion.tipo}-${condicion.ubicacionId}-${condicion.activacion}-unidad-${unidad.id}`
     
@@ -269,6 +277,105 @@ export function useEventDetection() {
     // ✅ LOG IMPORTANTE: Evento disparado
     console.log(`🔔 EVENTO DISPARADO: "${evento.nombre}" - ${mensaje}`)
 
+    // 🆕 ==========================================
+    // REGISTRO EN FIREBASE
+    // ==========================================
+    try {
+      const idRutaDiaria = obtenerIdRutaDiaria()
+      
+      // 🆕 PASO 1: Crear o actualizar la ruta diaria
+      await iniciarOActualizarRutaDiaria(unidad.id, {
+        conductor_id: unidad.conductorId || '',
+        conductor_nombre: unidad.conductorNombre || unidad.nombre || '',
+        velocidad_actual: unidad.velocidad || '0',
+        nuevaCoordenada: {
+          lat: unidad.lat,
+          lng: unidad.lng,
+          timestamp: new Date().toISOString()
+        }
+      })
+
+      console.log(`💾 Ruta diaria actualizada para unidad ${unidad.id}`)
+
+      // 🆕 PASO 2: Preparar datos del evento
+      const eventoData = {
+        IdEvento: evento.id,
+        NombreEvento: evento.nombre,
+        TipoEvento: condicion.activacion, // 'Entrada' o 'Salida'
+        lat: unidad.lat,
+        lng: unidad.lng,
+        Direccion: `${unidad.lat}, ${unidad.lng}`, // Puedes mejorar con geocodificación
+        tipoUbicacion: tipoUbicacion,
+        ubicacionId: condicion.ubicacionId
+      }
+
+      // Agregar el campo condicional según el tipo
+      if (tipoUbicacion === 'POI') {
+        eventoData.PoiNombre = ubicacionNombre
+      } else if (tipoUbicacion === 'Geozona') {
+        eventoData.GeozonaNombre = ubicacionNombre
+      }
+
+      // 🆕 PASO 3: Manejar eventos de ENTRADA y SALIDA
+      if (condicion.activacion === 'Entrada') {
+        // Registrar evento de entrada
+        const eventoRegistrado = await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
+        
+        // Guardar en memoria para calcular duración cuando salga
+        const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
+        eventosEnCurso.value.set(claveEntrada, {
+          idEvento: eventoRegistrado.id,
+          idRutaDiaria: idRutaDiaria,
+          timestampEntrada: Date.now(),
+          ubicacionNombre: ubicacionNombre,
+          ubicacionId: condicion.ubicacionId
+        })
+        
+        console.log(`📍 Evento de ENTRADA registrado: ${eventoRegistrado.id}`)
+      } 
+      else if (condicion.activacion === 'Salida') {
+        // Buscar si hay una entrada previa
+        const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
+        const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
+        
+        if (eventoEntrada) {
+          // Calcular duración en minutos
+          const duracionMinutos = Math.floor((Date.now() - eventoEntrada.timestampEntrada) / 60000)
+          
+          // Finalizar el evento de entrada
+          await finalizarEventoDiario(
+            unidad.id,
+            eventoEntrada.idRutaDiaria,
+            eventoEntrada.idEvento,
+            { lat: unidad.lat, lng: unidad.lng }
+          )
+          
+          // Actualizar duración
+          await actualizarDuracionEvento(
+            unidad.id,
+            eventoEntrada.idRutaDiaria,
+            eventoEntrada.idEvento,
+            duracionMinutos
+          )
+          
+          // Limpiar de eventos en curso
+          eventosEnCurso.value.delete(claveEntrada)
+          
+          console.log(`🚪 Evento finalizado. Duración: ${duracionMinutos} min en ${eventoEntrada.ubicacionNombre}`)
+        } else {
+          // Si no hay entrada previa, igual registrar la salida
+          await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
+          console.log(`⚠️ Salida sin entrada previa registrada para ${ubicacionNombre}`)
+        }
+      }
+
+      console.log(`✅ Evento registrado en Firebase`)
+    } catch (err) {
+      console.error('❌ Error al registrar en Firebase:', err)
+    }
+    // ==========================================
+
+    // Crear notificación
     agregarNotificacion({
       type: tipoNotificacion,
       title: evento.nombre,
@@ -297,6 +404,7 @@ export function useEventDetection() {
     ubicacionActual.value = null
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
+    eventosEnCurso.value.clear() // 🆕 Limpiar eventos en curso
     console.log('🔄 Sistema de detección reseteado')
   }
 
@@ -305,6 +413,7 @@ export function useEventDetection() {
     evaluarEventosParaUnidadesSimulacion,
     resetear,
     eventosActivos,
-    ubicacionActual
+    ubicacionActual,
+    eventosEnCurso // 🆕 Exponer eventos en curso
   }
 }
