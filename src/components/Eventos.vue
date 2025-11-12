@@ -694,17 +694,37 @@ async function toggleEventoEstado(evento) {
   }
 }
 
-// 🆕 FUNCIÓN MEJORADA PARA AGREGAR CONDICIÓN
+// 🆕 FUNCIÓN MEJORADA PARA AGREGAR CONDICIÓN CON AUTO-COMPLETADO
 function agregarCondicion() {
+  // Obtener la última condición para copiar sus valores
+  const ultimaCondicion = nuevoEvento.value.condiciones[nuevoEvento.value.condiciones.length - 1]
+  
+  // Alternar la activación: si es "Entrada" -> "Salida", si es "Salida" -> "Entrada"
+  const nuevaActivacion = ultimaCondicion.activacion === 'Entrada' ? 'Salida' : 'Entrada'
+  
+  // Agregar nueva condición con los mismos valores pero activación alternada
   nuevoEvento.value.condiciones.push({
-    tipo: 'POI',
-    activacion: 'Entrada',
-    ubicacionId: null,
+    tipo: ultimaCondicion.tipo, // Mismo tipo (POI o Geozona)
+    activacion: nuevaActivacion, // Activación alternada
+    ubicacionId: ultimaCondicion.ubicacionId, // Misma ubicación
   })
+  
   nuevoEvento.value.operadoresLogicos.push('AND')
   
   // Agregar opciones filtradas para la nueva condición
   opcionesFiltradas.value.push(opcionesUbicaciones.value)
+  
+  // Notificar al usuario
+  if ($q && $q.notify) {
+    $q.notify({
+      type: 'info',
+      message: `Condición agregada: ${nuevaActivacion}`,
+      caption: `Misma ubicación, activación alternada`,
+      icon: 'add_circle',
+      position: 'top',
+      timeout: 2000
+    })
+  }
 }
 
 function eliminarCondicion(index) {
