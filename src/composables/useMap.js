@@ -884,27 +884,14 @@ export function useMap() {
     } else {
       // Capa de tráfico con blend mode multiply
       capaTrafico.value = L.tileLayer(
-        `https://api.mapbox.com/styles/v1/sistemasmj123/cmhmpjwt1000j01sl59p952zr/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
+        `https://api.mapbox.com/styles/v1/sistemasmj123/cmhv6nud000fr01reeltdgkyf/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
         {
           maxZoom: 22,
           tileSize: 256,
-          opacity: 0.7, // Más transparente
+          opacity: 0.9,
           zIndex: 500,
-          className: 'traffic-multiply-layer', // Clase para aplicar blend
         },
       ).addTo(map.value)
-
-      // Agregar CSS con mix-blend-mode
-      if (!document.getElementById('traffic-multiply-style')) {
-        const style = document.createElement('style')
-        style.id = 'traffic-multiply-style'
-        style.textContent = `
-        .traffic-multiply-layer {
-          mix-blend-mode: multiply !important;
-        }
-      `
-        document.head.appendChild(style)
-      }
 
       map.value.on('zoomend', actualizarCapaTrafico)
 
