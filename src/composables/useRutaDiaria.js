@@ -1,6 +1,6 @@
-// src/composables/useRutaDiaria.js
+// src/composables/useRutaDiaria.js - CON STORAGE
 import { ref } from 'vue'
-import { db } from 'src/firebase/firebaseConfig'
+import { db, auth } from 'src/firebase/firebaseConfig'
 import {
   collection,
   doc,
@@ -13,10 +13,29 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore'
+import { useRutasStorage } from './useRutasStorage'
 
 export function useRutaDiaria() {
   const loading = ref(false)
   const error = ref(null)
+  
+  // 🆕 Usar composable de Storage
+  const { agregarCoordenada, obtenerUrlRutas, obtenerCoordenadasDesdeStorage } = useRutasStorage()
+  
+  // 🆕 Cache en memoria para coordenadas (evita leer Storage constantemente)
+  const coordenadasCache = ref(new Map())
+
+  /**
+   * Verificar autenticación
+   */
+  const verificarAutenticacion = () => {
+    const user = auth.currentUser
+    if (!user) {
+      console.error('❌ Usuario no autenticado')
+      throw new Error('Usuario no autenticado')
+    }
+    return user
+  }
 
   /**
    * Obtiene el ID de la ruta diaria actual (formato: YYYY-MM-DD)
@@ -30,6 +49,33 @@ export function useRutaDiaria() {
   }
 
   /**
+   * 🆕 Obtiene las coordenadas del caché o las descarga
+   */
+  const obtenerCoordenadasCache = async (unidadId, fecha) => {
+    const cacheKey = `${unidadId}-${fecha}`
+    
+    // Si está en caché, retornar
+    if (coordenadasCache.value.has(cacheKey)) {
+      return coordenadasCache.value.get(cacheKey)
+    }
+    
+    // Si no está en caché, intentar cargar desde Storage
+    try {
+      const url = await obtenerUrlRutas(unidadId, fecha)
+      if (url) {
+        const coordenadas = await obtenerCoordenadasDesdeStorage(url)
+        coordenadasCache.value.set(cacheKey, coordenadas)
+        return coordenadas
+      }
+    } catch (err) {
+      console.warn('⚠️ No se pudieron cargar coordenadas previas:', err)
+    }
+    
+    // Si no existe, retornar array vacío
+    return []
+  }
+
+  /**
    * Crea o actualiza la ruta diaria de una unidad
    */
   const iniciarOActualizarRutaDiaria = async (unidadId, datosActualizacion = {}) => {
@@ -37,6 +83,8 @@ export function useRutaDiaria() {
     error.value = null
 
     try {
+      verificarAutenticacion()
+      
       const idRuta = obtenerIdRutaDiaria()
       const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', idRuta)
       
@@ -60,8 +108,23 @@ export function useRutaDiaria() {
           velocidad_promedio: '0',
           odometro_inicio: datosActualizacion.odometro_inicio || '0',
           odometro_fin: datosActualizacion.odometro_fin || '0',
-          rutas: datosActualizacion.rutas || [],
-          ...datosActualizacion
+          rutas_url: null, // 🆕 URL del archivo JSON en Storage
+          total_coordenadas: 0 // 🆕 Contador de coordenadas
+        }
+        
+        // 🆕 Si hay coordenada inicial, guardarla en Storage
+        if (datosActualizacion.nuevaCoordenada) {
+          const resultado = await agregarCoordenada(
+            unidadId, 
+            idRuta, 
+            datosActualizacion.nuevaCoordenada,
+            []
+          )
+          nuevaRuta.rutas_url = resultado.url
+          nuevaRuta.total_coordenadas = 1
+          
+          // Actualizar caché
+          coordenadasCache.value.set(`${unidadId}-${idRuta}`, resultado.coordenadas)
         }
         
         await setDoc(rutaRef, nuevaRuta)
@@ -72,11 +135,10 @@ export function useRutaDiaria() {
         const datosActuales = rutaSnapshot.data()
         
         const actualizacion = {
-          fecha_hora_fin: serverTimestamp(),
-          ...datosActualizacion
+          fecha_hora_fin: serverTimestamp()
         }
 
-        // Calcular duración si hay fecha de inicio
+        // Calcular duración
         if (datosActuales.fecha_hora_inicio && datosActuales.fecha_hora_inicio.seconds) {
           const inicio = datosActuales.fecha_hora_inicio.toDate()
           const fin = new Date()
@@ -84,7 +146,7 @@ export function useRutaDiaria() {
           actualizacion.duracion_total_minutos = duracionMinutos
         }
 
-        // Actualizar velocidad máxima si es necesaria
+        // Actualizar velocidad máxima
         if (datosActualizacion.velocidad_actual) {
           const velActual = parseFloat(datosActualizacion.velocidad_actual)
           const velMaxima = parseFloat(datosActuales.velocidad_maxima || '0')
@@ -93,11 +155,32 @@ export function useRutaDiaria() {
           }
         }
 
-        // Agregar coordenadas a la ruta si se proporcionan
+        // 🆕 GUARDAR COORDENADA EN STORAGE (en lugar de array en Firestore)
         if (datosActualizacion.nuevaCoordenada) {
-          const rutasActuales = datosActuales.rutas || []
-          actualizacion.rutas = [...rutasActuales, datosActualizacion.nuevaCoordenada]
+          // Obtener coordenadas existentes del caché
+          const coordenadasExistentes = await obtenerCoordenadasCache(unidadId, idRuta)
+          
+          // Agregar nueva coordenada
+          const resultado = await agregarCoordenada(
+            unidadId,
+            idRuta,
+            datosActualizacion.nuevaCoordenada,
+            coordenadasExistentes
+          )
+          
+          actualizacion.rutas_url = resultado.url
+          actualizacion.total_coordenadas = resultado.totalCoordenadas
+          
+          // Actualizar caché
+          coordenadasCache.value.set(`${unidadId}-${idRuta}`, resultado.coordenadas)
+          
+          console.log(`📍 Coordenada agregada. Total: ${resultado.totalCoordenadas}`)
         }
+
+        // Actualizar otros campos si se proporcionan
+        if (datosActualizacion.conductor_id) actualizacion.conductor_id = datosActualizacion.conductor_id
+        if (datosActualizacion.conductor_nombre) actualizacion.conductor_nombre = datosActualizacion.conductor_nombre
+        if (datosActualizacion.odometro_fin) actualizacion.odometro_fin = datosActualizacion.odometro_fin
 
         await updateDoc(rutaRef, actualizacion)
         console.log('✅ Ruta diaria actualizada:', idRuta)
@@ -135,6 +218,29 @@ export function useRutaDiaria() {
       throw err
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * 🆕 Obtiene la ruta completa con coordenadas desde Storage
+   */
+  const obtenerRutaDiariaConCoordenadas = async (unidadId) => {
+    try {
+      const rutaDiaria = await obtenerRutaDiariaActual(unidadId)
+      
+      if (rutaDiaria && rutaDiaria.rutas_url) {
+        // Descargar coordenadas desde Storage
+        const coordenadas = await obtenerCoordenadasDesdeStorage(rutaDiaria.rutas_url)
+        return {
+          ...rutaDiaria,
+          coordenadas
+        }
+      }
+      
+      return rutaDiaria
+    } catch (err) {
+      console.error('❌ Error al obtener ruta con coordenadas:', err)
+      throw err
     }
   }
 
@@ -205,13 +311,23 @@ export function useRutaDiaria() {
     }
   }
 
+  /**
+   * 🆕 Limpiar caché de coordenadas
+   */
+  const limpiarCache = () => {
+    coordenadasCache.value.clear()
+    console.log('🧹 Caché de coordenadas limpiado')
+  }
+
   return {
     loading,
     error,
     obtenerIdRutaDiaria,
     iniciarOActualizarRutaDiaria,
     obtenerRutaDiariaActual,
+    obtenerRutaDiariaConCoordenadas, // 🆕
     obtenerHistorialRutas,
-    agregarParada
+    agregarParada,
+    limpiarCache // 🆕
   }
 }
