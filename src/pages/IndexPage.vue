@@ -496,7 +496,7 @@ const dibujarTodosEnMapa = async () => {
           radius: geozona.radio,
           color: borderColor,
           fillColor: fillColor,
-          fillOpacity: 0.15,
+          fillOpacity: 0.35,
           weight: 2,
         }).addTo(mapaAPI.map)
 
@@ -601,7 +601,7 @@ const dibujarTodosEnMapa = async () => {
         const polygon = mapaAPI.L.polygon(puntos, {
           color: borderColor,
           fillColor: fillColor,
-          fillOpacity: 0.2,
+          fillOpacity: 0.35,
           weight: 3,
         }).addTo(mapaAPI.map)
 
