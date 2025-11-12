@@ -163,8 +163,6 @@
       </div>
     </q-scroll-area>
 
-    <!-- El resto del template (dialog y menú) se mantiene igual -->
-    <!-- Diálogo para Crear/Editar Evento -->
     <!-- Diálogo para Crear/Editar Evento -->
     <q-dialog
       v-model="dialogNuevoEvento"
@@ -224,17 +222,62 @@
                   emit-value
                   map-options
                 />
+                
+                <!-- 🆕 SELECTOR MEJORADO CON BÚSQUEDA E ICONOS -->
                 <q-select
                   v-model="condicion.ubicacionId"
-                  :options="opcionesUbicaciones"
-                  label="Ubicación"
+                  :options="opcionesFiltradas[index] || []"
+                  label="Seleccionar ubicación"
                   outlined
                   dense
                   class="col-12"
                   emit-value
                   map-options
                   clearable
-                />
+                  use-input
+                  input-debounce="300"
+                  @filter="(val, update) => filtrarUbicaciones(val, update, index)"
+                >
+                  <template v-slot:prepend>
+                    <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
+                  </template>
+                  
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar>
+                        <q-icon 
+                          :name="scope.opt.icono" 
+                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                          size="20px"
+                        />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        <q-item-label caption>{{ scope.opt.tipo }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                  
+                  <template v-slot:selected-item="scope">
+                    <div class="row items-center no-wrap q-gutter-xs">
+                      <q-icon 
+                        :name="scope.opt.icono" 
+                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                        size="18px"
+                      />
+                      <span>{{ scope.opt.label }}</span>
+                    </div>
+                  </template>
+                  
+                  <template v-slot:no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">
+                        No se encontraron ubicaciones
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+                
                 <q-btn
                   v-if="nuevoEvento.condiciones.length > 1"
                   flat
@@ -270,15 +313,6 @@
               @click="agregarCondicion"
             />
 
-            <!-- Resumen del Patrón Lógico -->
-            <q-card flat bordered class="bg-blue-grey-1">
-              <q-card-section class="q-pa-sm">
-                <div class="text-caption text-grey-7">Patrón de criterios:</div>
-                <div class="text-weight-bold">{{ patronCriterios }}</div>
-                <div class="text-caption text-grey-6 q-mt-xs">{{ descripcionPatron }}</div>
-              </q-card-section>
-            </q-card>
-
             <!-- Opciones de Alerta y Aplicación -->
             <q-separator class="q-mt-md" />
             <div class="text-subtitle2 q-mt-sm">Opciones de Alerta</div>
@@ -289,12 +323,6 @@
               outlined
               emit-value
               map-options
-            />
-
-            <q-toggle
-              v-model="nuevoEvento.condicionTiempo"
-              label="Aplicar condiciones de tiempo"
-              color="primary"
             />
 
             <q-select
@@ -376,7 +404,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useEventos } from 'src/composables/useEventos'
@@ -411,6 +439,9 @@ const dialogNuevoEvento = ref(false)
 const eventoMenu = ref(null)
 const modoEdicion = ref(false)
 
+// 🆕 VARIABLE PARA OPCIONES FILTRADAS
+const opcionesFiltradas = ref([])
+
 // Datos cargados desde Firebase
 const eventos = ref([])
 const pois = ref([])
@@ -437,7 +468,7 @@ const nuevoEvento = ref({
   horaFin: '',
 })
 
-// Opciones (mantener igual)
+// Opciones
 const opcionesFiltro = [
   { label: 'Todos', value: 'todos' },
   { label: 'Activos', value: 'activos' },
@@ -452,13 +483,11 @@ const opcionesCondicion = [
 const opcionesActivacion = [
   { label: 'Entrada', value: 'Entrada' },
   { label: 'Salida', value: 'Salida' },
-  { label: 'Dentro', value: 'Dentro' },
-  { label: 'Fuera', value: 'Fuera' },
 ]
 
 const opcionesActivacionAlerta = [
-  { label: 'Al inicio (primera vez)', value: 'Al inicio' },
   { label: 'Cada vez que ocurra', value: 'Cada vez' },
+  { label: 'Al inicio (primera vez)', value: 'Al inicio' },
   { label: 'Una vez al día', value: 'Una vez al día' },
 ]
 
@@ -477,7 +506,7 @@ const opcionesDiasSemana = [
   { label: 'Domingo', value: 0 },
 ]
 
-// Computed (mantener igual)
+// Computed
 const totalEventos = computed(() => eventos.value.filter((e) => e.activo).length)
 const eventosInactivos = computed(() => eventos.value.filter((e) => !e.activo).length)
 
@@ -501,73 +530,69 @@ const eventosFiltrados = computed(() => {
   return resultado
 })
 
+// 🆕 COMPUTED MEJORADO CON ICONOS (SIN SIDE EFFECTS)
 const opcionesUbicaciones = computed(() => {
   const tipos = nuevoEvento.value.condiciones.map((c) => c.tipo)
   const primerTipo = tipos[0]
   const todosMismoTipo = tipos.every((t) => t === primerTipo)
 
+  let opciones = []
+
   if (!todosMismoTipo) {
-    const todasOpciones = [
+    // Mezclar POIs y Geozonas
+    opciones = [
       ...pois.value.map((poi) => ({
-        label: `📍 ${poi.nombre}`,
+        label: poi.nombre,
         value: poi.id,
         tipo: 'POI',
+        icono: 'place',
       })),
       ...geozonas.value.map((gz) => ({
-        label: `🗺️ ${gz.nombre}`,
+        label: gz.nombre,
         value: gz.id,
         tipo: 'Geozona',
+        icono: 'layers',
       })),
     ]
-    return todasOpciones
-  }
-
-  if (primerTipo === 'POI') {
-    return pois.value.map((poi) => ({
+  } else if (primerTipo === 'POI') {
+    opciones = pois.value.map((poi) => ({
       label: poi.nombre,
       value: poi.id,
+      tipo: 'POI',
+      icono: 'place',
     }))
   } else {
-    return geozonas.value.map((gz) => ({
+    opciones = geozonas.value.map((gz) => ({
       label: gz.nombre,
       value: gz.id,
+      tipo: 'Geozona',
+      icono: 'layers',
     }))
   }
+
+  return opciones
 })
 
-const patronCriterios = computed(() => {
-  if (nuevoEvento.value.condiciones.length === 1) {
-    return 'A'
+// 🆕 WATCH para inicializar opciones filtradas cuando cambien las condiciones
+watch(
+  () => nuevoEvento.value.condiciones.length,
+  (newLength) => {
+    if (opcionesFiltradas.value.length !== newLength) {
+      opcionesFiltradas.value = Array(newLength).fill(null).map(() => opcionesUbicaciones.value)
+    }
+  },
+  { immediate: true }
+)
+
+// 🆕 WATCH para actualizar opciones filtradas cuando cambien POIs/Geozonas
+watch(
+  [pois, geozonas],
+  () => {
+    if (opcionesFiltradas.value.length > 0) {
+      opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
+    }
   }
-
-  const letras = nuevoEvento.value.condiciones.map((_, index) => String.fromCharCode(65 + index))
-  let patron = letras[0]
-
-  for (let i = 0; i < nuevoEvento.value.operadoresLogicos.length; i++) {
-    const operador = nuevoEvento.value.operadoresLogicos[i] || 'AND'
-    patron += ` ${operador} ${letras[i + 1]}`
-  }
-
-  return patron
-})
-
-const descripcionPatron = computed(() => {
-  const numCondiciones = nuevoEvento.value.condiciones.length
-  if (numCondiciones === 1) {
-    return 'Se activará cuando se cumpla la condición A'
-  }
-
-  const tieneAND = nuevoEvento.value.operadoresLogicos.includes('AND')
-  const tieneOR = nuevoEvento.value.operadoresLogicos.includes('OR')
-
-  if (tieneAND && !tieneOR) {
-    return 'Se activará cuando se cumplan TODAS las condiciones'
-  } else if (tieneOR && !tieneAND) {
-    return 'Se activará cuando se cumpla AL MENOS UNA condición'
-  } else {
-    return 'Se activará según el patrón de operadores lógicos definido'
-  }
-})
+)
 
 const esFormularioValido = computed(() => {
   if (!nuevoEvento.value.nombre) return false
@@ -586,11 +611,30 @@ const esFormularioValido = computed(() => {
 
 // Methods
 
+// 🆕 FUNCIÓN PARA FILTRAR UBICACIONES CON BÚSQUEDA
+function filtrarUbicaciones(val, update, index) {
+  update(() => {
+    if (val === '') {
+      opcionesFiltradas.value[index] = opcionesUbicaciones.value
+    } else {
+      const needle = val.toLowerCase()
+      opcionesFiltradas.value[index] = opcionesUbicaciones.value.filter(
+        (v) => v.label.toLowerCase().indexOf(needle) > -1
+      )
+    }
+  })
+}
+
+// 🆕 FUNCIÓN PARA OBTENER ICONO SEGÚN TIPO
+function getIconoTipoCondicion(tipo) {
+  return tipo === 'POI' ? 'place' : 'layers'
+}
+
 const redibujarMapa = () => {
-  // Emitir evento para que IndexPage redibuje todo
   window.dispatchEvent(new CustomEvent('redibujarMapa'))
   console.log('🔄 Solicitando redibujado del mapa...')
 }
+
 function cerrarDrawer() {
   emit('close')
 }
@@ -650,6 +694,7 @@ async function toggleEventoEstado(evento) {
   }
 }
 
+// 🆕 FUNCIÓN MEJORADA PARA AGREGAR CONDICIÓN
 function agregarCondicion() {
   nuevoEvento.value.condiciones.push({
     tipo: 'POI',
@@ -657,11 +702,15 @@ function agregarCondicion() {
     ubicacionId: null,
   })
   nuevoEvento.value.operadoresLogicos.push('AND')
+  
+  // Agregar opciones filtradas para la nueva condición
+  opcionesFiltradas.value.push(opcionesUbicaciones.value)
 }
 
 function eliminarCondicion(index) {
   if (nuevoEvento.value.condiciones.length > 1) {
     nuevoEvento.value.condiciones.splice(index, 1)
+    opcionesFiltradas.value.splice(index, 1)
     if (index < nuevoEvento.value.operadoresLogicos.length) {
       nuevoEvento.value.operadoresLogicos.splice(index, 1)
     } else if (nuevoEvento.value.operadoresLogicos.length > 0) {
@@ -676,6 +725,7 @@ function abrirDialogoNuevo() {
   dialogNuevoEvento.value = true
 }
 
+// 🆕 FUNCIÓN MEJORADA PARA RESETEAR FORMULARIO
 function resetearFormulario() {
   nuevoEvento.value = {
     nombre: '',
@@ -690,12 +740,15 @@ function resetearFormulario() {
       },
     ],
     operadoresLogicos: [],
-    activacionAlerta: 'Al inicio',
+    activacionAlerta: 'Cada vez',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
     horaFin: '',
   }
+  
+  // Resetear opciones filtradas
+  opcionesFiltradas.value = [opcionesUbicaciones.value]
 }
 
 function cancelarFormulario() {
@@ -778,12 +831,16 @@ function editarEvento() {
       },
     ],
     operadoresLogicos: eventoMenu.value.operadoresLogicos || [],
-    activacionAlerta: eventoMenu.value.activacionAlerta || 'Al inicio',
+    activacionAlerta: eventoMenu.value.activacionAlerta || 'Cada vez',
     aplicacion: eventoMenu.value.aplicacion || 'siempre',
     diasSemana: eventoMenu.value.diasSemana || [],
     horaInicio: eventoMenu.value.horaInicio || '',
     horaFin: eventoMenu.value.horaFin || '',
   }
+  
+  // Inicializar opciones filtradas con las condiciones existentes
+  opcionesFiltradas.value = nuevoEvento.value.condiciones.map(() => opcionesUbicaciones.value)
+  
   dialogNuevoEvento.value = true
 }
 
@@ -848,7 +905,6 @@ onMounted(async () => {
   
   await cargarDatos()
   
-  // 🆕 AGREGAR ESTA VERIFICACIÓN:
   console.log('1️⃣1️⃣ Eventos: Verificando window._ubicacionParaEvento')
   console.log('📦 Valor:', window._ubicacionParaEvento)
   
@@ -858,11 +914,9 @@ onMounted(async () => {
     console.log('📍 Ubicación:', data.ubicacion.nombre)
     console.log('🏷️ Tipo:', data.tipo)
     
-    // Limpiar inmediatamente
     delete window._ubicacionParaEvento
     console.log('1️⃣3️⃣ Eventos: window._ubicacionParaEvento limpiado')
     
-    // Esperar un momento antes de abrir el diálogo
     setTimeout(() => {
       console.log('1️⃣4️⃣ Eventos: Ejecutando crearEventoConUbicacionPreseleccionada')
       crearEventoConUbicacionPreseleccionada(data)
@@ -890,13 +944,13 @@ function crearEventoConUbicacionPreseleccionada(data) {
     condicionTiempo: false,
     condiciones: [
       {
-        tipo: tipoUbicacion, // 'POI' o 'Geozona'
+        tipo: tipoUbicacion,
         activacion: 'Entrada',
         ubicacionId: data.ubicacion.id
       }
     ],
     operadoresLogicos: [],
-    activacionAlerta: 'Al inicio',
+    activacionAlerta: 'Cada vez',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
@@ -906,12 +960,10 @@ function crearEventoConUbicacionPreseleccionada(data) {
   console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado:', nuevoEvento.value)
   console.log('1️⃣8️⃣ Eventos: Abriendo dialogNuevoEvento')
   
-  // Abrir el diálogo
   dialogNuevoEvento.value = true
   
   console.log('1️⃣9️⃣ Eventos: dialogNuevoEvento.value =', dialogNuevoEvento.value)
   
-  // Notificación
   if ($q && $q.notify) {
     $q.notify({
       type: 'positive',
@@ -926,8 +978,6 @@ function crearEventoConUbicacionPreseleccionada(data) {
   console.log('2️⃣0️⃣ Eventos: Proceso completado')
 }
 
-
-// SOLUCIÓN: Usamos solo cargarDatos y eliminamos recargarDatos
 async function cargarDatos() {
   try {
     console.log('🔄 Iniciando carga de datos...')
@@ -977,12 +1027,9 @@ async function cargarDatos() {
     }
   }
 }
-
-// ELIMINADO: La función recargarDatos ya no existe, usamos cargarDatos directamente
 </script>
 
 <style scoped>
-/* Los estilos se mantienen igual que en la versión anterior */
 .eventos-drawer-compact {
   width: 100%;
   height: 100%;
@@ -1118,7 +1165,6 @@ async function cargarDatos() {
   color: #9e9e9e;
 }
 
-/* Estilos para el diálogo de eventos */
 .dialog-evento {
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -1135,5 +1181,36 @@ async function cargarDatos() {
 .dialog-evento .q-card__actions {
   padding: 12px 16px;
   border-top: 1px solid #eee;
+}
+
+/* 🆕 ESTILOS PARA EL SELECTOR MEJORADO */
+.q-select :deep(.q-field__prepend) {
+  padding-right: 8px;
+}
+
+.q-item__section--avatar {
+  min-width: 40px;
+}
+
+.q-item__label--caption {
+  font-size: 11px;
+  color: #757575;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Mejorar la visualización del item seleccionado */
+.q-select :deep(.q-field__native) {
+  padding-left: 4px;
+}
+
+/* Mejorar el dropdown */
+.q-menu .q-item {
+  padding: 8px 12px;
+}
+
+.q-menu .q-item:hover {
+  background-color: #f5f5f5;
 }
 </style>
