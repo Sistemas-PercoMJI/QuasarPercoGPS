@@ -1,8 +1,9 @@
-// src/composables/useSimuladorUnidades.js - MOVIMIENTO ALEATORIO TOTAL
+// src/composables/useSimuladorUnidades.js - CON INTEGRACIÓN FIREBASE
 import { ref } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, set, update, onValue, remove } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
+import { useRutaDiaria } from 'src/composables/useRutaDiaria'
 
 export function useSimuladorUnidades() {
   const simulacionActiva = ref(false)
@@ -10,6 +11,7 @@ export function useSimuladorUnidades() {
   const unidadesSimuladas = ref([])
   
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
+  const { iniciarOActualizarRutaDiaria } = useRutaDiaria()
   
   // 🗺️ Límites de Tijuana (área de movimiento)
   const LIMITES_TIJUANA = {
@@ -215,11 +217,29 @@ export function useSimuladorUnidades() {
       ultimaActualizacion: new Date().toISOString(),
       ultimoPuntoTiempo: Date.now(),
       velocidadBase: velocidadBase,
-      destinoAleatorio: destinoInicialAleatorio // 🔧 Destino aleatorio
+      destinoAleatorio: destinoInicialAleatorio
     }
 
     const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
     await set(unidadRef, estadoInicial)
+    
+    // 🆕 REGISTRAR INICIO DE RUTA DIARIA
+    try {
+      await iniciarOActualizarRutaDiaria(unidad.id, {
+        conductor_id: conductor.id,
+        conductor_nombre: `${conductor.Nombre} ${conductor.Apellido}`,
+        odometro_inicio: '0',
+        velocidad_actual: String(velocidadBase),
+        nuevaCoordenada: {
+          lat: ubicacionInicial.lat,
+          lng: ubicacionInicial.lng,
+          timestamp: new Date().toISOString()
+        }
+      })
+      console.log(`📝 Ruta diaria iniciada para ${unidad.Unidad}`)
+    } catch (err) {
+      console.error(`❌ Error al iniciar ruta diaria:`, err)
+    }
     
     // Intervalo de actualización
     const intervalo = setInterval(async () => {
@@ -234,7 +254,7 @@ export function useSimuladorUnidades() {
         // 🎲 Mover hacia destino aleatorio
         const nuevoMovimiento = moverUnidadHaciaDestinoAleatorio(estadoActual)
 
-        // Actualizar en Firebase
+        // Actualizar en Firebase Realtime Database
         await update(unidadRef, {
           ubicacion: nuevoMovimiento.ubicacion,
           velocidad: nuevoMovimiento.velocidad,
@@ -244,18 +264,37 @@ export function useSimuladorUnidades() {
           timestamp: Date.now(),
           ultimaActualizacion: new Date().toISOString(),
           ultimoPuntoTiempo: Date.now(),
-          destinoAleatorio: nuevoMovimiento.destinoAleatorio, // Guardar destino actual
+          destinoAleatorio: nuevoMovimiento.destinoAleatorio,
           direccionTexto: DIRECCIONES_TIJUANA[Math.floor(Math.random() * DIRECCIONES_TIJUANA.length)]
         })
 
-        // Evaluar eventos
+        // 🆕 ACTUALIZAR RUTA DIARIA EN FIRESTORE
+        try {
+          await iniciarOActualizarRutaDiaria(unidad.id, {
+            conductor_id: estadoActual.conductorId,
+            conductor_nombre: estadoActual.conductorNombre,
+            velocidad_actual: String(nuevoMovimiento.velocidad),
+            nuevaCoordenada: {
+              lat: nuevoMovimiento.ubicacion.lat,
+              lng: nuevoMovimiento.ubicacion.lng,
+              timestamp: new Date().toISOString()
+            }
+          })
+        } catch (errRuta) {
+          console.error(`⚠️ Error actualizando ruta diaria:`, errRuta)
+        }
+
+        // 🆕 EVALUAR EVENTOS (esto también registra en Firebase automáticamente)
         try {
           const unidadParaEvaluar = {
             id: unidad.id,
             conductorId: estadoActual.conductorId,
             conductorNombre: estadoActual.conductorNombre,
             unidadNombre: estadoActual.unidadNombre,
+            nombre: estadoActual.conductorNombre,
             ubicacion: nuevoMovimiento.ubicacion,
+            lat: nuevoMovimiento.ubicacion.lat,
+            lng: nuevoMovimiento.ubicacion.lng,
             estado: nuevoMovimiento.estado,
             velocidad: nuevoMovimiento.velocidad
           }
@@ -267,13 +306,14 @@ export function useSimuladorUnidades() {
       } catch (error) {
         console.error(`❌ Error actualizando ${unidadId}:`, error)
       }
-    }, 10000) // Actualizar cada 2 segundos
+    }, 10000) // Actualizar cada 10 segundos
 
     intervalos.value.push({ unidadId, intervalo })
     unidadesSimuladas.value.push({ 
       conductorId: conductor.id, 
       unidadId,
-      unidadNombre: unidad.Unidad
+      unidadNombre: unidad.Unidad,
+      unidadIdReal: unidad.id // 🆕 Guardar ID real de la unidad
     })
   }
 
@@ -295,39 +335,55 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
     
-    console.log('🎲 Iniciando simulación con MOVIMIENTO ALEATORIO')
-    console.log(`📍 Área de movimiento: Tijuana [${LIMITES_TIJUANA.latMin}, ${LIMITES_TIJUANA.lngMin}] a [${LIMITES_TIJUANA.latMax}, ${LIMITES_TIJUANA.lngMax}]`)
+    console.log('🎲 Iniciando simulación con MOVIMIENTO ALEATORIO + FIREBASE')
+    console.log(`📍 Área de movimiento: Tijuana`)
+    console.log(`💾 Registrando rutas diarias y eventos en Firebase`)
     
-    let indice = 0
     for (const conductor of conductoresConUnidad) {
       const unidad = unidades.find(u => u.id === conductor.UnidadAsignada)
       if (unidad) {
-        await iniciarSimulacionUnidad(conductor, unidad, indice)
-        indice++
+        await iniciarSimulacionUnidad(conductor, unidad)
+        // Pequeño delay entre unidades
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
     }
     
-    console.log(`✅ ${conductoresConUnidad.length} unidades moviéndose aleatoriamente por Tijuana`)
+    console.log(`✅ ${conductoresConUnidad.length} unidades activas con registro en Firebase`)
   }
 
   /**
    * Detiene la simulación
    */
   const detenerSimulacion = async () => {
+    console.log('🛑 Deteniendo simulación...')
+    
     intervalos.value.forEach(({ intervalo }) => {
       clearInterval(intervalo)
     })
     
-    for (const { unidadId } of unidadesSimuladas.value) {
-      const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
-      await remove(unidadRef)
+    // 🆕 FINALIZAR RUTAS DIARIAS
+    for (const { unidadId, unidadIdReal } of unidadesSimuladas.value) {
+      try {
+        // Actualizar ruta diaria con hora de fin
+        await iniciarOActualizarRutaDiaria(unidadIdReal, {
+          // La función ya maneja automáticamente fecha_hora_fin y duración
+        })
+        
+        // Eliminar de Realtime Database
+        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
+        await remove(unidadRef)
+        
+        console.log(`✅ Ruta finalizada para unidad ${unidadIdReal}`)
+      } catch (err) {
+        console.error(`❌ Error finalizando unidad ${unidadId}:`, err)
+      }
     }
     
     intervalos.value = []
     unidadesSimuladas.value = []
     simulacionActiva.value = false
     
-    console.log('🛑 Simulación detenida')
+    console.log('✅ Simulación detenida y rutas finalizadas')
   }
 
   /**

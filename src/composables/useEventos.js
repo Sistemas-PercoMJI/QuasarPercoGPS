@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  setDoc,
 } from 'firebase/firestore'
 
 export function useEventos(userId) {
@@ -20,28 +21,34 @@ export function useEventos(userId) {
   // Referencia a la subcolección Eventos
   const eventosRef = collection(db, 'Usuarios', userId, 'Eventos')
 
-  // Crear nuevo evento
-  const crearEvento = async (eventoData) => {
-    loading.value = true
-    error.value = null
+// Crear nuevo evento
+const crearEvento = async (eventoData) => {
+  loading.value = true
+  error.value = null
 
-    try {
-      const docRef = await addDoc(eventosRef, {
-        ...eventoData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+  try {
+    // Primero creamos el documento sin el ID
+    const docRef = await addDoc(eventosRef, {
+      ...eventoData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
 
-      console.log('✅ Evento guardado con ID:', docRef.id)
-      return docRef.id
-    } catch (err) {
-      error.value = err.message
-      console.error('❌ Error al guardar evento:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
+    // 🆕 NUEVO: Actualizamos el documento para agregar el ID como campo
+    await updateDoc(docRef, {
+      id: docRef.id
+    })
+
+    console.log('✅ Evento guardado con ID:', docRef.id)
+    return docRef.id
+  } catch (err) {
+    error.value = err.message
+    console.error('❌ Error al guardar evento:', err)
+    throw err
+  } finally {
+    loading.value = false
   }
+}
 
   // Obtener todos los eventos
   const obtenerEventos = async () => {
@@ -134,33 +141,38 @@ export function useEventos(userId) {
     }
   }
 
-  // Duplicar evento
-  const duplicarEvento = async (eventoData) => {
-    loading.value = true
-    error.value = null
+ // Duplicar evento
+const duplicarEvento = async (eventoData) => {
+  loading.value = true
+  error.value = null
 
-    try {
-      // Crear una copia del evento sin el ID, createdAt y updatedAt
-      // eslint-disable-next-line no-unused-vars
-      const { id, createdAt, updatedAt, ...dataSinId } = eventoData
-      
-      const docRef = await addDoc(eventosRef, {
-        ...dataSinId,
-        nombre: `${dataSinId.nombre} (Copia)`,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
+  try {
+    // Crear una copia del evento sin el ID, createdAt y updatedAt
+    // eslint-disable-next-line no-unused-vars
+    const { id, createdAt, updatedAt, ...dataSinId } = eventoData
+    
+    // 🆕 Generar referencia con ID automático
+    const nuevoDocRef = doc(collection(db, 'Usuarios', userId, 'Eventos'))
+    
+    // Guardar con el ID incluido
+    await setDoc(nuevoDocRef, {
+      id: nuevoDocRef.id, // 🆕 El ID como campo
+      ...dataSinId,
+      nombre: `${dataSinId.nombre} (Copia)`,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
 
-      console.log('✅ Evento duplicado con ID:', docRef.id)
-      return docRef.id
-    } catch (err) {
-      error.value = err.message
-      console.error('❌ Error al duplicar evento:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
+    console.log('✅ Evento duplicado con ID:', nuevoDocRef.id)
+    return nuevoDocRef.id
+  } catch (err) {
+    error.value = err.message
+    console.error('❌ Error al duplicar evento:', err)
+    throw err
+  } finally {
+    loading.value = false
   }
+}
 
   return {
     loading,

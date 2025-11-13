@@ -605,16 +605,22 @@ export function useMap() {
   }
 
   const actualizarCirculo = (id, centro, radio, nombre, color = '#4ECDC4') => {
-    if (!map.value || !L) return
+    if (!map.value || !L) return // ✅ map.value
 
     // Buscar y eliminar el círculo existente
     map.value.eachLayer((layer) => {
+      // ✅ map.value
       if (layer._geozonaId === id) {
-        map.value.removeLayer(layer)
+        // ✅ Cerrar popup antes de eliminar
+        if (layer.getPopup && layer.getPopup()) {
+          layer.closePopup()
+          layer.unbindPopup()
+        }
+        map.value.removeLayer(layer) // ✅ map.value
       }
     })
 
-    // Calcular color del borde (30% más oscuro)
+    // Calcular color del borde
     const oscurecerColor = (hex, porcentaje = 30) => {
       hex = hex.replace('#', '')
       let r = parseInt(hex.substring(0, 2), 16)
@@ -638,7 +644,7 @@ export function useMap() {
       fillColor: color,
       fillOpacity: 0.2,
       weight: 3,
-    }).addTo(map)
+    }).addTo(map.value) // ✅ map.value
 
     nuevoCirculo._geozonaId = id
     nuevoCirculo.bindPopup(`<b>🔵 ${nombre}</b><p>Radio: ${radio}m</p>`)
@@ -647,16 +653,22 @@ export function useMap() {
   }
 
   const actualizarPoligono = (id, puntos, nombre, color = '#4ECDC4') => {
-    if (!map.value || !L) return
+    if (!map.value || !L) return // ✅ map.value
 
     // Buscar y eliminar el polígono existente
     map.value.eachLayer((layer) => {
+      // ✅ map.value
       if (layer._geozonaId === id) {
-        map.value.removeLayer(layer)
+        // ✅ Cerrar popup antes de eliminar
+        if (layer.getPopup && layer.getPopup()) {
+          layer.closePopup()
+          layer.unbindPopup()
+        }
+        map.value.removeLayer(layer) // ✅ map.value
       }
     })
 
-    // Calcular color del borde (30% más oscuro)
+    // Calcular color del borde
     const oscurecerColor = (hex, porcentaje = 30) => {
       hex = hex.replace('#', '')
       let r = parseInt(hex.substring(0, 2), 16)
@@ -680,7 +692,7 @@ export function useMap() {
       fillColor: color,
       fillOpacity: 0.2,
       weight: 3,
-    }).addTo(map)
+    }).addTo(map.value) // ✅ map.value
 
     nuevoPoligono._geozonaId = id
     nuevoPoligono.bindPopup(`<b>🔷 ${nombre}</b><p>${puntos.length} puntos</p>`)
@@ -872,27 +884,14 @@ export function useMap() {
     } else {
       // Capa de tráfico con blend mode multiply
       capaTrafico.value = L.tileLayer(
-        `https://api.mapbox.com/styles/v1/sistemasmj123/cmhmpjwt1000j01sl59p952zr/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
+        `https://api.mapbox.com/styles/v1/sistemasmj123/cmhv6nud000fr01reeltdgkyf/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
         {
           maxZoom: 22,
           tileSize: 256,
-          opacity: 0.7, // Más transparente
+          opacity: 0.9,
           zIndex: 500,
-          className: 'traffic-multiply-layer', // Clase para aplicar blend
         },
       ).addTo(map.value)
-
-      // Agregar CSS con mix-blend-mode
-      if (!document.getElementById('traffic-multiply-style')) {
-        const style = document.createElement('style')
-        style.id = 'traffic-multiply-style'
-        style.textContent = `
-        .traffic-multiply-layer {
-          mix-blend-mode: multiply !important;
-        }
-      `
-        document.head.appendChild(style)
-      }
 
       map.value.on('zoomend', actualizarCapaTrafico)
 

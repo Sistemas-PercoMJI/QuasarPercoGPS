@@ -19,9 +19,19 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
-    // Unidades: acceso para autenticados
+    // 🆕 Unidades CON subcolecciones RutaDiaria y EventoDiario
     match /Unidades/{unidadId} {
       allow read, write: if request.auth != null;
+      
+      // 🆕 SUBCOLECCIÓN RutaDiaria (dentro de cada Unidad)
+      match /RutaDiaria/{rutaId} {
+        allow read, write: if request.auth != null;
+        
+        // 🆕 SUBCOLECCIÓN EventoDiario (dentro de cada RutaDiaria)
+        match /EventoDiario/{eventoId} {
+          allow read, write: if request.auth != null;
+        }
+      }
     }
     match /Unidades {
       allow list: if request.auth != null;
@@ -51,7 +61,7 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
       
-      // ⭐ AGREGAR: SUBCOLECCIÓN HistorialReportes
+      // SUBCOLECCIÓN HistorialReportes
       match /HistorialReportes/{reporteId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }

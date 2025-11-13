@@ -108,7 +108,7 @@ watch(
   { deep: true, immediate: false },
 )
 
-// 🔧 NUEVA FUNCIÓN: Iniciar evaluación continua de eventos
+// 🔧 Función para iniciar evaluación continua de eventos
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -117,7 +117,6 @@ function iniciarEvaluacionContinuaEventos() {
   console.log('🔄 Iniciando evaluación continua de eventos (cada 10 segundos)...')
 
   intervaloEvaluacionEventos = setInterval(() => {
-    // 🔧 FIX: Usar unidades trackeadas globalmente
     const unidadesParaEvaluar = window._unidadesTrackeadas || unidadesActivas.value
 
     if (unidadesParaEvaluar && unidadesParaEvaluar.length > 0) {
@@ -128,7 +127,7 @@ function iniciarEvaluacionContinuaEventos() {
   console.log('✅ Evaluación continua de eventos iniciada cada 10 segundos')
 }
 
-// 🔧 NUEVA FUNCIÓN: Detener evaluación
+// 🔧 Función para detener evaluación
 function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -283,7 +282,7 @@ function detenerSeguimientoGPS() {
   }
 }
 
-// 🔧 MEJORADA: Función de inicialización con logs detallados
+// 🔧 Función de inicialización con logs detallados
 async function inicializarSistemaDeteccion() {
   try {
     console.log('🚀 Inicializando sistema de detección de eventos...')
@@ -303,7 +302,6 @@ async function inicializarSistemaDeteccion() {
     console.log('  📍 POIs:', pois.length)
     console.log('  🗺️ Geozonas:', geozonas.length)
 
-    // 🔧 NUEVO: Log de eventos para debug
     if (eventosActivos.length > 0) {
       console.log('📋 Eventos configurados:')
       eventosActivos.forEach((evento) => {
@@ -317,6 +315,94 @@ async function inicializarSistemaDeteccion() {
   }
 }
 
+// 🆕 NUEVA FUNCIÓN: Limpiar capas del mapa correctamente
+const limpiarCapasDelMapa = () => {
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    return
+  }
+
+  const map = mapPage._mapaAPI.map
+  
+  // Cerrar todos los popups primero
+  map.closePopup()
+  
+  // Guardar referencias a capas que NO debemos eliminar
+  const capasProtegidas = []
+  
+  map.eachLayer((layer) => {
+    // Proteger marcador principal MJ Industrias
+    if (layer instanceof mapPage._mapaAPI.L.Marker) {
+      const esMarkerPrincipal = 
+        layer.getPopup()?.getContent() === '<b>MJ Industrias</b><br>Ubicación principal'
+      const esMarkerUsuario = layer === marcadorUsuario.value
+      
+      // Proteger marcadores de unidades GPS
+      const esMarkerVehiculo =
+        layer.options?.className === 'marker-vehiculo-gps' ||
+        layer.options?.icon?.options?.className === 'custom-marker-unidad' ||
+        layer.options?.zIndexOffset === 5000
+      
+      if (esMarkerPrincipal || esMarkerUsuario || esMarkerVehiculo) {
+        capasProtegidas.push(layer)
+      }
+    }
+  })
+  
+  // Eliminar todas las capas excepto las protegidas y el tile layer
+  map.eachLayer((layer) => {
+    const esCapaProtegida = capasProtegidas.includes(layer)
+    const esTileLayer = layer instanceof mapPage._mapaAPI.L.TileLayer
+    
+    if (!esCapaProtegida && !esTileLayer) {
+      // Desligar popup si existe
+      if (layer.getPopup) {
+        try {
+          layer.unbindPopup()
+        } catch {
+          // Ignorar errores al desligar
+        }
+      }
+      
+      // Desligar tooltip si existe
+      if (layer.getTooltip) {
+        try {
+          layer.unbindTooltip()
+        } catch {
+          // Ignorar errores al desligar
+        }
+      }
+      
+      // Remover la capa
+      try {
+        map.removeLayer(layer)
+      } catch (e) {
+        console.warn('⚠️ Error al remover capa:', e)
+      }
+    }
+  })
+  
+  console.log('🧹 Capas del mapa limpiadas correctamente')
+}
+
+// 🎨 Función para oscurecer un color hexadecimal (para el borde)
+function oscurecerColor(hex, porcentaje = 20) {
+  hex = hex.replace('#', '')
+  let r = parseInt(hex.substring(0, 2), 16)
+  let g = parseInt(hex.substring(2, 4), 16)
+  let b = parseInt(hex.substring(4, 6), 16)
+
+  r = Math.floor(r * (1 - porcentaje / 100))
+  g = Math.floor(g * (1 - porcentaje / 100))
+  b = Math.floor(b * (1 - porcentaje / 100))
+
+  const rHex = r.toString(16).padStart(2, '0')
+  const gHex = g.toString(16).padStart(2, '0')
+  const bHex = b.toString(16).padStart(2, '0')
+
+  return `#${rHex}${gHex}${bHex}`
+}
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -325,9 +411,9 @@ const dibujarTodosEnMapa = async () => {
   }
 
   mapaAPI = mapPage._mapaAPI
-  if (mapaAPI.map) {
-    mapaAPI.map.closePopup()
-  }
+  
+  // 🔧 USAR LA NUEVA FUNCIÓN DE LIMPIEZA
+  limpiarCapasDelMapa()
 
   try {
     const eventosActivos = await obtenerEventos()
@@ -403,15 +489,14 @@ const dibujarTodosEnMapa = async () => {
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
 
-        const fillColor = geozona.color || '#4ECDC4' // ✅ Color de Firebase o por defecto
-        const borderColor = oscurecerColor(fillColor, 30) // ✅ Borde más oscuro
+        const fillColor = geozona.color || '#4ECDC4'
+        const borderColor = oscurecerColor(fillColor, 30)
 
         const circle = mapaAPI.L.circle([lat, lng], {
           radius: geozona.radio,
-          color: borderColor, // ✅ Borde oscuro
+          color: borderColor,
           fillColor: fillColor,
-
-          fillOpacity: 0.15,
+          fillOpacity: 0.35,
           weight: 2,
         }).addTo(mapaAPI.map)
 
@@ -510,13 +595,13 @@ const dibujarTodosEnMapa = async () => {
         }
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const puntos = geozona.puntos.map((p) => [p.lat, p.lng])
-        const fillColor = geozona.color || '#4ECDC4' // ✅ Color de Firebase o por defecto
-        const borderColor = oscurecerColor(fillColor, 30) // ✅ Borde más oscuro
+        const fillColor = geozona.color || '#4ECDC4'
+        const borderColor = oscurecerColor(fillColor, 30)
 
         const polygon = mapaAPI.L.polygon(puntos, {
-          color: borderColor, // ✅ Borde oscuro
-          fillColor: fillColor, // ✅ Relleno con color personalizado
-          fillOpacity: 0.2,
+          color: borderColor,
+          fillColor: fillColor,
+          fillOpacity: 0.35,
           weight: 3,
         }).addTo(mapaAPI.map)
 
@@ -628,29 +713,6 @@ const dibujarTodosEnMapa = async () => {
   }
 }
 
-// 🎨 Función para oscurecer un color hexadecimal (para el borde)
-function oscurecerColor(hex, porcentaje = 20) {
-  // Remover el # si existe
-  hex = hex.replace('#', '')
-
-  // Convertir a RGB
-  let r = parseInt(hex.substring(0, 2), 16)
-  let g = parseInt(hex.substring(2, 4), 16)
-  let b = parseInt(hex.substring(4, 6), 16)
-
-  // Oscurecer
-  r = Math.floor(r * (1 - porcentaje / 100))
-  g = Math.floor(g * (1 - porcentaje / 100))
-  b = Math.floor(b * (1 - porcentaje / 100))
-
-  // Convertir de vuelta a hex
-  const rHex = r.toString(16).padStart(2, '0')
-  const gHex = g.toString(16).padStart(2, '0')
-  const bHex = b.toString(16).padStart(2, '0')
-
-  return `#${rHex}${gHex}${bHex}`
-}
-
 onMounted(async () => {
   try {
     console.log('🗺️ Iniciando mapa Mapbox satelital...')
@@ -699,7 +761,7 @@ onMounted(async () => {
       await dibujarTodosEnMapa()
       await inicializarSistemaDeteccion()
 
-      // 🔧 NUEVO: Iniciar evaluación continua de eventos
+      // 🔧 Iniciar evaluación continua de eventos
       iniciarEvaluacionContinuaEventos()
 
       iniciarSeguimientoGPS()
@@ -724,50 +786,13 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
-  // Listener mejorado para redibujar mapa
+  // 🔧 Listener mejorado para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    const mapPage = document.getElementById('map-page')
-    if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
-      // 🔧 FIX CRÍTICO: Cerrar todos los popups primero
-      mapPage._mapaAPI.map.closePopup()
-
-      const marcadoresGPSTemporales = []
-
-      mapPage._mapaAPI.map.eachLayer((layer) => {
-        if (layer instanceof mapPage._mapaAPI.L.Marker) {
-          const esMarkerVehiculo =
-            layer.options?.className === 'marker-vehiculo-gps' ||
-            layer.options?.icon?.options?.className === 'custom-marker-unidad' ||
-            layer.options?.zIndexOffset === 5000
-
-          if (esMarkerVehiculo) {
-            marcadoresGPSTemporales.push(layer)
-          }
-        }
-      })
-
-      mapPage._mapaAPI.map.eachLayer((layer) => {
-        if (
-          layer instanceof mapPage._mapaAPI.L.Marker ||
-          layer instanceof mapPage._mapaAPI.L.Circle ||
-          layer instanceof mapPage._mapaAPI.L.Polygon
-        ) {
-          const esMarkerPrincipal =
-            layer.getPopup()?.getContent() === '<b>MJ Industrias</b><br>Ubicación principal'
-          const esMarkerUsuario = layer === marcadorUsuario.value
-          const esMarkerVehiculo = marcadoresGPSTemporales.includes(layer)
-
-          if (!esMarkerPrincipal && !esMarkerUsuario && !esMarkerVehiculo) {
-            // 🔧 FIX: Desligar popup antes de eliminar capa
-            if (layer.getPopup()) {
-              layer.unbindPopup()
-            }
-            mapPage._mapaAPI.map.removeLayer(layer)
-          }
-        }
-      })
-    }
-
+    console.log('🔄 Redibujando mapa...')
+    
+    // 🔧 USAR LA NUEVA FUNCIÓN DE LIMPIEZA
+    limpiarCapasDelMapa()
+    
     await dibujarTodosEnMapa()
 
     // Reinicializar sistema de detección
@@ -781,6 +806,8 @@ onMounted(async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
+    
+    console.log('✅ Mapa redibujado completamente')
   })
 
   console.log('🚀 Iniciando tracking GPS...')
@@ -838,7 +865,7 @@ const cancelarGeozona = () => {
 onUnmounted(() => {
   detenerSeguimientoGPS()
 
-  // 🔧 NUEVO: Detener evaluación de eventos
+  // 🔧 Detener evaluación de eventos
   detenerEvaluacionEventos()
 
   detenerTracking()
