@@ -10,8 +10,10 @@ const marcadorTemporal = ref(null)
 const ubicacionSeleccionada = ref(null)
 const modoSeleccionActivo = ref(false)
 const marcadoresUnidades = ref({})
+const baseLayer = ref(null)
+//const trafficLayer = ref(null)
 
-const capaTrafico = ref(null)
+const capaTrafico = ref(true)
 
 // Nuevas referencias para geozonas
 const circuloTemporal = ref(null)
@@ -758,7 +760,35 @@ export function useMap() {
       if (map.value) {
         map.value.remove()
       }
+
       map.value = L.map(containerId).setView(center, zoom)
+
+      console.log('🗺️ Cargando estilo con Static Tiles API...')
+
+      // ✅ FORMATO CORRECTO según documentación oficial
+      baseLayer.value = L.tileLayer(
+        'https://api.mapbox.com/styles/v1/sistemasmj123/cmhv6nud000fr01reeltdgkyf/tiles/{z}/{x}/{y}@2x?access_token=' +
+          MAPBOX_TOKEN,
+        {
+          tileSize: 512,
+          zoomOffset: -1,
+          maxZoom: 22,
+          attribution: '© Mapbox',
+        },
+      ).addTo(map.value)
+
+      // Debugging
+      baseLayer.value.on('tileerror', (error, tile) => {
+        console.error('❌ Error tile:', error)
+        console.error('URL:', tile.tile?.src)
+      })
+
+      baseLayer.value.on('tileload', () => {
+        console.log('✅ Tile cargado correctamente')
+      })
+
+      capaTrafico.value = true
+
       const mapaAPI = {
         map: map.value,
         L: L,
@@ -794,34 +824,23 @@ export function useMap() {
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
       }
+
       window.mapaGlobal = mapaAPI
       window.L = L
+
       const mapPage = document.getElementById('map-page')
       if (mapPage) {
         mapPage._mapaAPI = mapaAPI
-        console.log('✅ _mapaAPI expuesto en map-page')
+        console.log('✅ _mapaAPI expuesto')
       }
 
-      // 🎨 CAMBIO PRINCIPAL: Tiles de 256px en alta resolución (@2x)
-      L.tileLayer(
-        `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
-        {
-          maxZoom: 22,
-          tileSize: 256,
-          attribution:
-            '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        },
-      ).addTo(map.value)
-
-      console.log('✅ Mapa Mapbox satelital MEJORADO inicializado correctamente')
-      console.log('✅ API del mapa expuesta en window.mapaGlobal y map-page._mapaAPI')
+      console.log('✅ Mapa inicializado con Static Tiles API')
       return map.value
     } catch (error) {
-      console.error('❌ Error inicializando mapa:', error)
+      console.error('❌ Error:', error)
       throw error
     }
   }
-
   const addMarker = (lat, lng, options = {}) => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
@@ -870,42 +889,9 @@ export function useMap() {
   }
 
   const toggleTrafico = () => {
-    if (!map.value) {
-      console.error('❌ Mapa no inicializado')
-      return false
-    }
-
-    if (capaTrafico.value) {
-      map.value.off('zoomend', actualizarCapaTrafico)
-      map.value.removeLayer(capaTrafico.value)
-      capaTrafico.value = null
-      console.log('🚦 Capa de tráfico DESACTIVADA')
-      return false
-    } else {
-      // Capa de tráfico con blend mode multiply
-      capaTrafico.value = L.tileLayer(
-        `https://api.mapbox.com/styles/v1/sistemasmj123/cmhv6nud000fr01reeltdgkyf/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
-        {
-          maxZoom: 22,
-          tileSize: 256,
-          opacity: 0.9,
-          zIndex: 500,
-        },
-      ).addTo(map.value)
-
-      map.value.on('zoomend', actualizarCapaTrafico)
-
-      console.log('🚦 Capa de tráfico ACTIVADA con multiply')
-      return true
-    }
+    console.warn('⚠️ Toggle de tráfico no disponible - el estilo incluye tráfico integrado')
+    return true // Siempre activo
   }
-  const actualizarCapaTrafico = () => {
-    if (capaTrafico.value) {
-      capaTrafico.value.redraw()
-      console.log('🔄 Capa de tráfico actualizada en zoom:', map.value.getZoom())
-    }
-  }
-
   const setPuntosSeleccionados = (puntos) => {
     if (!map.value || !puntos || puntos.length === 0) {
       console.warn('⚠️ No hay puntos para restaurar')

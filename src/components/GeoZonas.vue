@@ -797,6 +797,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
+import mapboxgl from 'mapbox-gl'
 // 🆕 NUEVO: Importar composable de eventos
 import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
@@ -1037,7 +1038,7 @@ function contarEventos(ubicacionId, tipo) {
   })
   return count
 }
-
+let timeoutVistaPrevia = null
 const manejarMovimientoMouse = (e) => {
   // Obtener mapaAPI
   const mapPage = document.querySelector('#map-page')
@@ -1055,46 +1056,31 @@ const manejarMovimientoMouse = (e) => {
     return
   }
 
-  posicionMouseActual.value = e.latlng
+  posicionMouseActual.value = {
+    lat: e.lngLat.lat,
+    lng: e.lngLat.lng,
+  }
+  if (timeoutVistaPrevia) return
+  timeoutVistaPrevia = setTimeout(() => {
+    actualizarVistaPrevia()
+    timeoutVistaPrevia = null
+  }, 16) // 60fps
 
   actualizarVistaPrevia()
 }
 // 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
 const actualizarVistaPrevia = () => {
-  if (!posicionMouseActual.value) {
-    return
-  }
+  if (!posicionMouseActual.value) return
 
-  // Obtener el mapa desde mapaAPI
   const mapPage = document.querySelector('#map-page')
-  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map || !mapPage._mapaAPI.L) {
-    return
-  }
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
 
   const mapaAPI = mapPage._mapaAPI
-  const mapa = mapaAPI.map
-  const L = mapaAPI.L
+  const map = mapaAPI.map
 
-  // Obtener puntos directamente del mapaAPI (en tiempo real)
   const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
 
-  if (!puntosActuales || puntosActuales.length === 0) {
-    return
-  }
-
-  // Limpiar línea y polígono de preview anteriores
-  if (lineaPreview.value) {
-    mapa.removeLayer(lineaPreview.value)
-    lineaPreview.value = null
-  }
-  if (poligonoPreview.value) {
-    mapa.removeLayer(poligonoPreview.value)
-    poligonoPreview.value = null
-  }
-
-  const ultimoPunto = puntosActuales[puntosActuales.length - 1]
-
-  // Dibujar línea desde el último punto hasta el cursor
+  if (!puntosActuales || puntosActuales.length === 0) return
 
   // ✅ Obtener color seleccionado
   const colorSeleccionado = nuevaGeozona.value?.color || '#4ECDC4'
@@ -1106,33 +1092,100 @@ const actualizarVistaPrevia = () => {
     r = Math.floor(r * (1 - porcentaje / 100))
     g = Math.floor(g * (1 - porcentaje / 100))
     b = Math.floor(b * (1 - porcentaje / 100))
-    const rHex = r.toString(16).padStart(2, '0')
-    const gHex = g.toString(16).padStart(2, '0')
-    const bHex = b.toString(16).padStart(2, '0')
-    return `#${rHex}${gHex}${bHex}`
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
   }
   const borderColor = oscurecerColor(colorSeleccionado, 30)
 
-  // Dibujar línea desde el último punto hasta el cursor
-  lineaPreview.value = L.polyline([ultimoPunto, posicionMouseActual.value], {
-    color: borderColor, // ✅ Color del borde
-    weight: 2,
-    opacity: 0.7,
-    dashArray: '10, 10',
-  }).addTo(mapa)
+  const ultimoPunto = puntosActuales[puntosActuales.length - 1]
+  const mouseCoords = [posicionMouseActual.value.lng, posicionMouseActual.value.lat]
 
-  // Si hay al menos 2 puntos, mostrar el polígono preview completo
+  // ✅ LÍNEA DE PREVIEW
+  const lineData = {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: [[ultimoPunto.lng, ultimoPunto.lat], mouseCoords],
+    },
+  }
+
+  if (map.getSource('preview-line')) {
+    map.getSource('preview-line').setData(lineData)
+    // ✅ Actualizar color de la línea
+    map.setPaintProperty('preview-line', 'line-color', borderColor)
+  } else {
+    map.addSource('preview-line', {
+      type: 'geojson',
+      data: lineData,
+    })
+
+    map.addLayer({
+      id: 'preview-line',
+      type: 'line',
+      source: 'preview-line',
+      paint: {
+        'line-color': borderColor,
+        'line-width': 2,
+        'line-opacity': 0.7,
+        'line-dasharray': [2, 2],
+      },
+    })
+  }
+
+  // ✅ POLÍGONO DE PREVIEW
   if (puntosActuales.length >= 2) {
-    const puntosPreview = [...puntosActuales, posicionMouseActual.value]
+    const puntosPreview = [
+      ...puntosActuales.map((p) => [p.lng, p.lat]),
+      mouseCoords,
+      [puntosActuales[0].lng, puntosActuales[0].lat],
+    ]
 
-    poligonoPreview.value = L.polygon(puntosPreview, {
-      color: borderColor, // ✅ Borde con color oscurecido
-      fillColor: colorSeleccionado, // ✅ Relleno con color seleccionado
-      fillOpacity: 0.2,
-      weight: 2,
-      opacity: 0.7,
-      dashArray: '10, 10',
-    }).addTo(mapa)
+    const polygonData = {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [puntosPreview],
+      },
+    }
+
+    if (map.getSource('preview-polygon')) {
+      map.getSource('preview-polygon').setData(polygonData)
+      // ✅ Actualizar colores del polígono
+      map.setPaintProperty('preview-polygon', 'fill-color', colorSeleccionado)
+      map.setPaintProperty('preview-polygon-outline', 'line-color', borderColor)
+    } else {
+      map.addSource('preview-polygon', {
+        type: 'geojson',
+        data: polygonData,
+      })
+
+      map.addLayer({
+        id: 'preview-polygon',
+        type: 'fill',
+        source: 'preview-polygon',
+        paint: {
+          'fill-color': colorSeleccionado,
+          'fill-opacity': 0.2,
+        },
+      })
+
+      map.addLayer({
+        id: 'preview-polygon-outline',
+        type: 'line',
+        source: 'preview-polygon',
+        paint: {
+          'line-color': borderColor,
+          'line-width': 2,
+          'line-opacity': 0.7,
+          'line-dasharray': [2, 2],
+        },
+      })
+    }
+  } else {
+    if (map.getSource('preview-polygon')) {
+      if (map.getLayer('preview-polygon')) map.removeLayer('preview-polygon')
+      if (map.getLayer('preview-polygon-outline')) map.removeLayer('preview-polygon-outline')
+      map.removeSource('preview-polygon')
+    }
   }
 }
 
@@ -1309,28 +1362,31 @@ function verEnMapa() {
     // Eliminar marcador anterior si existe
     if (marcadorActivo.value) {
       console.log('🗑️ Eliminando marcador anterior')
-      mapaAPI.map.removeLayer(marcadorActivo.value)
+      marcadorActivo.value.remove() // ✅ MAPBOX GL
       marcadorActivo.value = null
     }
 
     // Crear nuevo marcador
-    marcadorActivo.value = mapaAPI.L.marker([lat, lng], {
-      icon: mapaAPI.L.icon({
-        iconUrl:
-          'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      }),
-    }).addTo(mapaAPI.map)
+    // ✅ Crear marcador con Mapbox GL
+    const markerEl = document.createElement('div')
+    markerEl.innerHTML = '📍'
+    markerEl.style.fontSize = '40px'
+    markerEl.style.cursor = 'pointer'
+    markerEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
 
-    marcadorActivo.value.bindPopup(popupContent)
-    marcadorActivo.value.openPopup()
+    marcadorActivo.value = new mapboxgl.Marker({ element: markerEl, anchor: 'bottom' })
+      .setLngLat([lng, lat])
+      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
+      .addTo(mapaAPI.map)
 
-    // Centrar el mapa
-    mapaAPI.map.setView([lat, lng], 18)
+    marcadorActivo.value.togglePopup()
+
+    // Centrar el mapa con animación
+    mapaAPI.map.flyTo({
+      center: [lng, lat],
+      zoom: 18,
+      duration: 1000,
+    })
     console.log('✅ Mapa centrado correctamente')
   } else if (itemMenu.value.tipo === 'geozona') {
     console.log('✅ Es una geozona, mostrando en mapa...')
@@ -1357,15 +1413,15 @@ function verEnMapa() {
 
       console.log('🔵 Mostrando geozona circular en:', lat, lng, 'radio:', itemMenu.value.radio)
 
-      poligonoActivo.value = mapaAPI.L.circle([lat, lng], {
-        radius: itemMenu.value.radio,
-        color: '#3388ff',
-        fillColor: '#3388ff',
-        fillOpacity: 0.2,
-      }).addTo(mapaAPI.map)
+      // ✅ Las geozonas circulares ya están dibujadas en el mapa desde IndexPage
+      // Solo centramos la vista en ellas
+      mapaAPI.map.flyTo({
+        center: [lng, lat],
+        zoom: 16,
+        duration: 1000,
+      })
 
-      mapaAPI.map.setView([lat, lng], 16)
-      console.log('✅ Geozona circular mostrada')
+      console.log('✅ Centrado en geozona circular')
     } else if (
       itemMenu.value.tipoGeozona === 'poligono' &&
       itemMenu.value.puntos &&
@@ -1374,17 +1430,20 @@ function verEnMapa() {
       // Geozona poligonal
       console.log('🔷 Mostrando geozona poligonal con', itemMenu.value.puntos.length, 'puntos')
 
-      const puntos = itemMenu.value.puntos.map((p) => [p.lat, p.lng])
+      // ✅ Calcular centro del polígono
+      const lats = itemMenu.value.puntos.map((p) => p.lat)
+      const lngs = itemMenu.value.puntos.map((p) => p.lng)
+      const centroLat = lats.reduce((a, b) => a + b) / lats.length
+      const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-      poligonoActivo.value = mapaAPI.L.polygon(puntos, {
-        color: '#3388ff',
-        fillColor: '#3388ff',
-        fillOpacity: 0.2,
-      }).addTo(mapaAPI.map)
+      // Las geozonas poligonales ya están dibujadas, solo centramos
+      mapaAPI.map.flyTo({
+        center: [centroLng, centroLat],
+        zoom: 15,
+        duration: 1000,
+      })
 
-      const bounds = mapaAPI.L.latLngBounds(puntos)
-      mapaAPI.map.fitBounds(bounds)
-      console.log('✅ Geozona poligonal mostrada')
+      console.log('✅ Centrado en geozona poligonal')
     } else {
       console.warn('⚠️ La geozona seleccionada no tiene datos válidos.')
       $q.notify({
@@ -1653,45 +1712,61 @@ function abrirDialogGeozonaPoligonal() {
 // 🆕 FUNCIÓN PARA LIMPIAR COMPLETAMENTE LAS CAPAS DE PREVIEW
 const limpiarPreviewCompleto = () => {
   const mapPage = document.querySelector('#map-page')
-  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    return
-  }
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
 
-  const mapa = mapPage._mapaAPI.map
+  const map = mapPage._mapaAPI.map
 
-  // Limpiar línea de preview
-  if (lineaPreview.value) {
-    try {
-      mapa.removeLayer(lineaPreview.value)
-    } catch (error) {
-      console.error('❌ Error al remover línea de preview:', error)
+  // ✅ Limpiar capas de preview de Mapbox GL
+  if (map.getSource('preview-line')) {
+    if (map.getLayer('preview-line')) {
+      try {
+        map.removeLayer('preview-line')
+      } catch (e) {
+        console.warn('Error al remover preview-line layer:', e)
+      }
     }
-    lineaPreview.value = null
-  } else {
-    console.log('ℹ️ No había línea de preview para limpiar')
-  }
-
-  // Limpiar polígono de preview
-  if (poligonoPreview.value) {
     try {
-      mapa.removeLayer(poligonoPreview.value)
-    } catch (error) {
-      console.error('❌ Error al remover polígono de preview:', error)
+      map.removeSource('preview-line')
+    } catch (e) {
+      console.warn('Error al remover preview-line source:', e)
     }
-    poligonoPreview.value = null
-  } else {
-    console.log('ℹ️ No había polígono de preview para limpiar')
   }
 
-  // Resetear posición del mouse
+  if (map.getSource('preview-polygon')) {
+    if (map.getLayer('preview-polygon')) {
+      try {
+        map.removeLayer('preview-polygon')
+      } catch (e) {
+        console.warn('Error al remover preview-polygon layer:', e)
+      }
+    }
+    if (map.getLayer('preview-polygon-outline')) {
+      try {
+        map.removeLayer('preview-polygon-outline')
+      } catch (e) {
+        console.warn('Error al remover preview-polygon-outline layer:', e)
+      }
+    }
+    // ✅ Limpiar también el polígono temporal del mapa
+    const mapaAPI = mapPage._mapaAPI
+    if (mapaAPI && mapaAPI.limpiarPoligonoTemporal) {
+      mapaAPI.limpiarPoligonoTemporal()
+    }
+    try {
+      map.removeSource('preview-polygon')
+    } catch (e) {
+      console.warn('Error al remover preview-polygon source:', e)
+    }
+  }
+
+  // Resetear referencias
   posicionMouseActual.value = null
+  lineaPreview.value = null
+  poligonoPreview.value = null
 
-  // Remover listener de mouse
-  try {
-    mapa.off('mousemove', manejarMovimientoMouse)
-  } catch (error) {
-    console.error('❌ Error al remover listener:', error)
-  }
+  map.off('mousemove', manejarMovimientoMouse)
+
+  console.log('✅ Preview limpiado (Mapbox GL)')
 }
 
 // Función para cancelar la creación de una nueva geozona
@@ -2210,6 +2285,24 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
 
 // Hooks de ciclo de vida
 onMounted(async () => {
+  if (marcadorActivo.value) {
+    marcadorActivo.value.remove()
+    marcadorActivo.value = null
+  }
+
+  // ✅ Limpiar polígono activo (si existe en Leaflet)
+  if (poligonoActivo.value) {
+    try {
+      const mapPage = document.querySelector('#map-page')
+      if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+        mapPage._mapaAPI.map.removeLayer(poligonoActivo.value)
+      }
+    } catch (e) {
+      console.warn('No se pudo limpiar polígono:', e)
+    }
+    poligonoActivo.value = null
+  }
+
   try {
     window.addEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
     // Cargar POIs, Geozonas Y EVENTOS en paralelo
