@@ -411,37 +411,39 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
+
+// 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
-// AGREGA:
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
 import { useTiposInforme } from 'src/composables/useTiposInforme'
 
+// 🆕 NUEVOS IMPORTS - Para los 3 tipos de informes
+import { useReportesEventos } from 'src/composables/useReportesEventos'
+import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
+import { useReportesHoras } from 'src/composables/useReportesHoras'
+
 const $q = useQuasar()
 const auth = getAuth()
-const userId = ref(null) // ✅ Cambiar a ref simple
+const userId = ref(null)
 const tab = ref('crear')
 
+// Composables
 const {
   subirReporte,
-
   obtenerHistorialReportes,
   formatearTamaño,
 } = useReportesStorage()
 
-// Composables
 const {
-  obtenerEventos,
   obtenerGeozonas,
   obtenerGruposConductores,
-  agruparEventos,
-  filtrarEventosPorElementos,
-  calcularEstadisticas,
   obtenerUnidades,
   obtenerConductores,
 } = useReportes()
+
 const {
   tipoInformeSeleccionado,
   listaTiposInforme,
@@ -456,6 +458,7 @@ const {
 
 const instanciaColumnas = useColumnasReportes()
 setInstanciaColumnas(instanciaColumnas)
+
 const {
   columnasSeleccionadas,
   columnaAgregar,
@@ -469,18 +472,6 @@ const {
   generarResumen,
 } = instanciaColumnas
 
-// Estados adicionales para las nuevas opciones
-const metodoAgrupacion = ref('objeto')
-const diasLaborablesSeleccionados = ref([1, 2, 3, 4, 5]) // Lun-Vie por defecto
-const horarioInicio = ref('08:00')
-const horarioFin = ref('17:00')
-const tipoInformeComercial = ref('todos')
-const tipoDetalle = ref('dias_detallados')
-const mostrarMapaTrayecto = ref(false)
-const mostrarUnidadesMapa = ref(true)
-const mostrarPlacaMapa = ref(true)
-const mostrarMapaZona = ref(false)
-
 const { generarPDFEventos } = useReportePDF()
 const { generarExcelEventos } = useReporteExcel()
 
@@ -490,18 +481,25 @@ const loadingOpciones = ref(false)
 const loadingEventos = ref(false)
 const loading = ref(false)
 
+// Estados adicionales
+const metodoAgrupacion = ref('objeto')
+const diasLaborablesSeleccionados = ref([1, 2, 3, 4, 5])
+const horarioInicio = ref('08:00')
+const horarioFin = ref('17:00')
+const tipoInformeComercial = ref('todos')
+const tipoDetalle = ref('dias_detallados')
+const mostrarMapaTrayecto = ref(false)
+const mostrarUnidadesMapa = ref(true)
+const mostrarPlacaMapa = ref(true)
+const mostrarMapaZona = ref(false)
+
 // Datos del formulario
-const tipoInforme = ref('Informe de eventos')
 const reportarPor = ref('Objetos')
 const elementosSeleccionados = ref([])
 const eventos = ref([])
-const agruparPor = ref('Objetos')
 
-// Opciones disponibles
-
+// Opciones
 const opcionesReportar = ['Objetos', 'Conductores', 'Grupos', 'Geozonas']
-
-// Opciones dinámicas cargadas de Firebase
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
 
@@ -511,87 +509,14 @@ const rangoFechaTemporal = ref(null)
 
 const rangoFechaFormateado = computed(() => {
   if (!rangoFecha.value) return ''
-
   if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
     return `${rangoFecha.value.from} - ${rangoFecha.value.to}`
   }
-
   return rangoFecha.value
 })
 
-// Columnas
-
-/**
- * Cancela y limpia el formulario de reporte
- */
-/**
- * Cancela y limpia el formulario de reporte
- */
-const cancelarReporte = () => {
-  // Limpiar tipo de informe
-  tipoInformeSeleccionado.value = null
-
-  // Limpiar selector principal
-  reportarPor.value = 'Objetos'
-  elementosSeleccionados.value = []
-
-  // Limpiar eventos
-  eventos.value = []
-
-  // Limpiar rango de fechas
-  rangoFecha.value = null
-  rangoFechaTemporal.value = null
-
-  // Limpiar opciones de agrupación y métodos
-  metodoAgrupacion.value = 'objeto'
-  agruparPor.value = 'Objetos'
-
-  // Limpiar días laborables (volver a lun-vie)
-  diasLaborablesSeleccionados.value = [1, 2, 3, 4, 5]
-
-  // Limpiar horario laboral
-  horarioInicio.value = '08:00'
-  horarioFin.value = '17:00'
-
-  // Limpiar tipos de informe
-  tipoInformeComercial.value = 'todos'
-  tipoDetalle.value = 'dias_detallados'
-
-  // Limpiar opciones de mapa
-  mostrarMapaTrayecto.value = false
-  mostrarUnidadesMapa.value = true
-  mostrarPlacaMapa.value = true
-  mostrarMapaZona.value = false
-
-  // Limpiar columnas seleccionadas
-  columnasSeleccionadas.value = []
-  columnaAgregar.value = null
-  mostrarResumen.value = false
-
-  // Limpiar listas de opciones cargadas
-  opcionesSelector.value = []
-
-  // Notificación de éxito
-  $q.notify({
-    message: 'Formulario reiniciado',
-    color: 'info',
-    icon: 'refresh',
-    position: 'top',
-    timeout: 2000,
-  })
-
-  console.log('✅ Formulario de reporte cancelado y limpiado')
-}
 // Historial
-const reportesAnteriores = ref([
-  {
-    id: 1,
-    fecha: '15/10/2025',
-    tipo: 'Informe de eventos',
-    elementos: 'CAMIONETA MX-08, CAMIONETA MX-09',
-    periodo: '01/10/2025 - 15/10/2025',
-  },
-])
+const reportesAnteriores = ref([])
 
 const columnasHistorial = [
   { name: 'fecha', label: 'Fecha', field: 'fecha', align: 'left', sortable: true },
@@ -618,15 +543,39 @@ const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
 }
 
-/**
- * Carga las opciones del selector según el tipo seleccionado
- */
-const cargarOpcionesSelector = async () => {
-  console.log('Cargando opciones para:', reportarPor.value)
-  console.log('🔍 userId.value:', userId.value)
+const cancelarReporte = () => {
+  tipoInformeSeleccionado.value = null
+  reportarPor.value = 'Objetos'
+  elementosSeleccionados.value = []
+  eventos.value = []
+  rangoFecha.value = null
+  rangoFechaTemporal.value = null
+  metodoAgrupacion.value = 'objeto'
+  diasLaborablesSeleccionados.value = [1, 2, 3, 4, 5]
+  horarioInicio.value = '08:00'
+  horarioFin.value = '17:00'
+  tipoInformeComercial.value = 'todos'
+  tipoDetalle.value = 'dias_detallados'
+  mostrarMapaTrayecto.value = false
+  mostrarUnidadesMapa.value = true
+  mostrarPlacaMapa.value = true
+  mostrarMapaZona.value = false
+  columnasSeleccionadas.value = []
+  columnaAgregar.value = null
+  mostrarResumen.value = false
+  opcionesSelector.value = []
 
-  if (!userId.value || typeof userId.value !== 'string') {
-    console.error('❌ Usuario no autenticado o userId no es string')
+  $q.notify({
+    message: 'Formulario reiniciado',
+    color: 'info',
+    icon: 'refresh',
+    position: 'top',
+    timeout: 2000,
+  })
+}
+
+const cargarOpcionesSelector = async () => {
+  if (!userId.value) {
     $q.notify({
       type: 'warning',
       message: 'Usuario no autenticado',
@@ -639,64 +588,54 @@ const cargarOpcionesSelector = async () => {
 
   try {
     switch (reportarPor.value) {
-      case 'Objetos':
-        {
-          console.log('📡 Obteniendo unidades...')
-          const unidades = await obtenerUnidades()
-          opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
-          console.log('✅ Unidades cargadas:', opcionesSelector.value.length)
-        }
+      case 'Objetos': {
+        const unidades = await obtenerUnidades()
+        // 🔥 Guardar mapeo de nombre -> ID
+        window.unidadesMap = {}
+        unidades.forEach(u => {
+          const nombre = u.Unidad || u.id
+          window.unidadesMap[nombre] = u.id
+        })
+        opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
+        console.log('📦 Mapeo de unidades:', window.unidadesMap)
         break
+      }
 
       case 'Conductores': {
-        console.log('📡 Obteniendo conductores...')
-        // 1. Obtener los grupos del usuario
-        const grupos = await obtenerGruposConductores(userId.value) // ✅ .value
-
-        // 2. Extraer todos los IDs de conductores de todos los grupos
+        const grupos = await obtenerGruposConductores(userId.value)
         const conductoresIdsDelUsuario = new Set()
         grupos.forEach((grupo) => {
-          if (grupo.conductoresIds && Array.isArray(grupo.conductoresIds)) {
+          if (grupo.conductoresIds) {
             grupo.conductoresIds.forEach((id) => conductoresIdsDelUsuario.add(id))
           }
         })
 
-        // 3. Obtener todos los conductores de Firebase
         const todosConductores = await obtenerConductores()
-
-        // 4. Filtrar solo los que pertenecen al usuario
         const conductoresDelUsuario = todosConductores.filter((c) =>
           conductoresIdsDelUsuario.has(c.id),
         )
 
         opcionesSelector.value = conductoresDelUsuario.map((c) => c.Nombre || c.id)
-        console.log('✅ Conductores cargados:', opcionesSelector.value.length)
         break
       }
 
-      case 'Grupos':
-        {
-          console.log('📡 Obteniendo grupos...')
-          const grupos = await obtenerGruposConductores(userId.value) // ✅ .value
-          opcionesSelector.value = grupos.map((g) => g.nombre || g.id)
-          console.log('✅ Grupos cargados:', opcionesSelector.value.length)
-        }
+      case 'Grupos': {
+        const grupos = await obtenerGruposConductores(userId.value)
+        opcionesSelector.value = grupos.map((g) => g.nombre || g.id)
         break
+      }
 
-      case 'Geozonas':
-        {
-          console.log('📡 Obteniendo geozonas...')
-          const geozonas = await obtenerGeozonas(userId.value) // ✅ .value
-          opcionesSelector.value = geozonas.map((g) => g.nombre || g.id)
-          console.log('✅ Geozonas cargadas:', opcionesSelector.value.length)
-        }
+      case 'Geozonas': {
+        const geozonas = await obtenerGeozonas(userId.value)
+        opcionesSelector.value = geozonas.map((g) => g.nombre || g.id)
         break
+      }
 
       default:
         opcionesSelector.value = []
     }
   } catch (error) {
-    console.error('❌ Error al cargar opciones:', error)
+    console.error('Error al cargar opciones:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar las opciones',
@@ -707,59 +646,26 @@ const cargarOpcionesSelector = async () => {
   }
 }
 
-/**
- * Carga los tipos de eventos disponibles desde Firebase
- */
 const cargarEventosDisponibles = async () => {
-  console.log('🔍 Cargando eventos disponibles...')
-  console.log('🔍 userId.value:', userId.value)
-  console.log('🔍 Tipo:', typeof userId.value)
-
-  if (!userId.value || typeof userId.value !== 'string') {
-    console.error('❌ userId no es válido')
-    return
-  }
+  if (!userId.value) return
 
   loadingEventos.value = true
 
   try {
-    // Obtener eventos de los últimos 30 días para extraer tipos únicos
-    const fechaFin = new Date()
-    const fechaInicio = new Date()
-    fechaInicio.setDate(fechaInicio.getDate() - 30)
-
-    console.log('📡 Llamando a obtenerEventos con:', userId.value) // ✅ Debug
-    const eventosRecientes = await obtenerEventos(userId.value, fechaInicio, fechaFin) // ✅ .value
-    console.log('✅ Eventos obtenidos:', eventosRecientes.length) // ✅ Debug
-
-    // Extraer tipos únicos de eventos
-    const tiposUnicos = [
-      ...new Set(eventosRecientes.map((e) => e.tipoEvento || e.tipo || e.nombre)),
-    ].filter(Boolean)
-
-    listaEventosDisponibles.value =
-      tiposUnicos.length > 0
-        ? tiposUnicos
-        : ['Entrada a geozona', 'Salida de geozona', 'Exceso de velocidad', 'Ralentí prolongado']
-
-    console.log('✅ Tipos de eventos únicos:', listaEventosDisponibles.value)
-  } catch (error) {
-    console.error('❌ Error al cargar eventos:', error)
-    // Valores por defecto
+    // Valores por defecto de eventos
     listaEventosDisponibles.value = [
       'Entrada a geozona',
       'Salida de geozona',
       'Exceso de velocidad',
       'Ralentí prolongado',
     ]
+  } catch (error) {
+    console.error('Error al cargar eventos:', error)
   } finally {
     loadingEventos.value = false
   }
 }
 
-/**
- * Valida el formulario antes de generar el reporte
- */
 const validarFormulario = () => {
   if (!rangoFecha.value) {
     $q.notify({
@@ -791,89 +697,219 @@ const validarFormulario = () => {
   return true
 }
 
-/**
- * Obtiene los datos reales de Firebase para el reporte
- */
+// 🔥 FUNCIÓN ACTUALIZADA Y MEJORADA - PARSEO DE FECHAS ROBUSTO
 const obtenerDatosReporte = async () => {
   console.log('🔍 Obteniendo datos del reporte...')
-  console.log('🔍 userId.value:', userId.value)
+  console.log('📊 Tipo de informe:', tipoInformeSeleccionado.value)
+  console.log('📅 Rango crudo:', rangoFecha.value)
 
-  if (!userId.value || typeof userId.value !== 'string') {
+  if (!userId.value) {
     throw new Error('Usuario no autenticado')
   }
 
-  // Parsear el rango de fechas
-  let fechaInicio, fechaFin
-
-  if (typeof rangoFecha.value === 'object') {
-    const [inicio, fin] = rangoFecha.value.from.split('/').map(Number)
-    fechaInicio = new Date(fin, inicio - 1, fin)
-    const [inicioFin, mesFin, añoFin] = rangoFecha.value.to.split('/').map(Number)
-    fechaFin = new Date(añoFin, mesFin - 1, inicioFin, 23, 59, 59)
-  } else {
-    // Formato de string "DD/MM/YYYY - DD/MM/YYYY"
-    const [inicio, fin] = rangoFecha.value.split(' - ')
-    const [diaInicio, mesInicio, añoInicio] = inicio.split('/').map(Number)
-    const [diaFin, mesFin, añoFin] = fin.split('/').map(Number)
-    fechaInicio = new Date(añoInicio, mesInicio - 1, diaInicio)
-    fechaFin = new Date(añoFin, mesFin - 1, diaFin, 23, 59, 59)
+  // ✅ HELPER PARA PARSEAR FECHAS
+  const parsearFechaString = (fechaStr) => {
+    const partes = fechaStr.trim().split('/').map(Number)
+    // Detectar formato YYYY/MM/DD vs DD/MM/YYYY
+    if (partes[0] > 31) {
+      // Formato YYYY/MM/DD
+      return new Date(partes[0], partes[1] - 1, partes[2])
+    } else {
+      // Formato DD/MM/YYYY
+      return new Date(partes[2], partes[1] - 1, partes[0])
+    }
   }
 
-  console.log('📅 Rango de fechas:', fechaInicio, 'a', fechaFin)
+  // ✅ PARSEAR FECHAS - MANEJA TODOS LOS CASOS
+  let fechaInicio, fechaFin
 
-  // Obtener eventos del período
-  console.log('📡 Obteniendo eventos del período...')
-  const eventosDelPeriodo = await obtenerEventos(userId.value, fechaInicio, fechaFin, eventos.value) // ✅ .value
+  if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
+    // Caso 1: Formato object del date picker { from: "YYYY/MM/DD", to: "YYYY/MM/DD" }
+    console.log('🔍 Formato object detectado')
+    console.log('  from:', rangoFecha.value.from)
+    console.log('  to:', rangoFecha.value.to)
+    
+    fechaInicio = parsearFechaString(rangoFecha.value.from)
+    fechaFin = parsearFechaString(rangoFecha.value.to)
+    
+    fechaInicio.setHours(0, 0, 0, 0)
+    fechaFin.setHours(23, 59, 59, 999)
+    
+  } else if (typeof rangoFecha.value === 'string') {
+    // Caso 2: Formato string
+    console.log('🔍 Formato string detectado:', rangoFecha.value)
+    
+    if (rangoFecha.value.includes(' - ')) {
+      // Caso 2a: Rango con separador "YYYY/MM/DD - YYYY/MM/DD"
+      console.log('🔍 Rango de fechas detectado')
+      const [inicio, fin] = rangoFecha.value.split(' - ').map(s => s.trim())
+      
+      fechaInicio = parsearFechaString(inicio)
+      fechaFin = parsearFechaString(fin)
+      
+      fechaInicio.setHours(0, 0, 0, 0)
+      fechaFin.setHours(23, 59, 59, 999)
+      
+    } else {
+      // Caso 2b: Fecha única "YYYY/MM/DD" - usar todo el día
+      console.log('🔍 Fecha única detectada, usando el día completo')
+      
+      fechaInicio = parsearFechaString(rangoFecha.value)
+      fechaFin = parsearFechaString(rangoFecha.value)
+      
+      fechaInicio.setHours(0, 0, 0, 0)
+      fechaFin.setHours(23, 59, 59, 999)
+    }
+  } else {
+    throw new Error('Formato de fecha inválido')
+  }
 
-  console.log('✅ Eventos obtenidos:', eventosDelPeriodo.length)
+  // Validar que las fechas sean válidas
+  if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+    throw new Error('Las fechas no son válidas')
+  }
 
-  // Filtrar eventos según elementos seleccionados
-  const eventosFiltrados = filtrarEventosPorElementos(
-    eventosDelPeriodo,
-    elementosSeleccionados.value,
-    reportarPor.value,
-  )
+  console.log('✅ Fechas parseadas correctamente:')
+  console.log('  📅 Inicio:', fechaInicio.toLocaleDateString('es-MX'), fechaInicio.toLocaleTimeString('es-MX'))
+  console.log('  📅 Fin:', fechaFin.toLocaleDateString('es-MX'), fechaFin.toLocaleTimeString('es-MX'))
 
-  console.log('✅ Eventos filtrados:', eventosFiltrados.length)
+  // Determinar tipo de informe
+  const tipoInforme = tipoInformeSeleccionado.value || 'eventos'
+  const unidadesIds = elementosSeleccionados.value
 
-  // Agrupar eventos según el criterio
-  const eventosAgrupados = agruparEventos(eventosFiltrados, agruparPor.value)
+  if (unidadesIds.length === 0) {
+    throw new Error('Debes seleccionar al menos una unidad')
+  }
 
-  console.log('✅ Eventos agrupados por:', agruparPor.value)
+  let datosInforme = []
 
-  // Calcular estadísticas
-  const stats = calcularEstadisticas(eventosFiltrados)
+  // 🔥 OBTENER DATOS SEGÚN TIPO
+  if (tipoInforme === 'eventos') {
+    console.log('📊 Obteniendo eventos reales...')
+    const { obtenerEventosReales } = useReportesEventos()
+    datosInforme = await obtenerEventosReales(
+      unidadesIds,
+      fechaInicio,
+      fechaFin,
+      eventos.value || []
+    )
+  } else if (tipoInforme === 'trayectos') {
+    console.log('🗺️ Obteniendo trayectos...')
+    const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
+    datosInforme = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
+    datosInforme = await enriquecerConDatosUnidades(datosInforme)
+  } else if (tipoInforme === 'horas_trabajo') {
+    console.log('⏰ Calculando horas de trabajo...')
+    const { calcularHorasTrabajo } = useReportesHoras()
+    datosInforme = await calcularHorasTrabajo(
+      unidadesIds,
+      fechaInicio,
+      fechaFin,
+      {
+        diasLaborables: diasLaborablesSeleccionados.value,
+        horarioInicio: horarioInicio.value,
+        horarioFin: horarioFin.value,
+      }
+    )
+  }
 
-  // Identificar elementos sin datos
-  const elementosConDatos = Object.keys(eventosAgrupados)
+  console.log('✅ Datos obtenidos:', datosInforme.length)
+
+  if (!datosInforme || datosInforme.length === 0) {
+    throw new Error('No se encontraron datos para el período seleccionado')
+  }
+
+  // Filtrar por eventos si aplica
+  let datosFiltrados = datosInforme
+  if (tipoInforme === 'eventos' && eventos.value.length > 0) {
+    datosFiltrados = datosInforme.filter(evento =>
+      eventos.value.includes(evento.eventoNombre)
+    )
+    console.log(`🔍 Filtrados ${datosFiltrados.length} eventos de ${datosInforme.length} totales`)
+  }
+
+  // Agrupar datos
+  let datosAgrupados = {}
+  if (tipoInforme === 'eventos') {
+    const criterio = metodoAgrupacion.value || 'objeto'
+    console.log('📊 Agrupando por:', criterio)
+    
+    datosAgrupados = datosFiltrados.reduce((acc, dato) => {
+      let clave = ''
+      switch (criterio) {
+        case 'objeto':
+          clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
+          break
+        case 'conductor':
+          clave = dato.conductorNombre || 'Sin conductor'
+          break
+        case 'evento':
+          clave = dato.eventoNombre || 'Sin nombre'
+          break
+        case 'dia':
+          clave = new Date(dato.timestamp).toLocaleDateString('es-MX')
+          break
+        default:
+          clave = 'Sin clasificar'
+      }
+      if (!acc[clave]) acc[clave] = []
+      acc[clave].push(dato)
+      return acc
+    }, {})
+  } else {
+    datosAgrupados = datosFiltrados.reduce((acc, dato) => {
+      const clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
+      if (!acc[clave]) acc[clave] = []
+      acc[clave].push(dato)
+      return acc
+    }, {})
+  }
+
+  console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
+
+  // Elementos sin datos
+  const elementosConDatos = Object.keys(datosAgrupados)
   const elementosSinDatos = elementosSeleccionados.value.filter(
-    (elem) => !elementosConDatos.includes(elem),
+    elem => !elementosConDatos.some(key => key.includes(elem))
   )
 
-  console.log('📊 Elementos sin datos:', elementosSinDatos)
+  if (elementosSinDatos.length > 0) {
+    console.log('⚠️ Elementos sin datos:', elementosSinDatos)
+  }
 
-  // Preparar resumen
-  const resumen = {}
-  Object.entries(eventosAgrupados).forEach(([nombre, eventos]) => {
-    resumen[nombre] = eventos.length
+  // Procesar para columnas
+  const datosColumnas = procesarNotificacionesParaReporte(datosFiltrados)
+
+  // Generar resumen
+  const resumenMejorado = mostrarResumen.value ? generarResumen(datosFiltrados) : null
+
+  // Estadísticas
+  const stats = {
+    total: datosFiltrados.length,
+    conductoresUnicos: new Set(datosFiltrados.map(d => d.conductorNombre || 'Sin conductor')).size,
+    unidadesUnicas: new Set(datosFiltrados.map(d => d.unidadNombre || d.idUnidad || 'Sin unidad')).size,
+  }
+
+  console.log('📊 Estadísticas finales:', stats)
+
+  // Resumen por grupo
+  const resumenPorGrupo = {}
+  Object.entries(datosAgrupados).forEach(([nombre, registros]) => {
+    resumenPorGrupo[nombre] = registros.length
   })
-  const datosColumnas = procesarNotificacionesParaReporte(eventosFiltrados)
-  const resumenMejorado = mostrarResumen.value ? generarResumen(eventosFiltrados) : null
 
   return {
-    eventosAgrupados,
-    resumen: resumenMejorado || resumen,
-    totalEventos: eventosFiltrados.length,
-    elementosSinDatos,
-    stats,
-    datosColumnas,
+    eventosAgrupados: datosAgrupados,
+    datosColumnas: datosColumnas,
+    resumen: resumenMejorado || resumenPorGrupo,
+    stats: stats,
+    totalEventos: datosFiltrados.length,
+    elementosSinDatos: elementosSinDatos,
     configuracionColumnas: obtenerConfiguracionColumnas(),
+    tipoInforme: tipoInforme,
   }
 }
 
-/**
- * Genera el reporte en PDF
- */
 const generarReporte = async () => {
   if (!validarFormulario()) return
 
@@ -885,30 +921,22 @@ const generarReporte = async () => {
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
-      agruparPor: agruparPor.value,
+      agruparPor: metodoAgrupacion.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.value.user?.displayName || userId.value.user?.email,
+      nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
     }
-    const resultadoPDF = generarPDFEventos(config, datosReales)
 
-    // Añadimos este console.log para depurar
-    console.log('Resultado de generarPDFEventos:', resultadoPDF)
-    // Generar PDF
     const { blob, filename } = generarPDFEventos(config, datosReales)
 
     if (!blob) {
-      console.error('El blob es undefined o nulo')
-      throw new Error(
-        'No se pudo generar el archivo PDF. Es posible que no haya datos para el período y filtros seleccionados.',
-      )
+      throw new Error('No se pudo generar el archivo PDF')
     }
 
-    // Preparar metadata
     const metadata = {
       nombre: `Reporte ${reportarPor.value}`,
       tipo: 'pdf',
-      tipoInforme: tipoInforme.value,
+      tipoInforme: tipoInformeSeleccionado.value,
       reportarPor: reportarPor.value,
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
@@ -916,10 +944,9 @@ const generarReporte = async () => {
       totalEventos: datosReales.totalEventos,
     }
 
-    // Subir a Firebase Storage y guardar metadata
     const reporteGuardado = await subirReporte(blob, metadata)
 
-    // También descargar localmente
+    // Descargar localmente
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -927,15 +954,14 @@ const generarReporte = async () => {
     link.click()
     window.URL.revokeObjectURL(url)
 
-    // Usar reporteGuardado para mostrar información más detallada
     $q.notify({
       type: 'positive',
-      message: `PDF generado y guardado con ID: ${reporteGuardado.id}`,
+      message: `PDF generado exitosamente`,
       icon: 'cloud_done',
       timeout: 3000,
       actions: [
         {
-          label: 'Ver en historial',
+          label: 'Ver historial',
           color: 'white',
           handler: () => {
             tab.value = 'historial'
@@ -944,7 +970,6 @@ const generarReporte = async () => {
       ],
     })
 
-    // Opcional: agregar el nuevo reporte a la lista local sin recargar todo
     if (reporteGuardado) {
       reportesAnteriores.value.unshift({
         id: reporteGuardado.id,
@@ -958,7 +983,6 @@ const generarReporte = async () => {
       })
     }
 
-    // Recargar historial
     await cargarHistorialReportes()
   } catch (error) {
     console.error('Error al generar PDF:', error)
@@ -972,9 +996,6 @@ const generarReporte = async () => {
   }
 }
 
-/**
- * Genera el reporte en Excel
- */
 const generarExcel = async () => {
   if (!validarFormulario()) return
 
@@ -986,25 +1007,22 @@ const generarExcel = async () => {
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
-      agruparPor: agruparPor.value,
+      agruparPor: metodoAgrupacion.value,
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
-      nombreUsuario: userId.value.displayName || userId.value.user?.email,
+      nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
     }
 
-    // Generar Excel
     const { blob } = await generarExcelEventos(config, datosReales)
 
     if (!blob) {
-      throw new Error(
-        'No se pudo generar el archivo Excel. Es posible que no haya datos para el período y filtros seleccionados.',
-      )
+      throw new Error('No se pudo generar el archivo Excel')
     }
-    // Preparar metadata
+
     const metadata = {
       nombre: `Reporte ${reportarPor.value}`,
       tipo: 'excel',
-      tipoInforme: tipoInforme.value,
+      tipoInforme: tipoInformeSeleccionado.value,
       reportarPor: reportarPor.value,
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
@@ -1012,17 +1030,16 @@ const generarExcel = async () => {
       totalEventos: datosReales.totalEventos,
     }
 
-    // Subir a Firebase Storage y guardar metadata
     const reporteGuardado = await subirReporte(blob, metadata)
-    // Usar reporteGuardado para mostrar información más detallada
+
     $q.notify({
       type: 'positive',
-      message: `Excel generado y guardado con ID: ${reporteGuardado.id}`,
+      message: `Excel generado exitosamente`,
       icon: 'cloud_done',
       timeout: 3000,
       actions: [
         {
-          label: 'Ver en historial',
+          label: 'Ver historial',
           color: 'white',
           handler: () => {
             tab.value = 'historial'
@@ -1031,7 +1048,6 @@ const generarExcel = async () => {
       ],
     })
 
-    // Opcional: agregar el nuevo reporte a la lista local sin recargar todo
     if (reporteGuardado) {
       reportesAnteriores.value.unshift({
         id: reporteGuardado.id,
@@ -1045,7 +1061,6 @@ const generarExcel = async () => {
       })
     }
 
-    // Recargar historial
     await cargarHistorialReportes()
   } catch (error) {
     console.error('Error al generar Excel:', error)
@@ -1060,20 +1075,11 @@ const generarExcel = async () => {
 }
 
 const cargarHistorialReportes = async () => {
-  console.log('🔍 userId.value:', userId.value)
-  console.log('🔍 Tipo:', typeof userId.value)
-  console.log('🔍 Es string?:', typeof userId.value === 'string')
-
-  if (!userId.value || typeof userId.value !== 'string') {
-    console.error('❌ userId no es un string válido')
-    return
-  }
+  if (!userId.value) return
 
   loading.value = true
   try {
-    console.log('📡 Llamando a obtenerHistorialReportes con UID:', userId.value)
     const reportes = await obtenerHistorialReportes(userId.value)
-    console.log('✅ Reportes obtenidos:', reportes.length)
 
     reportesAnteriores.value = reportes.map((r) => ({
       id: r.id,
@@ -1085,9 +1091,8 @@ const cargarHistorialReportes = async () => {
       downloadURL: r.storageUrl,
       tipoArchivo: r.tipo,
     }))
-    console.log('✅ Historial cargado:', reportesAnteriores.value.length, 'reportes')
   } catch (error) {
-    console.error('❌ Error al cargar historial:', error)
+    console.error('Error al cargar historial:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar el historial de reportes',
@@ -1097,25 +1102,23 @@ const cargarHistorialReportes = async () => {
     loading.value = false
   }
 }
+
 // Lifecycle
 onMounted(() => {
   auth.onAuthStateChanged((user) => {
-    console.log('👤 Usuario autenticado:', user?.email)
-    userId.value = user?.uid || null // ✅ Funciona porque es ref
+    userId.value = user?.uid || null
 
     if (userId.value) {
-      console.log('✅ Usuario autenticado, cargando datos...')
       cargarHistorialReportes()
       cargarOpcionesSelector()
       cargarEventosDisponibles()
     }
   })
 })
+
 watch(reportarPor, (nuevoValor, valorAnterior) => {
   if (nuevoValor !== valorAnterior) {
-    console.log('🔄 Cambió "Reportar por" de', valorAnterior, 'a', nuevoValor)
     elementosSeleccionados.value = []
-    console.log('🧹 Elementos seleccionados limpiados')
   }
 })
 </script>
