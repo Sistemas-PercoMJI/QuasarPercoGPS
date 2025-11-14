@@ -37,8 +37,8 @@ export function useRutasStorage() {
       // Obtener URL de descarga
       const url = await getDownloadURL(archivoRef)
       
-      console.log(`✅ Coordenadas guardadas en Storage: ${rutaArchivo}`)
-      console.log(`🔗 URL: ${url}`)
+      /*console.log(`✅ Coordenadas guardadas en Storage: ${rutaArchivo}`)
+      console.log(`🔗 URL: ${url}`)*/
       
       return url
     } catch (err) {
@@ -92,7 +92,7 @@ export function useRutasStorage() {
       }
       
       const coordenadas = await response.json()
-      console.log(`✅ Coordenadas descargadas: ${coordenadas.length} puntos`)
+      //console.log(`✅ Coordenadas descargadas: ${coordenadas.length} puntos`)
       
       return coordenadas
     } catch (err) {

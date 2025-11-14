@@ -128,7 +128,7 @@ export function useRutaDiaria() {
         }
         
         await setDoc(rutaRef, nuevaRuta)
-        console.log('✅ Nueva ruta diaria creada:', idRuta)
+        //console.log('✅ Nueva ruta diaria creada:', idRuta)
         return { id: idRuta, ...nuevaRuta }
       } else {
         // ✅ ACTUALIZAR RUTA EXISTENTE
@@ -174,7 +174,7 @@ export function useRutaDiaria() {
           // Actualizar caché
           coordenadasCache.value.set(`${unidadId}-${idRuta}`, resultado.coordenadas)
           
-          console.log(`📍 Coordenada agregada. Total: ${resultado.totalCoordenadas}`)
+          //console.log(`📍 Coordenada agregada. Total: ${resultado.totalCoordenadas}`)
         }
 
         // Actualizar otros campos si se proporcionan
@@ -183,7 +183,7 @@ export function useRutaDiaria() {
         if (datosActualizacion.odometro_fin) actualizacion.odometro_fin = datosActualizacion.odometro_fin
 
         await updateDoc(rutaRef, actualizacion)
-        console.log('✅ Ruta diaria actualizada:', idRuta)
+        //console.log('✅ Ruta diaria actualizada:', idRuta)
         return { id: idRuta, ...datosActuales, ...actualizacion }
       }
     } catch (err) {
@@ -261,7 +261,7 @@ export function useRutaDiaria() {
         ...doc.data()
       }))
 
-      console.log('✅ Historial de rutas cargado:', rutas.length)
+      //console.log('✅ Historial de rutas cargado:', rutas.length)
       return rutas
     } catch (err) {
       error.value = err.message
@@ -300,7 +300,7 @@ export function useRutaDiaria() {
           paradas: [...paradasActuales, nuevaParada]
         })
 
-        console.log('✅ Parada agregada a la ruta:', idRuta)
+        //console.log('✅ Parada agregada a la ruta:', idRuta)
       }
     } catch (err) {
       error.value = err.message
@@ -316,7 +316,7 @@ export function useRutaDiaria() {
    */
   const limpiarCache = () => {
     coordenadasCache.value.clear()
-    console.log('🧹 Caché de coordenadas limpiado')
+    //console.log('🧹 Caché de coordenadas limpiado')
   }
 
   return {

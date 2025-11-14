@@ -1,257 +1,307 @@
-// composables/useReportes.js
+// composables/useReportes.js - ACTUALIZADO
 import { ref } from 'vue'
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
-import {
-  formatearEventoParaReporte,
-  formatearGeozonaParaReporte,
-  formatearGrupoConductoresParaReporte,
-  formatearPOIParaReporte,
-} from 'src/config/configReportes'
+import { useReportesEventos } from './useReportesEventos'
+import { useReportesTrayectos } from './useReportesTrayectos'
+import { useReportesHoras } from './useReportesHoras'
 
+/**
+ * ============================================
+ * COMPOSABLE PRINCIPAL DE REPORTES
+ * ============================================
+ * Orquesta los 3 tipos de informes
+ */
 export function useReportes() {
   const loading = ref(false)
   const error = ref(null)
 
-  /**
-   * Obtiene eventos de un usuario en un rango de fechas
-   * ACTUALIZADO para usar campos REALES de Firebase
-   * @param {string} userId - ID del usuario
-   * @param {Date} fechaInicio - Fecha de inicio
-   * @param {Date} fechaFin - Fecha de fin
-   * @param {Array<string>} nombresEventos - Nombres de eventos a filtrar (opcional)
-   * @returns {Promise<Array>} - Array de eventos formateados
-   */
+  // Composables especializados
+  const reportesEventos = useReportesEventos()
+  const reportesTrayectos = useReportesTrayectos()
+  const reportesHoras = useReportesHoras()
 
-  const obtenerUnidades = async () => {
+  /**
+   * ============================================
+   * OBTENER DATOS SEGÚN TIPO DE INFORME
+   * ============================================
+   */
+  
+  /**
+   * Función principal que obtiene datos según el tipo de informe
+   * @param {string} tipoInforme - 'eventos', 'trayectos', 'horas_trabajo'
+   * @param {Object} configuracion - Configuración del reporte
+   * @returns {Promise<Array>} - Datos del informe
+   */
+  const obtenerDatosInforme = async (tipoInforme, configuracion) => {
     loading.value = true
     error.value = null
 
+    try {
+      console.log(`📊 Obteniendo datos para: ${tipoInforme}`)
+      console.log('⚙️ Configuración:', configuracion)
+
+      // Obtener IDs de unidades según el filtro
+      const unidadesIds = await obtenerUnidadesSegunFiltro(configuracion)
+
+      let datos = []
+
+      switch (tipoInforme) {
+        case 'eventos':
+          datos = await reportesEventos.obtenerEventosReales(
+            unidadesIds,
+            configuracion.fechaInicio,
+            configuracion.fechaFin,
+            configuracion.eventosNombres || []
+          )
+          break
+
+        case 'trayectos':
+          datos = await reportesTrayectos.obtenerTrayectos(
+            unidadesIds,
+            configuracion.fechaInicio,
+            configuracion.fechaFin
+          )
+          // Enriquecer con datos de unidades
+          datos = await reportesTrayectos.enriquecerConDatosUnidades(datos)
+          break
+
+        case 'horas_trabajo':
+          datos = await reportesHoras.calcularHorasTrabajo(
+            unidadesIds,
+            configuracion.fechaInicio,
+            configuracion.fechaFin,
+            {
+              diasLaborables: configuracion.diasLaborables,
+              horarioInicio: configuracion.horarioInicio,
+              horarioFin: configuracion.horarioFin
+            }
+          )
+          break
+
+        default:
+          throw new Error(`Tipo de informe no válido: ${tipoInforme}`)
+      }
+
+      console.log(`✅ Datos obtenidos: ${datos.length} registros`)
+      return datos
+
+    } catch (err) {
+      console.error('❌ Error al obtener datos:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Obtiene los IDs de unidades según el tipo de filtro
+   * @param {Object} configuracion - { reportarPor, elementosSeleccionados }
+   * @returns {Promise<Array<string>>} - IDs de unidades
+   */
+  const obtenerUnidadesSegunFiltro = async (configuracion) => {
+    const { reportarPor, elementosSeleccionados } = configuracion
+
+    switch (reportarPor) {
+      case 'Objetos':
+        // Los elementos seleccionados son directamente los IDs de unidades
+        return elementosSeleccionados
+
+      case 'Conductores':
+        // Obtener unidades asignadas a los conductores seleccionados
+        return await obtenerUnidadesPorConductores(elementosSeleccionados)
+
+      case 'Grupos':
+        // Obtener conductores del grupo y luego sus unidades
+        return await obtenerUnidadesPorGrupos(elementosSeleccionados)
+
+      case 'Geozonas':
+        // Para geozonas, necesitamos todas las unidades y filtrar después
+        return await obtenerTodasLasUnidades()
+
+      default:
+        return await obtenerTodasLasUnidades()
+    }
+  }
+
+  /**
+   * ============================================
+   * FUNCIONES AUXILIARES DE OBTENCIÓN DE DATOS
+   * ============================================
+   */
+
+  /**
+   * Obtiene todas las unidades de la base de datos
+   * @returns {Promise<Array>} - Array de unidades
+   */
+  const obtenerUnidades = async () => {
     try {
       const unidadesRef = collection(db, 'Unidades')
       const snapshot = await getDocs(unidadesRef)
 
-      return snapshot.docs.map((doc) => ({
+      return snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }))
     } catch (err) {
       console.error('Error al obtener unidades:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
+      throw err
     }
   }
 
-  const obtenerConductores = async () => {
-    loading.value = true
-    error.value = null
+  /**
+   * Obtiene todos los IDs de unidades
+   * @returns {Promise<Array<string>>} - Array de IDs
+   */
+  const obtenerTodasLasUnidades = async () => {
+    const unidades = await obtenerUnidades()
+    return unidades.map(u => u.id)
+  }
 
+  /**
+   * Obtiene todos los conductores
+   * @returns {Promise<Array>} - Array de conductores
+   */
+  const obtenerConductores = async () => {
     try {
       const conductoresRef = collection(db, 'Conductores')
       const snapshot = await getDocs(conductoresRef)
 
-      return snapshot.docs.map((doc) => ({
+      return snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }))
     } catch (err) {
       console.error('Error al obtener conductores:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const obtenerEventos = async (userId, fechaInicio, fechaFin, nombresEventos = []) => {
-    loading.value = true
-    error.value = null
-
-    try {
-      const eventosRef = collection(db, 'Usuarios', userId, 'Eventos')
-
-      // Construir la consulta base usando createdAt (campo real)
-      let q = query(
-        eventosRef,
-        where('createdAt', '>=', Timestamp.fromDate(fechaInicio)),
-        where('createdAt', '<=', Timestamp.fromDate(fechaFin)),
-        orderBy('createdAt', 'desc'),
-      )
-
-      const snapshot = await getDocs(q)
-      let eventos = snapshot.docs.map((doc) => {
-        const data = doc.data()
-        return formatearEventoParaReporte({
-          id: doc.id,
-          ...data,
-        })
-      })
-
-      // Filtrar por nombres de eventos si se especifican
-      if (nombresEventos.length > 0) {
-        eventos = eventos.filter((evento) => nombresEventos.includes(evento.nombre))
-      }
-
-      return eventos
-    } catch (err) {
-      console.error('Error al obtener eventos:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
+      throw err
     }
   }
 
   /**
-   * Obtiene todas las geozonas de un usuario
-   * ACTUALIZADO para usar campos REALES de Firebase
+   * Obtiene las unidades asignadas a un conjunto de conductores
+   * @param {Array<string>} conductoresNombres - Nombres de conductores
+   * @returns {Promise<Array<string>>} - IDs de unidades
+   */
+  const obtenerUnidadesPorConductores = async (conductoresNombres) => {
+    const unidades = await obtenerUnidades()
+    
+    // Filtrar unidades que tienen asignado alguno de los conductores
+    const unidadesFiltradas = unidades.filter(unidad => {
+      // Aquí asumimos que tienes un campo como "conductorAsignado" en Unidades
+      // Ajusta según tu estructura real
+      const conductorAsignado = unidad.ConductorAsignado || unidad.conductorNombre
+      return conductoresNombres.includes(conductorAsignado)
+    })
+
+    return unidadesFiltradas.map(u => u.id)
+  }
+
+  /**
+   * Obtiene las unidades de conductores que pertenecen a grupos específicos
+   * @param {Array<string>} gruposNombres - Nombres de grupos
    * @param {string} userId - ID del usuario
-   * @returns {Promise<Array>} - Array de geozonas formateadas
+   * @returns {Promise<Array<string>>} - IDs de unidades
+   */
+  const obtenerUnidadesPorGrupos = async (gruposNombres, userId) => {
+    // Obtener los grupos de conductores del usuario
+    const grupos = await obtenerGruposConductores(userId)
+    
+    // Filtrar grupos seleccionados
+    const gruposFiltrados = grupos.filter(g => gruposNombres.includes(g.nombre))
+    
+    // Obtener todos los IDs de conductores de esos grupos
+    const conductoresIds = new Set()
+    gruposFiltrados.forEach(grupo => {
+      if (grupo.conductoresIds) {
+        grupo.conductoresIds.forEach(id => conductoresIds.add(id))
+      }
+    })
+
+    // Obtener conductores completos
+    const todosConductores = await obtenerConductores()
+    const conductoresDelGrupo = todosConductores.filter(c => 
+      conductoresIds.has(c.id)
+    )
+
+    // Obtener unidades de esos conductores
+    const nombresConductores = conductoresDelGrupo.map(c => c.Nombre)
+    return await obtenerUnidadesPorConductores(nombresConductores)
+  }
+
+  /**
+   * Obtiene grupos de conductores de un usuario
+   * @param {string} userId - ID del usuario
+   * @returns {Promise<Array>} - Array de grupos
+   */
+  const obtenerGruposConductores = async (userId) => {
+    try {
+      const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
+      const snapshot = await getDocs(gruposRef)
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        nombre: doc.data().Nombre,
+        conductoresIds: doc.data().ConductoresIds || [],
+        ...doc.data()
+      }))
+    } catch (err) {
+      console.error('Error al obtener grupos:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Obtiene geozonas de un usuario
+   * @param {string} userId - ID del usuario
+   * @returns {Promise<Array>} - Array de geozonas
    */
   const obtenerGeozonas = async (userId) => {
-    loading.value = true
-    error.value = null
-
     try {
       const geozonasRef = collection(db, 'Usuarios', userId, 'Geozonas')
       const snapshot = await getDocs(geozonasRef)
 
-      return snapshot.docs.map((doc) => {
-        const data = doc.data()
-        return formatearGeozonaParaReporte({
-          id: doc.id,
-          ...data,
-        })
-      })
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        nombre: doc.data().nombre,
+        ...doc.data()
+      }))
     } catch (err) {
       console.error('Error al obtener geozonas:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
+      throw err
     }
   }
 
   /**
-   * Obtiene todos los POIs de un usuario
-   * ACTUALIZADO para usar campos REALES de Firebase
-   * @param {string} userId - ID del usuario
-   * @returns {Promise<Array>} - Array de POIs formateados
+   * ============================================
+   * FUNCIONES DE AGRUPACIÓN Y FILTRADO
+   * ============================================
    */
-  const obtenerPOIs = async (userId) => {
-    loading.value = true
-    error.value = null
-
-    try {
-      const poisRef = collection(db, 'Usuarios', userId, 'POIS')
-      const snapshot = await getDocs(poisRef)
-
-      return snapshot.docs.map((doc) => {
-        const data = doc.data()
-        return formatearPOIParaReporte({
-          id: doc.id,
-          ...data,
-        })
-      })
-    } catch (err) {
-      console.error('Error al obtener POIs:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
-    }
-  }
 
   /**
-   * Obtiene todos los grupos de conductores de un usuario
-   * ACTUALIZADO para usar campos REALES de Firebase
-   * @param {string} userId - ID del usuario
-   * @returns {Promise<Array>} - Array de grupos de conductores formateados
+   * Agrupa datos según un criterio
+   * @param {Array} datos - Array de datos
+   * @param {string} criterio - 'Objetos', 'Conductores', 'Geozonas', etc.
+   * @returns {Object} - Datos agrupados
    */
-  const obtenerGruposConductores = async (userId) => {
-    loading.value = true
-    error.value = null
-
-    try {
-      const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
-      const snapshot = await getDocs(gruposRef)
-
-      return snapshot.docs.map((doc) => {
-        const data = doc.data()
-        return formatearGrupoConductoresParaReporte({
-          id: doc.id,
-          ...data,
-        })
-      })
-    } catch (err) {
-      console.error('Error al obtener grupos de conductores:', err)
-      error.value = err.message
-      return []
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * Obtiene conductores de un grupo específico
-   * ACTUALIZADO para usar ConductoresIds (campo real)
-   * @param {string} userId - ID del usuario
-   * @param {string} grupoId - ID del grupo de conductores
-   * @returns {Promise<Array>} - Array de IDs de conductores del grupo
-   */
-  const obtenerConductoresDelGrupo = async (userId, grupoId) => {
-    try {
-      const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
-      const snapshot = await getDocs(gruposRef)
-
-      const grupo = snapshot.docs.find((doc) => doc.id === grupoId)
-
-      if (grupo) {
-        const grupoData = grupo.data()
-        // Retornar ConductoresIds que es el campo real
-        return grupoData.ConductoresIds || []
-      }
-
-      return []
-    } catch (err) {
-      console.error('Error al obtener conductores del grupo:', err)
-      return []
-    }
-  }
-
-  /**
-   * Agrupa eventos por criterio
-   * NOTA: Actualmente los eventos no tienen campo de vehículo/conductor
-   * Esta función está preparada para cuando implementes trackers GPS
-   * @param {Array} eventos - Array de eventos
-   * @param {string} criterio - Criterio de agrupación
-   * @returns {Object} - Objeto con eventos agrupados
-   */
-  const agruparEventos = (eventos, criterio) => {
+  const agruparDatos = (datos, criterio) => {
     const agrupados = {}
 
-    eventos.forEach((evento) => {
+    datos.forEach(dato => {
       let clave = ''
 
       switch (criterio) {
         case 'Objetos':
-          // Por ahora agrupar por nombre de evento hasta que tengas trackers
-          clave = evento.vehiculo || evento.objeto || evento.nombre || 'Sin asignar'
+          clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
           break
         case 'Conductores':
-          clave = evento.conductor || 'Sin asignar'
+          clave = dato.conductorNombre || 'Sin conductor'
           break
         case 'Geozonas':
-          // Buscar geozona en las condiciones
-          clave = obtenerGeozonaDeCondiciones(evento) || 'Sin geozona'
-          break
-        case 'Grupos':
-          clave = evento.grupo || 'Sin grupo'
+          clave = dato.geozonaNombre || 'Sin geozona'
           break
         case 'Eventos':
-          clave = evento.nombre || 'Sin nombre'
+          clave = dato.eventoNombre || 'Sin nombre'
           break
         default:
           clave = 'Sin clasificar'
@@ -261,150 +311,78 @@ export function useReportes() {
         agrupados[clave] = []
       }
 
-      agrupados[clave].push(evento)
+      agrupados[clave].push(dato)
     })
 
     return agrupados
   }
 
   /**
-   * Helper para obtener geozona de las condiciones del evento
-   * @param {Object} evento - Evento
-   * @returns {string|null} - Nombre de geozona o null
-   */
-  const obtenerGeozonaDeCondiciones = (evento) => {
-    if (!evento.condiciones || evento.condiciones.length === 0) {
-      return null
-    }
-
-    // Buscar condición que tenga ubicacionId
-    const condicionConUbicacion = evento.condiciones.find((c) => c.ubicacionId)
-
-    if (condicionConUbicacion) {
-      return condicionConUbicacion.ubicacionId
-    }
-
-    return null
-  }
-
-  /**
-   * Calcula estadísticas de eventos
-   * @param {Array} eventos - Array de eventos
-   * @returns {Object} - Objeto con estadísticas
-   */
-  const calcularEstadisticas = (eventos) => {
-    const stats = {
-      total: eventos.length,
-      porNombre: {},
-      porFecha: {},
-      activos: 0,
-      inactivos: 0,
-      conCondicionTiempo: 0,
-    }
-
-    eventos.forEach((evento) => {
-      // Contar por nombre
-      const nombre = evento.nombre || 'Sin nombre'
-      stats.porNombre[nombre] = (stats.porNombre[nombre] || 0) + 1
-
-      // Contar por fecha
-      if (evento.fecha) {
-        const fecha = new Date(evento.fecha).toLocaleDateString('es-MX')
-        stats.porFecha[fecha] = (stats.porFecha[fecha] || 0) + 1
-      }
-
-      // Contar activos/inactivos
-      if (evento.activo) {
-        stats.activos++
-      } else {
-        stats.inactivos++
-      }
-
-      // Contar con condición de tiempo
-      if (evento.condicionTiempo) {
-        stats.conCondicionTiempo++
-      }
-    })
-
-    return stats
-  }
-
-  /**
-   * Filtra eventos por elementos seleccionados
-   * @param {Array} eventos - Array de eventos
+   * Filtra datos por elementos seleccionados
+   * @param {Array} datos - Array de datos
    * @param {Array} elementosSeleccionados - Elementos a filtrar
-   * @param {string} tipoFiltro - Tipo de filtro (Objetos, Conductores, etc.)
-   * @returns {Array} - Eventos filtrados
+   * @param {string} tipoFiltro - Tipo de filtro
+   * @returns {Array} - Datos filtrados
    */
-  const filtrarEventosPorElementos = (eventos, elementosSeleccionados, tipoFiltro) => {
+  const filtrarDatosPorElementos = (datos, elementosSeleccionados, tipoFiltro) => {
     if (elementosSeleccionados.length === 0) {
-      return eventos
+      return datos
     }
 
-    return eventos.filter((evento) => {
-      let valorEvento = ''
+    return datos.filter(dato => {
+      let valorDato = ''
 
       switch (tipoFiltro) {
         case 'Objetos':
-          valorEvento = evento.vehiculo || evento.objeto || evento.nombre || ''
+          valorDato = dato.unidadNombre || dato.idUnidad || ''
           break
         case 'Conductores':
-          valorEvento = evento.conductor || ''
+          valorDato = dato.conductorNombre || ''
           break
         case 'Geozonas':
-          valorEvento = obtenerGeozonaDeCondiciones(evento) || ''
-          break
-        case 'Grupos':
-          valorEvento = evento.grupo || ''
+          valorDato = dato.geozonaNombre || ''
           break
         case 'Eventos':
-          valorEvento = evento.nombre || ''
+          valorDato = dato.eventoNombre || ''
           break
       }
 
-      return elementosSeleccionados.includes(valorEvento)
+      return elementosSeleccionados.includes(valorDato)
     })
   }
 
   /**
-   * Obtiene tipos de eventos únicos desde Firebase
-   * @param {string} userId - ID del usuario
-   * @returns {Promise<Array>} - Array de nombres únicos de eventos
+   * Calcula estadísticas generales
+   * @param {Array} datos - Array de datos
+   * @returns {Object} - Estadísticas
    */
-  const obtenerTiposEventosUnicos = async (userId) => {
-    try {
-      const eventosRef = collection(db, 'Usuarios', userId, 'Eventos')
-      const snapshot = await getDocs(eventosRef)
-
-      const nombresUnicos = new Set()
-
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        if (data.nombre) {
-          nombresUnicos.add(data.nombre)
-        }
-      })
-
-      return Array.from(nombresUnicos)
-    } catch (err) {
-      console.error('Error al obtener tipos de eventos:', err)
-      return []
+  const calcularEstadisticas = (datos) => {
+    return {
+      total: datos.length,
+      conductoresUnicos: new Set(datos.map(d => d.conductorNombre)).size,
+      unidadesUnicas: new Set(datos.map(d => d.unidadNombre)).size,
+      // Agregar más estadísticas según necesites
     }
   }
 
+  // Exportar todo
   return {
     loading,
     error,
-    obtenerEventos,
-    obtenerGeozonas,
-    obtenerPOIs,
-    obtenerGruposConductores,
-    obtenerConductoresDelGrupo,
-    obtenerTiposEventosUnicos,
-    agruparEventos,
-    calcularEstadisticas,
-    filtrarEventosPorElementos,
+    // Función principal
+    obtenerDatosInforme,
+    // Obtención de catálogos
     obtenerUnidades,
     obtenerConductores,
+    obtenerGruposConductores,
+    obtenerGeozonas,
+    // Utilidades
+    agruparDatos,
+    filtrarDatosPorElementos,
+    calcularEstadisticas,
+    // Re-exportar funciones específicas por si se necesitan
+    ...reportesEventos,
+    ...reportesTrayectos,
+    ...reportesHoras
   }
 }

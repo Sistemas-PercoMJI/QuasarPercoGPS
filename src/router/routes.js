@@ -13,7 +13,7 @@ const routes = [
     children: [
       {
         path: '',
-        component: () => import('pages/IndexPage.vue'),
+        component: () => import('src/pages/IndexPage.vue'),
       },
       {
         path: '/reporte', // ← Agrega esto (en minúscula)
