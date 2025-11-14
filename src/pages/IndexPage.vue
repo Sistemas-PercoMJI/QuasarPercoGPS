@@ -579,7 +579,19 @@ const dibujarTodosEnMapa = async () => {
             },
           })
         }
+        mapaAPI.map.on('click', polygonId, (e) => {
+          // Crear popup en la posición del clic
+          new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(popupContent).addTo(mapaAPI.map)
+        })
 
+        // Cambiar cursor al pasar sobre el polígono
+        mapaAPI.map.on('mouseenter', polygonId, () => {
+          mapaAPI.map.getCanvas().style.cursor = 'pointer'
+        })
+
+        mapaAPI.map.on('mouseleave', polygonId, () => {
+          mapaAPI.map.getCanvas().style.cursor = ''
+        })
         // Calcular centro del polígono para el marcador
         const lats = geozona.puntos.map((p) => p.lat)
         const lngs = geozona.puntos.map((p) => p.lng)
