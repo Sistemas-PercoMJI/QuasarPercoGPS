@@ -96,6 +96,8 @@ let watchId = null
 let mapaAPI = null
 let intervaloEvaluacionEventos = null
 
+let popupGlobalActivo = null
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
@@ -315,7 +317,6 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
-    // 🔵 DIBUJAR POIs
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
@@ -361,31 +362,31 @@ const dibujarTodosEnMapa = async () => {
 
         // ✅ Agregar marcador del POI
         const popupContent = `
-          <div style="min-width: 180px;">
-            <b style="font-size: 14px;">📍 ${poi.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              ${poi.direccion}
-            </p>
-            <button
-              onclick="window.verDetallesPOI('${poi.id}')"
-              style="
-                width: 100%;
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 12px;
-              "
-            >
-              📍 Ver detalles
-            </button>
-          </div>
-        `
+      <div style="min-width: 180px;">
+        <b style="font-size: 14px;">📍 ${poi.nombre}</b>
+        ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+          ${poi.direccion}
+        </p>
+        <button
+          onclick="window.verDetallesPOI('${poi.id}')"
+          style="
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+          "
+        >
+          📍 Ver detalles
+        </button>
+      </div>
+    `
 
         const markerEl = document.createElement('div')
         markerEl.innerHTML = '📍'
@@ -394,33 +395,48 @@ const dibujarTodosEnMapa = async () => {
 
         if (tieneEventos) {
           markerEl.innerHTML = `
-            <div style="position: relative;">
-              <div style="font-size: 30px;">📍</div>
-              <div style="
-                position: absolute;
-                top: -8px;
-                right: -8px;
-                background: #ff5722;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 11px;
-                font-weight: bold;
-                border: 2px solid white;
-                box-shadow: 0 2px 8px rgba(255, 87, 34, 0.6);
-              ">${cantidadEventos}</div>
-            </div>
-          `
+        <div style="position: relative;">
+          <div style="font-size: 30px;">📍</div>
+          <div style="
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff5722;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(255, 87, 34, 0.6);
+          ">${cantidadEventos}</div>
+        </div>
+      `
         }
+
+        // ✅ Crear popup con clase de animación
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          className: 'popup-animated',
+        }).setHTML(popupContent)
 
         const marker = new mapboxgl.Marker({ element: markerEl })
           .setLngLat([lng, lat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
+          .setPopup(popup)
           .addTo(mapaAPI.map)
+
+        // ✅ Cerrar otros popups cuando se abre este
+        marker.on('click', () => {
+          if (popupGlobalActivo && popupGlobalActivo !== popup) {
+            popupGlobalActivo.remove()
+          }
+          popupGlobalActivo = popup
+        })
+
         marcadoresPOIs.value.push(marker)
       }
     })
@@ -579,12 +595,24 @@ const dibujarTodosEnMapa = async () => {
             },
           })
         }
+
         mapaAPI.map.on('click', polygonId, (e) => {
-          // Crear popup en la posición del clic
-          new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(popupContent).addTo(mapaAPI.map)
+          // Cerrar popup anterior
+          if (popupGlobalActivo) {
+            popupGlobalActivo.remove()
+          }
+
+          // Crear nuevo popup con animación desde el inicio
+          popupGlobalActivo = new mapboxgl.Popup({
+            closeButton: true,
+            closeOnClick: false,
+            className: 'popup-animated', // ✅ Agregar clase directamente aquí
+          })
+            .setLngLat(e.lngLat)
+            .setHTML(popupContent)
+            .addTo(mapaAPI.map)
         })
 
-        // Cambiar cursor al pasar sobre el polígono
         mapaAPI.map.on('mouseenter', polygonId, () => {
           mapaAPI.map.getCanvas().style.cursor = 'pointer'
         })
@@ -1103,12 +1131,18 @@ const manejarToggleTrafico = () => {
   }
 }
 
-:deep(.popup-unidad .leaflet-popup-content-wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+:deep(.popup-animated .mapboxgl-popup-content) {
+  animation: popupFade 0.2s ease-out;
 }
 
-:deep(.popup-unidad .leaflet-popup-content) {
-  margin: 0;
+@keyframes popupFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
