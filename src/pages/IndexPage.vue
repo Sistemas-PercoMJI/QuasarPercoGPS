@@ -419,9 +419,12 @@ const dibujarTodosEnMapa = async () => {
         }
 
         // ✅ Crear popup con clase de animación
+        // ✅ Crear popup con clase de animación
         const popup = new mapboxgl.Popup({
           offset: 25,
           className: 'popup-animated',
+          closeButton: true,
+          closeOnClick: false,
         }).setHTML(popupContent)
 
         const marker = new mapboxgl.Marker({ element: markerEl })
@@ -429,8 +432,8 @@ const dibujarTodosEnMapa = async () => {
           .setPopup(popup)
           .addTo(mapaAPI.map)
 
-        // ✅ Cerrar otros popups cuando se abre este
-        marker.on('click', () => {
+        // ✅ Escuchar cuando SE ABRE el popup (no el click del marker)
+        popup.on('open', () => {
           if (popupGlobalActivo && popupGlobalActivo !== popup) {
             popupGlobalActivo.remove()
           }
@@ -596,23 +599,51 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
+        // ✅ DEFINIR popupContent UNA SOLA VEZ AQUÍ
+        const popupContent = `
+    <div style="min-width: 180px;">
+      <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
+      ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
+      <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+        ${geozona.puntos.length} puntos
+      </p>
+      <button
+        onclick="window.verDetallesGeozona('${geozona.id}')"
+        style="
+          width: 100%;
+          margin-top: 8px;
+          padding: 8px 12px;
+          background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 12px;
+        "
+      >
+        📍 Ver detalles
+      </button>
+    </div>
+  `
+
+        // ✅ Evento click del polígono
         mapaAPI.map.on('click', polygonId, (e) => {
-          // Cerrar popup anterior
           if (popupGlobalActivo) {
             popupGlobalActivo.remove()
           }
 
-          // Crear nuevo popup con animación desde el inicio
           popupGlobalActivo = new mapboxgl.Popup({
             closeButton: true,
             closeOnClick: false,
-            className: 'popup-animated', // ✅ Agregar clase directamente aquí
+            className: 'popup-animated',
           })
             .setLngLat(e.lngLat)
             .setHTML(popupContent)
             .addTo(mapaAPI.map)
         })
 
+        // Cambiar cursor
         mapaAPI.map.on('mouseenter', polygonId, () => {
           mapaAPI.map.getCanvas().style.cursor = 'pointer'
         })
@@ -620,69 +651,35 @@ const dibujarTodosEnMapa = async () => {
         mapaAPI.map.on('mouseleave', polygonId, () => {
           mapaAPI.map.getCanvas().style.cursor = ''
         })
-        // Calcular centro del polígono para el marcador
+
+        // Calcular centro para badges (opcional)
         const lats = geozona.puntos.map((p) => p.lat)
         const lngs = geozona.puntos.map((p) => p.lng)
         const centroLat = lats.reduce((a, b) => a + b) / lats.length
         const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-        const popupContent = `
-          <div style="min-width: 180px;">
-            <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              ${geozona.puntos.length} puntos
-            </p>
-            <button
-              onclick="window.verDetallesGeozona('${geozona.id}')"
-              style="
-                width: 100%;
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 12px;
-              "
-            >
-              📍 Ver detalles
-            </button>
-          </div>
-        `
-
-        const markerEl = document.createElement('div')
-        markerEl.style.width = '1px'
-        markerEl.style.height = '1px'
-
-        new mapboxgl.Marker({ element: markerEl })
-          .setLngLat([centroLng, centroLat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
-          .addTo(mapaAPI.map)
-
+        // Badge de eventos si los hay
         if (tieneEventos) {
           const badgeEl = document.createElement('div')
           badgeEl.innerHTML = `
-            <div style="
-              background: #ff5722;
-              color: white;
-              border-radius: 50%;
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 14px;
-              font-weight: bold;
-              border: 3px solid white;
-              box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-              cursor: pointer;
-            ">
-              ${cantidadEventos}
-            </div>
-          `
+      <div style="
+        background: #ff5722;
+        color: white;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+        border: 3px solid white;
+        box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+        cursor: pointer;
+      ">
+        ${cantidadEventos}
+      </div>
+    `
 
           new mapboxgl.Marker({ element: badgeEl })
             .setLngLat([centroLng, centroLat])
