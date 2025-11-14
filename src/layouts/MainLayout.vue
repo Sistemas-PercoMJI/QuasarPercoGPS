@@ -228,11 +228,9 @@
       :mini="!drawerExpanded || dialogAbierto"
       @mouseenter="onDrawerMouseEnter"
       @mouseleave="onDrawerMouseLeave"
-      bordered
       :width="350"
       :mini-width="70"
       class="drawer-custom"
-      :overlay="drawerExpanded && !dialogAbierto"
       elevated
       mini-to-overlay
     >
@@ -438,10 +436,7 @@
       @hide="onDialogHide"
     >
       <q-card class="component-card">
-        <GeoZonas 
-          @close="cerrarGeozonas" 
-          @crear-evento-ubicacion="abrirEventosConUbicacion"
-        />
+        <GeoZonas @close="cerrarGeozonas" @crear-evento-ubicacion="abrirEventosConUbicacion" />
       </q-card>
     </q-dialog>
 
@@ -533,29 +528,29 @@ const geozonas = ref([])
 function abrirEventosConUbicacion(data) {
   console.log('4️⃣ MainLayout: Recibido evento crear-evento-ubicacion')
   console.log('📦 Data recibida:', data)
-  
+
   if (!data || !data.ubicacion || !data.tipo) {
     console.error('❌ Datos incompletos:', data)
     $q.notify({
       type: 'negative',
       message: 'Error: Datos de ubicación incompletos',
-      icon: 'error'
+      icon: 'error',
     })
     return
   }
-  
+
   console.log('5️⃣ MainLayout: Datos validados')
-  
+
   window._ubicacionParaEvento = {
     ubicacion: data.ubicacion,
-    tipo: data.tipo
+    tipo: data.tipo,
   }
-  
+
   console.log('6️⃣ MainLayout: Datos guardados')
-  
+
   geozonaDrawerOpen.value = false
   console.log('7️⃣ MainLayout: Drawer cerrado')
-  
+
   setTimeout(() => {
     console.log('8️⃣ MainLayout: Abriendo Eventos')
     eventosDrawerOpen.value = true
@@ -607,6 +602,8 @@ const resultadosAgrupados = computed(() => {
   })
   return grupos
 })
+
+// En tu <script setup> del MainLayout, agrega:
 
 // ⚡ WATCH OPTIMIZADO - CORREGIDO PARA EVITAR PARPADEO
 let timeoutBusqueda = null
