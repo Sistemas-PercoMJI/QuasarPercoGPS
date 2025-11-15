@@ -798,6 +798,8 @@ export function useMapboxGL() {
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
         maxTileCacheSize: 50, // Cachear menos tiles
+        minZoom: 5, //
+        maxZoom: 18,
       })
 
       // Agregar controles de navegación
@@ -831,7 +833,21 @@ export function useMapboxGL() {
             source: 'mapbox-traffic',
             'source-layer': 'traffic',
             paint: {
-              'line-width': 2,
+              'line-width': [
+                'interpolate',
+                ['exponential', 1.5],
+                ['zoom'],
+                10,
+                1, // Zoom 10 → grosor 1px
+                13,
+                2, // Zoom 13 → grosor 2px
+                15,
+                3, // Zoom 15 → grosor 3px
+                18,
+                6, // Zoom 18 → grosor 5px
+                20,
+                10, // Zoom 20 → grosor 8px
+              ],
               'line-color': [
                 'case',
                 ['==', ['get', 'congestion'], 'low'],
@@ -846,11 +862,11 @@ export function useMapboxGL() {
               ],
             },
             layout: {
-              visibility: 'none', // ⬅️ AGREGAR ESTA LÍNEA
+              visibility: 'none',
             },
           },
           labelLayerId,
-        ) // ⬅️ INSERTAR ANTES de esta capa
+        )
 
         console.log('🚦 Capa de tráfico agregada DEBAJO de etiquetas')
       })
