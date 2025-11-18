@@ -59,7 +59,7 @@
                 :options="opcionesReportar"
                 outlined
                 dense
-                label="Objetos"
+                label="Unidades"
                 @update:model-value="cargarOpcionesSelector"
               />
             </div>
@@ -482,7 +482,7 @@ const loadingEventos = ref(false)
 const loading = ref(false)
 
 // Estados adicionales
-const metodoAgrupacion = ref('objeto')
+const metodoAgrupacion = ref('unidad')
 const diasLaborablesSeleccionados = ref([1, 2, 3, 4, 5])
 const horarioInicio = ref('08:00')
 const horarioFin = ref('17:00')
@@ -494,12 +494,12 @@ const mostrarPlacaMapa = ref(true)
 const mostrarMapaZona = ref(false)
 
 // Datos del formulario
-const reportarPor = ref('Objetos')
+const reportarPor = ref('Unidades')
 const elementosSeleccionados = ref([])
 const eventos = ref([])
 
 // Opciones
-const opcionesReportar = ['Objetos', 'Conductores', 'Grupos', 'Geozonas']
+const opcionesReportar = ['Unidades', 'Conductores', 'Grupos', 'Geozonas']
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
 
@@ -530,7 +530,7 @@ const columnasHistorial = [
 // Computed
 const etiquetaSelector = computed(() => {
   const labels = {
-    Objetos: 'Objetos',
+    Unidades: 'Unidades',
     Conductores: 'Conductores',
     Grupos: 'Grupos de conductores',
     Geozonas: 'Geozonas',
@@ -545,12 +545,12 @@ const aplicarRangoFecha = () => {
 
 const cancelarReporte = () => {
   tipoInformeSeleccionado.value = null
-  reportarPor.value = 'Objetos'
+  reportarPor.value = 'Unidades'
   elementosSeleccionados.value = []
   eventos.value = []
   rangoFecha.value = null
   rangoFechaTemporal.value = null
-  metodoAgrupacion.value = 'objeto'
+  metodoAgrupacion.value = 'unidad'
   diasLaborablesSeleccionados.value = [1, 2, 3, 4, 5]
   horarioInicio.value = '08:00'
   horarioFin.value = '17:00'
@@ -588,7 +588,7 @@ const cargarOpcionesSelector = async () => {
 
   try {
     switch (reportarPor.value) {
-      case 'Objetos': {
+      case 'Unidades': {
         const unidades = await obtenerUnidades()
         // 🔥 Guardar mapeo de nombre -> ID
         window.unidadesMap = {}
@@ -652,12 +652,19 @@ const cargarEventosDisponibles = async () => {
   loadingEventos.value = true
 
   try {
-    // Valores por defecto de eventos
+    // 🔥 LISTA ACTUALIZADA CON TUS EVENTOS REALES
     listaEventosDisponibles.value = [
-      'Entrada a geozona',
-      'Salida de geozona',
-      'Exceso de velocidad',
-      'Ralentí prolongado',
+      'eventos de cositas entrada y salida',
+      'abajo owo evento',
+      'Evento en prueba para nuevo punto',
+      'Entrada de las oficinas',
+      'Geozona point',
+      'cositas chables sss',
+      'Evento Para ver ID',
+      'Evento en Alan kun',
+      'paz',
+      'Evento en Casita',
+      'evento a',
     ]
   } catch (error) {
     console.error('Error al cargar eventos:', error)
@@ -849,13 +856,13 @@ const obtenerDatosReporte = async () => {
   // Agrupar datos
   let datosAgrupados = {}
   if (tipoInforme === 'eventos') {
-    const criterio = metodoAgrupacion.value || 'objeto'
+    const criterio = metodoAgrupacion.value || 'unidad'
     console.log('📊 Agrupando por:', criterio)
     
     datosAgrupados = datosFiltrados.reduce((acc, dato) => {
       let clave = ''
       switch (criterio) {
-        case 'objeto':
+        case 'unidad':
           clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
           break
         case 'conductor':
