@@ -137,27 +137,8 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'generateSW',
-      workboxOptions: {
-        skipWaiting: true,
-        clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\.mapbox\.com\//,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'mapbox-tiles-cache',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
-      },
+      workboxMode: 'InjectManifest', // ⬅️ Cambiar de GenerateSW a InjectManifest
+      // ❌ BORRAR workboxOptions completamente
       manifest: {
         name: 'MJ GPS',
         short_name: 'MJ GPS',
