@@ -702,14 +702,32 @@ const obtenerDatosReporte = async () => {
   console.log('🔍 Obteniendo datos del reporte...')
   console.log('📊 Tipo de informe:', tipoInformeSeleccionado.value)
   console.log('📅 Rango crudo:', rangoFecha.value)
+  console.log('📅 Tipo de dato:', typeof rangoFecha.value)
+  console.log('📅 Es null?:', rangoFecha.value === null)
+  console.log('📅 Es undefined?:', rangoFecha.value === undefined)
 
   if (!userId.value) {
     throw new Error('Usuario no autenticado')
   }
 
+  if (!rangoFecha.value) {
+    throw new Error('No se ha seleccionado ningún rango de fechas')
+  }
+
   // ✅ HELPER PARA PARSEAR FECHAS
   const parsearFechaString = (fechaStr) => {
+    if (!fechaStr || typeof fechaStr !== 'string') {
+      console.error('❌ fechaStr inválido:', fechaStr)
+      throw new Error(`Formato de fecha inválido: ${fechaStr}`)
+    }
+    
     const partes = fechaStr.trim().split('/').map(Number)
+    
+    if (partes.length !== 3 || partes.some(isNaN)) {
+      console.error('❌ Partes de fecha inválidas:', partes)
+      throw new Error(`No se pudo parsear la fecha: ${fechaStr}`)
+    }
+    
     // Detectar formato YYYY/MM/DD vs DD/MM/YYYY
     if (partes[0] > 31) {
       // Formato YYYY/MM/DD
