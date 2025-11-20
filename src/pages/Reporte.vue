@@ -411,6 +411,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
+import { useProcesamientoTrayectos } from 'src/composables/useProcesamientoTrayectos'
 
 // 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
@@ -429,20 +430,13 @@ const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
+const { generarMapaTrayectos } = useProcesamientoTrayectos()
 
 // Composables
-const {
-  subirReporte,
-  obtenerHistorialReportes,
-  formatearTamaño,
-} = useReportesStorage()
+const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
 
-const {
-  obtenerGeozonas,
-  obtenerGruposConductores,
-  obtenerUnidades,
-  obtenerConductores,
-} = useReportes()
+const { obtenerGeozonas, obtenerGruposConductores, obtenerUnidades, obtenerConductores } =
+  useReportes()
 
 const {
   tipoInformeSeleccionado,
@@ -472,7 +466,6 @@ const {
   generarResumen,
 } = instanciaColumnas
 
-const { generarPDFEventos } = useReportePDF()
 const { generarExcelEventos } = useReporteExcel()
 
 // Estados
@@ -592,7 +585,7 @@ const cargarOpcionesSelector = async () => {
         const unidades = await obtenerUnidades()
         // 🔥 Guardar mapeo de nombre -> ID
         window.unidadesMap = {}
-        unidades.forEach(u => {
+        unidades.forEach((u) => {
           const nombre = u.Unidad || u.id
           window.unidadesMap[nombre] = u.id
         })
@@ -727,14 +720,14 @@ const obtenerDatosReporte = async () => {
       console.error('❌ fechaStr inválido:', fechaStr)
       throw new Error(`Formato de fecha inválido: ${fechaStr}`)
     }
-    
+
     const partes = fechaStr.trim().split('/').map(Number)
-    
+
     if (partes.length !== 3 || partes.some(isNaN)) {
       console.error('❌ Partes de fecha inválidas:', partes)
       throw new Error(`No se pudo parsear la fecha: ${fechaStr}`)
     }
-    
+
     // Detectar formato YYYY/MM/DD vs DD/MM/YYYY
     if (partes[0] > 31) {
       // Formato YYYY/MM/DD
@@ -753,35 +746,33 @@ const obtenerDatosReporte = async () => {
     console.log('🔍 Formato object detectado')
     console.log('  from:', rangoFecha.value.from)
     console.log('  to:', rangoFecha.value.to)
-    
+
     fechaInicio = parsearFechaString(rangoFecha.value.from)
     fechaFin = parsearFechaString(rangoFecha.value.to)
-    
+
     fechaInicio.setHours(0, 0, 0, 0)
     fechaFin.setHours(23, 59, 59, 999)
-    
   } else if (typeof rangoFecha.value === 'string') {
     // Caso 2: Formato string
     console.log('🔍 Formato string detectado:', rangoFecha.value)
-    
+
     if (rangoFecha.value.includes(' - ')) {
       // Caso 2a: Rango con separador "YYYY/MM/DD - YYYY/MM/DD"
       console.log('🔍 Rango de fechas detectado')
-      const [inicio, fin] = rangoFecha.value.split(' - ').map(s => s.trim())
-      
+      const [inicio, fin] = rangoFecha.value.split(' - ').map((s) => s.trim())
+
       fechaInicio = parsearFechaString(inicio)
       fechaFin = parsearFechaString(fin)
-      
+
       fechaInicio.setHours(0, 0, 0, 0)
       fechaFin.setHours(23, 59, 59, 999)
-      
     } else {
       // Caso 2b: Fecha única "YYYY/MM/DD" - usar todo el día
       console.log('🔍 Fecha única detectada, usando el día completo')
-      
+
       fechaInicio = parsearFechaString(rangoFecha.value)
       fechaFin = parsearFechaString(rangoFecha.value)
-      
+
       fechaInicio.setHours(0, 0, 0, 0)
       fechaFin.setHours(23, 59, 59, 999)
     }
@@ -795,8 +786,16 @@ const obtenerDatosReporte = async () => {
   }
 
   console.log('✅ Fechas parseadas correctamente:')
-  console.log('  📅 Inicio:', fechaInicio.toLocaleDateString('es-MX'), fechaInicio.toLocaleTimeString('es-MX'))
-  console.log('  📅 Fin:', fechaFin.toLocaleDateString('es-MX'), fechaFin.toLocaleTimeString('es-MX'))
+  console.log(
+    '  📅 Inicio:',
+    fechaInicio.toLocaleDateString('es-MX'),
+    fechaInicio.toLocaleTimeString('es-MX'),
+  )
+  console.log(
+    '  📅 Fin:',
+    fechaFin.toLocaleDateString('es-MX'),
+    fechaFin.toLocaleTimeString('es-MX'),
+  )
 
   // Determinar tipo de informe
   const tipoInforme = tipoInformeSeleccionado.value || 'eventos'
@@ -816,26 +815,24 @@ const obtenerDatosReporte = async () => {
       unidadesIds,
       fechaInicio,
       fechaFin,
-      eventos.value || []
+      eventos.value || [],
     )
   } else if (tipoInforme === 'trayectos') {
     console.log('🗺️ Obteniendo trayectos...')
     const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
     datosInforme = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
+
+    // 🆕 Guardar trayectos para generar mapa después
+    window._trayectosParaMapa = datosInforme
   } else if (tipoInforme === 'horas_trabajo') {
     console.log('⏰ Calculando horas de trabajo...')
     const { calcularHorasTrabajo } = useReportesHoras()
-    datosInforme = await calcularHorasTrabajo(
-      unidadesIds,
-      fechaInicio,
-      fechaFin,
-      {
-        diasLaborables: diasLaborablesSeleccionados.value,
-        horarioInicio: horarioInicio.value,
-        horarioFin: horarioFin.value,
-      }
-    )
+    datosInforme = await calcularHorasTrabajo(unidadesIds, fechaInicio, fechaFin, {
+      diasLaborables: diasLaborablesSeleccionados.value,
+      horarioInicio: horarioInicio.value,
+      horarioFin: horarioFin.value,
+    })
   }
 
   console.log('✅ Datos obtenidos:', datosInforme.length)
@@ -847,9 +844,7 @@ const obtenerDatosReporte = async () => {
   // Filtrar por eventos si aplica
   let datosFiltrados = datosInforme
   if (tipoInforme === 'eventos' && eventos.value.length > 0) {
-    datosFiltrados = datosInforme.filter(evento =>
-      eventos.value.includes(evento.eventoNombre)
-    )
+    datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
     console.log(`🔍 Filtrados ${datosFiltrados.length} eventos de ${datosInforme.length} totales`)
   }
 
@@ -858,7 +853,7 @@ const obtenerDatosReporte = async () => {
   if (tipoInforme === 'eventos') {
     const criterio = metodoAgrupacion.value || 'unidad'
     console.log('📊 Agrupando por:', criterio)
-    
+
     datosAgrupados = datosFiltrados.reduce((acc, dato) => {
       let clave = ''
       switch (criterio) {
@@ -895,7 +890,7 @@ const obtenerDatosReporte = async () => {
   // Elementos sin datos
   const elementosConDatos = Object.keys(datosAgrupados)
   const elementosSinDatos = elementosSeleccionados.value.filter(
-    elem => !elementosConDatos.some(key => key.includes(elem))
+    (elem) => !elementosConDatos.some((key) => key.includes(elem)),
   )
 
   if (elementosSinDatos.length > 0) {
@@ -911,8 +906,10 @@ const obtenerDatosReporte = async () => {
   // Estadísticas
   const stats = {
     total: datosFiltrados.length,
-    conductoresUnicos: new Set(datosFiltrados.map(d => d.conductorNombre || 'Sin conductor')).size,
-    unidadesUnicas: new Set(datosFiltrados.map(d => d.unidadNombre || d.idUnidad || 'Sin unidad')).size,
+    conductoresUnicos: new Set(datosFiltrados.map((d) => d.conductorNombre || 'Sin conductor'))
+      .size,
+    unidadesUnicas: new Set(datosFiltrados.map((d) => d.unidadNombre || d.idUnidad || 'Sin unidad'))
+      .size,
   }
 
   console.log('📊 Estadísticas finales:', stats)
@@ -950,11 +947,58 @@ const generarReporte = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // 🆕
+      mostrarUnidadesMapa: mostrarUnidadesMapa.value, // 🆕
+      mostrarPlacaMapa: mostrarPlacaMapa.value, // 🆕
     }
 
-    const { blob, filename } = generarPDFEventos(config, datosReales)
+    let pdfResult
 
-    if (!blob) {
+    // 🆕 DETECTAR SI ES REPORTE DE TRAYECTOS Y GENERAR MAPA
+    if (tipoInformeSeleccionado.value === 'trayectos') {
+      console.log('🗺️ Generando PDF de trayectos con mapa...')
+
+      let mapaData = null
+
+      // Si está habilitado mostrar mapa, generarlo
+      if (mostrarMapaTrayecto.value && window._trayectosParaMapa) {
+        try {
+          $q.notify({
+            type: 'info',
+            message: 'Generando mapa de trayectos...',
+            icon: 'map',
+            position: 'top',
+            timeout: 2000,
+          })
+
+          mapaData = await generarMapaTrayectos(window._trayectosParaMapa, {
+            ancho: 1200,
+            alto: 800,
+            mostrarMarcadores: mostrarUnidadesMapa.value,
+          })
+
+          console.log('✅ Mapa generado con', mapaData.totalRutas, 'rutas')
+        } catch (errMapa) {
+          console.error('⚠️ Error generando mapa:', errMapa)
+          $q.notify({
+            type: 'warning',
+            message: 'No se pudo generar el mapa, continuando sin él',
+            icon: 'warning',
+            position: 'top',
+          })
+        }
+      }
+
+      // Generar PDF de trayectos
+      const { generarPDFTrayectos } = useReportePDF()
+      pdfResult = generarPDFTrayectos(config, datosReales, mapaData)
+    } else {
+      // Generar PDF de eventos (comportamiento actual)
+      const { generarPDFEventos } = useReportePDF()
+      pdfResult = generarPDFEventos(config, datosReales)
+    }
+
+    if (!pdfResult.blob) {
       throw new Error('No se pudo generar el archivo PDF')
     }
 
@@ -966,16 +1010,16 @@ const generarReporte = async () => {
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
       columnas: columnasSeleccionadas.value,
-      totalEventos: datosReales.totalEventos,
+      totalEventos: datosReales.totalEventos || datosReales.totalTrayectos || 0,
     }
 
-    const reporteGuardado = await subirReporte(blob, metadata)
+    const reporteGuardado = await subirReporte(pdfResult.blob, metadata)
 
     // Descargar localmente
-    const url = window.URL.createObjectURL(blob)
+    const url = window.URL.createObjectURL(pdfResult.blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = filename
+    link.download = pdfResult.filename
     link.click()
     window.URL.revokeObjectURL(url)
 
