@@ -108,6 +108,10 @@ let mapaAPI = null
 let intervaloEvaluacionEventos = null
 let popupGlobalActivo = null
 
+// ⚡ Throttle para actualización de marcadores
+let ultimaActualizacionMarcadores = 0
+const THROTTLE_MARCADORES = 2000 // Actualizar máximo cada 2 segundos
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
@@ -115,13 +119,20 @@ watch(
       return
     }
 
+    // ✅ Throttle: Solo actualizar cada 2 segundos
+    const ahora = Date.now()
+    if (ahora - ultimaActualizacionMarcadores < THROTTLE_MARCADORES) {
+      return
+    }
+    ultimaActualizacionMarcadores = ahora
+
     if (nuevasUnidades && nuevasUnidades.length > 0) {
       actualizarMarcadoresUnidades(nuevasUnidades)
     } else {
       limpiarMarcadoresUnidades()
     }
   },
-  { deep: true, immediate: false },
+  { deep: true, immediate: false }
 )
 
 function iniciarEvaluacionContinuaEventos() {
