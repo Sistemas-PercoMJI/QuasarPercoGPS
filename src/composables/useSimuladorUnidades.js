@@ -167,10 +167,10 @@ export function useSimuladorUnidades() {
           ignicion: true,
           destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion),
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-          // ✅ Datos esenciales para sincronización
+          // ✅ Datos esenciales para sincronización (null en vez de undefined)
           conductorId: estadoActual.conductorId,
           conductorNombre: estadoActual.conductorNombre,
-          conductorFoto: estadoActual.conductorFoto,
+          conductorFoto: estadoActual.conductorFoto || null,
           unidadId: estadoActual.unidadId,
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca
@@ -187,7 +187,7 @@ export function useSimuladorUnidades() {
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           conductorId: estadoActual.conductorId,
           conductorNombre: estadoActual.conductorNombre,
-          conductorFoto: estadoActual.conductorFoto,
+          conductorFoto: estadoActual.conductorFoto || null,
           unidadId: estadoActual.unidadId,
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca
@@ -204,7 +204,7 @@ export function useSimuladorUnidades() {
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           conductorId: estadoActual.conductorId,
           conductorNombre: estadoActual.conductorNombre,
-          conductorFoto: estadoActual.conductorFoto,
+          conductorFoto: estadoActual.conductorFoto || null,
           unidadId: estadoActual.unidadId,
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca
@@ -374,10 +374,10 @@ export function useSimuladorUnidades() {
           destinoAleatorio: nuevoMovimiento.destinoAleatorio,
           tiempoProximoCambioEstado: nuevoMovimiento.tiempoProximoCambioEstado,
           direccionTexto: DIRECCIONES_TIJUANA[Math.floor(Math.random() * DIRECCIONES_TIJUANA.length)],
-          // ✅ Mantener datos esenciales
+          // ✅ Mantener datos esenciales (usar null en vez de undefined)
           conductorId: estadoActual.conductorId,
           conductorNombre: estadoActual.conductorNombre,
-          conductorFoto: estadoActual.conductorFoto,
+          conductorFoto: estadoActual.conductorFoto || null, // ✅ null en vez de undefined
           unidadId: estadoActual.unidadId,
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca,
