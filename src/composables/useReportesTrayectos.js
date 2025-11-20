@@ -15,10 +15,10 @@ export function useReportesTrayectos() {
     const fechas = generarRangoFechas(fechaInicio, fechaFin)
 
     const conductores = [
-      'Perez Lopez Pedro',
+      'Perez Lopez Pedrooooo',
       'García Martínez Juan',
       'López Hernández María',
-      'Rodríguez Sánchez Carlos'
+      'Rodríguez Sánchez Carlos',
     ]
 
     for (const fecha of fechas) {
@@ -28,12 +28,17 @@ export function useReportesTrayectos() {
       for (let i = 0; i < numTrayectos; i++) {
         const horaInicio = 6 + Math.floor(Math.random() * 4) // 6-10 AM
         const duracionHoras = 2 + Math.floor(Math.random() * 6) // 2-8 horas
-        
+
         const inicioTimestamp = new Date(fecha)
         inicioTimestamp.setHours(horaInicio, Math.floor(Math.random() * 60), 0, 0)
-        
+
         const finTimestamp = new Date(inicioTimestamp)
-        finTimestamp.setHours(inicioTimestamp.getHours() + duracionHoras, Math.floor(Math.random() * 60), 0, 0)
+        finTimestamp.setHours(
+          inicioTimestamp.getHours() + duracionHoras,
+          Math.floor(Math.random() * 60),
+          0,
+          0,
+        )
 
         const duracionMs = finTimestamp - inicioTimestamp
         const kilometraje = Math.floor(Math.random() * 150) + 50 // 50-200 km
@@ -61,13 +66,13 @@ export function useReportesTrayectos() {
           ubicacionFin: 'Tijuana, BC, México',
           coordenadasInicio: {
             lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1
+            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
           },
           coordenadasFin: {
             lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1
+            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
           },
-          _simulado: true
+          _simulado: true,
         })
       }
     }
@@ -89,7 +94,7 @@ export function useReportesTrayectos() {
       const fechas = generarRangoFechas(fechaInicio, fechaFin)
 
       // 🔥 MAPEO DE NOMBRES A IDS
-      const unidadesIds = unidadesNombres.map(nombre => {
+      const unidadesIds = unidadesNombres.map((nombre) => {
         if (window.unidadesMap && window.unidadesMap[nombre]) {
           return window.unidadesMap[nombre]
         }
@@ -101,7 +106,7 @@ export function useReportesTrayectos() {
       for (let i = 0; i < unidadesIds.length; i++) {
         const unidadId = unidadesIds[i]
         const unidadNombre = unidadesNombres[i]
-        
+
         console.log(`🚗 Procesando unidad: ${unidadId}`)
 
         for (const fecha of fechas) {
@@ -132,7 +137,7 @@ export function useReportesTrayectos() {
                 ubicacionInicio: data.ubicacion_inicio || 'N/A',
                 ubicacionFin: data.ubicacion_fin || 'N/A',
                 _raw: data,
-                _simulado: false
+                _simulado: false,
               }
 
               todosTrayectos.push(trayecto)
@@ -150,44 +155,43 @@ export function useReportesTrayectos() {
       // 🔥 SI NO HAY TRAYECTOS REALES, GENERAR SIMULADOS
       if (todosTrayectos.length === 0) {
         console.log('⚠️ No se encontraron trayectos reales, generando datos simulados...')
-        
+
         for (let i = 0; i < unidadesNombres.length; i++) {
           const trayectosSimulados = generarTrayectosSimulados(
             unidadesNombres[i],
             unidadesIds[i],
             fechaInicio,
-            fechaFin
+            fechaFin,
           )
           todosTrayectos.push(...trayectosSimulados)
-          console.log(`  ✅ Generados ${trayectosSimulados.length} trayectos simulados para ${unidadesNombres[i]}`)
+          console.log(
+            `  ✅ Generados ${trayectosSimulados.length} trayectos simulados para ${unidadesNombres[i]}`,
+          )
         }
-        
+
         console.log(`✅ Total de trayectos simulados: ${todosTrayectos.length}`)
       }
 
       return todosTrayectos
-
     } catch (err) {
       console.error('❌ Error al obtener trayectos:', err)
       error.value = err.message
-      
+
       // En caso de error, generar datos simulados como fallback
       console.log('🔄 Generando datos simulados como fallback...')
       const trayectosFallback = []
-      const unidadesIds = unidadesNombres.map(nombre => 
-        window.unidadesMap?.[nombre] || nombre
-      )
-      
+      const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
+
       for (let i = 0; i < unidadesNombres.length; i++) {
         const trayectosSimulados = generarTrayectosSimulados(
           unidadesNombres[i],
           unidadesIds[i],
           fechaInicio,
-          fechaFin
+          fechaFin,
         )
         trayectosFallback.push(...trayectosSimulados)
       }
-      
+
       return trayectosFallback
     } finally {
       loading.value = false
@@ -204,20 +208,21 @@ export function useReportesTrayectos() {
 
       const unidadesRef = collection(db, 'Unidades')
       const unidadesSnapshot = await getDocs(unidadesRef)
-      
+
       const unidadesMap = {}
-      unidadesSnapshot.docs.forEach(doc => {
+      unidadesSnapshot.docs.forEach((doc) => {
         const data = doc.data()
         unidadesMap[doc.id] = {
           nombre: data.Unidad || doc.id,
-          placa: data.SeguroUnidad || 'N/A'
+          placa: data.SeguroUnidad || 'N/A',
         }
       })
 
-      return trayectos.map(trayecto => ({
+      return trayectos.map((trayecto) => ({
         ...trayecto,
-        unidadNombre: unidadesMap[trayecto.idUnidad]?.nombre || trayecto.unidadNombre || trayecto.idUnidad,
-        unidadPlaca: unidadesMap[trayecto.idUnidad]?.placa || trayecto.unidadPlaca || 'N/A'
+        unidadNombre:
+          unidadesMap[trayecto.idUnidad]?.nombre || trayecto.unidadNombre || trayecto.idUnidad,
+        unidadPlaca: unidadesMap[trayecto.idUnidad]?.placa || trayecto.unidadPlaca || 'N/A',
       }))
     } catch (err) {
       console.error('Error al enriquecer unidades:', err)
@@ -230,7 +235,7 @@ export function useReportesTrayectos() {
     error,
     obtenerTrayectos,
     enriquecerConDatosUnidades,
-    generarTrayectosSimulados
+    generarTrayectosSimulados,
   }
 }
 
