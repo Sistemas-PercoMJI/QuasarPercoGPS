@@ -1,4 +1,4 @@
-// src/composables/useEventDetection.js - CON INTEGRACIÓN FIREBASE
+// src/composables/useEventDetection.js - SIN UNDEFINED EN NOMBRES
 import { ref } from 'vue'
 import { useNotifications } from './useNotifications'
 import { useRutaDiaria } from './useRutaDiaria'
@@ -41,7 +41,7 @@ export function useEventDetection() {
     
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
-    eventosEnCurso.value.clear() // 🆕 Limpiar eventos en curso
+    eventosEnCurso.value.clear()
     
     console.log('✅ Sistema de detección inicializado')
     console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
@@ -55,7 +55,6 @@ export function useEventDetection() {
   function evaluarCondicionParaUnidad(condicion, unidad) {
     const { tipo, ubicacionId, activacion } = condicion
     
-    // Creamos una clave única para esta unidad y ubicación
     const claveUbicacion = `unidad-${unidad.id}-${tipo}-${ubicacionId}`
 
     let estaDentro = false
@@ -81,23 +80,21 @@ export function useEventDetection() {
       return false
     }
 
-    // Obtenemos el estado anterior
     const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
 
-    // ✅ CORREGIDO: Usar 'Entrada' y 'Salida' con mayúscula inicial
+    // ✅ CORREGIDO: Usar conductorNombre en los logs
     if (activacion === 'Entrada' && estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
-      console.log(`✅ ENTRADA detectada: Unidad ${unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
+      console.log(`✅ ENTRADA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
       return true
     }
     
     if (activacion === 'Salida' && !estaDentro && estadoAnterior === 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'fuera')
-      console.log(`🚪 SALIDA detectada: Unidad ${unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`)
+      console.log(`🚪 SALIDA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`)
       return true
     }
 
-    // Actualizar estado actual aunque no se dispare evento
     if (estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
     } else if (!estaDentro && estadoAnterior !== 'fuera') {
@@ -130,10 +127,9 @@ export function useEventDetection() {
   }
 
   /**
-   * ✅ CORREGIDO: Verifica si está dentro de una geozona (solo poligonales)
+   * ✅ CORREGIDO: Verifica si está dentro de una geozona
    */
   function estaDentroDeGeozona(lat, lng, geozona) {
-    // ✅ SIMPLIFICADO: Todas las geozonas son poligonales
     if (geozona.puntos && Array.isArray(geozona.puntos) && geozona.puntos.length > 0) {
       const dentro = puntoEnPoligono({ lat, lng }, geozona.puntos)
       
@@ -194,7 +190,6 @@ export function useEventDetection() {
     }
     
     unidades.forEach(unidad => {
-      // ✅ VALIDACIÓN MEJORADA: Usar ubicacion.lat y ubicacion.lng
       const lat = unidad.ubicacion?.lat || unidad.lat
       const lng = unidad.ubicacion?.lng || unidad.lng
       
@@ -203,15 +198,15 @@ export function useEventDetection() {
         return
       }
       
-      // Crear objeto normalizado para evaluación
+      // ✅ CORREGIDO: Asegurar que tenga conductorNombre
       const unidadNormalizada = {
         ...unidad,
         lat,
         lng,
-        nombre: unidad.conductorNombre || unidad.unidadNombre || unidad.nombre || unidad.id
+        nombre: unidad.conductorNombre || unidad.unidadNombre || unidad.nombre || unidad.id,
+        conductorNombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre'
       }
       
-      // Evaluar todos los eventos activos para esta unidad
       eventosActivos.value.forEach(evento => {
         evaluarEventoParaUnidadSimulada(evento, unidadNormalizada)
       })
@@ -226,8 +221,6 @@ export function useEventDetection() {
       return
     }
 
-    // 🔧 CAMBIO CRÍTICO: Evaluar cada condición por separado
-    // En lugar de requerir que TODAS se cumplan, cada una dispara el evento independientemente
     evento.condiciones.forEach(condicion => {
       const cumplida = evaluarCondicionParaUnidad(condicion, unidad)
       
@@ -242,7 +235,6 @@ export function useEventDetection() {
    * 🔧 MEJORADO: Dispara el evento Y lo registra en Firebase
    */
   async function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
-    // Crear clave única que incluya la condición específica
     const claveEvento = `${evento.id}-${condicion.tipo}-${condicion.ubicacionId}-${condicion.activacion}-unidad-${unidad.id}`
     
     if (eventosDisparados.value.has(claveEvento)) {
@@ -251,12 +243,10 @@ export function useEventDetection() {
     
     eventosDisparados.value.add(claveEvento)
     
-    // Remover después de 10 segundos para permitir re-disparo
     setTimeout(() => {
       eventosDisparados.value.delete(claveEvento)
     }, 10000)
 
-    // Obtener información de la ubicación
     let ubicacionNombre = 'Ubicación desconocida'
     let tipoUbicacion = ''
 
@@ -272,22 +262,21 @@ export function useEventDetection() {
 
     const tipoNotificacion = 'positive'
     const accionTexto = condicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
-    const mensaje = `${unidad.nombre} ${accionTexto} ${tipoUbicacion}: ${ubicacionNombre}`
+    
+    // ✅ CORREGIDO: Usar conductorNombre en lugar de nombre
+    const mensaje = `${unidad.conductorNombre || unidad.nombre || 'Conductor desconocido'} ${accionTexto} ${tipoUbicacion}: ${ubicacionNombre}`
 
-    // ✅ LOG IMPORTANTE: Evento disparado
     console.log(`🔔 EVENTO DISPARADO: "${evento.nombre}" - ${mensaje}`)
 
-    // 🆕 ==========================================
     // REGISTRO EN FIREBASE
-    // ==========================================
     try {
       const idRutaDiaria = obtenerIdRutaDiaria()
       
-      // 🆕 PASO 1: Crear o actualizar la ruta diaria
+      // ✅ CORREGIDO: Usar conductorNombre
       await iniciarOActualizarRutaDiaria(unidad.id, {
         conductor_id: unidad.conductorId || '',
-        conductor_nombre: unidad.conductorNombre || unidad.nombre || '',
-        velocidad_actual: unidad.velocidad || '0',
+        conductor_nombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre',
+        velocidad_actual: String(unidad.velocidad || 0),
         nuevaCoordenada: {
           lat: unidad.lat,
           lng: unidad.lng,
@@ -297,31 +286,26 @@ export function useEventDetection() {
 
       console.log(`💾 Ruta diaria actualizada para unidad ${unidad.id}`)
 
-      // 🆕 PASO 2: Preparar datos del evento
       const eventoData = {
         IdEvento: evento.id,
         NombreEvento: evento.nombre,
-        TipoEvento: condicion.activacion, // 'Entrada' o 'Salida'
+        TipoEvento: condicion.activacion,
         lat: unidad.lat,
         lng: unidad.lng,
-        Direccion: `${unidad.lat}, ${unidad.lng}`, // Puedes mejorar con geocodificación
+        Direccion: `${unidad.lat}, ${unidad.lng}`,
         tipoUbicacion: tipoUbicacion,
         ubicacionId: condicion.ubicacionId
       }
 
-      // Agregar el campo condicional según el tipo
       if (tipoUbicacion === 'POI') {
         eventoData.PoiNombre = ubicacionNombre
       } else if (tipoUbicacion === 'Geozona') {
         eventoData.GeozonaNombre = ubicacionNombre
       }
 
-      // 🆕 PASO 3: Manejar eventos de ENTRADA y SALIDA
       if (condicion.activacion === 'Entrada') {
-        // Registrar evento de entrada
         const eventoRegistrado = await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
         
-        // Guardar en memoria para calcular duración cuando salga
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
         eventosEnCurso.value.set(claveEntrada, {
           idEvento: eventoRegistrado.id,
@@ -334,15 +318,12 @@ export function useEventDetection() {
         console.log(`📍 Evento de ENTRADA registrado: ${eventoRegistrado.id}`)
       } 
       else if (condicion.activacion === 'Salida') {
-        // Buscar si hay una entrada previa
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
         const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
         
         if (eventoEntrada) {
-          // Calcular duración en minutos
           const duracionMinutos = Math.floor((Date.now() - eventoEntrada.timestampEntrada) / 60000)
           
-          // Finalizar el evento de entrada
           await finalizarEventoDiario(
             unidad.id,
             eventoEntrada.idRutaDiaria,
@@ -350,7 +331,6 @@ export function useEventDetection() {
             { lat: unidad.lat, lng: unidad.lng }
           )
           
-          // Actualizar duración
           await actualizarDuracionEvento(
             unidad.id,
             eventoEntrada.idRutaDiaria,
@@ -358,12 +338,10 @@ export function useEventDetection() {
             duracionMinutos
           )
           
-          // Limpiar de eventos en curso
           eventosEnCurso.value.delete(claveEntrada)
           
           console.log(`🚪 Evento finalizado. Duración: ${duracionMinutos} min en ${eventoEntrada.ubicacionNombre}`)
         } else {
-          // Si no hay entrada previa, igual registrar la salida
           await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
           console.log(`⚠️ Salida sin entrada previa registrada para ${ubicacionNombre}`)
         }
@@ -373,9 +351,8 @@ export function useEventDetection() {
     } catch (err) {
       console.error('❌ Error al registrar en Firebase:', err)
     }
-    // ==========================================
 
-    // Crear notificación
+    // ✅ CORREGIDO: Agregar conductorNombre a la notificación
     agregarNotificacion({
       type: tipoNotificacion,
       title: evento.nombre,
@@ -387,10 +364,10 @@ export function useEventDetection() {
       accion: condicion.activacion,
       sujeto: 'unidad',
       unidadId: unidad.id,
-      unidadNombre: unidad.nombre
+      unidadNombre: unidad.unidadNombre || unidad.nombre || 'Sin nombre',
+      conductorNombre: unidad.conductorNombre || 'Sin nombre'
     })
 
-    // ✅ LOG IMPORTANTE: Notificación creada
     console.log(`📢 NOTIFICACIÓN CREADA: ${mensaje}`)
   }
 
@@ -404,7 +381,7 @@ export function useEventDetection() {
     ubicacionActual.value = null
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
-    eventosEnCurso.value.clear() // 🆕 Limpiar eventos en curso
+    eventosEnCurso.value.clear()
     console.log('🔄 Sistema de detección reseteado')
   }
 
@@ -414,6 +391,6 @@ export function useEventDetection() {
     resetear,
     eventosActivos,
     ubicacionActual,
-    eventosEnCurso // 🆕 Exponer eventos en curso
+    eventosEnCurso
   }
 }
