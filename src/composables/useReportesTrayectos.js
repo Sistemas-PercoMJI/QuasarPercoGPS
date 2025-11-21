@@ -8,6 +8,63 @@ export function useReportesTrayectos() {
   const error = ref(null)
 
   /**
+   * 🆕 Descarga las coordenadas del archivo JSON en Firebase Storage
+   */
+  const descargarCoordenadasDeStorage = async (rutasUrl) => {
+    if (!rutasUrl) {
+      console.warn('⚠️ No hay URL de rutas')
+      return []
+    }
+
+    try {
+      console.log('📥 Descargando coordenadas de Storage...')
+      const response = await fetch(rutasUrl)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // El archivo puede tener diferentes estructuras, intentar varias
+      let coordenadas = []
+
+      if (Array.isArray(data)) {
+        // Caso 1: Array directo de coordenadas
+        coordenadas = data
+      } else if (data.coordenadas && Array.isArray(data.coordenadas)) {
+        // Caso 2: Objeto con propiedad coordenadas
+        coordenadas = data.coordenadas
+      } else if (data.ruta && Array.isArray(data.ruta)) {
+        // Caso 3: Objeto con propiedad ruta
+        coordenadas = data.ruta
+      } else if (data.puntos && Array.isArray(data.puntos)) {
+        // Caso 4: Objeto con propiedad puntos
+        coordenadas = data.puntos
+      }
+
+      // Normalizar formato de coordenadas
+      const coordenadasNormalizadas = coordenadas
+        .filter((coord) => {
+          const lat = coord.lat || coord.latitude
+          const lng = coord.lng || coord.longitude || coord.lon
+          return lat && lng
+        })
+        .map((coord) => ({
+          lat: coord.lat || coord.latitude,
+          lng: coord.lng || coord.longitude || coord.lon,
+          timestamp: coord.timestamp || coord.time || null,
+        }))
+
+      console.log(`  ✅ Descargadas ${coordenadasNormalizadas.length} coordenadas del Storage`)
+      return coordenadasNormalizadas
+    } catch (err) {
+      console.error('  ❌ Error descargando coordenadas del Storage:', err)
+      return []
+    }
+  }
+
+  /**
    * Genera trayectos simulados para pruebas
    */
   const generarTrayectosSimulados = (unidadNombre, unidadId, fechaInicio, fechaFin) => {
@@ -15,11 +72,15 @@ export function useReportesTrayectos() {
     const fechas = generarRangoFechas(fechaInicio, fechaFin)
 
     const conductores = [
-      'Perez Lopez Pedrooooo',
+      'Perez Lopez Pedro',
       'García Martínez Juan',
       'López Hernández María',
       'Rodríguez Sánchez Carlos',
     ]
+
+    // Coordenadas base en Tijuana
+    const baseLatTJ = 32.5149
+    const baseLngTJ = -117.0382
 
     for (const fecha of fechas) {
       // Generar entre 1-3 trayectos por día
@@ -45,6 +106,20 @@ export function useReportesTrayectos() {
         const velocidadPromedio = Math.floor(kilometraje / (duracionHoras + 0.5)) // km/h
         const velocidadMaxima = velocidadPromedio + Math.floor(Math.random() * 30) + 10
 
+        // 🔥 GENERAR COORDENADAS SIMULADAS
+        const numCoordenadas = 20 + Math.floor(Math.random() * 30) // 20-50 puntos
+        const coordenadas = []
+
+        for (let j = 0; j < numCoordenadas; j++) {
+          coordenadas.push({
+            lat: baseLatTJ + (Math.random() - 0.5) * 0.05, // ~5km de variación
+            lng: baseLngTJ + (Math.random() - 0.5) * 0.05,
+            timestamp: new Date(
+              inicioTimestamp.getTime() + (j * duracionMs) / numCoordenadas,
+            ).toISOString(),
+          })
+        }
+
         trayectos.push({
           id: `${fecha}_${i}`,
           idUnidad: unidadId,
@@ -64,13 +139,16 @@ export function useReportesTrayectos() {
           combustibleConsumido: (kilometraje / 12).toFixed(2), // Aprox 12 km/litro
           ubicacionInicio: 'Tijuana, BC, México',
           ubicacionFin: 'Tijuana, BC, México',
+          coordenadas: coordenadas, // 🔥 COORDENADAS SIMULADAS
+          latitud: coordenadas[0].lat,
+          longitud: coordenadas[0].lng,
           coordenadasInicio: {
-            lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
+            lat: coordenadas[0].lat,
+            lng: coordenadas[0].lng,
           },
           coordenadasFin: {
-            lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
+            lat: coordenadas[coordenadas.length - 1].lat,
+            lng: coordenadas[coordenadas.length - 1].lng,
           },
           _simulado: true,
         })
@@ -118,6 +196,25 @@ export function useReportesTrayectos() {
               const data = rutaSnap.data()
               console.log(`  ✅ ${fecha}: Datos encontrados en Firebase`)
 
+              // 🔥 DESCARGAR COORDENADAS DEL STORAGE
+              let coordenadas = []
+              if (data.rutas_url) {
+                console.log('  📥 Descargando desde:', data.rutas_url)
+                coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
+              }
+
+              // Si no hay coordenadas del storage, intentar con nuevaCoordenada
+              if (coordenadas.length === 0 && data.nuevaCoordenada) {
+                console.log('  📍 Usando nuevaCoordenada como fallback')
+                coordenadas = [
+                  {
+                    lat: data.nuevaCoordenada.lat,
+                    lng: data.nuevaCoordenada.lng,
+                    timestamp: data.nuevaCoordenada.timestamp,
+                  },
+                ]
+              }
+
               const trayecto = {
                 id: fecha,
                 idUnidad: unidadId,
@@ -130,16 +227,20 @@ export function useReportesTrayectos() {
                 finTimestamp: data.fecha_hora_fin?.toDate?.() || null,
                 duracion: (data.duracion_total_minutos || 0) * 60000,
                 duracionHoras: ((data.duracion_total_minutos || 0) / 60).toFixed(2),
-                kilometrajeRecorrido: data.distancia_recorrida_km || 0,
-                velocidadPromedio: data.velocidad_promedio || 0,
-                velocidadMaxima: data.velocidad_maxima || 0,
-                paradas: data.numero_paradas || 0,
+                kilometrajeRecorrido: parseFloat(data.distancia_recorrida_km) || 0,
+                velocidadPromedio: parseFloat(data.velocidad_promedio) || 0,
+                velocidadMaxima: parseFloat(data.velocidad_maxima) || 0,
+                paradas: data.paradas?.length || 0,
                 ubicacionInicio: data.ubicacion_inicio || 'N/A',
                 ubicacionFin: data.ubicacion_fin || 'N/A',
+                coordenadas: coordenadas, // 🔥 COORDENADAS PARA EL MAPA
+                latitud: coordenadas[0]?.lat, // Primera coordenada
+                longitud: coordenadas[0]?.lng,
                 _raw: data,
                 _simulado: false,
               }
 
+              console.log(`  ✅ Trayecto con ${coordenadas.length} coordenadas`)
               todosTrayectos.push(trayecto)
             } else {
               console.log(`  ⚠️ ${fecha}: No hay datos en Firebase`)
@@ -236,6 +337,7 @@ export function useReportesTrayectos() {
     obtenerTrayectos,
     enriquecerConDatosUnidades,
     generarTrayectosSimulados,
+    descargarCoordenadasDeStorage, // 🆕 Exportar por si se necesita
   }
 }
 

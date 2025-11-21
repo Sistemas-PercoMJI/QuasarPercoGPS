@@ -411,11 +411,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
-import { useProcesamientoTrayectos } from 'src/composables/useProcesamientoTrayectos'
 
 // 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
+const { generarPDFEventos, generarPDFTrayectos } = useReportePDF()
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
@@ -430,7 +430,6 @@ const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
-const { generarMapaTrayectos } = useProcesamientoTrayectos()
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -820,11 +819,62 @@ const obtenerDatosReporte = async () => {
   } else if (tipoInforme === 'trayectos') {
     console.log('🗺️ Obteniendo trayectos...')
     const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
-    datosInforme = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
-    datosInforme = await enriquecerConDatosUnidades(datosInforme)
 
-    // 🆕 Guardar trayectos para generar mapa después
-    window._trayectosParaMapa = datosInforme
+    // 🔥 NUEVA LÓGICA: Convertir conductores a unidades
+    let unidadesParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      console.log('🚗 Reportar por conductores, obteniendo unidades asignadas...')
+
+      // Obtener todos los conductores de Firebase
+      const todosConductores = await obtenerConductores()
+      console.log('👥 Total conductores:', todosConductores.length)
+
+      // Para cada conductor seleccionado, obtener su UnidadAsignada
+      for (const nombreConductor of unidadesIds) {
+        console.log(`🔍 Buscando: "${nombreConductor}"`)
+
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+
+        if (conductor) {
+          console.log(`✅ Conductor encontrado:`, conductor)
+
+          if (conductor.UnidadAsignada) {
+            unidadesParaBuscar.push(conductor.UnidadAsignada)
+            console.log(`   → Unidad asignada: ${conductor.UnidadAsignada}`)
+          } else {
+            console.warn(`   ⚠️ No tiene UnidadAsignada`)
+          }
+        } else {
+          console.warn(`❌ Conductor "${nombreConductor}" no encontrado en Firebase`)
+        }
+      }
+
+      if (unidadesParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+
+      console.log('📍 Unidades finales a buscar:', unidadesParaBuscar)
+    } else if (reportarPor.value === 'Unidades') {
+      // Si seleccionó unidades directamente, convertir nombres a IDs
+      console.log('🚙 Reportar por unidades directamente')
+      console.log('📝 Nombres seleccionados:', unidadesIds)
+
+      unidadesParaBuscar = unidadesIds.map((nombre) => {
+        const id = window.unidadesMap?.[nombre] || nombre
+        console.log(`   ${nombre} → ${id}`)
+        return id
+      })
+
+      console.log('📍 IDs de unidades:', unidadesParaBuscar)
+    } else {
+      // Grupos o Geozonas (implementar si es necesario)
+      unidadesParaBuscar = unidadesIds
+    }
+
+    // Llamar a obtenerTrayectos con los IDs correctos
+    datosInforme = await obtenerTrayectos(unidadesParaBuscar, fechaInicio, fechaFin)
+    datosInforme = await enriquecerConDatosUnidades(datosInforme)
   } else if (tipoInforme === 'horas_trabajo') {
     console.log('⏰ Calculando horas de trabajo...')
     const { calcularHorasTrabajo } = useReportesHoras()
@@ -956,45 +1006,20 @@ const generarReporte = async () => {
 
     // 🆕 DETECTAR SI ES REPORTE DE TRAYECTOS Y GENERAR MAPA
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🗺️ Generando PDF de trayectos con mapa...')
+      console.log('🗺️ Generando PDF de trayectos...')
 
-      let mapaData = null
-
-      // Si está habilitado mostrar mapa, generarlo
-      if (mostrarMapaTrayecto.value && window._trayectosParaMapa) {
-        try {
-          $q.notify({
-            type: 'info',
-            message: 'Generando mapa de trayectos...',
-            icon: 'map',
-            position: 'top',
-            timeout: 2000,
-          })
-
-          mapaData = await generarMapaTrayectos(window._trayectosParaMapa, {
-            ancho: 1200,
-            alto: 800,
-            mostrarMarcadores: mostrarUnidadesMapa.value,
-          })
-
-          console.log('✅ Mapa generado con', mapaData.totalRutas, 'rutas')
-        } catch (errMapa) {
-          console.error('⚠️ Error generando mapa:', errMapa)
-          $q.notify({
-            type: 'warning',
-            message: 'No se pudo generar el mapa, continuando sin él',
-            icon: 'warning',
-            position: 'top',
-          })
-        }
+      if (mostrarMapaTrayecto.value) {
+        $q.notify({
+          type: 'info',
+          message: 'Generando mapa de trayectos...',
+          icon: 'map',
+          timeout: 2000,
+        })
       }
 
-      // Generar PDF de trayectos
-      const { generarPDFTrayectos } = useReportePDF()
-      pdfResult = generarPDFTrayectos(config, datosReales, mapaData)
+      pdfResult = await generarPDFTrayectos(config, datosReales)
     } else {
-      // Generar PDF de eventos (comportamiento actual)
-      const { generarPDFEventos } = useReportePDF()
+      console.log('📊 Generando PDF de eventos...')
       pdfResult = generarPDFEventos(config, datosReales)
     }
 
