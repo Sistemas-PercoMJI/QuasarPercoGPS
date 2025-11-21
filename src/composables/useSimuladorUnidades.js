@@ -200,38 +200,39 @@ export function useSimuladorUnidades() {
       const nuevoEstado = determinarSiguienteEstado()
       console.log(`🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado}`)
       
+      // ✅ IMPORTANTE: Mantener ubicación actual en TODOS los cambios de estado
       if (nuevoEstado === ESTADOS.MOVIMIENTO) {
         return {
-          ubicacion: estadoActual.ubicacion,
+          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
           direccion: estadoActual.direccion || Math.random() * 360,
           estado: ESTADOS.MOVIMIENTO,
           velocidad: Math.floor(Math.random() * 20) + 40,
           ignicion: true,
-          destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion),
+          destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion), // ✅ Nuevo destino desde posición actual
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
       } 
       else if (nuevoEstado === ESTADOS.DETENIDO) {
         return {
-          ubicacion: estadoActual.ubicacion,
-          direccion: estadoActual.direccion,
+          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
+          direccion: estadoActual.direccion, // ✅ Mantener dirección actual
           estado: ESTADOS.DETENIDO,
           velocidad: 0,
           ignicion: true,
-          destinoAleatorio: estadoActual.ubicacion,
+          destinoAleatorio: estadoActual.ubicacion, // ✅ Destino = posición actual (no moverse)
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
       } 
       else {
         return {
-          ubicacion: estadoActual.ubicacion,
-          direccion: estadoActual.direccion,
+          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
+          direccion: estadoActual.direccion, // ✅ Mantener dirección actual
           estado: ESTADOS.INACTIVO,
           velocidad: 0,
           ignicion: false,
-          destinoAleatorio: estadoActual.ubicacion,
+          destinoAleatorio: estadoActual.ubicacion, // ✅ Destino = posición actual (no moverse)
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
@@ -382,7 +383,7 @@ export function useSimuladorUnidades() {
         let nuevaDireccionTexto = estadoActual.direccionTexto
         let actualizarTimestampDireccion = estadoActual.ultimaActualizacionDireccion || 0
         
-        // ✅ NUEVA LÓGICA: Actualizar dirección si está en movimiento Y (pasaron 30s O se movió 50m)
+        // ✅ SOLO actualizar dirección si está EN MOVIMIENTO
         if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
           const distanciaCambio = calcularDistancia(
             estadoActual.ubicacion.lat, estadoActual.ubicacion.lng,
@@ -415,6 +416,10 @@ export function useSimuladorUnidades() {
               nuevaDireccionTexto = `${nuevoMovimiento.ubicacion.lat.toFixed(5)}, ${nuevoMovimiento.ubicacion.lng.toFixed(5)}`
             }
           }
+        }
+        // ✅ Si está DETENIDO o INACTIVO, mantener la dirección actual sin actualizar
+        else {
+          console.log(`⏸️ ${estadoActual.unidadNombre} - Estado: ${nuevoMovimiento.estado} - Manteniendo dirección actual`)
         }
 
         await update(unidadRef, {
