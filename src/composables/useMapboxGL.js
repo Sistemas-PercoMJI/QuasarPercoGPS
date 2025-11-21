@@ -99,7 +99,7 @@ export function useMapboxGL() {
     }
 
     return `
-      <div style="min-width: 220px; font-family: 'Roboto', sans-serif;">
+      <div style="min-width: 250px; font-family: 'Roboto', sans-serif;">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee;">
           ${
             unidad.conductorFoto
@@ -118,7 +118,8 @@ export function useMapboxGL() {
           </div>
           <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px; font-size: 12px; color: #424242;">
             <span>⚡ Velocidad:</span><span>${unidad.velocidad} km/h</span>
-            <span>📍 Ubicación:</span><span>${unidad.direccionTexto || 'Obteniendo...'}</span>
+            <span>📍 Coordenadas:</span><span style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
+            <span>📬 Dirección:</span><span>${unidad.direccionTexto || 'Obteniendo...'}</span>
             <span>🔋 Batería:</span><span>${unidad.bateria}%</span>
             <span>🔑 Placa:</span><span>${unidad.unidadPlaca}</span>
           </div>
