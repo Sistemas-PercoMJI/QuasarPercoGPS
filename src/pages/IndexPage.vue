@@ -13,10 +13,6 @@
       <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
     </q-btn>
 
-    <div class="simulador-container">
-      <SimuladorControl :pois-iniciales="poisCargados" :geozonas-iniciales="geozonasCargadas" />
-    </div>
-
     <transition name="fade-scale">
       <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
         <q-btn
@@ -47,6 +43,12 @@
       <q-icon name="gps_fixed" size="24px" color="positive" />
       <span class="text-caption">GPS Activo</span>
     </div>
+
+    <!-- 🎯 Indicador de simulador activo (opcional) -->
+    <div v-if="simuladorActivo" class="simulador-indicator">
+      <q-icon name="explore" size="16px" color="white" class="pulse-icon" />
+      <span class="text-caption">Simulador activo</span>
+    </div>
   </q-page>
 </template>
 
@@ -59,8 +61,11 @@ import { useEventos } from 'src/composables/useEventos'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
-import SimuladorControl from 'src/components/SimuladorControl.vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
+// 🆕 NUEVOS IMPORTS para auto-inicio del simulador
+import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
+import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
+import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
 
 const {
@@ -75,7 +80,6 @@ const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
 
 const marcadoresPOIs = ref([])
-//const marcadoresGeozonas = ref([])
 
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
@@ -92,11 +96,21 @@ const traficoActivo = ref(false)
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
 
+// 🆕 NUEVAS VARIABLES para el simulador automático
+const $q = useQuasar()
+const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
+const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
+const simuladorActivo = ref(false)
+let simuladorYaIniciado = false
+
 let watchId = null
 let mapaAPI = null
 let intervaloEvaluacionEventos = null
-
 let popupGlobalActivo = null
+
+// ⚡ Throttle para actualización de marcadores
+let ultimaActualizacionMarcadores = 0
+const THROTTLE_MARCADORES = 2000 // Actualizar máximo cada 2 segundos
 
 watch(
   unidadesActivas,
@@ -105,16 +119,22 @@ watch(
       return
     }
 
+    // ✅ Throttle: Solo actualizar cada 2 segundos
+    const ahora = Date.now()
+    if (ahora - ultimaActualizacionMarcadores < THROTTLE_MARCADORES) {
+      return
+    }
+    ultimaActualizacionMarcadores = ahora
+
     if (nuevasUnidades && nuevasUnidades.length > 0) {
       actualizarMarcadoresUnidades(nuevasUnidades)
     } else {
       limpiarMarcadoresUnidades()
     }
   },
-  { deep: true, immediate: false },
+  { deep: true, immediate: false }
 )
 
-// 🔧 Función para iniciar evaluación continua de eventos
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -133,12 +153,76 @@ function iniciarEvaluacionContinuaEventos() {
   console.log('✅ Evaluación continua de eventos iniciada cada 10 segundos')
 }
 
-// 🔧 Función para detener evaluación
 function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
     intervaloEvaluacionEventos = null
     console.log('🛑 Evaluación de eventos detenida')
+  }
+}
+
+// 🆕 NUEVA FUNCIÓN: Iniciar simulador automáticamente
+const iniciarSimuladorAutomatico = async () => {
+  // Evitar inicios múltiples
+  if (simuladorYaIniciado || simulacionActiva.value) {
+    console.log('⚠️ Simulador ya iniciado, saltando...')
+    return
+  }
+
+  try {
+    console.log('🔄 Cargando datos para simulador automático...')
+    
+    // Cargar conductores y unidades
+    await Promise.all([
+      obtenerConductores(),
+      obtenerUnidades()
+    ])
+
+    const conductoresConUnidad = conductores.value.filter(c => c.UnidadAsignada)
+    
+    if (conductoresConUnidad.length === 0) {
+      console.warn('⚠️ No hay conductores con unidades asignadas')
+      $q.notify({
+        type: 'warning',
+        message: 'No hay conductores con unidades para simular',
+        position: 'top',
+        timeout: 3000
+      })
+      return
+    }
+
+    console.log(`🚀 Iniciando simulador automático con ${conductoresConUnidad.length} unidades...`)
+    
+    // Marcar que ya se está iniciando
+    simuladorYaIniciado = true
+    
+    // Iniciar simulación
+    await iniciarSimulacion(conductores.value, unidades.value)
+    
+    // Actualizar estado
+    simuladorActivo.value = true
+    
+    // Notificar al usuario
+    $q.notify({
+      type: 'positive',
+      message: `🎯 Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
+      position: 'top',
+      timeout: 3000,
+      icon: 'explore'
+    })
+    
+    console.log(`✅ Simulador automático activo con ${conductoresConUnidad.length} unidades`)
+    
+  } catch (error) {
+    console.error('❌ Error al iniciar simulador automático:', error)
+    simuladorYaIniciado = false // Permitir reintento en caso de error
+    
+    $q.notify({
+      type: 'negative',
+      message: 'Error al iniciar el simulador GPS',
+      position: 'top',
+      timeout: 3000
+    })
   }
 }
 
@@ -167,10 +251,8 @@ function actualizarMarcadorUsuario(lat, lng) {
   const map = mapPage._mapaAPI.map
 
   if (marcadorUsuario.value) {
-    // Actualizar posición del marcador existente
     marcadorUsuario.value.setLngLat([lng, lat])
   } else {
-    // ✅ Crear marcador con Mapbox GL
     const markerEl = document.createElement('div')
     markerEl.className = 'user-location-marker'
     markerEl.innerHTML = `
@@ -242,7 +324,6 @@ function detenerSeguimientoGPS() {
   }
 }
 
-// 🔧 Función de inicialización con logs detallados
 async function inicializarSistemaDeteccion() {
   try {
     console.log('🚀 Inicializando sistema de detección de eventos...')
@@ -278,9 +359,7 @@ async function inicializarSistemaDeteccion() {
 function metersToPixelsAtMaxZoom(meters, latitude) {
   return meters / 0.075 / Math.cos((latitude * Math.PI) / 180)
 }
-// 🆕 NUEVA FUNCIÓN: Limpiar capas del mapa correctamente
 
-// 🎨 Función para oscurecer un color hexadecimal (para el borde)
 function oscurecerColor(hex, porcentaje = 20) {
   hex = hex.replace('#', '')
   let r = parseInt(hex.substring(0, 2), 16)
@@ -306,8 +385,6 @@ const dibujarTodosEnMapa = async () => {
   }
 
   mapaAPI = mapPage._mapaAPI
-
-  // Limpiar capas previas (implementar esta función después)
   limpiarCapasDelMapa()
 
   try {
@@ -325,7 +402,6 @@ const dibujarTodosEnMapa = async () => {
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
 
-        // ✅ Agregar círculo del POI usando Mapbox GL
         const circleId = `poi-circle-${poi.id}`
 
         if (!mapaAPI.map.getSource(circleId)) {
@@ -360,7 +436,6 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ Agregar marcador del POI
         const popupContent = `
       <div style="min-width: 180px;">
         <b style="font-size: 14px;">📍 ${poi.nombre}</b>
@@ -418,8 +493,6 @@ const dibujarTodosEnMapa = async () => {
       `
         }
 
-        // ✅ Crear popup con clase de animación
-        // ✅ Crear popup con clase de animación
         const popup = new mapboxgl.Popup({
           offset: 25,
           className: 'popup-animated',
@@ -432,7 +505,6 @@ const dibujarTodosEnMapa = async () => {
           .setPopup(popup)
           .addTo(mapaAPI.map)
 
-        // ✅ Escuchar cuando SE ABRE el popup (no el click del marker)
         popup.on('open', () => {
           if (popupGlobalActivo && popupGlobalActivo !== popup) {
             popupGlobalActivo.remove()
@@ -447,7 +519,6 @@ const dibujarTodosEnMapa = async () => {
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
-    // 🔷 DIBUJAR GEOZONAS
     geozonas.forEach((geozona) => {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
@@ -457,7 +528,6 @@ const dibujarTodosEnMapa = async () => {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
 
-        // ✅ Agregar círculo de geozona
         const circleId = `geozona-circle-${geozona.id}`
 
         if (!mapaAPI.map.getSource(circleId)) {
@@ -519,7 +589,6 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
-        // Marcador invisible para el popup
         const markerEl = document.createElement('div')
         markerEl.style.width = '1px'
         markerEl.style.height = '1px'
@@ -529,7 +598,6 @@ const dibujarTodosEnMapa = async () => {
           .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
           .addTo(mapaAPI.map)
 
-        // Badge de eventos si los hay
         if (tieneEventos) {
           const badgeEl = document.createElement('div')
           badgeEl.innerHTML = `
@@ -561,10 +629,9 @@ const dibujarTodosEnMapa = async () => {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
 
-        // ✅ Agregar polígono
         const polygonId = `geozona-polygon-${geozona.id}`
         const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
-        coordinates.push(coordinates[0]) // Cerrar polígono
+        coordinates.push(coordinates[0])
 
         if (!mapaAPI.map.getSource(polygonId)) {
           mapaAPI.map.addSource(polygonId, {
@@ -599,7 +666,6 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ DEFINIR popupContent UNA SOLA VEZ AQUÍ
         const popupContent = `
     <div style="min-width: 180px;">
       <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
@@ -627,7 +693,6 @@ const dibujarTodosEnMapa = async () => {
     </div>
   `
 
-        // ✅ Evento click del polígono
         mapaAPI.map.on('click', polygonId, (e) => {
           if (popupGlobalActivo) {
             popupGlobalActivo.remove()
@@ -643,7 +708,6 @@ const dibujarTodosEnMapa = async () => {
             .addTo(mapaAPI.map)
         })
 
-        // Cambiar cursor
         mapaAPI.map.on('mouseenter', polygonId, () => {
           mapaAPI.map.getCanvas().style.cursor = 'pointer'
         })
@@ -652,13 +716,11 @@ const dibujarTodosEnMapa = async () => {
           mapaAPI.map.getCanvas().style.cursor = ''
         })
 
-        // Calcular centro para badges (opcional)
         const lats = geozona.puntos.map((p) => p.lat)
         const lngs = geozona.puntos.map((p) => p.lng)
         const centroLat = lats.reduce((a, b) => a + b) / lats.length
         const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-        // Badge de eventos si los hay
         if (tieneEventos) {
           const badgeEl = document.createElement('div')
           badgeEl.innerHTML = `
@@ -697,6 +759,7 @@ const dibujarTodosEnMapa = async () => {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
+
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
@@ -725,7 +788,6 @@ onMounted(async () => {
     requestAnimationFrame(async () => {
       await initMap('map', [32.504421823945805, -116.9514484543167], 13)
 
-      // ✅ Dar tiempo al mapa para renderizar antes de agregar contenido
       setTimeout(async () => {
         addMarker(32.504421823945805, -116.9514484543167, {
           popup: '<b>MJ Industrias</b><br>Ubicación principal',
@@ -768,10 +830,15 @@ onMounted(async () => {
         await dibujarTodosEnMapa()
         await inicializarSistemaDeteccion()
 
-        // 🔧 Iniciar evaluación continua de eventos
         iniciarEvaluacionContinuaEventos()
 
         iniciarSeguimientoGPS()
+
+        // 🚀 INICIAR SIMULADOR AUTOMÁTICAMENTE
+        console.log('🎯 Esperando 2 segundos antes de iniciar simulador...')
+        setTimeout(async () => {
+          await iniciarSimuladorAutomatico()
+        }, 2000)
       }, 500)
 
       window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
@@ -794,16 +861,13 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
-  // 🔧 Listener mejorado para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
     console.log('🔄 Redibujando mapa...')
 
-    // 🔧 USAR LA NUEVA FUNCIÓN DE LIMPIEZA
     limpiarCapasDelMapa()
 
     await dibujarTodosEnMapa()
 
-    // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
 
@@ -873,7 +937,6 @@ const cancelarGeozona = () => {
 onUnmounted(() => {
   detenerSeguimientoGPS()
 
-  // 🔧 Detener evaluación de eventos
   detenerEvaluacionEventos()
 
   detenerTracking()
@@ -946,6 +1009,39 @@ const manejarToggleTrafico = () => {
   align-items: center;
   gap: 8px;
   animation: slideInRight 0.3s ease-out;
+}
+
+/* 🆕 Indicador del simulador */
+.simulador-indicator {
+  position: fixed;
+  top: 220px;
+  right: 16px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInRight 0.3s ease-out;
+  font-weight: 600;
+}
+
+.pulse-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
 }
 
 @keyframes slideInRight {
@@ -1088,27 +1184,6 @@ const manejarToggleTrafico = () => {
 :deep(.traffic-layer-blend) {
   mix-blend-mode: multiply;
   opacity: 0.9;
-}
-
-.simulador-container {
-  position: fixed !important;
-  top: 220px;
-  right: 20px;
-  z-index: 1000;
-}
-
-.simulador-container :deep(.simulador-card-expandido) {
-  width: 350px;
-}
-
-@media (max-width: 768px) {
-  .simulador-container :deep(.simulador-card-expandido) {
-    width: 320px;
-  }
-
-  .simulador-container {
-    right: 10px;
-  }
 }
 
 :deep(.custom-marker-unidad) {

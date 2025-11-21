@@ -11,10 +11,10 @@ export const TIPOS_INFORME = {
     icon: 'event',
     descripcion: 'Reporte de eventos ocurridos en un período',
     opciones: {
-      tipoReporte: true, // Por objeto / Por conductor
-      seleccionarElementos: true, // Lista de objetos o conductores
+      tipoReporte: true, // Por unidad / Por conductor
+      seleccionarElementos: true, // Lista de unidades o conductores
       seleccionarEventos: true, // Lista de eventos
-      metodoAgrupacion: true, // Por Evento / Por Día / Por Objeto
+      metodoAgrupacion: true, // Por Evento / Por Día / Por Unidad
       seleccionFechas: true, // Rango de fechas
       seleccionColumnas: true, // Columnas del reporte
       generarArchivos: true, // PDF / Excel
@@ -35,8 +35,8 @@ export const TIPOS_INFORME = {
     icon: 'route',
     descripcion: 'Reporte de rutas y recorridos realizados',
     opciones: {
-      tipoReporte: true, // Por objeto / Por conductor
-      seleccionarElementos: true, // Lista de objetos o conductores
+      tipoReporte: true, // Por unidad / Por conductor
+      seleccionarElementos: true, // Lista de unidades o conductores
       seleccionFechas: true, // Rango de fechas
       seleccionColumnas: true, // Columnas del reporte
       mostrarMapaTrayecto: true, // Toggle: Mostrar mapa
@@ -61,8 +61,8 @@ export const TIPOS_INFORME = {
     icon: 'schedule',
     descripcion: 'Reporte de horas laborales y productividad',
     opciones: {
-      tipoReporte: true, // Por conductor / Por objeto
-      seleccionarElementos: true, // Lista de objetos o conductores
+      tipoReporte: true, // Por conductor / Por unidad
+      seleccionarElementos: true, // Lista de unidades o conductores
       diasLaborables: true, // Lunes a Domingo (checkboxes)
       horarioLaboral: true, // Hora inicio - Hora fin
       tipoInformeComercial: true, // Todos / Dentro / Fuera horario
@@ -88,7 +88,7 @@ export const TIPOS_INFORME = {
 export const METODOS_AGRUPACION = [
   { label: 'Por Evento', value: 'evento' },
   { label: 'Por Día', value: 'dia' },
-  { label: 'Por Objeto', value: 'objeto' },
+  { label: 'Por Unidad', value: 'unidad' },
 ]
 
 /**

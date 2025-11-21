@@ -684,6 +684,17 @@ export function useColumnasReportes() {
       configuracion.forEach((col) => {
         fila[col.label] = col.obtenerValor(dato)
       })
+
+      // 🔥 AGREGAR: Incluir datos adicionales necesarios para el mapa
+      fila.coordenadas = dato.coordenadas || []
+      fila.latitud = dato.latitud || dato.coordenadas?.[0]?.lat
+      fila.longitud = dato.longitud || dato.coordenadas?.[0]?.lng
+      fila.vehiculoId = dato.idUnidad || dato.vehiculoId
+      fila.unidadId = dato.idUnidad || dato.unidadId
+      fila.vehiculo = dato.unidadNombre || dato.vehiculo
+      fila.unidad = dato.unidadNombre || dato.unidad
+      fila.placa = dato.unidadPlaca || dato.placa
+
       return fila
     })
   }

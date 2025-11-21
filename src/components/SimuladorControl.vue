@@ -1,9 +1,9 @@
 <template>
-  <!-- Versión colapsada - Solo botón flotante -->
+  <!-- Versión colapsada - Solo muestra estado -->
   <q-btn
     v-if="!expanded"
     fab
-    :color="simulacionActiva ? 'positive' : 'purple'"
+    :color="simulacionActiva ? 'positive' : 'grey'"
     icon="explore"
     class="simulador-fab"
     @click="expanded = true"
@@ -18,19 +18,20 @@
       {{ stats.total }}
     </q-badge>
     <q-tooltip>
-      {{ simulacionActiva ? `${stats.total} unidades activas` : 'Abrir simulador GPS' }}
+      {{ simulacionActiva ? `${stats.total} unidades activas` : 'Cargando simulador...' }}
     </q-tooltip>
   </q-btn>
 
-  <!-- Versión expandida - Panel completo -->
+  <!-- Versión expandida - Panel de estadísticas -->
   <q-card v-else class="simulador-card-expandido">
     <q-card-section class="simulador-header">
       <div class="header-content">
-        <q-icon name="explore" size="32px" :color="simulacionActiva ? 'green' : 'grey'" />
+        <q-icon name="explore" size="32px" color="green" />
         <div class="header-text">
           <div class="header-title">Simulador GPS</div>
           <div class="header-subtitle">
-            {{ simulacionActiva ? 'Activo' : 'Inactivo' }}
+            <q-icon name="fiber_manual_record" size="10px" color="green" class="pulse-icon" />
+            Activo
           </div>
         </div>
       </div>
@@ -69,7 +70,23 @@
         </div>
 
         <div class="stat-item">
-          <q-icon name="speed" color="orange" size="20px" />
+          <q-icon name="pause_circle" color="orange" size="20px" />
+          <div class="stat-content">
+            <div class="stat-label">Detenidas</div>
+            <div class="stat-value">{{ stats.detenidas }}</div>
+          </div>
+        </div>
+
+        <div class="stat-item">
+          <q-icon name="power_settings_new" color="blue-grey" size="20px" />
+          <div class="stat-content">
+            <div class="stat-label">Inactivas</div>
+            <div class="stat-value">{{ stats.inactivas }}</div>
+          </div>
+        </div>
+
+        <div class="stat-item">
+          <q-icon name="speed" color="purple" size="20px" />
           <div class="stat-content">
             <div class="stat-label">Velocidad prom.</div>
             <div class="stat-value">{{ stats.velocidadPromedio }} km/h</div>
@@ -93,41 +110,19 @@
         </span>
       </div>
 
-      <!-- Controles -->
-      <div class="controls-section">
-        <q-btn
-          :color="simulacionActiva ? 'red' : 'primary'"
-          :icon="simulacionActiva ? 'stop' : 'play_arrow'"
-          :label="simulacionActiva ? 'Detener' : 'Iniciar'"
-          :loading="loading"
-          @click="toggleSimulacion"
-          class="full-width"
-          unelevated
-          :disable="conductoresConUnidad === 0"
+      <!-- Estado del sistema -->
+      <div class="status-section">
+        <q-linear-progress 
+          :value="stats.porcentajeActivo / 100" 
+          color="positive"
+          class="q-mb-sm"
+          rounded
+          size="8px"
         />
-
-        <q-btn
-          v-if="!simulacionActiva"
-          flat
-          color="primary"
-          icon="refresh"
-          label="Recargar"
-          @click="recargarDatos"
-          class="full-width q-mt-sm"
-          :disable="loading"
-          size="sm"
-        />
-      </div>
-
-      <!-- Advertencia si no hay conductores -->
-      <q-banner v-if="conductoresConUnidad === 0" rounded class="bg-orange-2 text-orange-9 q-mt-md">
-        <template v-slot:avatar>
-          <q-icon name="warning" color="orange" />
-        </template>
-        <div class="text-caption">
-          Asigna unidades a conductores para simular
+        <div class="status-text">
+          Sistema operando automáticamente
         </div>
-      </q-banner>
+      </div>
 
       <!-- Log de actividad (compacto) -->
       <div v-if="simulacionActiva && activityLogs.length > 0" class="activity-log q-mt-md">
@@ -148,12 +143,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
-import { onMounted } from 'vue'
 
 const $q = useQuasar()
 
@@ -168,45 +162,16 @@ const props = defineProps({
   }
 })
 
-watch(
-  () => [props.poisIniciales, props.geozonasIniciales],
-  ([nuevosPois, nuevasGeozonas]) => {
-    if (nuevosPois.length > 0 || nuevasGeozonas.length > 0) {
-      console.log('✅ Props recibidas en SimuladorControl:')
-      console.log('  📍 POIs:', nuevosPois.length)
-      console.log('  🗺️ Geozonas:', nuevasGeozonas.length)
-      
-      // Actualizar los refs locales
-      pois.value = nuevosPois
-      geozonas.value = nuevasGeozonas
-      
-      // 🔧 INICIAR simulación si hay conductores y aún no está activa
-      if (conductoresConUnidad.value > 0 && !simulacionActiva.value) {
-        console.log('🔄 Generando rutas e iniciando simulación...')
-        generarRutasParaUnidades()
-        
-        // Iniciar simulación automáticamente
-        setTimeout(() => {
-          toggleSimulacion()
-        }, 500)
-      }
-    }
-  },
-  { deep: true, immediate: true }
-)
-
-const emit = defineEmits(['recargar-datos', 'iniciar-simulacion'])
+const emit = defineEmits(['iniciar-simulacion'])
 
 // Composables
-const { simulacionActiva, toggleSimulacion: toggleSim } = useSimuladorUnidades()
+const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
 const { estadisticas } = useTrackingUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
 
 // Estado local
 const expanded = ref(false)
-const loading = ref(false)
 const activityLogs = ref([])
-
 const pois = computed(() => props.poisIniciales)
 const geozonas = computed(() => props.geozonasIniciales)
 
@@ -214,288 +179,72 @@ const totalDestinos = computed(() => {
   return pois.value.length + geozonas.value.length
 })
 
-// 🔧 FUNCIÓN MEJORADA: Genera rutas ÚNICAS para cada unidad
-const generarRutasParaUnidades = () => {
-  if (!conductores.value || !unidades.value) {
-    console.warn('⚠️ No hay conductores o unidades para generar rutas')
-    return
-  }
-
-  // Crear lista de destinos (POIs y Geozonas)
-  const destinos = []
-  
-  // Agregar POIs como destinos
-  pois.value.forEach(poi => {
-    if (poi.coordenadas) {
-      destinos.push({
-        id: poi.id,
-        lat: poi.coordenadas.lat,
-        lng: poi.coordenadas.lng,
-        nombre: poi.nombre,
-        tipo: 'poi',
-        radio: poi.radio || 100,
-        prioridad: 1
-      })
-    }
-  })
-  
-  // Agregar Geozonas como destinos
-  geozonas.value.forEach(geozona => {
-    let centro = null
-    
-    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
-      centro = geozona.centro
-    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
-      centro = calcularCentroPoligono(geozona.puntos)
-    }
-    
-    if (centro) {
-      destinos.push({
-        id: geozona.id,
-        lat: centro.lat,
-        lng: centro.lng,
-        nombre: geozona.nombre,
-        tipo: 'geozona',
-        radio: geozona.radio || 100,
-        prioridad: 2
-      })
-    }
-  })
-  
-  // Si no hay suficientes destinos, agregar puntos por defecto
-  if (destinos.length < 2) {
-    console.warn('⚠️ No hay suficientes POIs/Geozonas, usando destinos por defecto')
-    destinos.push(
-      { 
-        id: 'defecto1', 
-        lat: 32.504421823945805, 
-        lng: -116.9514484543167, 
-        nombre: 'MJ Industrias', 
-        tipo: 'defecto',
-        prioridad: 3
-      },
-      { 
-        id: 'defecto2', 
-        lat: 32.51442183945805, 
-        lng: -116.9414484543167, 
-        nombre: 'Punto Norte', 
-        tipo: 'defecto',
-        prioridad: 3
-      },
-      { 
-        id: 'defecto3', 
-        lat: 32.52442183945805, 
-        lng: -116.9614484543167, 
-        nombre: 'Punto Este', 
-        tipo: 'defecto',
-        prioridad: 3
-      }
-    )
-  }
-  
-  console.log(`🎯 ${destinos.length} destinos disponibles para las rutas`)
-  console.log('📍 Destinos:', destinos.map(d => `${d.nombre} (${d.tipo})`).join(', '))
-  
-  // 🔧 CRÍTICO: Mezclar destinos para que cada unidad tenga ruta diferente
-  const destinosMezclados = [...destinos]
-  for (let i = destinosMezclados.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [destinosMezclados[i], destinosMezclados[j]] = [destinosMezclados[j], destinosMezclados[i]]
-  }
-  
-  // Asignar rutas ÚNICAS a cada unidad
-  conductores.value.forEach((conductor, indexConductor) => {
-    if (conductor.UnidadAsignada) {
-      const unidad = unidades.value.find(u => u.id === conductor.UnidadAsignada)
-      if (!unidad) return
-      
-      // 🔧 NUEVO: Crear ruta DIFERENTE para cada unidad
-      const ruta = crearRutaUnicaParaUnidad(destinosMezclados, indexConductor, destinos.length)
-      
-      // Asignar la ruta a la unidad
-      unidad.ruta = ruta
-      unidad.indiceRutaActual = 0
-      unidad.destinoActual = ruta[0]
-      unidad.ultimoPuntoTiempo = Date.now()
-      unidad.ultimoCambioDestino = Date.now()
-      
-      // Establecer posición inicial en el primer punto de la ruta
-      if (ruta.length > 0) {
-        unidad.lat = ruta[0].lat
-        unidad.lng = ruta[0].lng
-        unidad.estado = 'movimiento'
-        unidad.velocidad = Math.floor(Math.random() * 20) + 40
-        unidad.velocidadBase = unidad.velocidad
-      }
-      
-      console.log(`🚗 Ruta ÚNICA asignada a ${unidad.Unidad}:`)
-      console.log(`   📍 Destinos: ${ruta.map(d => d.nombre).join(' → ')}`)
-    }
-  })
-}
-
-// 🔧 NUEVA FUNCIÓN: Crear ruta única para cada unidad
-const crearRutaUnicaParaUnidad = (destinosDisponibles, indexUnidad, totalDestinos) => {
-  const ruta = []
-  const numDestinos = Math.min(4, Math.max(2, totalDestinos))
-  
-  // 🔧 CLAVE: Cada unidad empieza en un offset diferente en la lista de destinos
-  const offset = (indexUnidad * 3) % destinosDisponibles.length
-  
-  for (let i = 0; i < numDestinos; i++) {
-    const indiceDestino = (offset + i) % destinosDisponibles.length
-    const destino = destinosDisponibles[indiceDestino]
-    
-    ruta.push({
-      ...destino,
-      ordenVisita: i,
-      tiempoEstimadoLlegada: Date.now() + (i * 5 * 60 * 1000)
-    })
-  }
-  
-  // Agregar punto de retorno al inicio para hacer la ruta circular
-  if (ruta.length > 1) {
-    ruta.push({
-      ...ruta[0],
-      esRetorno: true,
-      ordenVisita: ruta.length
-    })
-  }
-  
-  return ruta
-}
-
-// Función para calcular el centro de un polígono
-const calcularCentroPoligono = (puntos) => {
-  let lat = 0, lng = 0
-  puntos.forEach(punto => {
-    lat += punto.lat
-    lng += punto.lng
-  })
-  return {
-    lat: lat / puntos.length,
-    lng: lng / puntos.length
-  }
-}
-
-const recargarDatos = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      obtenerConductores(),
-      obtenerUnidades()
-    ])
-    
-    console.log('🔄 Datos recargados:', {
-      conductores: conductores.value.length,
-      unidades: unidades.value.length,
-      pois: pois.value.length,
-      geozonas: geozonas.value.length
-    })
-    
-    $q.notify({
-      type: 'positive',
-      message: 'Datos recargados',
-      position: 'top'
-    })
-    
-    addLog('refresh', 'Datos actualizados', 'blue')
-  } catch (error) {
-    console.error('Error al recargar datos:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al recargar datos',
-      position: 'top'
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
 const stats = computed(() => estadisticas())
 
 const conductoresConUnidad = computed(() => {
   return conductores.value.filter(c => c.UnidadAsignada).length
 })
 
-watch([pois, geozonas], ([nuevoPois, nuevasGeozonas]) => {
-  console.log('📊 Datos actualizados en SimuladorControl:', {
-    pois: nuevoPois.length,
-    geozonas: nuevasGeozonas.length
-  })
-}, { immediate: true })
-
-onMounted(async () => {
-  await recargarDatos()
-  
-  // 🔧 ESPERAR a que lleguen los props antes de generar rutas
-  if (conductoresConUnidad.value > 0) {
-    // Esperar un tick para que el watch procese los props
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    // Verificar si los datos llegaron
-    if (pois.value.length > 0 || geozonas.value.length > 0) {
-      console.log('✅ Iniciando simulación con datos reales...')
-      generarRutasParaUnidades()
-      await toggleSimulacion()
-    } else {
-      console.log('⚠️ Esperando datos de POIs/Geozonas...')
-      // El watch se encargará cuando lleguen
-    }
-  }
-})
-
-const toggleSimulacion = async () => {
-  if (conductoresConUnidad.value === 0) {
-    $q.notify({
-      type: 'warning',
-      message: 'No hay conductores con unidades asignadas',
-      position: 'top'
-    })
-    return
-  }
-
-  loading.value = true
+// 🔧 Función para cargar datos
+const cargarDatos = async () => {
   try {
-    // 🔧 IMPORTANTE: Generar rutas si no existen
-    if (!unidades.value.some(u => u.ruta && u.ruta.length > 0)) {
-      generarRutasParaUnidades()
-    }
+    await Promise.all([
+      obtenerConductores(),
+      obtenerUnidades()
+    ])
     
-    await toggleSim(conductores.value, unidades.value)
-    
-    const message = simulacionActiva.value 
-      ? `Simulación iniciada con ${conductoresConUnidad.value} unidades en ruta`
-      : 'Simulación detenida'
-    
-    addLog(
-      simulacionActiva.value ? 'play_circle' : 'stop_circle',
-      message,
-      simulacionActiva.value ? 'green' : 'red'
-    )
-    
-    $q.notify({
-      type: simulacionActiva.value ? 'positive' : 'info',
-      message,
-      position: 'top'
-    })
-
-    emit('iniciar-simulacion', {
-      activa: simulacionActiva.value,
-      unidades: conductoresConUnidad.value
+    console.log('🔄 Datos cargados:', {
+      conductores: conductores.value.length,
+      unidades: unidades.value.length,
+      pois: pois.value.length,
+      geozonas: geozonas.value.length
     })
   } catch (error) {
-    console.error('Error al toggle simulación:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al controlar la simulación',
-      position: 'top'
-    })
-  } finally {
-    loading.value = false
+    console.error('Error al cargar datos:', error)
   }
 }
 
+// 🚀 Función para iniciar simulación automáticamente
+const iniciarSimulacionAutomatica = async () => {
+  if (simulacionActiva.value) {
+    console.log('⚠️ Simulación ya está activa')
+    return
+  }
+
+  if (conductoresConUnidad.value === 0) {
+    console.log('⚠️ Esperando conductores con unidades asignadas...')
+    return
+  }
+
+  try {
+    console.log('🚀 Iniciando simulación automática...')
+    
+    await iniciarSimulacion(conductores.value, unidades.value)
+    
+    addLog('play_circle', `Simulación iniciada con ${conductoresConUnidad.value} unidades`, 'green')
+    
+    $q.notify({
+      type: 'positive',
+      message: `Simulador GPS activo: ${conductoresConUnidad.value} unidades`,
+      position: 'top',
+      timeout: 3000
+    })
+
+    emit('iniciar-simulacion', {
+      activa: true,
+      unidades: conductoresConUnidad.value
+    })
+  } catch (error) {
+    console.error('Error al iniciar simulación:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al iniciar simulación',
+      position: 'top'
+    })
+  }
+}
+
+// 📊 Agregar log de actividad
 const addLog = (icon, message, color) => {
   const now = new Date()
   const time = now.toLocaleTimeString('es-MX', { 
@@ -515,22 +264,55 @@ const addLog = (icon, message, color) => {
   }
 }
 
+// 👀 Watch para logs de cambio de estado
 watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
-    addLog('directions_car', `${newVal} en movimiento`, 'primary')
+    addLog('directions_car', `${newVal} unidades en movimiento`, 'primary')
+  }
+})
+
+// 👀 Watch para iniciar cuando lleguen datos
+watch(
+  () => [props.poisIniciales, props.geozonasIniciales, conductoresConUnidad.value],
+  async ([nuevosPois, nuevasGeozonas, conductoresCount]) => {
+    if ((nuevosPois.length > 0 || nuevasGeozonas.length > 0) && conductoresCount > 0) {
+      if (!simulacionActiva.value) {
+        console.log('✅ Datos listos, iniciando simulación...')
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await iniciarSimulacionAutomatica()
+      }
+    }
+  },
+  { deep: true }
+)
+
+// 🎬 Al montar el componente
+onMounted(async () => {
+  console.log('📱 SimuladorControl montado - Modo automático')
+  
+  await cargarDatos()
+  
+  // Esperar un poco para que todo se cargue
+  await new Promise(resolve => setTimeout(resolve, 1500))
+  
+  // Intentar iniciar automáticamente
+  if (conductoresConUnidad.value > 0) {
+    await iniciarSimulacionAutomatica()
+  } else {
+    console.log('⏳ Esperando asignación de unidades...')
   }
 })
 </script>
 
 <style scoped>
 .simulador-fab {
-  box-shadow: 0 4px 12px rgba(103, 58, 183, 0.4);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
   transition: all 0.3s ease;
 }
 
 .simulador-fab:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(103, 58, 183, 0.6);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.6);
 }
 
 .simulador-card-expandido {
@@ -555,7 +337,7 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
   color: white;
 }
 
@@ -579,6 +361,22 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
 .header-subtitle {
   font-size: 12px;
   opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pulse-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .stats-container {
@@ -629,9 +427,19 @@ watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
   color: #1976d2;
 }
 
-.controls-section {
-  display: flex;
-  flex-direction: column;
+.status-section {
+  background: #f5f7fa;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.status-text {
+  font-size: 11px;
+  color: #4caf50;
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .activity-log {
