@@ -1,7 +1,8 @@
-// src/composables/useSimuladorUnidades.js - v3.2 DIRECCIONES ACTUALIZADAS
-// ✅ Actualización de direcciones cada 30 segundos O 50 metros
-// ✅ Logs detallados para debugging
-// ✅ Mejor experiencia en popups del mapa
+// src/composables/useSimuladorUnidades.js - v3.3 SIN TELETRANSPORTACIÓN
+// ✅ Restaura última posición desde Firebase
+// ✅ Solo genera nueva posición si es primera vez
+// ✅ Direcciones con nombres de calles
+// ✅ Estados funcionando correctamente
 
 import { ref } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
@@ -17,7 +18,6 @@ export function useSimuladorUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   const { iniciarOActualizarRutaDiaria } = useRutaDiaria()
   
-  // 🗺️ Límites PRECISOS de Tijuana, BC
   const LIMITES_TIJUANA = {
     latMin: 32.43,
     latMax: 32.56,
@@ -25,25 +25,18 @@ export function useSimuladorUnidades() {
     lngMax: -116.88
   }
   
-  // 🔑 API key de Mapbox
   const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
-  // 🎯 ESTADOS
   const ESTADOS = {
     MOVIMIENTO: 'movimiento',
     DETENIDO: 'detenido',
     INACTIVO: 'inactivo'
   }
 
-  // ⏱️ Configuración de actualizaciones
-  const DURACION_ESTADO = 20000 // Cambio de estado cada 20 segundos
-  const TIEMPO_ACTUALIZACION_DIRECCION = 30000 // ✅ Actualizar dirección cada 30 segundos
-  const DISTANCIA_MIN_ACTUALIZACION = 50 // ✅ O cuando se mueva 50+ metros
+  const DURACION_ESTADO = 20000
+  const TIEMPO_ACTUALIZACION_DIRECCION = 30000
+  const DISTANCIA_MIN_ACTUALIZACION = 50
 
-  /**
-   * 🌐 Obtener dirección COMPLETA desde coordenadas
-   * SIEMPRE retorna un nombre de calle legible
-   */
   const obtenerDireccionDesdeCoordenadas = async (lat, lng) => {
     try {
       const response = await fetch(
@@ -53,43 +46,35 @@ export function useSimuladorUnidades() {
       
       if (data.features && data.features.length > 0) {
         const feature = data.features[0]
-        
-        // 🔍 Extraer información estructurada
         const place_name = feature.place_name || ''
         const text = feature.text || ''
         const address = feature.address || ''
         
-        // ✅ Construir dirección completa
         let direccionFinal = ''
         
-        // Si tiene número de dirección
         if (address && text) {
           direccionFinal = `${text} ${address}`
         } else if (text) {
           direccionFinal = text
         } else {
-          // Usar place_name como último recurso
           direccionFinal = place_name.split(',')[0] || ''
         }
         
-        // Limpiar texto redundante
         direccionFinal = direccionFinal
           .replace(/, Baja California, México/g, '')
           .replace(/, Baja California/g, '')
           .replace(/, Tijuana, Baja California/g, '')
           .replace(/, Tijuana/g, '')
           .replace(/, México/g, '')
-          .replace(/22[0-9]{3}/g, '') // Remover códigos postales
+          .replace(/22[0-9]{3}/g, '')
           .trim()
         
-        // ✅ Si obtuvimos algo válido, retornar
         if (direccionFinal && direccionFinal.length > 3) {
           console.log(`🗺️ Geocoding exitoso: ${direccionFinal}`)
           return direccionFinal
         }
       }
       
-      // Si no se obtuvo nada, intentar con tipos más amplios
       console.warn('⚠️ Sin resultado específico, intentando búsqueda amplia...')
       const responseAmplia = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&limit=1`
@@ -99,24 +84,20 @@ export function useSimuladorUnidades() {
       if (dataAmplia.features && dataAmplia.features.length > 0) {
         const feature = dataAmplia.features[0]
         const parts = feature.place_name.split(',')
-        
-        // Retornar la primera parte (usualmente calle o zona)
         const direccion = parts[0].trim()
-        console.log(`🗺️ Geocoding amplio: ${direccion}`)
-        return direccion
+        if (direccion && direccion.length > 3) {
+          console.log(`🗺️ Geocoding amplio: ${direccion}`)
+          return direccion
+        }
       }
       
     } catch (error) {
       console.error('❌ Error en geocoding:', error)
     }
     
-    // ✅ Último fallback: formato legible de coordenadas
-    return `Ubicación ${lat.toFixed(4)}°N, ${Math.abs(lng).toFixed(4)}°O`
+    return '📍 Sin nombre de calle'
   }
 
-  /**
-   * 🔄 Probabilidades iguales 33.33%
-   */
   const determinarSiguienteEstado = () => {
     const rand = Math.random()
     if (rand < 0.333) return ESTADOS.MOVIMIENTO
@@ -124,18 +105,12 @@ export function useSimuladorUnidades() {
     return ESTADOS.INACTIVO
   }
 
-  /**
-   * 🎲 Ubicación aleatoria en Tijuana
-   */
   const generarUbicacionAleatoria = () => {
     const lat = LIMITES_TIJUANA.latMin + Math.random() * (LIMITES_TIJUANA.latMax - LIMITES_TIJUANA.latMin)
     const lng = LIMITES_TIJUANA.lngMin + Math.random() * (LIMITES_TIJUANA.lngMax - LIMITES_TIJUANA.lngMin)
     return { lat, lng }
   }
 
-  /**
-   * 🎲 Destino aleatorio >1km
-   */
   const generarDestinoAleatorio = (ubicacionActual) => {
     let nuevoDestino, distancia
     do {
@@ -148,9 +123,6 @@ export function useSimuladorUnidades() {
     return nuevoDestino
   }
 
-  /**
-   * 📏 Distancia entre puntos
-   */
   const calcularDistancia = (lat1, lng1, lat2, lng2) => {
     const R = 6371e3
     const φ1 = (lat1 * Math.PI) / 180
@@ -165,9 +137,6 @@ export function useSimuladorUnidades() {
     return R * c
   }
 
-  /**
-   * 🧭 Dirección bearing
-   */
   const calcularDireccion = (desde, hacia) => {
     const deltaLng = hacia.lng - desde.lng
     const deltaLat = hacia.lat - desde.lat
@@ -175,9 +144,6 @@ export function useSimuladorUnidades() {
     return (bearing + 360) % 360
   }
 
-  /**
-   * 🚗 Procesar movimiento según estado
-   */
   const procesarMovimientoUnidad = (estadoActual) => {
     const ahora = Date.now()
     
@@ -191,55 +157,59 @@ export function useSimuladorUnidades() {
         ignicion: true,
         destinoAleatorio: generarDestinoAleatorio(ubicacionInicial),
         tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-        ultimaActualizacionDireccion: 0 // ✅ NUEVO
+        ultimaActualizacionDireccion: 0
       }
     }
 
-    // Cambio de estado cada 20s
+    const tiempoRestante = (estadoActual.tiempoProximoCambioEstado || 0) - ahora
+    if (tiempoRestante > 0 && tiempoRestante < 5000) {
+      console.log(`⏱️ ${estadoActual.unidadNombre}: ${Math.floor(tiempoRestante / 1000)}s hasta cambio de estado`)
+    }
+
     if (ahora >= (estadoActual.tiempoProximoCambioEstado || 0)) {
       const nuevoEstado = determinarSiguienteEstado()
-      console.log(`🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado}`)
+      console.log(`🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado} (${new Date().toLocaleTimeString()})`)
       
-      // ✅ IMPORTANTE: Mantener ubicación actual en TODOS los cambios de estado
       if (nuevoEstado === ESTADOS.MOVIMIENTO) {
         return {
-          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
+          ubicacion: estadoActual.ubicacion,
           direccion: estadoActual.direccion || Math.random() * 360,
           estado: ESTADOS.MOVIMIENTO,
           velocidad: Math.floor(Math.random() * 20) + 40,
           ignicion: true,
-          destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion), // ✅ Nuevo destino desde posición actual
+          destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion),
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
       } 
       else if (nuevoEstado === ESTADOS.DETENIDO) {
+        console.log(`⏸️ ${estadoActual.unidadNombre} ahora está DETENIDO - mantendrá posición por 20s`)
         return {
-          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
-          direccion: estadoActual.direccion, // ✅ Mantener dirección actual
+          ubicacion: estadoActual.ubicacion,
+          direccion: estadoActual.direccion,
           estado: ESTADOS.DETENIDO,
           velocidad: 0,
           ignicion: true,
-          destinoAleatorio: estadoActual.ubicacion, // ✅ Destino = posición actual (no moverse)
+          destinoAleatorio: estadoActual.ubicacion,
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
       } 
       else {
+        console.log(`🔌 ${estadoActual.unidadNombre} ahora está INACTIVO - mantendrá posición por 20s`)
         return {
-          ubicacion: estadoActual.ubicacion, // ✅ Mantener posición actual
-          direccion: estadoActual.direccion, // ✅ Mantener dirección actual
+          ubicacion: estadoActual.ubicacion,
+          direccion: estadoActual.direccion,
           estado: ESTADOS.INACTIVO,
           velocidad: 0,
           ignicion: false,
-          destinoAleatorio: estadoActual.ubicacion, // ✅ Destino = posición actual (no moverse)
+          destinoAleatorio: estadoActual.ubicacion,
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
         }
       }
     }
 
-    // Solo mover si está en MOVIMIENTO
     if (estadoActual.estado === ESTADOS.MOVIMIENTO) {
       if (!estadoActual.destinoAleatorio?.lat || !estadoActual.destinoAleatorio?.lng) {
         estadoActual.destinoAleatorio = generarDestinoAleatorio(estadoActual.ubicacion)
@@ -294,7 +264,6 @@ export function useSimuladorUnidades() {
       }
     }
 
-    // DETENIDO o INACTIVO: no mover
     return {
       ubicacion: estadoActual.ubicacion,
       direccion: estadoActual.direccion,
@@ -307,22 +276,56 @@ export function useSimuladorUnidades() {
     }
   }
 
-  /**
-   * 🚀 Iniciar simulación de una unidad
-   */
   const iniciarSimulacionUnidad = async (conductor, unidad) => {
     const unidadId = `unidad_${unidad.id}`
+    const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
+    
+    // ✅ Verificar si ya existe en Firebase
+    let estadoExistente = null
+    try {
+      const snapshot = await new Promise((resolve, reject) => {
+        onValue(unidadRef, (snap) => resolve(snap), reject, { onlyOnce: true })
+      })
+      estadoExistente = snapshot.val()
+    } catch {
+      // Sin estado previo, continuará para crear uno nuevo
+      console.log(`📍 ${unidad.Unidad}: No hay estado previo`)
+    }
+    
+    // ✅ SI EXISTE: Restaurar ubicación anterior
+    if (estadoExistente && estadoExistente.ubicacion) {
+      console.log(`🔄 ${unidad.Unidad}: Restaurando desde última posición`)
+      console.log(`   📍 Última ubicación: ${estadoExistente.direccionTexto}`)
+      console.log(`   🎯 Último estado: ${estadoExistente.estado}`) // ✅ CORREGIDO
+      
+      await update(unidadRef, {
+        timestamp: Date.now(),
+        ultimaActualizacion: new Date().toISOString(),
+        ultimoPuntoTiempo: Date.now(),
+        conductorId: conductor.id,
+        conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
+        conductorFoto: conductor.LicenciaConducirFoto || null
+      })
+      
+      console.log(`✅ ${unidad.Unidad} continúa desde su última posición`)
+      
+      // Iniciar intervalo
+      iniciarIntervaloActualizacion(conductor, unidad, unidadRef)
+      return
+    }
+    
+    // ✅ SI NO EXISTE: Crear nueva posición
+    console.log(`🆕 ${unidad.Unidad}: Primera vez, generando posición inicial`)
+    
     const ubicacionInicial = generarUbicacionAleatoria()
     const destinoInicial = generarDestinoAleatorio(ubicacionInicial)
     const velocidadBase = Math.floor(Math.random() * 20) + 40
     const estadoInicial = determinarSiguienteEstado()
+    const direccionReal = await obtenerDireccionDesdeCoordenadas(ubicacionInicial.lat, ubicacionInicial.lng)
     
-    const direccionReal = await obtenerDireccionDesdeCoordenadas(
-      ubicacionInicial.lat, 
-      ubicacionInicial.lng
-    )
-    
-    console.log(`🚗 ${unidad.Unidad}: ${direccionReal} - Estado: ${estadoInicial}`)
+    console.log(`🚗 INICIO: ${unidad.Unidad}`)
+    console.log(`   📍 Dirección: ${direccionReal}`)
+    console.log(`   🎯 Estado: ${estadoInicial}`)
     
     const estado = {
       id: unidad.id,
@@ -345,11 +348,11 @@ export function useSimuladorUnidades() {
       velocidadBase: velocidadBase,
       destinoAleatorio: estadoInicial === ESTADOS.MOVIMIENTO ? destinoInicial : ubicacionInicial,
       tiempoProximoCambioEstado: Date.now() + DURACION_ESTADO,
-      ultimaActualizacionDireccion: Date.now() // ✅ NUEVO: Guardar timestamp de última actualización
+      ultimaActualizacionDireccion: Date.now()
     }
 
-    const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
     await set(unidadRef, estado)
+    console.log(`✅ ${unidad.Unidad} guardada en Firebase`)
     
     if (estadoInicial === ESTADOS.MOVIMIENTO) {
       try {
@@ -369,6 +372,12 @@ export function useSimuladorUnidades() {
       }
     }
     
+    iniciarIntervaloActualizacion(conductor, unidad, unidadRef)
+  }
+
+  const iniciarIntervaloActualizacion = (conductor, unidad, unidadRef) => {
+    const unidadId = `unidad_${unidad.id}`
+    
     const intervalo = setInterval(async () => {
       try {
         const snapshot = await new Promise((resolve, reject) => {
@@ -383,43 +392,40 @@ export function useSimuladorUnidades() {
         let nuevaDireccionTexto = estadoActual.direccionTexto
         let actualizarTimestampDireccion = estadoActual.ultimaActualizacionDireccion || 0
         
-        // ✅ SOLO actualizar dirección si está EN MOVIMIENTO
         if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
           const distanciaCambio = calcularDistancia(
             estadoActual.ubicacion.lat, estadoActual.ubicacion.lng,
             nuevoMovimiento.ubicacion.lat, nuevoMovimiento.ubicacion.lng
           )
           
-          const tiempoDesdeUltimaActualizacion = Date.now() - (estadoActual.ultimaActualizacionDireccion || 0)
-          const debeActualizarDireccion = distanciaCambio > DISTANCIA_MIN_ACTUALIZACION || 
-                                         tiempoDesdeUltimaActualizacion > TIEMPO_ACTUALIZACION_DIRECCION
-          
-          if (debeActualizarDireccion) {
-            try {
-              nuevaDireccionTexto = await obtenerDireccionDesdeCoordenadas(
-                nuevoMovimiento.ubicacion.lat,
-                nuevoMovimiento.ubicacion.lng
-              )
-              actualizarTimestampDireccion = Date.now()
-              
-              // ✅ Log detallado para debugging
-              console.log('📍 Dirección actualizada:', {
-                unidad: estadoActual.unidadNombre,
-                direccionAnterior: estadoActual.direccionTexto?.substring(0, 40) + '...',
-                direccionNueva: nuevaDireccionTexto.substring(0, 40) + '...',
-                distanciaMovida: `${distanciaCambio.toFixed(0)}m`,
-                tiempoTranscurrido: `${Math.floor(tiempoDesdeUltimaActualizacion / 1000)}s`,
-                motivo: distanciaCambio > DISTANCIA_MIN_ACTUALIZACION ? 'Distancia' : 'Tiempo'
-              })
-            } catch (error) {
-              console.warn('⚠️ Error geocoding:', error)
-              nuevaDireccionTexto = `${nuevoMovimiento.ubicacion.lat.toFixed(5)}, ${nuevoMovimiento.ubicacion.lng.toFixed(5)}`
+          if (distanciaCambio > 0.1) {
+            const tiempoDesdeUltimaActualizacion = Date.now() - (estadoActual.ultimaActualizacionDireccion || 0)
+            const debeActualizarDireccion = distanciaCambio > DISTANCIA_MIN_ACTUALIZACION || 
+                                           tiempoDesdeUltimaActualizacion > TIEMPO_ACTUALIZACION_DIRECCION
+            
+            if (debeActualizarDireccion) {
+              try {
+                nuevaDireccionTexto = await obtenerDireccionDesdeCoordenadas(
+                  nuevoMovimiento.ubicacion.lat,
+                  nuevoMovimiento.ubicacion.lng
+                )
+                actualizarTimestampDireccion = Date.now()
+                
+                console.log('📍 Dirección actualizada:', {
+                  unidad: estadoActual.unidadNombre,
+                  direccionNueva: nuevaDireccionTexto.substring(0, 40) + '...',
+                  distanciaMovida: `${distanciaCambio.toFixed(0)}m`,
+                  estado: nuevoMovimiento.estado
+                })
+              } catch (error) {
+                console.warn('⚠️ Error geocoding:', error)
+                nuevaDireccionTexto = `${nuevoMovimiento.ubicacion.lat.toFixed(5)}, ${nuevoMovimiento.ubicacion.lng.toFixed(5)}`
+              }
             }
           }
-        }
-        // ✅ Si está DETENIDO o INACTIVO, mantener la dirección actual sin actualizar
-        else {
-          console.log(`⏸️ ${estadoActual.unidadNombre} - Estado: ${nuevoMovimiento.estado} - Manteniendo dirección actual`)
+        } else {
+          nuevoMovimiento.ubicacion = estadoActual.ubicacion
+          nuevoMovimiento.direccion = estadoActual.direccion
         }
 
         await update(unidadRef, {
@@ -433,8 +439,8 @@ export function useSimuladorUnidades() {
           ultimoPuntoTiempo: Date.now(),
           destinoAleatorio: nuevoMovimiento.destinoAleatorio,
           tiempoProximoCambioEstado: nuevoMovimiento.tiempoProximoCambioEstado,
-          direccionTexto: nuevaDireccionTexto, // ✅ Dirección actualizada
-          ultimaActualizacionDireccion: actualizarTimestampDireccion, // ✅ NUEVO timestamp
+          direccionTexto: nuevaDireccionTexto,
+          ultimaActualizacionDireccion: actualizarTimestampDireccion,
           conductorId: estadoActual.conductorId,
           conductorNombre: estadoActual.conductorNombre,
           conductorFoto: estadoActual.conductorFoto || null,
@@ -492,9 +498,6 @@ export function useSimuladorUnidades() {
     })
   }
 
-  /**
-   * 🎬 Iniciar simulación
-   */
   const iniciarSimulacion = async (conductores, unidades) => {
     if (simulacionActiva.value) {
       console.warn('⚠️ Simulación activa')
@@ -510,7 +513,8 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
     
-    console.log('🎲 Simulación v3.2 - Direcciones actualizadas cada 30s o 50m')
+    console.log('🎲 Simulación v3.3 - SIN teletransportación')
+    console.log('   ✅ Restaura última posición desde Firebase')
     
     for (const conductor of conductoresConUnidad) {
       const unidad = unidades.find(u => u.id === conductor.UnidadAsignada)
@@ -520,12 +524,9 @@ export function useSimuladorUnidades() {
       }
     }
     
-    console.log(`✅ ${conductoresConUnidad.length} unidades activas con direcciones dinámicas`)
+    console.log(`✅ ${conductoresConUnidad.length} unidades activas`)
   }
 
-  /**
-   * 🛑 Detener simulación
-   */
   const detenerSimulacion = async () => {
     console.log('🛑 Deteniendo...')
     
@@ -547,9 +548,6 @@ export function useSimuladorUnidades() {
     console.log('✅ Simulación detenida')
   }
 
-  /**
-   * 🔄 Toggle
-   */
   const toggleSimulacion = async (conductores, unidades) => {
     if (simulacionActiva.value) {
       await detenerSimulacion()
