@@ -15,7 +15,16 @@ export function useReportePDF() {
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos obtenidos de Firebase
    */
-
+  const COLORES_TRAYECTOS = [
+    'f44336', // Rojo
+    '2196F3', // Azul
+    '4CAF50', // Verde
+    'FF9800', // Naranja
+    '9C27B0', // Púrpura
+    'FFEB3B', // Amarillo
+    '00BCD4', // Cyan
+    'FF5722', // Naranja profundo
+  ]
   const generarPDFEventos = (config, datosReales) => {
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
@@ -403,24 +412,24 @@ export function useReportePDF() {
 
           const columnas = 2
           const itemsPorColumna = Math.ceil(leyenda.length / columnas)
-          const anchoColumna = availableWidth / columnas
 
-          leyenda.forEach((item, index) => {
-            const columna = Math.floor(index / itemsPorColumna)
-            const filaEnColumna = index % itemsPorColumna
+          trayectos.forEach((trayecto, index) => {
+            const colorHex = COLORES_TRAYECTOS[index % COLORES_TRAYECTOS.length]
 
-            const x = margin + columna * anchoColumna
-            const y = yPosition + filaEnColumna * 6
+            // Dibujar cuadro de color
+            doc.setFillColor(`#${colorHex}`)
+            doc.rect(14, yPosition, 5, 5, 'F')
 
-            // Dibujar línea de color
-            doc.setDrawColor(item.color)
-            doc.setLineWidth(2)
-            doc.line(x, y - 1, x + 15, y - 1)
-
-            // Texto
+            // Texto de la leyenda
+            doc.setFontSize(10)
             doc.setTextColor(0, 0, 0)
-            const textoVehiculo = `${item.vehiculo} (${item.puntos} puntos GPS)`
-            doc.text(textoVehiculo, x + 18, y)
+            doc.text(
+              `${trayecto.vehiculoNombre} (${trayecto.coordenadas.length} puntos GPS)`,
+              21,
+              yPosition + 4,
+            )
+
+            yPosition += 7
           })
 
           yPosition += itemsPorColumna * 6 + 10
