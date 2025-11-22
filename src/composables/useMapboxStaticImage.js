@@ -215,7 +215,7 @@ function prepararDatosTrayectos(registros) {
       })
 
       // 🔥 SIMPLIFICAR con Douglas-Peucker (máximo 80 puntos por trayecto)
-      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 80)
+      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 50)
 
       return {
         ...trayecto,
