@@ -938,10 +938,36 @@ const obtenerDatosReporte = async () => {
   console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
 
   // Elementos sin datos
-  const elementosConDatos = Object.keys(datosAgrupados)
+  let elementosConDatos = []
+
+  // 🔍 DEBUG: Ver qué campos tienen los datos
+  console.log('🔍 Primer dato de ejemplo:', datosFiltrados[0])
+  console.log('🔍 Campos disponibles:', Object.keys(datosFiltrados[0] || {}))
+  if (reportarPor.value === 'Conductores') {
+    // Para conductores, extraer los conductores que SÍ tienen datos
+    elementosConDatos = [
+      ...new Set(
+        datosFiltrados
+          .map((d) => (d.conductorNombre || '').replace(' undefined', '').trim())
+          .filter(Boolean),
+      ),
+    ]
+    console.log('👥 Conductores con datos encontrados:', elementosConDatos)
+  } else if (reportarPor.value === 'Unidades') {
+    // Para unidades, usar las claves de datosAgrupados
+    elementosConDatos = Object.keys(datosAgrupados)
+  } else {
+    // Otros casos
+    elementosConDatos = Object.keys(datosAgrupados)
+  }
+
   const elementosSinDatos = elementosSeleccionados.value.filter(
-    (elem) => !elementosConDatos.some((key) => key.includes(elem)),
+    (elem) => !elementosConDatos.includes(elem),
   )
+
+  if (elementosSinDatos.length > 0) {
+    console.log('⚠️ Elementos sin datos:', elementosSinDatos)
+  }
 
   if (elementosSinDatos.length > 0) {
     console.log('⚠️ Elementos sin datos:', elementosSinDatos)

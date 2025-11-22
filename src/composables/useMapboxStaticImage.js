@@ -20,16 +20,15 @@ const MAP_RETINA = '@2x' // Alta resolución
  * ============================================
  */
 const COLORES_TRAYECTOS = [
-  'f44336', // Rojo
-  '2196F3', // Azul
-  '4CAF50', // Verde
-  'FF9800', // Naranja
-  '9C27B0', // Púrpura
-  'FFEB3B', // Amarillo
-  '00BCD4', // Cyan
-  'FF5722', // Naranja profundo
+  'f43', // Rojo (era f44336)
+  '21f', // Azul (era 2196F3)
+  '4c5', // Verde (era 4CAF50)
+  'f90', // Naranja (era FF9800)
+  '92b', // Púrpura (era 9C27B0)
+  'fe3', // Amarillo (era FFEB3B)
+  '0bd', // Cyan (era 00BCD4)
+  'f57', // Naranja profundo (era FF5722)
 ]
-
 /**
  * ============================================
  * ALGORITMO DOUGLAS-PEUCKER
@@ -216,7 +215,7 @@ function prepararDatosTrayectos(registros) {
       })
 
       // 🔥 SIMPLIFICAR con Douglas-Peucker (máximo 80 puntos por trayecto)
-      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 80)
+      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 50)
 
       return {
         ...trayecto,
@@ -231,7 +230,29 @@ function prepararDatosTrayectos(registros) {
 
   return trayectos
 }
+function calcularBoundingBox(trayectos) {
+  let minLat = Infinity
+  let maxLat = -Infinity
+  let minLng = Infinity
+  let maxLng = -Infinity
 
+  trayectos.forEach((trayecto) => {
+    trayecto.coordenadas.forEach((coord) => {
+      minLat = Math.min(minLat, coord.lat)
+      maxLat = Math.max(maxLat, coord.lat)
+      minLng = Math.min(minLng, coord.lng)
+      maxLng = Math.max(maxLng, coord.lng)
+    })
+  })
+
+  // 🔍 AGREGAR ESTOS LOGS:
+  console.log(`   📊 Bounding Box:`)
+  console.log(`      Lat: ${minLat.toFixed(4)} a ${maxLat.toFixed(4)}`)
+  console.log(`      Lng: ${minLng.toFixed(4)} a ${maxLng.toFixed(4)}`)
+  console.log(`      Rango: ${(maxLat - minLat).toFixed(4)} x ${(maxLng - minLng).toFixed(4)}`)
+
+  return { minLat, maxLat, minLng, maxLng }
+}
 /**
  * Calcula el bounding box de todos los trayectos
  */
@@ -245,11 +266,30 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     return null
   }
 
-  const { mostrarPins = true, padding = 50 } = config
+  const { mostrarPins = true } = config
 
   console.log('🗺️ Generando URL de mapa...')
   console.log(`   Trayectos: ${trayectos.length}`)
 
+  const bbox = calcularBoundingBox(trayectos) // 👈 AQUÍ SE LLAMA
+  const centroLat = (bbox.minLat + bbox.maxLat) / 2
+  const centroLng = (bbox.minLng + bbox.maxLng) / 2
+
+  // Calcular zoom apropiado
+  const rangoLat = bbox.maxLat - bbox.minLat
+  const rangoLng = bbox.maxLng - bbox.minLng
+  const rangoMax = Math.max(rangoLat, rangoLng)
+
+  let zoom = 12
+  if (rangoMax > 1) zoom = 8
+  else if (rangoMax > 0.5) zoom = 9
+  else if (rangoMax > 0.2) zoom = 10
+  else if (rangoMax > 0.1) zoom = 11
+  else if (rangoMax > 0.05) zoom = 12
+  else zoom = 13
+
+  console.log(`   📍 Centro: [${centroLat.toFixed(4)}, ${centroLng.toFixed(4)}]`)
+  console.log(`   🔍 Zoom: ${zoom}`)
   // Construir overlays (paths + pins)
   const overlays = []
 
@@ -259,22 +299,45 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
     if (coordenadas.length === 0) return
 
-    // 1. Path (línea del trayecto)
-    const pathCoords = coordenadas.map((c) => `${c.lng},${c.lat}`).join(',')
+    // 1. GeoJSON LineString (en lugar de path)
+    const geojson = {
+      type: 'Feature',
+      properties: {
+        stroke: `#${color}`,
+        'stroke-width': 2,
+        'stroke-opacity': 1,
+      },
+      geometry: {
+        type: 'LineString',
+        coordinates: coordenadas.map((c) => [c.lng, c.lat]),
+      },
+    }
 
-    overlays.push(`path-5+${color}-0.8(${pathCoords})`)
+    const geojsonStr = encodeURIComponent(JSON.stringify(geojson))
+
+    console.log(`   🛣️ Trayecto ${index + 1}:`)
+    console.log(`      Color: ${color}`)
+    console.log(`      Coordenadas: ${coordenadas.length}`)
+    console.log(`      GeoJSON length: ${geojsonStr.length} caracteres`)
+
+    overlays.push(`geojson(${geojsonStr})`)
 
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
       const inicio = coordenadas[0]
-      overlays.push(`pin-s-circle+4CAF50(${inicio.lng},${inicio.lat})`)
+      overlays.push(`pin-s-circle+4CAF50(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`)
     }
 
     // 3. Pin de fin (color del trayecto)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
-      overlays.push(`pin-s-square+${color}(${fin.lng},${fin.lat})`)
+      overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
+  })
+
+  console.log('📋 Overlays generados:')
+  overlays.forEach((overlay, i) => {
+    console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
   })
 
   // Construir URL
@@ -282,8 +345,14 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
+  console.log('🔍 DEBUG - Valores finales:')
+  console.log(`   centroLng: ${centroLng}`)
+  console.log(`   centroLat: ${centroLat}`)
+  console.log(`   zoom: ${zoom}`)
 
+  const url = `${baseURL}/${overlaysStr}/${centroLng},${centroLat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
+  console.log(`✅ URL generada (longitud: ${url.length} caracteres)`)
+  console.log(`🔗 URL completa:`, url)
   console.log(`✅ URL generada (longitud: ${url.length} caracteres)`)
 
   if (url.length > 8000) {
