@@ -420,6 +420,7 @@ import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
 import { useTiposInforme } from 'src/composables/useTiposInforme'
+import { useEventos } from 'src/composables/useEventos'
 
 // 🆕 NUEVOS IMPORTS - Para los 3 tipos de informes
 import { useReportesEventos } from 'src/composables/useReportesEventos'
@@ -639,27 +640,50 @@ const cargarOpcionesSelector = async () => {
 }
 
 const cargarEventosDisponibles = async () => {
-  if (!userId.value) return
+  if (!userId.value) {
+    console.warn('⚠️ No hay userId para cargar eventos')
+    return
+  }
 
   loadingEventos.value = true
 
   try {
-    // 🔥 LISTA ACTUALIZADA CON TUS EVENTOS REALES
-    listaEventosDisponibles.value = [
-      'eventos de cositas entrada y salida',
-      'abajo owo evento',
-      'Evento en prueba para nuevo punto',
-      'Entrada de las oficinas',
-      'Geozona point',
-      'cositas chables sss',
-      'Evento Para ver ID',
-      'Evento en Alan kun',
-      'paz',
-      'Evento en Casita',
-      'evento a',
-    ]
+    console.log('📥 Cargando eventos desde Firebase...')
+
+    // Obtener instancia de useEventos con el userId actual
+    const { obtenerEventos } = useEventos(userId.value)
+
+    // Obtener todos los eventos del usuario
+    const eventosDelUsuario = await obtenerEventos()
+
+    console.log('✅ Eventos obtenidos:', eventosDelUsuario.length)
+    console.log('📋 Eventos:', eventosDelUsuario)
+
+    // Extraer solo los nombres de los eventos para el selector
+    // Filtrar solo eventos activos (opcional)
+    listaEventosDisponibles.value = eventosDelUsuario
+      .filter((evento) => evento.activo) // 🔹 Opcional: solo eventos activos
+      .map((evento) => evento.nombre)
+      .filter(Boolean) // Eliminar nombres vacíos o undefined
+
+    // 🔹 Si quieres mostrar TODOS los eventos (activos e inactivos):
+    listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
+
+    console.log('✅ Eventos disponibles para selector:', listaEventosDisponibles.value)
+
+    if (listaEventosDisponibles.value.length === 0) {
+      console.warn('⚠️ No se encontraron eventos activos')
+    }
   } catch (error) {
-    console.error('Error al cargar eventos:', error)
+    console.error('❌ Error al cargar eventos desde Firebase:', error)
+    listaEventosDisponibles.value = []
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar los eventos disponibles',
+      icon: 'error',
+      caption: error.message,
+    })
   } finally {
     loadingEventos.value = false
   }
