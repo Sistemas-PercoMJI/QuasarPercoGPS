@@ -15,16 +15,7 @@ export function useReportePDF() {
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos obtenidos de Firebase
    */
-  const COLORES_TRAYECTOS = [
-    'f44336', // Rojo
-    '2196F3', // Azul
-    '4CAF50', // Verde
-    'FF9800', // Naranja
-    '9C27B0', // Púrpura
-    'FFEB3B', // Amarillo
-    '00BCD4', // Cyan
-    'FF5722', // Naranja profundo
-  ]
+
   const generarPDFEventos = (config, datosReales) => {
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
@@ -304,12 +295,6 @@ export function useReportePDF() {
    */
   const generarPDFTrayectos = async (config, datosReales) => {
     const doc = new jsPDF('landscape')
-    const {
-      generarURLMapaTrayectos,
-      descargarImagenMapaBase64,
-      prepararDatosTrayectos,
-      generarLeyendaMapa,
-    } = useMapboxStaticImage()
     let yPosition = 20
 
     // Título del documento
@@ -339,137 +324,6 @@ export function useReportePDF() {
     yPosition += 6
     doc.text(`Total de trayectos: ${datosReales.totalTrayectos || 0}`, 14, yPosition)
     yPosition += 10
-
-    // ========================================
-    // 🗺️ MAPA DE TRAYECTOS (si está habilitado)
-    // ========================================
-    if (
-      config.mostrarMapaTrayecto &&
-      datosReales.datosColumnas &&
-      datosReales.datosColumnas.length > 0
-    ) {
-      try {
-        // Nueva página para el mapa
-        doc.addPage()
-        yPosition = 20
-        const margin = 14
-
-        // Título de la sección
-        doc.setFontSize(16)
-        doc.setFont(undefined, 'bold')
-        doc.text('Mapa de Trayectos', margin, yPosition)
-        yPosition += 12
-
-        // Preparar datos de trayectos
-        const trayectos = prepararDatosTrayectos(datosReales.datosColumnas)
-
-        if (trayectos.length > 0 && trayectos.some((t) => t.coordenadas.length > 0)) {
-          // Generar URL del mapa
-          const urlMapa = generarURLMapaTrayectos(trayectos, {
-            width: 1200,
-            height: 800,
-            padding: 50,
-            mostrarMarcadores: true,
-          })
-
-          // Descargar imagen y convertir a base64
-          const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
-
-          // Calcular dimensiones para el PDF
-          const pageWidth = doc.internal.pageSize.getWidth()
-          const pageHeight = doc.internal.pageSize.getHeight()
-          const availableWidth = pageWidth - margin * 2
-          const availableHeight = pageHeight - yPosition - margin - 60 // Espacio para leyenda
-
-          // Mantener aspect ratio de la imagen (1200x800 = 1.5)
-          const aspectRatio = 1.5
-          let mapWidth = availableWidth
-          let mapHeight = mapWidth / aspectRatio
-
-          // Si la altura es muy grande, ajustar por altura
-          if (mapHeight > availableHeight) {
-            mapHeight = availableHeight
-            mapWidth = mapHeight * aspectRatio
-          }
-
-          // Centrar el mapa
-          const mapX = (pageWidth - mapWidth) / 2
-
-          // Agregar la imagen del mapa
-          doc.addImage(imagenBase64, 'PNG', mapX, yPosition, mapWidth, mapHeight)
-          yPosition += mapHeight + 10
-
-          // Generar leyenda
-          const leyenda = generarLeyendaMapa(trayectos)
-
-          // Dibujar leyenda en dos columnas
-          doc.setFontSize(10)
-          doc.setFont(undefined, 'bold')
-          doc.text('Leyenda:', margin, yPosition)
-          yPosition += 6
-
-          doc.setFont(undefined, 'normal')
-
-          const columnas = 2
-          const itemsPorColumna = Math.ceil(leyenda.length / columnas)
-
-          trayectos.forEach((trayecto, index) => {
-            const colorHex = COLORES_TRAYECTOS[index % COLORES_TRAYECTOS.length]
-
-            // Dibujar cuadro de color
-            doc.setFillColor(`#${colorHex}`)
-            doc.rect(14, yPosition, 5, 5, 'F')
-
-            // Texto de la leyenda
-            doc.setFontSize(10)
-            doc.setTextColor(0, 0, 0)
-            doc.text(
-              `${trayecto.vehiculoNombre} (${trayecto.coordenadas.length} puntos GPS)`,
-              21,
-              yPosition + 4,
-            )
-
-            yPosition += 7
-          })
-
-          yPosition += itemsPorColumna * 6 + 10
-
-          // Agregar marcadores de inicio/fin
-          doc.setFontSize(9)
-          doc.setFont(undefined, 'normal')
-          const markerY = yPosition
-
-          // Marcador de inicio (verde)
-          doc.setFillColor(76, 175, 80) // Verde
-          doc.circle(margin + 2, markerY - 2, 2, 'F')
-          doc.text('Punto de inicio', margin + 6, markerY)
-
-          // Marcador de fin (rojo)
-          doc.setFillColor(244, 67, 54) // Rojo
-          doc.rect(margin + 80, markerY - 3, 4, 4, 'F')
-          doc.text('Punto de fin', margin + 87, markerY)
-
-          yPosition += 10
-        } else {
-          doc.setFontSize(10)
-          doc.setFont(undefined, 'italic')
-          doc.setTextColor(150, 150, 150)
-          doc.text(
-            'No hay datos de coordenadas disponibles para mostrar el mapa',
-            margin,
-            yPosition,
-          )
-          yPosition += 10
-        }
-      } catch (error) {
-        console.error('Error generando mapa en PDF:', error)
-        doc.setFontSize(10)
-        doc.setFont(undefined, 'italic')
-        doc.setTextColor(200, 0, 0)
-        doc.text('Error al generar el mapa. Continúa con el resto del reporte...', 14, yPosition)
-        yPosition += 10
-      }
-    }
 
     // ========================================
     // 📊 RESUMEN ESTADÍSTICO
@@ -518,13 +372,9 @@ export function useReportePDF() {
       doc.text('Detalle de Trayectos', 14, yPosition)
       yPosition += 8
 
-      // Headers de la tabla
       const headers = config.columnasSeleccionadas
-
-      // Filas de la tabla
       const rows = datosReales.datosColumnas.map((fila) => headers.map((col) => fila[col] || 'N/A'))
 
-      // Configurar anchos de columna
       const columnStyles = {}
       headers.forEach((nombreCol, index) => {
         const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
@@ -550,7 +400,6 @@ export function useReportePDF() {
         columnStyles: columnStyles,
         margin: { left: 14, right: 14 },
         didDrawPage: (data) => {
-          // Footer con número de página
           const pageCount = doc.internal.getNumberOfPages()
           doc.setFontSize(8)
           doc.text(
@@ -621,6 +470,87 @@ export function useReportePDF() {
       })
     }
 
+    // ========================================
+    // 🗺️ MAPAS DE TRAYECTOS (AL FINAL)
+    // ========================================
+    if (
+      config.mostrarMapaTrayecto &&
+      datosReales.datosColumnas &&
+      datosReales.datosColumnas.length > 0
+    ) {
+      try {
+        const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
+          useMapboxStaticImage()
+
+        const todosTrayectos = prepararDatosTrayectos(datosReales.datosColumnas)
+
+        // 🔥 GENERAR UN MAPA POR CADA VEHÍCULO
+        for (let i = 0; i < todosTrayectos.length; i++) {
+          const trayecto = todosTrayectos[i]
+
+          if (trayecto.coordenadas.length === 0) continue
+
+          // Nueva página para cada mapa
+          doc.addPage()
+          let yPosition = 20
+          const margin = 14
+
+          // Título del mapa
+          doc.setFontSize(16)
+          doc.setFont(undefined, 'bold')
+          doc.text(`Mapa de Trayecto - ${trayecto.vehiculoNombre}`, margin, yPosition)
+          yPosition += 12
+
+          // Generar URL del mapa (solo este vehículo)
+          const urlMapa = generarURLMapaTrayectos([trayecto], {
+            width: 1200,
+            height: 800,
+            padding: 50,
+            mostrarMarcadores: true,
+          })
+
+          const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+
+          const pageWidth = doc.internal.pageSize.getWidth()
+          const pageHeight = doc.internal.pageSize.getHeight()
+          const availableWidth = pageWidth - margin * 2
+          const availableHeight = pageHeight - yPosition - margin - 40
+
+          const aspectRatio = 1.5
+          let mapWidth = availableWidth
+          let mapHeight = mapWidth / aspectRatio
+
+          if (mapHeight > availableHeight) {
+            mapHeight = availableHeight
+            mapWidth = mapHeight * aspectRatio
+          }
+
+          const mapX = (pageWidth - mapWidth) / 2
+
+          doc.addImage(imagenBase64, 'PNG', mapX, yPosition, mapWidth, mapHeight)
+          yPosition += mapHeight + 10
+
+          doc.setFontSize(10)
+          doc.setFont(undefined, 'normal')
+          doc.text(`Placa: ${trayecto.placa || 'N/A'}`, margin, yPosition)
+          yPosition += 6
+          doc.text(`Total de puntos GPS: ${trayecto.coordenadas.length}`, margin, yPosition)
+          yPosition += 6
+
+          doc.setFontSize(9)
+          doc.setFillColor(76, 175, 80)
+          doc.circle(margin + 2, yPosition - 2, 2, 'F')
+          doc.text('Punto de inicio', margin + 6, yPosition)
+
+          doc.setFillColor(244, 67, 54)
+          doc.rect(margin + 80, yPosition - 3, 4, 4, 'F')
+          doc.text('Punto de fin', margin + 87, yPosition)
+        }
+      } catch (error) {
+        console.error('Error generando mapas en PDF:', error)
+      }
+    }
+
     // Elementos sin datos
     if (datosReales.elementosSinDatos && datosReales.elementosSinDatos.length > 0) {
       if (yPosition > 250) {
@@ -639,7 +569,6 @@ export function useReportePDF() {
       })
     }
 
-    // Generar el blob y nombre del archivo
     const pdfBlob = doc.output('blob')
     const fecha = new Date().toISOString().split('T')[0]
     const filename = `Informe_Trayectos_${fecha}.pdf`
