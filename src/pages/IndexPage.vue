@@ -62,7 +62,6 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
-// 🆕 NUEVOS IMPORTS para auto-inicio del simulador
 import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
@@ -96,7 +95,6 @@ const traficoActivo = ref(false)
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
 
-// 🆕 NUEVAS VARIABLES para el simulador automático
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
 const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
@@ -108,9 +106,8 @@ let mapaAPI = null
 let intervaloEvaluacionEventos = null
 let popupGlobalActivo = null
 
-// ⚡ Throttle para actualización de marcadores
 let ultimaActualizacionMarcadores = 0
-const THROTTLE_MARCADORES = 2000 // Actualizar máximo cada 2 segundos
+const THROTTLE_MARCADORES = 2000
 
 watch(
   unidadesActivas,
@@ -119,7 +116,6 @@ watch(
       return
     }
 
-    // ✅ Throttle: Solo actualizar cada 2 segundos
     const ahora = Date.now()
     if (ahora - ultimaActualizacionMarcadores < THROTTLE_MARCADORES) {
       return
@@ -161,9 +157,7 @@ function detenerEvaluacionEventos() {
   }
 }
 
-// 🆕 NUEVA FUNCIÓN: Iniciar simulador automáticamente
 const iniciarSimuladorAutomatico = async () => {
-  // Evitar inicios múltiples
   if (simuladorYaIniciado || simulacionActiva.value) {
     console.log('⚠️ Simulador ya iniciado, saltando...')
     return
@@ -172,7 +166,6 @@ const iniciarSimuladorAutomatico = async () => {
   try {
     console.log('🔄 Cargando datos para simulador automático...')
     
-    // Cargar conductores y unidades
     await Promise.all([
       obtenerConductores(),
       obtenerUnidades()
@@ -193,16 +186,12 @@ const iniciarSimuladorAutomatico = async () => {
 
     console.log(`🚀 Iniciando simulador automático con ${conductoresConUnidad.length} unidades...`)
     
-    // Marcar que ya se está iniciando
     simuladorYaIniciado = true
     
-    // Iniciar simulación
     await iniciarSimulacion(conductores.value, unidades.value)
     
-    // Actualizar estado
     simuladorActivo.value = true
     
-    // Notificar al usuario
     $q.notify({
       type: 'positive',
       message: `🎯 Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
@@ -215,7 +204,7 @@ const iniciarSimuladorAutomatico = async () => {
     
   } catch (error) {
     console.error('❌ Error al iniciar simulador automático:', error)
-    simuladorYaIniciado = false // Permitir reintento en caso de error
+    simuladorYaIniciado = false
     
     $q.notify({
       type: 'negative',
@@ -377,6 +366,7 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
+// 🔧 FUNCIÓN CORREGIDA
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -394,6 +384,9 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
+    // ============================================
+    // 📍 DIBUJAR POIs (sin cambios)
+    // ============================================
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
@@ -437,31 +430,31 @@ const dibujarTodosEnMapa = async () => {
         }
 
         const popupContent = `
-      <div style="min-width: 180px;">
-        <b style="font-size: 14px;">📍 ${poi.nombre}</b>
-        ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-          ${poi.direccion}
-        </p>
-        <button
-          onclick="window.verDetallesPOI('${poi.id}')"
-          style="
-            width: 100%;
-            margin-top: 8px;
-            padding: 8px 12px;
-            background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-          "
-        >
-          📍 Ver detalles
-        </button>
-      </div>
-    `
+          <div style="min-width: 180px;">
+            <b style="font-size: 14px;">📍 ${poi.nombre}</b>
+            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+              ${poi.direccion}
+            </p>
+            <button
+              onclick="window.verDetallesPOI('${poi.id}')"
+              style="
+                width: 100%;
+                margin-top: 8px;
+                padding: 8px 12px;
+                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+              "
+            >
+              📍 Ver detalles
+            </button>
+          </div>
+        `
 
         const markerEl = document.createElement('div')
         markerEl.innerHTML = '📍'
@@ -470,27 +463,27 @@ const dibujarTodosEnMapa = async () => {
 
         if (tieneEventos) {
           markerEl.innerHTML = `
-        <div style="position: relative;">
-          <div style="font-size: 30px;">📍</div>
-          <div style="
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ff5722;
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: bold;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(255, 87, 34, 0.6);
-          ">${cantidadEventos}</div>
-        </div>
-      `
+            <div style="position: relative;">
+              <div style="font-size: 30px;">📍</div>
+              <div style="
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #ff5722;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: bold;
+                border: 2px solid white;
+                box-shadow: 0 2px 8px rgba(255, 87, 34, 0.6);
+              ">${cantidadEventos}</div>
+            </div>
+          `
         }
 
         const popup = new mapboxgl.Popup({
@@ -516,6 +509,9 @@ const dibujarTodosEnMapa = async () => {
       }
     })
 
+    // ============================================
+    // 🗺️ DIBUJAR GEOZONAS - CORREGIDO
+    // ============================================
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
@@ -523,6 +519,36 @@ const dibujarTodosEnMapa = async () => {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
 
+      const popupContent = `
+        <div style="min-width: 180px;">
+          <b style="font-size: 14px;">${geozona.tipoGeozona === 'circular' ? '🔵' : '🔷'} ${geozona.nombre}</b>
+          ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+            ${geozona.tipoGeozona === 'circular' ? `Radio: ${geozona.radio}m` : `${geozona.puntos.length} puntos`}
+          </p>
+          <button
+            onclick="window.verDetallesGeozona('${geozona.id}')"
+            style="
+              width: 100%;
+              margin-top: 8px;
+              padding: 8px 12px;
+              background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+              color: white;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              font-weight: 600;
+              font-size: 12px;
+            "
+          >
+            📍 Ver detalles
+          </button>
+        </div>
+      `
+
+      // ============================================
+      // 🔵 GEOZONA CIRCULAR
+      // ============================================
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
         const fillColor = geozona.color || '#4ECDC4'
@@ -562,43 +588,34 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        const popupContent = `
-          <div style="min-width: 180px;">
-            <b style="font-size: 14px;">🔵 ${geozona.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              Radio: ${geozona.radio}m
-            </p>
-            <button
-              onclick="window.verDetallesGeozona('${geozona.id}')"
-              style="
-                width: 100%;
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 12px;
-              "
-            >
-              📍 Ver detalles
-            </button>
-          </div>
-        `
+        // ✅ LÓGICA CORREGIDA: Popup según eventos
+        if (!tieneEventos) {
+          // ✅ SIN EVENTOS: Click en cualquier parte del círculo muestra popup
+          mapaAPI.map.on('click', circleId, (e) => {
+            if (popupGlobalActivo) {
+              popupGlobalActivo.remove()
+            }
 
-        const markerEl = document.createElement('div')
-        markerEl.style.width = '1px'
-        markerEl.style.height = '1px'
+            popupGlobalActivo = new mapboxgl.Popup({
+              closeButton: true,
+              closeOnClick: false,
+              className: 'popup-animated',
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(popupContent)
+              .addTo(mapaAPI.map)
+          })
 
-        new mapboxgl.Marker({ element: markerEl })
-          .setLngLat([lng, lat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
-          .addTo(mapaAPI.map)
+          mapaAPI.map.on('mouseenter', circleId, () => {
+            mapaAPI.map.getCanvas().style.cursor = 'pointer'
+          })
 
-        if (tieneEventos) {
+          mapaAPI.map.on('mouseleave', circleId, () => {
+            mapaAPI.map.getCanvas().style.cursor = ''
+          })
+        } else {
+          // ✅ CON EVENTOS: Solo el badge muestra popup, el círculo NO
+          // Badge con eventos
           const badgeEl = document.createElement('div')
           badgeEl.innerHTML = `
             <div style="
@@ -620,12 +637,34 @@ const dibujarTodosEnMapa = async () => {
             </div>
           `
 
+          // ✅ CORRECCIÓN: Solo un popup desde el badge
+          const badgePopup = new mapboxgl.Popup({
+            offset: 25,
+            className: 'popup-animated',
+            closeButton: true,
+            closeOnClick: false,
+          }).setHTML(popupContent)
+
+          // ✅ Crear y configurar badge marker
           new mapboxgl.Marker({ element: badgeEl })
             .setLngLat([lng, lat])
-            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
+            .setPopup(badgePopup)
             .addTo(mapaAPI.map)
+
+          // Prevenir duplicación de popups
+          badgePopup.on('open', () => {
+            if (popupGlobalActivo && popupGlobalActivo !== badgePopup) {
+              popupGlobalActivo.remove()
+            }
+            popupGlobalActivo = badgePopup
+          })
         }
-      } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+      }
+
+      // ============================================
+      // 🔷 GEOZONA POLIGONAL
+      // ============================================
+      else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
 
@@ -666,87 +705,80 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        const popupContent = `
-    <div style="min-width: 180px;">
-      <b style="font-size: 14px;">🔷 ${geozona.nombre}</b>
-      ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-      <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-        ${geozona.puntos.length} puntos
-      </p>
-      <button
-        onclick="window.verDetallesGeozona('${geozona.id}')"
-        style="
-          width: 100%;
-          margin-top: 8px;
-          padding: 8px 12px;
-          background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 12px;
-        "
-      >
-        📍 Ver detalles
-      </button>
-    </div>
-  `
+        // ✅ LÓGICA CORREGIDA: Popup según eventos
+        if (!tieneEventos) {
+          // ✅ SIN EVENTOS: Click en cualquier parte del polígono muestra popup
+          mapaAPI.map.on('click', polygonId, (e) => {
+            if (popupGlobalActivo) {
+              popupGlobalActivo.remove()
+            }
 
-        mapaAPI.map.on('click', polygonId, (e) => {
-          if (popupGlobalActivo) {
-            popupGlobalActivo.remove()
-          }
-
-          popupGlobalActivo = new mapboxgl.Popup({
-            closeButton: true,
-            closeOnClick: false,
-            className: 'popup-animated',
+            popupGlobalActivo = new mapboxgl.Popup({
+              closeButton: true,
+              closeOnClick: false,
+              className: 'popup-animated',
+            })
+              .setLngLat(e.lngLat)
+              .setHTML(popupContent)
+              .addTo(mapaAPI.map)
           })
-            .setLngLat(e.lngLat)
-            .setHTML(popupContent)
-            .addTo(mapaAPI.map)
-        })
 
-        mapaAPI.map.on('mouseenter', polygonId, () => {
-          mapaAPI.map.getCanvas().style.cursor = 'pointer'
-        })
+          mapaAPI.map.on('mouseenter', polygonId, () => {
+            mapaAPI.map.getCanvas().style.cursor = 'pointer'
+          })
 
-        mapaAPI.map.on('mouseleave', polygonId, () => {
-          mapaAPI.map.getCanvas().style.cursor = ''
-        })
+          mapaAPI.map.on('mouseleave', polygonId, () => {
+            mapaAPI.map.getCanvas().style.cursor = ''
+          })
+        } else {
+          // ✅ CON EVENTOS: Solo el badge muestra popup, el polígono NO
+          const lats = geozona.puntos.map((p) => p.lat)
+          const lngs = geozona.puntos.map((p) => p.lng)
+          const centroLat = lats.reduce((a, b) => a + b) / lats.length
+          const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-        const lats = geozona.puntos.map((p) => p.lat)
-        const lngs = geozona.puntos.map((p) => p.lng)
-        const centroLat = lats.reduce((a, b) => a + b) / lats.length
-        const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
-
-        if (tieneEventos) {
           const badgeEl = document.createElement('div')
           badgeEl.innerHTML = `
-      <div style="
-        background: #ff5722;
-        color: white;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: bold;
-        border: 3px solid white;
-        box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-        cursor: pointer;
-      ">
-        ${cantidadEventos}
-      </div>
-    `
+            <div style="
+              background: #ff5722;
+              color: white;
+              border-radius: 50%;
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              font-weight: bold;
+              border: 3px solid white;
+              box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
+              cursor: pointer;
+            ">
+              ${cantidadEventos}
+            </div>
+          `
 
+          // ✅ CORRECCIÓN: Solo un popup desde el badge
+          const badgePopup = new mapboxgl.Popup({
+            offset: 25,
+            className: 'popup-animated',
+            closeButton: true,
+            closeOnClick: false,
+          }).setHTML(popupContent)
+
+          // ✅ Crear y configurar badge marker
           new mapboxgl.Marker({ element: badgeEl })
             .setLngLat([centroLng, centroLat])
-            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
+            .setPopup(badgePopup)
             .addTo(mapaAPI.map)
+
+          // Prevenir duplicación de popups
+          badgePopup.on('open', () => {
+            if (popupGlobalActivo && popupGlobalActivo !== badgePopup) {
+              popupGlobalActivo.remove()
+            }
+            popupGlobalActivo = badgePopup
+          })
         }
       }
     })
@@ -834,7 +866,6 @@ onMounted(async () => {
 
         iniciarSeguimientoGPS()
 
-        // 🚀 INICIAR SIMULADOR AUTOMÁTICAMENTE
         console.log('🎯 Esperando 2 segundos antes de iniciar simulador...')
         setTimeout(async () => {
           await iniciarSimuladorAutomatico()
