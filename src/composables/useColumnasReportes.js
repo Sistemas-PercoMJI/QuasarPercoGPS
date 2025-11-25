@@ -779,17 +779,22 @@ export function useColumnasReportes() {
     }
 
     datos.forEach((dato) => {
-      // Contar por tipo
-      const tipo = dato.type || 'Sin tipo'
+      // 🔥 CORREGIDO: Contar por tipo de evento (Entrada/Salida)
+      const tipo = dato.tipoEvento || dato.TipoEvento || 'Sin tipo'
       resumen.eventosPorTipo[tipo] = (resumen.eventosPorTipo[tipo] || 0) + 1
 
       // Contar por ubicación
-      const ubicacion = dato.ubicacionNombre || 'Sin ubicación'
+      const ubicacion =
+        dato.ubicacionNombre || dato.geozonaNombre || dato.GeozonaNombre || 'Sin ubicación'
       resumen.eventosPorUbicacion[ubicacion] = (resumen.eventosPorUbicacion[ubicacion] || 0) + 1
 
       // Conductores únicos
       if (dato.conductorNombre) {
-        resumen.conductoresUnicos.add(dato.conductorNombre)
+        // 🔥 LIMPIEZA: Eliminar "undefined" si existe
+        const nombreLimpio = dato.conductorNombre.replace(/\s*undefined\s*/gi, '').trim()
+        if (nombreLimpio) {
+          resumen.conductoresUnicos.add(nombreLimpio)
+        }
       }
 
       // Vehículos únicos
