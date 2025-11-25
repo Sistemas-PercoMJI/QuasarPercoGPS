@@ -366,7 +366,142 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-// 🔧 FUNCIÓN CORREGIDA
+const ICONOS_CONFIG = {
+  poi: {
+    // Puedes usar emojis, SVG, o clases de iconos
+    icono: '◉', // Cambia esto por el icono que quieras
+    tamano: '32px',
+    color: '#2196F3', // Color principal del POI
+    // Alternativas que puedes usar:
+    // icono: '🎯' o '📌' o '🏢' o '🏭' o cualquier emoji
+  },
+  geozonaCircular: {
+    icono: '◉', // Cambia esto por el icono que quieras
+    tamano: '28px',
+    color: '#4ECDC4',
+    // Alternativas: '🔵' o '⚪' o '🟢'
+  },
+  geozonaPoligonal: {
+    icono: '◉', // Cambia esto por el icono que quieras
+    tamano: '28px',
+    color: '#4ECDC4',
+    // Alternativas: '🔶' o '◆' o '🟦'
+  },
+  evento: {
+    icono: '🔔', // Badge de evento
+    tamano: '16px',
+    color: '#FF5722',
+    // Alternativas: '🚨' o '⚠️' o '❗' o '🔴'
+  }
+}
+
+// ============================================
+// 🎨 FUNCIÓN: Crear icono POI elegante
+// ============================================
+function crearIconoPOI(tieneEventos = false) {
+  const config = ICONOS_CONFIG.poi
+  
+  const iconoHTML = `
+    <div style="position: relative; display: inline-block;">
+      <!-- Icono principal con sombra elegante -->
+      <div style="
+        font-size: ${config.tamano};
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      " class="icono-poi-hover">
+        ${config.icono}
+      </div>
+      
+      ${tieneEventos ? `
+        <!-- Badge de evento en esquina superior derecha -->
+        <div style="
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          width: 18px;
+          height: 18px;
+          background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          animation: pulse-badge 2s infinite;
+        ">
+          ${ICONOS_CONFIG.evento.icono}
+        </div>
+      ` : ''}
+    </div>
+  `
+  
+  const markerEl = document.createElement('div')
+  markerEl.innerHTML = iconoHTML
+  markerEl.style.cursor = 'pointer'
+  
+  return markerEl
+}
+
+// ============================================
+// 🎨 FUNCIÓN: Crear icono Geozona elegante
+// ============================================
+function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null) {
+  const config = tipo === 'circular' 
+    ? ICONOS_CONFIG.geozonaCircular 
+    : ICONOS_CONFIG.geozonaPoligonal
+  
+  const colorFinal = color || config.color
+  
+  const iconoHTML = `
+    <div style="position: relative; display: inline-block;">
+      <!-- Icono principal con color personalizado -->
+      <div style="
+        font-size: ${config.tamano};
+        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)) hue-rotate(${/*getHueRotation*/(colorFinal)});
+        cursor: pointer;
+        transition: transform 0.2s ease, filter 0.2s ease;
+      " class="icono-geozona-hover">
+        ${config.icono}
+      </div>
+      
+      ${tieneEventos ? `
+        <!-- Badge de evento en esquina superior derecha -->
+        <div style="
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          width: 16px;
+          height: 16px;
+          background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9px;
+          animation: pulse-badge 2s infinite;
+        ">
+          ${ICONOS_CONFIG.evento.icono}
+        </div>
+      ` : ''}
+    </div>
+  `
+  
+  const markerEl = document.createElement('div')
+  markerEl.innerHTML = iconoHTML
+  markerEl.style.cursor = 'pointer'
+  
+  return markerEl
+}
+
+/*function getHueRotation(_hexColor) {
+  return '0deg'
+}*/
+
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -385,7 +520,7 @@ const dibujarTodosEnMapa = async () => {
     poisCargados.value = pois
 
     // ============================================
-    // 📍 DIBUJAR POIs (sin cambios)
+    // 📍 DIBUJAR POIs CON ICONOS ELEGANTES
     // ============================================
     pois.forEach((poi) => {
       if (poi.coordenadas) {
@@ -456,35 +591,8 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
-        const markerEl = document.createElement('div')
-        markerEl.innerHTML = '📍'
-        markerEl.style.fontSize = '30px'
-        markerEl.style.cursor = 'pointer'
-
-        if (tieneEventos) {
-          markerEl.innerHTML = `
-            <div style="position: relative;">
-              <div style="font-size: 30px;">📍</div>
-              <div style="
-                position: absolute;
-                top: -8px;
-                right: -8px;
-                background: #ff5722;
-                color: white;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 11px;
-                font-weight: bold;
-                border: 2px solid white;
-                box-shadow: 0 2px 8px rgba(255, 87, 34, 0.6);
-              ">${cantidadEventos}</div>
-            </div>
-          `
-        }
+        // ✅ USAR NUEVO ICONO ELEGANTE
+        const markerEl = crearIconoPOI(tieneEventos)
 
         const popup = new mapboxgl.Popup({
           offset: 25,
@@ -510,7 +618,7 @@ const dibujarTodosEnMapa = async () => {
     })
 
     // ============================================
-    // 🗺️ DIBUJAR GEOZONAS - CORREGIDO
+    // 🗺️ DIBUJAR GEOZONAS CON ICONOS ELEGANTES
     // ============================================
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
@@ -546,9 +654,7 @@ const dibujarTodosEnMapa = async () => {
         </div>
       `
 
-      // ============================================
       // 🔵 GEOZONA CIRCULAR
-      // ============================================
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
         const fillColor = geozona.color || '#4ECDC4'
@@ -588,9 +694,7 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ LÓGICA CORREGIDA: Popup según eventos
         if (!tieneEventos) {
-          // ✅ SIN EVENTOS: Click en cualquier parte del círculo muestra popup
           mapaAPI.map.on('click', circleId, (e) => {
             if (popupGlobalActivo) {
               popupGlobalActivo.remove()
@@ -613,57 +717,32 @@ const dibujarTodosEnMapa = async () => {
           mapaAPI.map.on('mouseleave', circleId, () => {
             mapaAPI.map.getCanvas().style.cursor = ''
           })
-        } else {
-          // ✅ CON EVENTOS: Solo el badge muestra popup, el círculo NO
-          // Badge con eventos
-          const badgeEl = document.createElement('div')
-          badgeEl.innerHTML = `
-            <div style="
-              background: #ff5722;
-              color: white;
-              border-radius: 50%;
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 14px;
-              font-weight: bold;
-              border: 3px solid white;
-              box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-              cursor: pointer;
-            ">
-              ${cantidadEventos}
-            </div>
-          `
-
-          // ✅ CORRECCIÓN: Solo un popup desde el badge
-          const badgePopup = new mapboxgl.Popup({
-            offset: 25,
-            className: 'popup-animated',
-            closeButton: true,
-            closeOnClick: false,
-          }).setHTML(popupContent)
-
-          // ✅ Crear y configurar badge marker
-          new mapboxgl.Marker({ element: badgeEl })
-            .setLngLat([lng, lat])
-            .setPopup(badgePopup)
-            .addTo(mapaAPI.map)
-
-          // Prevenir duplicación de popups
-          badgePopup.on('open', () => {
-            if (popupGlobalActivo && popupGlobalActivo !== badgePopup) {
-              popupGlobalActivo.remove()
-            }
-            popupGlobalActivo = badgePopup
-          })
         }
+
+        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
+        const markerEl = crearIconoGeozona('circular', tieneEventos, fillColor)
+
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          className: 'popup-animated',
+          closeButton: true,
+          closeOnClick: false,
+        }).setHTML(popupContent)
+
+        new mapboxgl.Marker({ element: markerEl })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(mapaAPI.map)
+
+        popup.on('open', () => {
+          if (popupGlobalActivo && popupGlobalActivo !== popup) {
+            popupGlobalActivo.remove()
+          }
+          popupGlobalActivo = popup
+        })
       }
 
-      // ============================================
       // 🔷 GEOZONA POLIGONAL
-      // ============================================
       else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
@@ -705,9 +784,7 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ LÓGICA CORREGIDA: Popup según eventos
         if (!tieneEventos) {
-          // ✅ SIN EVENTOS: Click en cualquier parte del polígono muestra popup
           mapaAPI.map.on('click', polygonId, (e) => {
             if (popupGlobalActivo) {
               popupGlobalActivo.remove()
@@ -730,56 +807,34 @@ const dibujarTodosEnMapa = async () => {
           mapaAPI.map.on('mouseleave', polygonId, () => {
             mapaAPI.map.getCanvas().style.cursor = ''
           })
-        } else {
-          // ✅ CON EVENTOS: Solo el badge muestra popup, el polígono NO
-          const lats = geozona.puntos.map((p) => p.lat)
-          const lngs = geozona.puntos.map((p) => p.lng)
-          const centroLat = lats.reduce((a, b) => a + b) / lats.length
-          const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
-
-          const badgeEl = document.createElement('div')
-          badgeEl.innerHTML = `
-            <div style="
-              background: #ff5722;
-              color: white;
-              border-radius: 50%;
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 14px;
-              font-weight: bold;
-              border: 3px solid white;
-              box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-              cursor: pointer;
-            ">
-              ${cantidadEventos}
-            </div>
-          `
-
-          // ✅ CORRECCIÓN: Solo un popup desde el badge
-          const badgePopup = new mapboxgl.Popup({
-            offset: 25,
-            className: 'popup-animated',
-            closeButton: true,
-            closeOnClick: false,
-          }).setHTML(popupContent)
-
-          // ✅ Crear y configurar badge marker
-          new mapboxgl.Marker({ element: badgeEl })
-            .setLngLat([centroLng, centroLat])
-            .setPopup(badgePopup)
-            .addTo(mapaAPI.map)
-
-          // Prevenir duplicación de popups
-          badgePopup.on('open', () => {
-            if (popupGlobalActivo && popupGlobalActivo !== badgePopup) {
-              popupGlobalActivo.remove()
-            }
-            popupGlobalActivo = badgePopup
-          })
         }
+
+        const lats = geozona.puntos.map((p) => p.lat)
+        const lngs = geozona.puntos.map((p) => p.lng)
+        const centroLat = lats.reduce((a, b) => a + b) / lats.length
+        const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
+
+        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
+        const markerEl = crearIconoGeozona('poligonal', tieneEventos, fillColor)
+
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          className: 'popup-animated',
+          closeButton: true,
+          closeOnClick: false,
+        }).setHTML(popupContent)
+
+        new mapboxgl.Marker({ element: markerEl })
+          .setLngLat([centroLng, centroLat])
+          .setPopup(popup)
+          .addTo(mapaAPI.map)
+
+        popup.on('open', () => {
+          if (popupGlobalActivo && popupGlobalActivo !== popup) {
+            popupGlobalActivo.remove()
+          }
+          popupGlobalActivo = popup
+        })
       }
     })
 
@@ -791,7 +846,6 @@ const dibujarTodosEnMapa = async () => {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
-
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
@@ -1247,5 +1301,40 @@ const manejarToggleTrafico = () => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+:deep(.icono-poi-hover:hover) {
+  transform: scale(1.15);
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4)) !important;
+}
+
+/* Hover effect para iconos Geozona */
+:deep(.icono-geozona-hover:hover) {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)) !important;
+}
+
+/* Animación del badge de eventos */
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 3px 10px rgba(255, 87, 34, 0.8);
+  }
+}
+
+/* Prevenir que el badge se escale con el icono */
+:deep(.icono-poi-hover:hover > div > div:last-child),
+:deep(.icono-geozona-hover:hover > div > div:last-child) {
+  transform: scale(0.91) !important;
+}
+
+/* Marcadores personalizados sin fondo */
+:deep(.mapboxgl-marker) {
+  background: none !important;
+  border: none !important;
 }
 </style>
