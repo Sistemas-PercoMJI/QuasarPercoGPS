@@ -26,23 +26,23 @@ export function useEventDetection() {
    */
   function inicializar(eventos, pois, geozonas) {
     console.log('🚀 Inicializando sistema de detección de eventos...')
-    
-    eventosActivos.value = eventos.filter(e => e.activo)
-    
+
+    eventosActivos.value = eventos.filter((e) => e.activo)
+
     poisMapeados.value.clear()
-    pois.forEach(poi => {
+    pois.forEach((poi) => {
       poisMapeados.value.set(poi.id, poi)
     })
-    
+
     geozonasMapeadas.value.clear()
-    geozonas.forEach(geozona => {
+    geozonas.forEach((geozona) => {
       geozonasMapeadas.value.set(geozona.id, geozona)
     })
-    
+
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
     eventosEnCurso.value.clear()
-    
+
     console.log('✅ Sistema de detección inicializado')
     console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
     console.log(`  📍 POIs: ${poisMapeados.value.size}`)
@@ -54,12 +54,12 @@ export function useEventDetection() {
    */
   function evaluarCondicionParaUnidad(condicion, unidad) {
     const { tipo, ubicacionId, activacion } = condicion
-    
+
     const claveUbicacion = `unidad-${unidad.id}-${tipo}-${ubicacionId}`
 
     let estaDentro = false
     let nombreUbicacion = 'Ubicación'
-    
+
     if (tipo === 'POI') {
       const poi = poisMapeados.value.get(ubicacionId)
       if (!poi) {
@@ -85,13 +85,17 @@ export function useEventDetection() {
     // ✅ CORREGIDO: Usar conductorNombre en los logs
     if (activacion === 'Entrada' && estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
-      console.log(`✅ ENTRADA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`)
+      console.log(
+        `✅ ENTRADA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} → ${tipo} ${nombreUbicacion}`,
+      )
       return true
     }
-    
+
     if (activacion === 'Salida' && !estaDentro && estadoAnterior === 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'fuera')
-      console.log(`🚪 SALIDA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`)
+      console.log(
+        `🚪 SALIDA detectada: Unidad ${unidad.conductorNombre || unidad.nombre || unidad.id} ← ${tipo} ${nombreUbicacion}`,
+      )
       return true
     }
 
@@ -118,11 +122,13 @@ export function useEventDetection() {
 
     const distancia = calcularDistancia(lat, lng, poiLat, poiLng)
     const dentro = distancia <= radio
-    
+
     if (dentro) {
-      console.log(`📍 Unidad dentro de POI "${poi.nombre}" (distancia: ${Math.round(distancia)}m, radio: ${radio}m)`)
+      console.log(
+        `📍 Unidad dentro de POI "${poi.nombre}" (distancia: ${Math.round(distancia)}m, radio: ${radio}m)`,
+      )
     }
-    
+
     return dentro
   }
 
@@ -132,14 +138,14 @@ export function useEventDetection() {
   function estaDentroDeGeozona(lat, lng, geozona) {
     if (geozona.puntos && Array.isArray(geozona.puntos) && geozona.puntos.length > 0) {
       const dentro = puntoEnPoligono({ lat, lng }, geozona.puntos)
-      
+
       if (dentro) {
         console.log(`🔷 Unidad dentro de Geozona poligonal "${geozona.nombre}"`)
       }
-      
+
       return dentro
     }
-    
+
     console.warn(`⚠️ Geozona sin puntos válidos: ${geozona.nombre}`, geozona)
     return false
   }
@@ -188,26 +194,26 @@ export function useEventDetection() {
     if (!unidades || unidades.length === 0) {
       return
     }
-    
-    unidades.forEach(unidad => {
+
+    unidades.forEach((unidad) => {
       const lat = unidad.ubicacion?.lat || unidad.lat
       const lng = unidad.ubicacion?.lng || unidad.lng
-      
+
       if (!lat || !lng) {
         console.warn(`⚠️ Unidad sin coordenadas válidas:`, unidad)
         return
       }
-      
+
       // ✅ CORREGIDO: Asegurar que tenga conductorNombre
       const unidadNormalizada = {
         ...unidad,
         lat,
         lng,
         nombre: unidad.conductorNombre || unidad.unidadNombre || unidad.nombre || unidad.id,
-        conductorNombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre'
+        conductorNombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre',
       }
-      
-      eventosActivos.value.forEach(evento => {
+
+      eventosActivos.value.forEach((evento) => {
         evaluarEventoParaUnidadSimulada(evento, unidadNormalizada)
       })
     })
@@ -221,11 +227,13 @@ export function useEventDetection() {
       return
     }
 
-    evento.condiciones.forEach(condicion => {
+    evento.condiciones.forEach((condicion) => {
       const cumplida = evaluarCondicionParaUnidad(condicion, unidad)
-      
+
       if (cumplida) {
-        console.log(`🎯 Condición cumplida para evento "${evento.nombre}" (${condicion.tipo} - ${condicion.activacion})`)
+        console.log(
+          `🎯 Condición cumplida para evento "${evento.nombre}" (${condicion.tipo} - ${condicion.activacion})`,
+        )
         dispararEventoParaUnidadSimulada(evento, unidad, condicion)
       }
     })
@@ -236,13 +244,13 @@ export function useEventDetection() {
    */
   async function dispararEventoParaUnidadSimulada(evento, unidad, condicion) {
     const claveEvento = `${evento.id}-${condicion.tipo}-${condicion.ubicacionId}-${condicion.activacion}-unidad-${unidad.id}`
-    
+
     if (eventosDisparados.value.has(claveEvento)) {
       return
     }
-    
+
     eventosDisparados.value.add(claveEvento)
-    
+
     setTimeout(() => {
       eventosDisparados.value.delete(claveEvento)
     }, 10000)
@@ -262,7 +270,7 @@ export function useEventDetection() {
 
     const tipoNotificacion = 'positive'
     const accionTexto = condicion.activacion === 'Entrada' ? 'entró a' : 'salió de'
-    
+
     // ✅ CORREGIDO: Usar conductorNombre en lugar de nombre
     const mensaje = `${unidad.conductorNombre || unidad.nombre || 'Conductor desconocido'} ${accionTexto} ${tipoUbicacion}: ${ubicacionNombre}`
 
@@ -271,17 +279,28 @@ export function useEventDetection() {
     // REGISTRO EN FIREBASE
     try {
       const idRutaDiaria = obtenerIdRutaDiaria()
-      
+
       // ✅ CORREGIDO: Usar conductorNombre
       await iniciarOActualizarRutaDiaria(unidad.id, {
         conductor_id: unidad.conductorId || '',
-        conductor_nombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre',
+        conductor_nombre: (() => {
+          // 🔥 LIMPIEZA EXHAUSTIVA del nombre
+          let nombre = unidad.conductorNombre || unidad.nombre || 'Sin nombre'
+
+          // Eliminar "undefined" en cualquier posición
+          nombre = nombre.replace(/\s*undefined\s*/gi, '').trim()
+
+          // Eliminar espacios múltiples
+          nombre = nombre.replace(/\s+/g, ' ').trim()
+
+          return nombre || 'Sin nombre'
+        })(),
         velocidad_actual: String(unidad.velocidad || 0),
         nuevaCoordenada: {
           lat: unidad.lat,
           lng: unidad.lng,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       })
 
       console.log(`💾 Ruta diaria actualizada para unidad ${unidad.id}`)
@@ -294,7 +313,7 @@ export function useEventDetection() {
         lng: unidad.lng,
         Direccion: `${unidad.lat}, ${unidad.lng}`,
         tipoUbicacion: tipoUbicacion,
-        ubicacionId: condicion.ubicacionId
+        ubicacionId: condicion.ubicacionId,
       }
 
       if (tipoUbicacion === 'POI') {
@@ -305,42 +324,43 @@ export function useEventDetection() {
 
       if (condicion.activacion === 'Entrada') {
         const eventoRegistrado = await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
-        
+
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
         eventosEnCurso.value.set(claveEntrada, {
           idEvento: eventoRegistrado.id,
           idRutaDiaria: idRutaDiaria,
           timestampEntrada: Date.now(),
           ubicacionNombre: ubicacionNombre,
-          ubicacionId: condicion.ubicacionId
+          ubicacionId: condicion.ubicacionId,
         })
-        
+
         console.log(`📍 Evento de ENTRADA registrado: ${eventoRegistrado.id}`)
-      } 
-      else if (condicion.activacion === 'Salida') {
+      } else if (condicion.activacion === 'Salida') {
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
         const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
-        
+
         if (eventoEntrada) {
           const duracionMinutos = Math.floor((Date.now() - eventoEntrada.timestampEntrada) / 60000)
-          
+
           await finalizarEventoDiario(
             unidad.id,
             eventoEntrada.idRutaDiaria,
             eventoEntrada.idEvento,
-            { lat: unidad.lat, lng: unidad.lng }
+            { lat: unidad.lat, lng: unidad.lng },
           )
-          
+
           await actualizarDuracionEvento(
             unidad.id,
             eventoEntrada.idRutaDiaria,
             eventoEntrada.idEvento,
-            duracionMinutos
+            duracionMinutos,
           )
-          
+
           eventosEnCurso.value.delete(claveEntrada)
-          
-          console.log(`🚪 Evento finalizado. Duración: ${duracionMinutos} min en ${eventoEntrada.ubicacionNombre}`)
+
+          console.log(
+            `🚪 Evento finalizado. Duración: ${duracionMinutos} min en ${eventoEntrada.ubicacionNombre}`,
+          )
         } else {
           await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
           console.log(`⚠️ Salida sin entrada previa registrada para ${ubicacionNombre}`)
@@ -365,14 +385,14 @@ export function useEventDetection() {
       sujeto: 'unidad',
       unidadId: unidad.id,
       unidadNombre: unidad.unidadNombre || unidad.nombre || 'Sin nombre',
-      conductorNombre: unidad.conductorNombre || 'Sin nombre'
+      conductorNombre: unidad.conductorNombre || 'Sin nombre',
     })
 
     console.log(`📢 NOTIFICACIÓN CREADA: ${mensaje}`)
   }
 
   /**
-   * Resetea el sistema de detección 
+   * Resetea el sistema de detección
    */
   function resetear() {
     eventosActivos.value = []
@@ -391,6 +411,6 @@ export function useEventDetection() {
     resetear,
     eventosActivos,
     ubicacionActual,
-    eventosEnCurso
+    eventosEnCurso,
   }
 }

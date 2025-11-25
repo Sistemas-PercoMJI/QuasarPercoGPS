@@ -179,6 +179,9 @@ export function useReportePDF() {
     // ========================================
     // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
     // ========================================
+    // ========================================
+    // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
+    // ========================================
     if (datosReales.eventosAgrupados && Object.keys(datosReales.eventosAgrupados).length > 0) {
       Object.entries(datosReales.eventosAgrupados).forEach(([grupo, eventos], index) => {
         // Agregar nueva página si es necesario
@@ -192,17 +195,28 @@ export function useReportePDF() {
         doc.text(grupo.toUpperCase(), 14, yPosition)
         yPosition += 8
 
-        // 🔥 Usar el sistema de columnas dinámicas
+        // 🔥 Headers de la tabla
         const headers = config.columnasSeleccionadas
 
-        // Procesar eventos del grupo con las columnas
+        // 🔥 CORREGIDO: Procesar eventos CON las funciones de columnas
         const tableData = eventos.map((evento) => {
           return headers.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+            const columnaConfig = datosReales.configuracionColumnas?.find(
+              (c) => c.label === nombreCol,
+            )
+
             if (columnaConfig && columnaConfig.obtenerValor) {
-              return columnaConfig.obtenerValor(evento)
+              try {
+                const valor = columnaConfig.obtenerValor(evento)
+                return valor !== null && valor !== undefined ? valor : 'N/A'
+              } catch (error) {
+                console.error(`Error al obtener valor de columna "${nombreCol}":`, error)
+                return 'N/A'
+              }
             }
-            return 'N/A'
+
+            // Fallback: buscar directamente en el evento
+            return evento[nombreCol] || 'N/A'
           })
         })
 
@@ -212,7 +226,8 @@ export function useReportePDF() {
           body: tableData,
           theme: 'striped',
           headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
-          styles: { fontSize: 7 },
+          styles: { fontSize: 7, cellPadding: 2 },
+          margin: { left: 14, right: 14 },
         })
 
         yPosition = doc.lastAutoTable.finalY + 15

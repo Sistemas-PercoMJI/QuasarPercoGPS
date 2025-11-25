@@ -831,11 +831,66 @@ const obtenerDatosReporte = async () => {
   let datosInforme = []
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
+  // 🔥 OBTENER DATOS SEGÚN TIPO
   if (tipoInforme === 'eventos') {
     console.log('📊 Obteniendo eventos reales...')
     const { obtenerEventosReales } = useReportesEventos()
+
+    // 🔥 DETERMINAR QUÉ IDs PASAR A LA FUNCIÓN
+    let idsParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      console.log('🚗 Reportar por conductores, convirtiendo a IDs de unidades...')
+
+      const todosConductores = await obtenerConductores()
+      console.log('👥 Total conductores en Firebase:', todosConductores.length)
+
+      for (const nombreConductor of unidadesIds) {
+        console.log(`🔍 Buscando conductor: "${nombreConductor}"`)
+
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+
+        if (conductor) {
+          console.log(`✅ Conductor encontrado:`, {
+            id: conductor.id,
+            nombre: conductor.Nombre,
+            unidadAsignada: conductor.UnidadAsignada,
+          })
+
+          if (conductor.UnidadAsignada) {
+            idsParaBuscar.push(conductor.UnidadAsignada)
+            console.log(`   → Agregando unidad: ${conductor.UnidadAsignada}`)
+          } else {
+            console.warn(`   ⚠️ Conductor sin UnidadAsignada`)
+          }
+        } else {
+          console.warn(`❌ Conductor "${nombreConductor}" no encontrado`)
+        }
+      }
+
+      if (idsParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+
+      console.log('📍 IDs de unidades a buscar:', idsParaBuscar)
+    } else if (reportarPor.value === 'Unidades') {
+      console.log('🚙 Reportar por unidades, convirtiendo nombres a IDs...')
+
+      idsParaBuscar = unidadesIds.map((nombre) => {
+        const id = window.unidadesMap?.[nombre] || nombre
+        console.log(`   ${nombre} → ${id}`)
+        return id
+      })
+
+      console.log('📍 IDs de unidades:', idsParaBuscar)
+    } else {
+      // Grupos o Geozonas
+      idsParaBuscar = unidadesIds
+    }
+
+    // 🔥 LLAMAR CON LOS IDs CORRECTOS
     datosInforme = await obtenerEventosReales(
-      unidadesIds,
+      idsParaBuscar, // 🔥 Pasar IDs de unidades, no nombres de conductores
       fechaInicio,
       fechaFin,
       eventos.value || [],
