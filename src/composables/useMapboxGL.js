@@ -132,98 +132,120 @@ export function useMapboxGL() {
   }
 
   // ⚡ OPTIMIZADO: Con detección de cambio de estado para iconos
-  const actualizarMarcadoresUnidades = (unidades) => {
-    if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+const actualizarMarcadoresUnidades = (unidades) => {
+  if (!map.value) {
+    console.warn('⚠️ Mapa no disponible')
+    return
+  }
+
+  // ✅ Throttling - Evitar actualizaciones muy frecuentes
+  const ahora = Date.now()
+  if (ahora - ultimaActualizacion < THROTTLE_MS) {
+    return
+  }
+  ultimaActualizacion = ahora
+
+  const idsActuales = new Set()
+
+  unidades.forEach((unidad) => {
+    if (
+      !unidad.ubicacion ||
+      typeof unidad.ubicacion.lat !== 'number' ||
+      typeof unidad.ubicacion.lng !== 'number' ||
+      isNaN(unidad.ubicacion.lat) ||
+      isNaN(unidad.ubicacion.lng)
+    ) {
+      console.warn(`⚠️ Unidad sin ubicación válida:`, {
+        id: unidad.unidadId || unidad.id,
+        nombre: unidad.unidadNombre,
+        ubicacion: unidad.ubicacion,
+      })
       return
     }
 
-    // ✅ Throttling - Evitar actualizaciones muy frecuentes
-    const ahora = Date.now()
-    if (ahora - ultimaActualizacion < THROTTLE_MS) {
-      return
-    }
-    ultimaActualizacion = ahora
+    const unidadId = unidad.unidadId || unidad.id
+    idsActuales.add(unidadId)
 
-    const idsActuales = new Set()
+    const { lat, lng } = unidad.ubicacion
 
-    unidades.forEach((unidad) => {
-      if (
-        !unidad.ubicacion ||
-        typeof unidad.ubicacion.lat !== 'number' ||
-        typeof unidad.ubicacion.lng !== 'number' ||
-        isNaN(unidad.ubicacion.lat) ||
-        isNaN(unidad.ubicacion.lng)
-      ) {
-        console.warn(`⚠️ Unidad sin ubicación válida:`, {
-          id: unidad.unidadId || unidad.id,
-          nombre: unidad.unidadNombre,
-          ubicacion: unidad.ubicacion,
-        })
-        return
-      }
+    // ✅ Verificar si cambió posición O estado
+    const ultimaPos = ultimasPosiciones.get(unidadId)
+    const cambioSignificativo =
+      !ultimaPos ||
+      Math.abs(ultimaPos.lat - lat) > 0.00005 ||
+      Math.abs(ultimaPos.lng - lng) > 0.00005 ||
+      ultimaPos.estado !== unidad.estado // ✅ NUEVO: Detectar cambio de estado
 
-      const unidadId = unidad.unidadId || unidad.id
-      idsActuales.add(unidadId)
-
-      const { lat, lng } = unidad.ubicacion
-
-      // ✅ Verificar si cambió posición O estado
-      const ultimaPos = ultimasPosiciones.get(unidadId)
-      const cambioSignificativo =
-        !ultimaPos ||
-        Math.abs(ultimaPos.lat - lat) > 0.00005 ||
-        Math.abs(ultimaPos.lng - lng) > 0.00005 ||
-        ultimaPos.estado !== unidad.estado // ✅ NUEVO: Detectar cambio de estado
-
-      if (marcadoresUnidades.value[unidadId]) {
-        // ✅ Actualizar si hay cambio en posición O estado
-        if (cambioSignificativo) {
-          // ✅ Si cambió el estado, recrear el icono
-          if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-            const nuevoIcono = crearIconoUnidad(unidad.estado)
-            marcadoresUnidades.value[unidadId].getElement().replaceWith(nuevoIcono)
-            marcadoresUnidades.value[unidadId]._element = nuevoIcono
-            console.log(`🔄 Icono actualizado: ${unidad.unidadNombre} → ${unidad.estado}`)
-          }
+    if (marcadoresUnidades.value[unidadId]) {
+      // ✅ Actualizar si hay cambio en posición O estado
+      if (cambioSignificativo) {
+        // ✅ Si cambió el estado, recrear el marcador completamente
+        if (ultimaPos && ultimaPos.estado !== unidad.estado) {
+          // Eliminar el marcador antiguo
+          marcadoresUnidades.value[unidadId].remove()
           
+          // Crear popup
+          const popup = new mapboxgl.Popup({ 
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false,
+            maxWidth: '300px'
+          }).setHTML(crearPopupUnidad(unidad))
+          
+          // Crear nuevo marcador con el icono actualizado
+          const nuevoMarker = new mapboxgl.Marker({
+            element: crearIconoUnidad(unidad.estado),
+            anchor: 'center',
+          })
+            .setLngLat([lng, lat])
+            .setPopup(popup)
+            .addTo(map.value)
+          
+          // Reemplazar en nuestro mapa de marcadores
+          marcadoresUnidades.value[unidadId] = nuevoMarker
+          
+          console.log(`🔄 Marcador recreado: ${unidad.unidadNombre} → ${unidad.estado}`)
+        } else {
+          // Solo actualizar posición
           marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
           marcadoresUnidades.value[unidadId].getPopup().setHTML(crearPopupUnidad(unidad))
-          ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
         }
-      } else {
-        // Crear nuevo marcador
-        const popup = new mapboxgl.Popup({ 
-          offset: 25,
-          closeButton: true,
-          closeOnClick: false,
-          maxWidth: '300px'
-        }).setHTML(crearPopupUnidad(unidad))
-
-        const marker = new mapboxgl.Marker({
-          element: crearIconoUnidad(unidad.estado),
-          anchor: 'center',
-        })
-          .setLngLat([lng, lat])
-          .setPopup(popup)
-          .addTo(map.value)
-
-        marcadoresUnidades.value[unidadId] = marker
+        
         ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
-        console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
       }
-    })
+    } else {
+      // Crear nuevo marcador
+      const popup = new mapboxgl.Popup({ 
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: '300px'
+      }).setHTML(crearPopupUnidad(unidad))
 
-    // Limpiar marcadores inactivos
-    Object.keys(marcadoresUnidades.value).forEach((id) => {
-      if (!idsActuales.has(id)) {
-        marcadoresUnidades.value[id].remove()
-        delete marcadoresUnidades.value[id]
-        ultimasPosiciones.delete(id)
-        console.log(`🗑️ Marcador GPS removido: ${id}`)
-      }
-    })
-  }
+      const marker = new mapboxgl.Marker({
+        element: crearIconoUnidad(unidad.estado),
+        anchor: 'center',
+      })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map.value)
+
+      marcadoresUnidades.value[unidadId] = marker
+      ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+      console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
+    }
+  })
+
+  // Limpiar marcadores inactivos
+  Object.keys(marcadoresUnidades.value).forEach((id) => {
+    if (!idsActuales.has(id)) {
+      marcadoresUnidades.value[id].remove()
+      delete marcadoresUnidades.value[id]
+      ultimasPosiciones.delete(id)
+      console.log(`🗑️ Marcador GPS removido: ${id}`)
+    }
+  })
+}
 
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return

@@ -100,81 +100,85 @@ export function useRutaDiaria() {
    * Función interna que envía las coordenadas acumuladas a Storage.
    * @param {string|number} unidadId - El ID de la unidad cuyo batch se va a enviar.
    */
-  const enviarBatch = async (unidadId) => {
-    // Limpiar el temporizador si existe
-    if (batchTimers.has(unidadId)) {
-      clearTimeout(batchTimers.get(unidadId))
-      batchTimers.delete(unidadId)
-    }
+// En la función enviarBatch, reemplaza la llamada a guardarBatchEnStorage con esta versión mejorada:
 
-    const coordenadas = coordenadasBuffer.get(unidadId)
-    if (!coordenadas || coordenadas.length === 0) {
-      return // Nada que enviar
-    }
-
-    // Limpiar el buffer inmediatamente para que se puedan acumular nuevos puntos
-    coordenadasBuffer.set(unidadId, [])
-
-    try {
-      const idRuta = obtenerIdRutaDiaria()
-      
-      // Preparar los datos para el archivo JSON
-      const datosParaStorage = {
-        unidadId,
-        fecha: idRuta,
-        coordenadas: coordenadas, // Enviamos todo el array
-        timestampGuardado: new Date().toISOString()
-      }
-
-      // Llamar a la función de Storage con el batch completo
-      const url = await guardarBatchEnStorage(unidadId, idRuta, datosParaStorage)
-      console.log(`🚀 Batch de ${coordenadas.length} coordenadas guardado para unidad ${unidadId}.`)
-
-      // Actualizar el documento en Firestore con la nueva URL y el contador
-      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', idRuta)
-      const rutaSnapshot = await getDoc(rutaRef)
-      
-      if (rutaSnapshot.exists()) {
-        // Actualizar ruta existente
-        await updateDoc(rutaRef, {
-          rutas_url: url,
-          total_coordenadas: (rutaSnapshot.data().total_coordenadas || 0) + coordenadas.length,
-          fecha_hora_fin: serverTimestamp()
-        })
-      } else {
-        // Crear nueva ruta si no existe
-        await setDoc(rutaRef, {
-          id: idRuta,
-          fecha_hora_inicio: serverTimestamp(),
-          fecha_hora_fin: serverTimestamp(),
-          duracion_total_minutos: 0,
-          paradas: [],
-          distancia_recorrida_km: '0',
-          tiempo_motor_encendido_minutos: 0,
-          tiempo_motor_apagado_minutos: 0,
-          conductor_id: coordenadas[0].conductor_id || '',
-          conductor_nombre: coordenadas[0].conductor_nombre || '',
-          velocidad_maxima: '0',
-          velocidad_promedio: '0',
-          odometro_inicio: coordenadas[0].odometro_inicio || '0',
-          odometro_fin: coordenadas[0].odometro_fin || '0',
-          rutas_url: url,
-          total_coordenadas: coordenadas.length
-        })
-      }
-
-      // Actualizar caché
-      const cacheKey = `${unidadId}-${idRuta}`
-      const coordenadasExistentes = coordenadasCache.value.get(cacheKey) || []
-      coordenadasCache.value.set(cacheKey, [...coordenadasExistentes, ...coordenadas])
-
-    } catch (error) {
-      console.error(`❌ Error al enviar batch para unidad ${unidadId}:`, error)
-      // Opcional: podrías intentar reponer las coordenadas en el buffer para reintentar más tarde
-      const bufferActual = coordenadasBuffer.get(unidadId) || [];
-      coordenadasBuffer.set(unidadId, [...coordenadas, ...bufferActual]);
-    }
+const enviarBatch = async (unidadId) => {
+  // Limpiar el temporizador si existe
+  if (batchTimers.has(unidadId)) {
+    clearTimeout(batchTimers.get(unidadId))
+    batchTimers.delete(unidadId)
   }
+
+  const coordenadas = coordenadasBuffer.get(unidadId)
+  if (!coordenadas || coordenadas.length === 0) {
+    return // Nada que enviar
+  }
+
+  // Limpiar el buffer inmediatamente para que se puedan acumular nuevos puntos
+  coordenadasBuffer.set(unidadId, [])
+
+  try {
+    const idRuta = obtenerIdRutaDiaria()
+    
+    // Preparar los datos para el archivo JSON
+    const datosParaStorage = {
+      unidadId,
+      fecha: idRuta,
+      coordenadas: coordenadas, // Enviamos todo el array
+      timestampGuardado: new Date().toISOString()
+    }
+
+    // 🆕 Llamar a la función de Storage mejorada con el batch completo
+    const url = await guardarBatchEnStorage(unidadId, idRuta, datosParaStorage)
+    console.log(`🚀 Batch de ${coordenadas.length} coordenadas guardado para unidad ${unidadId}.`)
+
+    // Actualizar el documento en Firestore con la nueva URL y el contador
+    const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', idRuta)
+    const rutaSnapshot = await getDoc(rutaRef)
+    
+    if (rutaSnapshot.exists()) {
+      // Actualizar ruta existente
+      await updateDoc(rutaRef, {
+        rutas_url: url,
+        total_coordenadas: (rutaSnapshot.data().total_coordenadas || 0) + coordenadas.length,
+        fecha_hora_fin: serverTimestamp()
+      })
+    } else {
+      // Crear nueva ruta si no existe
+      await setDoc(rutaRef, {
+        id: idRuta,
+        fecha_hora_inicio: serverTimestamp(),
+        fecha_hora_fin: serverTimestamp(),
+        duracion_total_minutos: 0,
+        paradas: [],
+        distancia_recorrida_km: '0',
+        tiempo_motor_encendido_minutos: 0,
+        tiempo_motor_apagado_minutos: 0,
+        conductor_id: coordenadas[0].conductor_id || '',
+        conductor_nombre: coordenadas[0].conductor_nombre || '',
+        velocidad_maxima: '0',
+        velocidad_promedio: '0',
+        odometro_inicio: coordenadas[0].odometro_inicio || '0',
+        odometro_fin: coordenadas[0].odometro_fin || '0',
+        rutas_url: url,
+        total_coordenadas: coordenadas.length
+      })
+    }
+
+    // Actualizar caché
+    const cacheKey = `${unidadId}-${idRuta}`
+    const coordenadasExistentes = coordenadasCache.value.get(cacheKey) || []
+    coordenadasCache.value.set(cacheKey, [...coordenadasExistentes, ...coordenadas])
+
+  } catch (error) {
+    console.error(`❌ Error al enviar batch para unidad ${unidadId}:`, error)
+    // 🆕 El sistema de reintentos ahora maneja esto automáticamente
+    
+    // Opcional: podrías intentar reponer las coordenadas en el buffer para reintentar más tarde
+    const bufferActual = coordenadasBuffer.get(unidadId) || [];
+    coordenadasBuffer.set(unidadId, [...coordenadas, ...bufferActual]);
+  }
+}
 
   /**
    * Fuerza el envío de todos los buffers pendientes.
