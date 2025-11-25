@@ -366,52 +366,17 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-const ICONOS_CONFIG = {
-  poi: {
-    // Puedes usar emojis, SVG, o clases de iconos
-    icono: '◉', // Cambia esto por el icono que quieras
-    tamano: '32px',
-    color: '#FFFFFf', // Color principal del POI
-    // Alternativas que puedes usar:
-    // icono: '🎯' o '📌' o '🏢' o '🏭' o cualquier emoji
-  },
-  geozonaCircular: {
-    icono: '◉', // Cambia esto por el icono que quieras
-    tamano: '32px',
-    color: '#FFFFFF',
-    // Alternativas: '🔵' o '⚪' o '🟢'
-  },
-  geozonaPoligonal: {
-    icono: '◉', // Cambia esto por el icono que quieras
-    tamano: '32px',
-    color: '#FFFFFF',
-    // Alternativas: '🔶' o '◆' o '🟦'
-  },
-  evento: {
-    icono: '🔔', // Badge de evento
-    tamano: '16px',
-    color: '#FF5722',
-    // Alternativas: '🚨' o '⚠️' o '❗' o '🔴'
-  }
-}
 
 // ============================================
 // 🎨 FUNCIÓN: Crear icono POI elegante
 // ============================================
 function crearIconoPOI(tieneEventos = false) {
-  const config = ICONOS_CONFIG.poi
-  
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
-      <!-- Icono principal con sombra elegante -->
-      <div style="
-        font-size: ${config.tamano};
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
-        cursor: pointer;
-        transition: transform 0.2s ease;
-      " class="icono-poi-hover">
-        ${config.icono}
-      </div>
+      <!-- Icono SVG principal con color blanco -->
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
+        <path fill="white" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
       
       ${tieneEventos ? `
         <!-- Badge de evento en esquina superior derecha -->
@@ -431,7 +396,7 @@ function crearIconoPOI(tieneEventos = false) {
           font-size: 10px;
           animation: pulse-badge 2s infinite;
         ">
-          ${ICONOS_CONFIG.evento.icono}
+          🔔
         </div>
       ` : ''}
     </div>
@@ -444,27 +409,34 @@ function crearIconoPOI(tieneEventos = false) {
   return markerEl
 }
 
+
 // ============================================
 // 🎨 FUNCIÓN: Crear icono Geozona elegante
 // ============================================
 function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null) {
-  const config = tipo === 'circular' 
-    ? ICONOS_CONFIG.geozonaCircular 
-    : ICONOS_CONFIG.geozonaPoligonal
+  const colorFinal = color || '#FFFFFF'
   
-  const colorFinal = color || config.color
+  // Diferentes SVGs según el tipo de geozona
+  let iconoSVG = ''
+  
+  if (tipo === 'circular') {
+    iconoSVG = `
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
+        <circle cx="12" cy="12" r="10" fill="${colorFinal}" stroke="white" stroke-width="2"/>
+      </svg>
+    `
+  } else {
+    // Poligonal
+    iconoSVG = `
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
+        <polygon points="12,2 22,12 12,22 2,12" fill="${colorFinal}" stroke="white" stroke-width="2"/>
+      </svg>
+    `
+  }
   
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
-      <!-- Icono principal con color personalizado -->
-      <div style="
-        font-size: ${config.tamano};
-        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)) hue-rotate(${/*getHueRotation*/(colorFinal)});
-        cursor: pointer;
-        transition: transform 0.2s ease, filter 0.2s ease;
-      " class="icono-geozona-hover">
-        ${config.icono}
-      </div>
+      ${iconoSVG}
       
       ${tieneEventos ? `
         <!-- Badge de evento en esquina superior derecha -->
@@ -484,7 +456,7 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
           font-size: 9px;
           animation: pulse-badge 2s infinite;
         ">
-          ${ICONOS_CONFIG.evento.icono}
+          🔔
         </div>
       ` : ''}
     </div>
