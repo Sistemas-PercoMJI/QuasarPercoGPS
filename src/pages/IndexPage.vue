@@ -371,20 +371,20 @@ const ICONOS_CONFIG = {
     // Puedes usar emojis, SVG, o clases de iconos
     icono: '◉', // Cambia esto por el icono que quieras
     tamano: '32px',
-    color: '#2196F3', // Color principal del POI
+    color: '#FFFFFf', // Color principal del POI
     // Alternativas que puedes usar:
     // icono: '🎯' o '📌' o '🏢' o '🏭' o cualquier emoji
   },
   geozonaCircular: {
     icono: '◉', // Cambia esto por el icono que quieras
-    tamano: '28px',
-    color: '#4ECDC4',
+    tamano: '32px',
+    color: '#FFFFFF',
     // Alternativas: '🔵' o '⚪' o '🟢'
   },
   geozonaPoligonal: {
     icono: '◉', // Cambia esto por el icono que quieras
-    tamano: '28px',
-    color: '#4ECDC4',
+    tamano: '32px',
+    color: '#FFFFFF',
     // Alternativas: '🔶' o '◆' o '🟦'
   },
   evento: {
