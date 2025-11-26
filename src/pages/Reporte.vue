@@ -1074,6 +1074,13 @@ const obtenerDatosReporte = async () => {
   Object.entries(datosAgrupados).forEach(([nombre, registros]) => {
     resumenPorGrupo[nombre] = registros.length
   })
+  const configuracion = obtenerConfiguracionColumnas()
+  console.log('🔍 Columnas seleccionadas:', columnasSeleccionadas.value)
+  console.log('🔍 Configuración obtenida:', configuracion)
+  console.log(
+    '🔍 Labels en configuración:',
+    configuracion.map((c) => c.label),
+  )
 
   return {
     eventosAgrupados: datosAgrupados,
@@ -1082,7 +1089,7 @@ const obtenerDatosReporte = async () => {
     stats: stats,
     totalEventos: datosFiltrados.length,
     elementosSinDatos: elementosSinDatos,
-    configuracionColumnas: obtenerConfiguracionColumnas(),
+    configuracionColumnas: configuracion,
     tipoInforme: tipoInforme,
   }
 }
@@ -1102,14 +1109,17 @@ const generarReporte = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
-      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // 🆕
-      mostrarUnidadesMapa: mostrarUnidadesMapa.value, // 🆕
-      mostrarPlacaMapa: mostrarPlacaMapa.value, // 🆕
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value,
+      mostrarUnidadesMapa: mostrarUnidadesMapa.value,
+      mostrarPlacaMapa: mostrarPlacaMapa.value,
     }
+
+    // 🔥 AGREGAR ESTO: Log para verificar
+    console.log('🔍 datosReales completo:', datosReales)
+    console.log('🔍 configuracionColumnas:', datosReales.configuracionColumnas)
 
     let pdfResult
 
-    // 🆕 DETECTAR SI ES REPORTE DE TRAYECTOS Y GENERAR MAPA
     if (tipoInformeSeleccionado.value === 'trayectos') {
       console.log('🗺️ Generando PDF de trayectos...')
 

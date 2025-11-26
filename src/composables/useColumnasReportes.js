@@ -85,19 +85,25 @@ const COLUMNAS_EVENTOS = {
   },
   'Hora de inicio de evento': {
     key: 'horaInicio',
-    label: 'Hora de inicio',
+    label: 'Hora de inicio de evento',
     obtenerValor: (notificacion) => {
+      // 🔍 DEBUG TEMPORAL
+      console.log('🕐 Procesando timestamp para:', notificacion.eventoNombre)
+      console.log('   - timestamp:', notificacion.timestamp)
+      console.log('   - tipo:', typeof notificacion.timestamp)
+      console.log('   - es Date?:', notificacion.timestamp instanceof Date)
+      console.log('   - objeto completo:', notificacion)
+
       const timestamp = notificacion.timestamp
 
       if (!timestamp) {
-        console.warn('⚠️ Evento sin timestamp:', notificacion.eventoNombre)
+        console.warn('⚠️ NO HAY timestamp')
         return 'N/A'
       }
 
       try {
-        // Ya es un objeto Date válido
         if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
-          return timestamp.toLocaleString('es-MX', {
+          const formatted = timestamp.toLocaleString('es-MX', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -105,12 +111,14 @@ const COLUMNAS_EVENTOS = {
             minute: '2-digit',
             second: '2-digit',
           })
+          console.log('✅ Formateado como:', formatted)
+          return formatted
         }
 
-        console.warn('⚠️ Timestamp no es Date válido:', timestamp)
+        console.warn('⚠️ Timestamp existe pero NO es Date válido')
         return 'N/A'
       } catch (error) {
-        console.error('❌ Error al formatear timestamp:', error)
+        console.error('❌ Error:', error)
         return 'N/A'
       }
     },
@@ -743,6 +751,8 @@ export function useColumnasReportes() {
 
     return datos.map((dato) => {
       const fila = {}
+
+      // 🔥 USAR obtenerValor() en lugar de mapeo directo
       configuracion.forEach((col) => {
         fila[col.label] = col.obtenerValor(dato)
       })
