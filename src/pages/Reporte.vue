@@ -420,6 +420,7 @@ import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
 import { useTiposInforme } from 'src/composables/useTiposInforme'
+import { useEventos } from 'src/composables/useEventos'
 
 // 🆕 NUEVOS IMPORTS - Para los 3 tipos de informes
 import { useReportesEventos } from 'src/composables/useReportesEventos'
@@ -639,27 +640,50 @@ const cargarOpcionesSelector = async () => {
 }
 
 const cargarEventosDisponibles = async () => {
-  if (!userId.value) return
+  if (!userId.value) {
+    console.warn('⚠️ No hay userId para cargar eventos')
+    return
+  }
 
   loadingEventos.value = true
 
   try {
-    // 🔥 LISTA ACTUALIZADA CON TUS EVENTOS REALES
-    listaEventosDisponibles.value = [
-      'eventos de cositas entrada y salida',
-      'abajo owo evento',
-      'Evento en prueba para nuevo punto',
-      'Entrada de las oficinas',
-      'Geozona point',
-      'cositas chables sss',
-      'Evento Para ver ID',
-      'Evento en Alan kun',
-      'paz',
-      'Evento en Casita',
-      'evento a',
-    ]
+    console.log('📥 Cargando eventos desde Firebase...')
+
+    // Obtener instancia de useEventos con el userId actual
+    const { obtenerEventos } = useEventos(userId.value)
+
+    // Obtener todos los eventos del usuario
+    const eventosDelUsuario = await obtenerEventos()
+
+    console.log('✅ Eventos obtenidos:', eventosDelUsuario.length)
+    console.log('📋 Eventos:', eventosDelUsuario)
+
+    // Extraer solo los nombres de los eventos para el selector
+    // Filtrar solo eventos activos (opcional)
+    listaEventosDisponibles.value = eventosDelUsuario
+      .filter((evento) => evento.activo) // 🔹 Opcional: solo eventos activos
+      .map((evento) => evento.nombre)
+      .filter(Boolean) // Eliminar nombres vacíos o undefined
+
+    // 🔹 Si quieres mostrar TODOS los eventos (activos e inactivos):
+    listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
+
+    console.log('✅ Eventos disponibles para selector:', listaEventosDisponibles.value)
+
+    if (listaEventosDisponibles.value.length === 0) {
+      console.warn('⚠️ No se encontraron eventos activos')
+    }
   } catch (error) {
-    console.error('Error al cargar eventos:', error)
+    console.error('❌ Error al cargar eventos desde Firebase:', error)
+    listaEventosDisponibles.value = []
+
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar los eventos disponibles',
+      icon: 'error',
+      caption: error.message,
+    })
   } finally {
     loadingEventos.value = false
   }
@@ -807,11 +831,66 @@ const obtenerDatosReporte = async () => {
   let datosInforme = []
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
+  // 🔥 OBTENER DATOS SEGÚN TIPO
   if (tipoInforme === 'eventos') {
     console.log('📊 Obteniendo eventos reales...')
     const { obtenerEventosReales } = useReportesEventos()
+
+    // 🔥 DETERMINAR QUÉ IDs PASAR A LA FUNCIÓN
+    let idsParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      console.log('🚗 Reportar por conductores, convirtiendo a IDs de unidades...')
+
+      const todosConductores = await obtenerConductores()
+      console.log('👥 Total conductores en Firebase:', todosConductores.length)
+
+      for (const nombreConductor of unidadesIds) {
+        console.log(`🔍 Buscando conductor: "${nombreConductor}"`)
+
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+
+        if (conductor) {
+          console.log(`✅ Conductor encontrado:`, {
+            id: conductor.id,
+            nombre: conductor.Nombre,
+            unidadAsignada: conductor.UnidadAsignada,
+          })
+
+          if (conductor.UnidadAsignada) {
+            idsParaBuscar.push(conductor.UnidadAsignada)
+            console.log(`   → Agregando unidad: ${conductor.UnidadAsignada}`)
+          } else {
+            console.warn(`   ⚠️ Conductor sin UnidadAsignada`)
+          }
+        } else {
+          console.warn(`❌ Conductor "${nombreConductor}" no encontrado`)
+        }
+      }
+
+      if (idsParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+
+      console.log('📍 IDs de unidades a buscar:', idsParaBuscar)
+    } else if (reportarPor.value === 'Unidades') {
+      console.log('🚙 Reportar por unidades, convirtiendo nombres a IDs...')
+
+      idsParaBuscar = unidadesIds.map((nombre) => {
+        const id = window.unidadesMap?.[nombre] || nombre
+        console.log(`   ${nombre} → ${id}`)
+        return id
+      })
+
+      console.log('📍 IDs de unidades:', idsParaBuscar)
+    } else {
+      // Grupos o Geozonas
+      idsParaBuscar = unidadesIds
+    }
+
+    // 🔥 LLAMAR CON LOS IDs CORRECTOS
     datosInforme = await obtenerEventosReales(
-      unidadesIds,
+      idsParaBuscar, // 🔥 Pasar IDs de unidades, no nombres de conductores
       fechaInicio,
       fechaFin,
       eventos.value || [],
@@ -995,6 +1074,13 @@ const obtenerDatosReporte = async () => {
   Object.entries(datosAgrupados).forEach(([nombre, registros]) => {
     resumenPorGrupo[nombre] = registros.length
   })
+  const configuracion = obtenerConfiguracionColumnas()
+  console.log('🔍 Columnas seleccionadas:', columnasSeleccionadas.value)
+  console.log('🔍 Configuración obtenida:', configuracion)
+  console.log(
+    '🔍 Labels en configuración:',
+    configuracion.map((c) => c.label),
+  )
 
   return {
     eventosAgrupados: datosAgrupados,
@@ -1003,7 +1089,7 @@ const obtenerDatosReporte = async () => {
     stats: stats,
     totalEventos: datosFiltrados.length,
     elementosSinDatos: elementosSinDatos,
-    configuracionColumnas: obtenerConfiguracionColumnas(),
+    configuracionColumnas: configuracion,
     tipoInforme: tipoInforme,
   }
 }
@@ -1023,14 +1109,17 @@ const generarReporte = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
-      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // 🆕
-      mostrarUnidadesMapa: mostrarUnidadesMapa.value, // 🆕
-      mostrarPlacaMapa: mostrarPlacaMapa.value, // 🆕
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value,
+      mostrarUnidadesMapa: mostrarUnidadesMapa.value,
+      mostrarPlacaMapa: mostrarPlacaMapa.value,
     }
+
+    // 🔥 AGREGAR ESTO: Log para verificar
+    console.log('🔍 datosReales completo:', datosReales)
+    console.log('🔍 configuracionColumnas:', datosReales.configuracionColumnas)
 
     let pdfResult
 
-    // 🆕 DETECTAR SI ES REPORTE DE TRAYECTOS Y GENERAR MAPA
     if (tipoInformeSeleccionado.value === 'trayectos') {
       console.log('🗺️ Generando PDF de trayectos...')
 

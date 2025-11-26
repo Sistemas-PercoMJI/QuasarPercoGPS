@@ -107,8 +107,10 @@ export function useReportePDF() {
     // ========================================
     // 🔥 NUEVO: Tabla de eventos con columnas dinámicas
     // ========================================
+    // ========================================
+    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
+    // ========================================
     if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
-      // Si hay que agregar nueva página
       if (yPosition > 200) {
         doc.addPage()
         yPosition = 20
@@ -119,26 +121,43 @@ export function useReportePDF() {
       doc.text('Detalle de Eventos', 14, yPosition)
       yPosition += 8
 
-      // 🔥 Headers de la tabla = columnas seleccionadas
       const headers = config.columnasSeleccionadas
+      const configuracionColumnas = datosReales.configuracionColumnas || []
 
-      // 🔥 Filas de la tabla = datosColumnas ya procesados
-      const rows = datosReales.datosColumnas.map((fila) => headers.map((col) => fila[col] || 'N/A'))
+      // 🔥 CORREGIDO: Usar los datos ORIGINALES, no los procesados
+      const rows = datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados).flat()
+        : datosReales.datosColumnas
 
-      // 🔥 Configurar anchos de columna según las columnas
+      const tableData = rows.map((evento) => {
+        return headers.map((nombreCol) => {
+          const columnaConfig = configuracionColumnas.find((c) => c.label === nombreCol)
+
+          if (columnaConfig && columnaConfig.obtenerValor) {
+            try {
+              const valor = columnaConfig.obtenerValor(evento)
+              return valor !== null && valor !== undefined ? valor : 'N/A'
+            } catch (error) {
+              console.error(`Error al obtener valor de columna "${nombreCol}":`, error)
+              return 'N/A'
+            }
+          }
+
+          return evento[nombreCol] || 'N/A'
+        })
+      })
+
       const columnStyles = {}
-      headers.forEach((nombreCol, index) => {
-        const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
-        if (columnaConfig) {
-          // Convertir ancho de pixels a mm (aproximado)
-          columnStyles[index] = { cellWidth: columnaConfig.ancho / 4 }
+      configuracionColumnas.forEach((col, index) => {
+        if (col.ancho) {
+          columnStyles[index] = { cellWidth: col.ancho / 4 }
         }
       })
 
       autoTable(doc, {
         startY: yPosition,
         head: [headers],
-        body: rows,
+        body: tableData,
         theme: 'striped',
         headStyles: {
           fillColor: [66, 139, 202],
@@ -152,7 +171,6 @@ export function useReportePDF() {
         columnStyles: columnStyles,
         margin: { left: 14, right: 14 },
         didDrawPage: (data) => {
-          // Footer con número de página
           const pageCount = doc.internal.getNumberOfPages()
           doc.setFontSize(8)
           doc.text(
@@ -170,6 +188,9 @@ export function useReportePDF() {
     // ========================================
     // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
     // ========================================
+    // ========================================
+    // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
+    // ========================================
     if (datosReales.eventosAgrupados && Object.keys(datosReales.eventosAgrupados).length > 0) {
       Object.entries(datosReales.eventosAgrupados).forEach(([grupo, eventos], index) => {
         // Agregar nueva página si es necesario
@@ -183,17 +204,28 @@ export function useReportePDF() {
         doc.text(grupo.toUpperCase(), 14, yPosition)
         yPosition += 8
 
-        // 🔥 Usar el sistema de columnas dinámicas
+        // 🔥 Headers de la tabla
         const headers = config.columnasSeleccionadas
 
-        // Procesar eventos del grupo con las columnas
+        // 🔥 CORREGIDO: Procesar eventos CON las funciones de columnas
         const tableData = eventos.map((evento) => {
           return headers.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+            const columnaConfig = datosReales.configuracionColumnas?.find(
+              (c) => c.label === nombreCol,
+            )
+
             if (columnaConfig && columnaConfig.obtenerValor) {
-              return columnaConfig.obtenerValor(evento)
+              try {
+                const valor = columnaConfig.obtenerValor(evento)
+                return valor !== null && valor !== undefined ? valor : 'N/A'
+              } catch (error) {
+                console.error(`Error al obtener valor de columna "${nombreCol}":`, error)
+                return 'N/A'
+              }
             }
-            return 'N/A'
+
+            // Fallback: buscar directamente en el evento
+            return evento[nombreCol] || 'N/A'
           })
         })
 
@@ -203,7 +235,8 @@ export function useReportePDF() {
           body: tableData,
           theme: 'striped',
           headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
-          styles: { fontSize: 7 },
+          styles: { fontSize: 7, cellPadding: 2 },
+          margin: { left: 14, right: 14 },
         })
 
         yPosition = doc.lastAutoTable.finalY + 15

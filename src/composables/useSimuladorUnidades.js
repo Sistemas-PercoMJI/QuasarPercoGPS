@@ -1,8 +1,9 @@
-// src/composables/useSimuladorUnidades.js - v3.3 SIN TELETRANSPORTACIÓN
+// src/composables/useSimuladorUnidades.js - v3.4 CON BATCHING (CORREGIDO)
 // ✅ Restaura última posición desde Firebase
 // ✅ Solo genera nueva posición si es primera vez
 // ✅ Direcciones con nombres de calles
 // ✅ Estados funcionando correctamente
+// 🆕 Implementa batching para evitar error 429
 
 import { ref } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
@@ -16,7 +17,8 @@ export function useSimuladorUnidades() {
   const unidadesSimuladas = ref([])
   
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
-  const { iniciarOActualizarRutaDiaria } = useRutaDiaria()
+  // 🆕 Usamos las nuevas funciones de batching en lugar de la llamada directa
+  const { agregarCoordenadaAlBuffer, forzarEnvioDeTodosLosBatches } = useRutaDiaria()
   
   const LIMITES_TIJUANA = {
     latMin: 32.43,
@@ -36,6 +38,8 @@ export function useSimuladorUnidades() {
   const DURACION_ESTADO = 20000
   const TIEMPO_ACTUALIZACION_DIRECCION = 30000
   const DISTANCIA_MIN_ACTUALIZACION = 50
+  // 🆕 Reducimos la frecuencia de actualización para disminuir la carga
+  const INTERVALO_ACTUALIZACION = 10000 // 10 segundos en lugar de 5
 
   const obtenerDireccionDesdeCoordenadas = async (lat, lng) => {
     try {
@@ -354,9 +358,10 @@ export function useSimuladorUnidades() {
     await set(unidadRef, estado)
     console.log(`✅ ${unidad.Unidad} guardada en Firebase`)
     
+    // 🆕 Si la unidad está en movimiento, agregamos la coordenada inicial al buffer
     if (estadoInicial === ESTADOS.MOVIMIENTO) {
       try {
-        await iniciarOActualizarRutaDiaria(unidad.id, {
+        await agregarCoordenadaAlBuffer(unidad.id, {
           conductor_id: conductor.id,
           conductor_nombre: `${conductor.Nombre} ${conductor.Apellido}`,
           odometro_inicio: '0',
@@ -368,7 +373,7 @@ export function useSimuladorUnidades() {
           }
         })
       } catch (err) {
-        console.error(`❌ Error ruta diaria:`, err)
+        console.error(`❌ Error agregando coordenada inicial al buffer:`, err)
       }
     }
     
@@ -378,6 +383,7 @@ export function useSimuladorUnidades() {
   const iniciarIntervaloActualizacion = (conductor, unidad, unidadRef) => {
     const unidadId = `unidad_${unidad.id}`
     
+    // 🆕 Cambiamos el intervalo de 5000ms a INTERVALO_ACTUALIZACION (10000ms)
     const intervalo = setInterval(async () => {
       try {
         const snapshot = await new Promise((resolve, reject) => {
@@ -450,9 +456,10 @@ export function useSimuladorUnidades() {
           bateria: estadoActual.bateria
         })
 
+        // 🆕 Si la unidad está en movimiento, agregamos la coordenada al buffer en lugar de guardarla directamente
         if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
           try {
-            await iniciarOActualizarRutaDiaria(unidad.id, {
+            await agregarCoordenadaAlBuffer(unidad.id, {
               conductor_id: estadoActual.conductorId,
               conductor_nombre: estadoActual.conductorNombre,
               velocidad_actual: String(nuevoMovimiento.velocidad),
@@ -463,7 +470,8 @@ export function useSimuladorUnidades() {
               }
             })
           } catch (errRuta) {
-            console.error(`⚠️ Error ruta:`, errRuta)
+            // Este error ahora es menos crítico, ya que si falla, el buffer lo reintentará
+            console.error(`⚠️ Error al agregar al buffer de ruta:`, errRuta)
           }
         }
 
@@ -487,7 +495,7 @@ export function useSimuladorUnidades() {
       } catch (error) {
         console.error(`❌ Error actualizando ${unidadId}:`, error)
       }
-    }, 5000)
+    }, INTERVALO_ACTUALIZACION) // 🆕 Usamos la constante en lugar de 5000 hardcoded
 
     intervalos.value.push({ unidadId, intervalo })
     unidadesSimuladas.value.push({ 
@@ -513,8 +521,9 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
     
-    console.log('🎲 Simulación v3.3 - SIN teletransportación')
+    console.log('🎲 Simulación v3.4 - CON BATCHING')
     console.log('   ✅ Restaura última posición desde Firebase')
+    console.log('   🆕 Implementa batching para evitar error 429')
     
     for (const conductor of conductoresConUnidad) {
       const unidad = unidades.find(u => u.id === conductor.UnidadAsignada)
@@ -532,9 +541,20 @@ export function useSimuladorUnidades() {
     
     intervalos.value.forEach(({ intervalo }) => clearInterval(intervalo))
     
-    for (const { unidadId, unidadIdReal } of unidadesSimuladas.value) {
+    // 🆕 Forzar el envío de todos los buffers pendientes antes de detener
+    console.log('📤 Enviando datos de ruta pendientes antes de detener...')
+    try {
+      await forzarEnvioDeTodosLosBatches()
+      console.log('✅ Todos los datos de ruta han sido enviados')
+    } catch (err) {
+      console.error('❌ Error forzando envío de batches:', err)
+    }
+    
+    // 🆕 Corregido: solo usamos unidadId en lugar de desestructurar unidadIdReal que no se usa
+    for (const { unidadId } of unidadesSimuladas.value) {
       try {
-        await iniciarOActualizarRutaDiaria(unidadIdReal, {})
+        // 🆕 Ya no necesitamos llamar a iniciarOActualizarRutaDiaria aquí
+        // porque forzarEnvioDeTodosLosBatches ya se encargó
         await remove(dbRef(realtimeDb, `unidades_activas/${unidadId}`))
       } catch (err) {
         console.error(`❌ Error finalizando ${unidadId}:`, err)
@@ -545,7 +565,7 @@ export function useSimuladorUnidades() {
     unidadesSimuladas.value = []
     simulacionActiva.value = false
     
-    console.log('✅ Simulación detenida')
+    console.log('✅ Simulación detenida y datos guardados')
   }
 
   const toggleSimulacion = async (conductores, unidades) => {

@@ -12,7 +12,7 @@ const COLUMNAS_COMPARTIDAS = {
   Conductor: {
     key: 'conductor',
     label: 'Conductor',
-    obtenerValor: (dato) => dato.conductorNombre || 'N/A',
+    obtenerValor: (dato) => dato.conductorNombre || dato.conductor_nombre || 'Sin conductor', // 🔥 AGREGADO conductor_nombre
     ancho: 180,
     formato: 'texto',
   },
@@ -20,7 +20,12 @@ const COLUMNAS_COMPARTIDAS = {
   Vehículo: {
     key: 'vehiculo',
     label: 'Vehículo',
-    obtenerValor: (dato) => dato.unidadNombre || 'N/A',
+    obtenerValor: (dato) => {
+      // 🔥 CORREGIDO: Buscar en múltiples campos posibles
+      return (
+        dato.unidadNombre || dato.vehiculoNombre || dato.vehiculo || dato.unidad || 'Sin vehículo'
+      )
+    },
     ancho: 180,
     formato: 'texto',
   },
@@ -28,7 +33,7 @@ const COLUMNAS_COMPARTIDAS = {
   Placa: {
     key: 'placa',
     label: 'Placa',
-    obtenerValor: (dato) => dato.unidadPlaca || 'N/A',
+    obtenerValor: (dato) => dato.unidadPlaca || dato.placa || 'Sin placa', // 🔥 AGREGADO fallback
     ancho: 100,
     formato: 'texto',
   },
@@ -53,37 +58,73 @@ const COLUMNAS_EVENTOS = {
     key: 'tipoEvento',
     label: 'Tipo',
     obtenerValor: (notificacion) => {
-      const tipos = {
+      // 🔥 CORREGIDO: Usar los campos correctos de Firebase
+      const tipo = notificacion.tipoEvento || notificacion.TipoEvento
+
+      if (!tipo) return 'Sin tipo'
+
+      // Si ya viene en español (directamente desde Firebase)
+      if (tipo === 'Entrada' || tipo === 'Salida') {
+        return tipo
+      }
+
+      // Si viene en formato legacy de notificaciones
+      const tiposMap = {
         positive: 'Entrada',
         warning: 'Salida',
         info: 'Dentro',
         negative: 'Fuera',
+        entrada: 'Entrada',
+        salida: 'Salida',
       }
-      return tipos[notificacion.type] || 'N/A'
+
+      return tiposMap[tipo.toLowerCase()] || tipo
     },
     ancho: 120,
     formato: 'texto',
   },
-
   'Hora de inicio de evento': {
     key: 'horaInicio',
-    label: 'Hora de inicio',
+    label: 'Hora de inicio de evento',
     obtenerValor: (notificacion) => {
-      if (!notificacion.timestamp) return 'N/A'
-      const fecha = new Date(notificacion.timestamp)
-      return fecha.toLocaleString('es-MX', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
+      // 🔍 DEBUG TEMPORAL
+      console.log('🕐 Procesando timestamp para:', notificacion.eventoNombre)
+      console.log('   - timestamp:', notificacion.timestamp)
+      console.log('   - tipo:', typeof notificacion.timestamp)
+      console.log('   - es Date?:', notificacion.timestamp instanceof Date)
+      console.log('   - objeto completo:', notificacion)
+
+      const timestamp = notificacion.timestamp
+
+      if (!timestamp) {
+        console.warn('⚠️ NO HAY timestamp')
+        return 'N/A'
+      }
+
+      try {
+        if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
+          const formatted = timestamp.toLocaleString('es-MX', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+          console.log('✅ Formateado como:', formatted)
+          return formatted
+        }
+
+        console.warn('⚠️ Timestamp existe pero NO es Date válido')
+        return 'N/A'
+      } catch (error) {
+        console.error('❌ Error:', error)
+        return 'N/A'
+      }
     },
     ancho: 180,
     formato: 'fecha',
   },
-
   Fecha: {
     key: 'fecha',
     label: 'Fecha',
@@ -120,13 +161,38 @@ const COLUMNAS_EVENTOS = {
     key: 'duracion',
     label: 'Duración',
     obtenerValor: (notificacion) => {
+      // 🔥 OPCIÓN 1: Si ya viene formateada como "HH:MM:SS" desde useReportesEventos
+      if (notificacion.duracion && typeof notificacion.duracion === 'string') {
+        return notificacion.duracion
+      }
+
+      // 🔥 OPCIÓN 2: Si viene en minutos como número
+      if (notificacion.duracionMinutos !== null && notificacion.duracionMinutos !== undefined) {
+        const minutos = notificacion.duracionMinutos
+        const horas = Math.floor(minutos / 60)
+        const mins = Math.floor(minutos % 60)
+        const segs = Math.floor((minutos % 1) * 60)
+        return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
+      }
+
+      // 🔥 OPCIÓN 3: DuracionDentro directamente de Firebase
+      if (notificacion.DuracionDentro !== null && notificacion.DuracionDentro !== undefined) {
+        const minutos = notificacion.DuracionDentro
+        const horas = Math.floor(minutos / 60)
+        const mins = Math.floor(minutos % 60)
+        const segs = Math.floor((minutos % 1) * 60)
+        return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
+      }
+
+      // 🔥 OPCIÓN 4: Si tiene timestamps de inicio y fin
       if (notificacion.timestampInicio && notificacion.timestampFin) {
         const duracionMs = notificacion.timestampFin - notificacion.timestampInicio
         const horas = Math.floor(duracionMs / 3600000)
         const minutos = Math.floor((duracionMs % 3600000) / 60000)
         const segundos = Math.floor((duracionMs % 60000) / 1000)
-        return `${horas}h ${minutos}m ${segundos}s`
+        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
       }
+
       return 'N/A'
     },
     ancho: 120,
@@ -170,10 +236,14 @@ const COLUMNAS_EVENTOS = {
     key: 'geozona',
     label: 'Geozona',
     obtenerValor: (notificacion) => {
-      if (notificacion.tipoUbicacion === 'Geozona') {
-        return notificacion.ubicacionNombre || 'N/A'
-      }
-      return 'N/A'
+      // 🔥 CORREGIDO: Soportar múltiples campos
+      return (
+        notificacion.geozonaNombre ||
+        notificacion.GeozonaNombre ||
+        notificacion.ubicacionNombre ||
+        (notificacion.tipoUbicacion === 'Geozona' ? notificacion.ubicacionNombre : null) ||
+        'N/A'
+      )
     },
     ancho: 180,
     formato: 'texto',
@@ -681,6 +751,8 @@ export function useColumnasReportes() {
 
     return datos.map((dato) => {
       const fila = {}
+
+      // 🔥 USAR obtenerValor() en lugar de mapeo directo
       configuracion.forEach((col) => {
         fila[col.label] = col.obtenerValor(dato)
       })
@@ -717,17 +789,22 @@ export function useColumnasReportes() {
     }
 
     datos.forEach((dato) => {
-      // Contar por tipo
-      const tipo = dato.type || 'Sin tipo'
+      // 🔥 CORREGIDO: Contar por tipo de evento (Entrada/Salida)
+      const tipo = dato.tipoEvento || dato.TipoEvento || 'Sin tipo'
       resumen.eventosPorTipo[tipo] = (resumen.eventosPorTipo[tipo] || 0) + 1
 
       // Contar por ubicación
-      const ubicacion = dato.ubicacionNombre || 'Sin ubicación'
+      const ubicacion =
+        dato.ubicacionNombre || dato.geozonaNombre || dato.GeozonaNombre || 'Sin ubicación'
       resumen.eventosPorUbicacion[ubicacion] = (resumen.eventosPorUbicacion[ubicacion] || 0) + 1
 
       // Conductores únicos
       if (dato.conductorNombre) {
-        resumen.conductoresUnicos.add(dato.conductorNombre)
+        // 🔥 LIMPIEZA: Eliminar "undefined" si existe
+        const nombreLimpio = dato.conductorNombre.replace(/\s*undefined\s*/gi, '').trim()
+        if (nombreLimpio) {
+          resumen.conductoresUnicos.add(nombreLimpio)
+        }
       }
 
       // Vehículos únicos

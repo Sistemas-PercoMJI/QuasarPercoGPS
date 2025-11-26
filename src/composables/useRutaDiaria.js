@@ -1,4 +1,7 @@
-// src/composables/useRutaDiaria.js - CON STORAGE
+// src/composables/useRutaDiaria.js - v2.0 CON BATCHING (CORREGIDO)
+// ✅ Acumula coordenadas para evitar el error 429
+// ✅ Envía datos en lotes (batches) en lugar de individualmente
+
 import { ref } from 'vue'
 import { db, auth } from 'src/firebase/firebaseConfig'
 import {
@@ -15,12 +18,23 @@ import {
 } from 'firebase/firestore'
 import { useRutasStorage } from './useRutasStorage'
 
+// Buffer global para acumular coordenadas de todas las unidades
+// Map<unidadId, Array<coordenadas>>
+const coordenadasBuffer = new Map()
+
+// Configuración del batch
+const BATCH_SIZE = 10 // Enviar después de 10 coordenadas
+const BATCH_INTERVAL_MS = 30000 // O enviar después de 30 segundos (incluso si no hay 10)
+
+// Temporizadores para cada unidad, para asegurar el envío por tiempo
+const batchTimers = new Map()
+
 export function useRutaDiaria() {
   const loading = ref(false)
   const error = ref(null)
   
-  // 🆕 Usar composable de Storage
-  const { agregarCoordenada, obtenerUrlRutas, obtenerCoordenadasDesdeStorage } = useRutasStorage()
+  // 🆕 Usar composable de Storage (sin agregarCoordenada que no se usa)
+  const { obtenerCoordenadasDesdeStorage, guardarBatchEnStorage } = useRutasStorage()
   
   // 🆕 Cache en memoria para coordenadas (evita leer Storage constantemente)
   const coordenadasCache = ref(new Map())
@@ -49,30 +63,132 @@ export function useRutaDiaria() {
   }
 
   /**
-   * 🆕 Obtiene las coordenadas del caché o las descarga
+   * 🆕 Agrega una nueva coordenada al buffer de una unidad específica.
+   * Esta función ahora es la principal, reemplaza a la llamada directa a Storage.
+   * @param {string|number} unidadId - El ID de la unidad.
+   * @param {object} datosCoordenada - Los datos de la coordenada a guardar.
    */
-  const obtenerCoordenadasCache = async (unidadId, fecha) => {
-    const cacheKey = `${unidadId}-${fecha}`
-    
-    // Si está en caché, retornar
-    if (coordenadasCache.value.has(cacheKey)) {
-      return coordenadasCache.value.get(cacheKey)
+  const agregarCoordenadaAlBuffer = async (unidadId, datosCoordenada) => {
+    // Si no existe un buffer para esta unidad, créalo
+    if (!coordenadasBuffer.has(unidadId)) {
+      coordenadasBuffer.set(unidadId, [])
     }
-    
-    // Si no está en caché, intentar cargar desde Storage
-    try {
-      const url = await obtenerUrlRutas(unidadId, fecha)
-      if (url) {
-        const coordenadas = await obtenerCoordenadasDesdeStorage(url)
-        coordenadasCache.value.set(cacheKey, coordenadas)
-        return coordenadas
+
+    // Agregar la nueva coordenada al buffer
+    const buffer = coordenadasBuffer.get(unidadId)
+    buffer.push(datosCoordenada)
+
+    console.log(`📦 Buffer[${unidadId}]: ${buffer.length} coordenadas.`)
+
+    // Si el buffer alcanza el tamaño límite, enviarlo inmediatamente
+    if (buffer.length >= BATCH_SIZE) {
+      console.log(`✅ Límite de batch alcanzado para unidad ${unidadId}. Enviando...`)
+      await enviarBatch(unidadId)
+    } else {
+      // Si no, programar un envío futuro si no hay uno ya programado
+      if (!batchTimers.has(unidadId)) {
+        const timerId = setTimeout(() => {
+          console.log(`⏰ Tiempo de batch cumplido para unidad ${unidadId}. Enviando...`)
+          enviarBatch(unidadId)
+        }, BATCH_INTERVAL_MS)
+        batchTimers.set(unidadId, timerId)
       }
-    } catch (err) {
-      console.warn('⚠️ No se pudieron cargar coordenadas previas:', err)
     }
+  }
+
+  /**
+   * Función interna que envía las coordenadas acumuladas a Storage.
+   * @param {string|number} unidadId - El ID de la unidad cuyo batch se va a enviar.
+   */
+// En la función enviarBatch, reemplaza la llamada a guardarBatchEnStorage con esta versión mejorada:
+
+const enviarBatch = async (unidadId) => {
+  // Limpiar el temporizador si existe
+  if (batchTimers.has(unidadId)) {
+    clearTimeout(batchTimers.get(unidadId))
+    batchTimers.delete(unidadId)
+  }
+
+  const coordenadas = coordenadasBuffer.get(unidadId)
+  if (!coordenadas || coordenadas.length === 0) {
+    return // Nada que enviar
+  }
+
+  // Limpiar el buffer inmediatamente para que se puedan acumular nuevos puntos
+  coordenadasBuffer.set(unidadId, [])
+
+  try {
+    const idRuta = obtenerIdRutaDiaria()
     
-    // Si no existe, retornar array vacío
-    return []
+    // Preparar los datos para el archivo JSON
+    const datosParaStorage = {
+      unidadId,
+      fecha: idRuta,
+      coordenadas: coordenadas, // Enviamos todo el array
+      timestampGuardado: new Date().toISOString()
+    }
+
+    // 🆕 Llamar a la función de Storage mejorada con el batch completo
+    const url = await guardarBatchEnStorage(unidadId, idRuta, datosParaStorage)
+    console.log(`🚀 Batch de ${coordenadas.length} coordenadas guardado para unidad ${unidadId}.`)
+
+    // Actualizar el documento en Firestore con la nueva URL y el contador
+    const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', idRuta)
+    const rutaSnapshot = await getDoc(rutaRef)
+    
+    if (rutaSnapshot.exists()) {
+      // Actualizar ruta existente
+      await updateDoc(rutaRef, {
+        rutas_url: url,
+        total_coordenadas: (rutaSnapshot.data().total_coordenadas || 0) + coordenadas.length,
+        fecha_hora_fin: serverTimestamp()
+      })
+    } else {
+      // Crear nueva ruta si no existe
+      await setDoc(rutaRef, {
+        id: idRuta,
+        fecha_hora_inicio: serverTimestamp(),
+        fecha_hora_fin: serverTimestamp(),
+        duracion_total_minutos: 0,
+        paradas: [],
+        distancia_recorrida_km: '0',
+        tiempo_motor_encendido_minutos: 0,
+        tiempo_motor_apagado_minutos: 0,
+        conductor_id: coordenadas[0].conductor_id || '',
+        conductor_nombre: coordenadas[0].conductor_nombre || '',
+        velocidad_maxima: '0',
+        velocidad_promedio: '0',
+        odometro_inicio: coordenadas[0].odometro_inicio || '0',
+        odometro_fin: coordenadas[0].odometro_fin || '0',
+        rutas_url: url,
+        total_coordenadas: coordenadas.length
+      })
+    }
+
+    // Actualizar caché
+    const cacheKey = `${unidadId}-${idRuta}`
+    const coordenadasExistentes = coordenadasCache.value.get(cacheKey) || []
+    coordenadasCache.value.set(cacheKey, [...coordenadasExistentes, ...coordenadas])
+
+  } catch (error) {
+    console.error(`❌ Error al enviar batch para unidad ${unidadId}:`, error)
+    // 🆕 El sistema de reintentos ahora maneja esto automáticamente
+    
+    // Opcional: podrías intentar reponer las coordenadas en el buffer para reintentar más tarde
+    const bufferActual = coordenadasBuffer.get(unidadId) || [];
+    coordenadasBuffer.set(unidadId, [...coordenadas, ...bufferActual]);
+  }
+}
+
+  /**
+   * Fuerza el envío de todos los buffers pendientes.
+   * Útil al detener la simulación para no perder datos.
+   */
+  const forzarEnvioDeTodosLosBatches = async () => {
+    console.log('🔄 Forzando envío de todos los buffers pendientes...')
+    const unidadesEnBuffer = Array.from(coordenadasBuffer.keys())
+    await Promise.all(unidadesEnBuffer.map(unidadId => enviarBatch(unidadId)))
+    console.log('✅ Todos los buffers forzados a enviarse.')
   }
 
   /**
@@ -112,19 +228,12 @@ export function useRutaDiaria() {
           total_coordenadas: 0 // 🆕 Contador de coordenadas
         }
         
-        // 🆕 Si hay coordenada inicial, guardarla en Storage
+        // 🆕 Si hay coordenada inicial, agregarla al buffer en lugar de guardarla directamente
         if (datosActualizacion.nuevaCoordenada) {
-          const resultado = await agregarCoordenada(
-            unidadId, 
-            idRuta, 
-            datosActualizacion.nuevaCoordenada,
-            []
-          )
-          nuevaRuta.rutas_url = resultado.url
-          nuevaRuta.total_coordenadas = 1
-          
-          // Actualizar caché
-          coordenadasCache.value.set(`${unidadId}-${idRuta}`, resultado.coordenadas)
+          await agregarCoordenadaAlBuffer(unidadId, {
+            ...datosActualizacion,
+            coordenada: datosActualizacion.nuevaCoordenada
+          })
         }
         
         await setDoc(rutaRef, nuevaRuta)
@@ -155,26 +264,12 @@ export function useRutaDiaria() {
           }
         }
 
-        // 🆕 GUARDAR COORDENADA EN STORAGE (en lugar de array en Firestore)
+        // 🆕 AGREGAR COORDENADA AL BUFFER (en lugar de guardarla directamente)
         if (datosActualizacion.nuevaCoordenada) {
-          // Obtener coordenadas existentes del caché
-          const coordenadasExistentes = await obtenerCoordenadasCache(unidadId, idRuta)
-          
-          // Agregar nueva coordenada
-          const resultado = await agregarCoordenada(
-            unidadId,
-            idRuta,
-            datosActualizacion.nuevaCoordenada,
-            coordenadasExistentes
-          )
-          
-          actualizacion.rutas_url = resultado.url
-          actualizacion.total_coordenadas = resultado.totalCoordenadas
-          
-          // Actualizar caché
-          coordenadasCache.value.set(`${unidadId}-${idRuta}`, resultado.coordenadas)
-          
-          //console.log(`📍 Coordenada agregada. Total: ${resultado.totalCoordenadas}`)
+          await agregarCoordenadaAlBuffer(unidadId, {
+            ...datosActualizacion,
+            coordenada: datosActualizacion.nuevaCoordenada
+          })
         }
 
         // Actualizar otros campos si se proporcionan
@@ -328,6 +423,8 @@ export function useRutaDiaria() {
     obtenerRutaDiariaConCoordenadas, // 🆕
     obtenerHistorialRutas,
     agregarParada,
-    limpiarCache // 🆕
+    limpiarCache, // 🆕
+    agregarCoordenadaAlBuffer, // 🆕
+    forzarEnvioDeTodosLosBatches // 🆕
   }
 }
