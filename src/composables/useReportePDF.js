@@ -612,9 +612,264 @@ export function useReportePDF() {
     }
   }
 
+  /**
+   * 🆕 Genera un PDF con reporte de horas de trabajo
+   * @param {Object} config - Configuración del reporte
+   * @param {Object} datosReales - Datos calculados de horas
+   */
+  const generarPDFHorasTrabajo = async (config, datosReales) => {
+    const doc = new jsPDF('landscape')
+    let yPosition = 20
+
+    // Título del documento
+    doc.setFontSize(16)
+    doc.setFont(undefined, 'bold')
+    doc.text('Informe de Horas de Trabajo', 14, yPosition)
+    yPosition += 10
+
+    // Información del reporte
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'normal')
+    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPosition)
+    yPosition += 6
+    doc.text(
+      `Generado: ${new Date().toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+      14,
+      yPosition,
+    )
+    yPosition += 6
+    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPosition)
+    yPosition += 6
+    doc.text(`Horario comercial: ${config.horarioInicio} - ${config.horarioFin}`, 14, yPosition)
+    yPosition += 10
+
+    // ========================================
+    // 📊 RESUMEN GENERAL
+    // ========================================
+    if (config.mostrarResumen && datosReales.resumenGeneral) {
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'bold')
+      doc.text('Resumen del Informe', 14, yPosition)
+      yPosition += 8
+
+      const resumenData = datosReales.resumenGeneral.map((item) => [
+        item.nombre,
+        item.duracionFuera,
+        item.duracionTotal,
+        item.duracionDentro,
+      ])
+
+      // Agregar fila de totales
+      if (datosReales.totales) {
+        resumenData.push([
+          'TOTALES',
+          datosReales.totales.duracionFuera,
+          datosReales.totales.duracionTotal,
+          datosReales.totales.duracionDentro,
+        ])
+      }
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [
+          [
+            'Nombre de objeto',
+            'Duración fuera horario comercial',
+            'Duración trabajo total',
+            'Duración dentro horario comercial',
+          ],
+        ],
+        body: resumenData,
+        theme: 'grid',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        styles: { fontSize: 8 },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 60 },
+          2: { cellWidth: 60 },
+          3: { cellWidth: 60 },
+        },
+      })
+
+      yPosition = doc.lastAutoTable.finalY + 10
+    }
+
+    // ========================================
+    // 📅 POR CADA DÍA
+    // ========================================
+    const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
+      useMapboxStaticImage()
+
+    // Agrupar registros por fecha
+    const registrosPorFecha = {}
+    datosReales.registros.forEach((registro) => {
+      if (!registrosPorFecha[registro.fecha]) {
+        registrosPorFecha[registro.fecha] = []
+      }
+      registrosPorFecha[registro.fecha].push(registro)
+    })
+
+    for (const [fecha, registros] of Object.entries(registrosPorFecha)) {
+      // Nueva página para cada día
+      doc.addPage()
+      yPosition = 20
+
+      // 🔥 Título del día
+      doc.setFontSize(14)
+      doc.setFont(undefined, 'bold')
+      const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+      doc.text(fechaFormateada, 14, yPosition)
+      yPosition += 10
+
+      // 🗺️ MAPA DEL DÍA (si mostrarMapaZona está activo)
+      if (config.mostrarMapaZona && registros.length > 0) {
+        try {
+          const trayectosParaMapa = prepararDatosTrayectos(registros)
+
+          if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+            const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+              width: 1200,
+              height: 800,
+              padding: 50,
+              mostrarPins: true,
+            })
+
+            const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+
+            const pageWidth = doc.internal.pageSize.getWidth()
+            const margin = 14
+            const availableWidth = pageWidth - margin * 2
+            const aspectRatio = 1.5
+            let mapWidth = availableWidth
+            let mapHeight = mapWidth / aspectRatio
+
+            const mapX = (pageWidth - mapWidth) / 2
+
+            doc.addImage(imagenBase64, 'PNG', mapX, yPosition, mapWidth, mapHeight)
+            yPosition += mapHeight + 10
+          }
+        } catch (error) {
+          console.error('Error generando mapa del día:', error)
+        }
+      }
+
+      // 📊 RESUMEN DEL DÍA
+      if (yPosition > 200) {
+        doc.addPage()
+        yPosition = 20
+      }
+
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'bold')
+      doc.text('Resumen del día', 14, yPosition)
+      yPosition += 8
+
+      const resumenDiaData = registros.map((r) => [
+        r.unidadNombre,
+        r.duracionFueraHorario,
+        r.duracionTotal,
+        r.duracionDentroHorario,
+      ])
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [
+          [
+            'Nombre de objeto',
+            'Duración fuera horario comercial',
+            'Duración trabajo total',
+            'Duración dentro horario comercial',
+          ],
+        ],
+        body: resumenDiaData,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        styles: { fontSize: 8 },
+      })
+
+      yPosition = doc.lastAutoTable.finalY + 10
+
+      // 📋 DETALLES DE LOS TRAYECTOS
+      if (yPosition > 230) {
+        doc.addPage()
+        yPosition = 20
+      }
+
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'bold')
+      doc.text('Detalles de los trayectos', 14, yPosition)
+      yPosition += 8
+
+      // Combinar todos los detalles de viajes de todas las unidades del día
+      const todosLosViajes = []
+      registros.forEach((registro) => {
+        if (registro.detallesViajes && registro.detallesViajes.length > 0) {
+          registro.detallesViajes.forEach((viaje) => {
+            todosLosViajes.push([
+              viaje.horaInicio,
+              viaje.ubicacionInicio,
+              viaje.horaFin,
+              viaje.ubicacionFin,
+              viaje.duracionFuera,
+              viaje.duracionDentro,
+            ])
+          })
+        }
+      })
+
+      if (todosLosViajes.length > 0) {
+        autoTable(doc, {
+          startY: yPosition,
+          head: [
+            [
+              'Hora inicio',
+              'Ubicación inicio',
+              'Hora fin',
+              'Ubicación fin',
+              'Duración fuera horario',
+              'Duración dentro horario',
+            ],
+          ],
+          body: todosLosViajes,
+          theme: 'grid',
+          headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
+          styles: { fontSize: 7, cellPadding: 2 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            1: { cellWidth: 60 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 60 },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 30 },
+          },
+        })
+      }
+    }
+
+    // Generar el blob y nombre del archivo
+    const pdfBlob = doc.output('blob')
+    const fechaGeneracion = new Date().toISOString().split('T')[0]
+    const filename = `Informe_Horas_Trabajo_${fechaGeneracion}.pdf`
+
+    return {
+      blob: pdfBlob,
+      filename: filename,
+    }
+  }
   return {
     generarPDFEventos,
     generarPDFSimple,
-    generarPDFTrayectos, // 🆕
+    generarPDFTrayectos,
+    generarPDFHorasTrabajo, // 🆕
   }
 }

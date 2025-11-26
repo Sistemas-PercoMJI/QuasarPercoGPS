@@ -415,7 +415,7 @@ import { getAuth } from 'firebase/auth'
 // 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
-const { generarPDFEventos, generarPDFTrayectos } = useReportePDF()
+const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo } = useReportePDF()
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
@@ -425,7 +425,7 @@ import { useEventos } from 'src/composables/useEventos'
 // 🆕 NUEVOS IMPORTS - Para los 3 tipos de informes
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
-import { useReportesHoras } from 'src/composables/useReportesHoras'
+import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
 
 const $q = useQuasar()
 const auth = getAuth()
@@ -956,8 +956,32 @@ const obtenerDatosReporte = async () => {
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
   } else if (tipoInforme === 'horas_trabajo') {
     console.log('⏰ Calculando horas de trabajo...')
-    const { calcularHorasTrabajo } = useReportesHoras()
-    datosInforme = await calcularHorasTrabajo(unidadesIds, fechaInicio, fechaFin, {
+    const { calcularHorasTrabajo } = useReportesHorasTrabajo()
+
+    // 🔥 DETERMINAR QUÉ IDs PASAR
+    let idsParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      console.log('🚗 Reportar por conductores, convirtiendo a IDs de unidades...')
+
+      const todosConductores = await obtenerConductores()
+      for (const nombreConductor of unidadesIds) {
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+        if (conductor && conductor.UnidadAsignada) {
+          idsParaBuscar.push(conductor.UnidadAsignada)
+        }
+      }
+
+      if (idsParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+    } else if (reportarPor.value === 'Unidades') {
+      idsParaBuscar = unidadesIds.map((nombre) => window.unidadesMap?.[nombre] || nombre)
+    } else {
+      idsParaBuscar = unidadesIds
+    }
+
+    datosInforme = await calcularHorasTrabajo(idsParaBuscar, fechaInicio, fechaFin, {
       diasLaborables: diasLaborablesSeleccionados.value,
       horarioInicio: horarioInicio.value,
       horarioFin: horarioFin.value,
@@ -1081,6 +1105,9 @@ const obtenerDatosReporte = async () => {
     '🔍 Labels en configuración:',
     configuracion.map((c) => c.label),
   )
+  if (tipoInforme === 'horas_trabajo') {
+    return datosFiltrados // Array de registros por día
+  }
 
   return {
     eventosAgrupados: datosAgrupados,
@@ -1088,6 +1115,7 @@ const obtenerDatosReporte = async () => {
     resumen: resumenMejorado || resumenPorGrupo,
     stats: stats,
     totalEventos: datosFiltrados.length,
+    totalTrayectos: datosFiltrados.length,
     elementosSinDatos: elementosSinDatos,
     configuracionColumnas: configuracion,
     tipoInforme: tipoInforme,
@@ -1114,12 +1142,12 @@ const generarReporte = async () => {
       mostrarPlacaMapa: mostrarPlacaMapa.value,
     }
 
-    // 🔥 AGREGAR ESTO: Log para verificar
     console.log('🔍 datosReales completo:', datosReales)
     console.log('🔍 configuracionColumnas:', datosReales.configuracionColumnas)
 
     let pdfResult
 
+    // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
       console.log('🗺️ Generando PDF de trayectos...')
 
@@ -1133,15 +1161,87 @@ const generarReporte = async () => {
       }
 
       pdfResult = await generarPDFTrayectos(config, datosReales)
-    } else {
+    } else if (tipoInformeSeleccionado.value === 'eventos') {
       console.log('📊 Generando PDF de eventos...')
       pdfResult = generarPDFEventos(config, datosReales)
+    } else if (tipoInformeSeleccionado.value === 'horas_trabajo') {
+      console.log('⏰ Generando PDF de horas de trabajo...')
+
+      // 🔥 EXTRAER EL ARRAY DE DATOS:
+      const horasArray = Array.isArray(datosReales) ? datosReales : datosReales.datosColumnas || []
+
+      console.log('📊 Datos de horas extraídos:', {
+        longitud: horasArray.length,
+        primerItem: horasArray[0],
+      })
+
+      // Preparar resumen general
+      const resumenGeneral = {}
+      horasArray.forEach((registro) => {
+        // ← Cambiar de datosReales.registros a horasArray
+        const nombre = registro.unidadNombre
+        if (!resumenGeneral[nombre]) {
+          resumenGeneral[nombre] = {
+            nombre: nombre,
+            duracionTotal: 0,
+            duracionDentro: 0,
+            duracionFuera: 0,
+          }
+        }
+        resumenGeneral[nombre].duracionTotal += parseFloat(registro.duracionTotal || 0)
+        resumenGeneral[nombre].duracionDentro += parseFloat(registro.duracionDentroHorario || 0)
+        resumenGeneral[nombre].duracionFuera += parseFloat(registro.duracionFueraHorario || 0)
+      })
+
+      // Calcular totales
+      const totales = {
+        duracionTotal: 0,
+        duracionDentro: 0,
+        duracionFuera: 0,
+      }
+
+      Object.values(resumenGeneral).forEach((item) => {
+        totales.duracionTotal += item.duracionTotal
+        totales.duracionDentro += item.duracionDentro
+        totales.duracionFuera += item.duracionFuera
+      })
+
+      // Formatear para tabla
+      const resumenGeneralArray = Object.values(resumenGeneral).map((item) => ({
+        nombre: item.nombre,
+        duracionFuera: `${item.duracionFuera.toFixed(2)} horas`,
+        duracionTotal: `${item.duracionTotal.toFixed(2)} horas`,
+        duracionDentro: `${item.duracionDentro.toFixed(2)} horas`,
+      }))
+
+      const totalesFormateados = {
+        duracionFuera: `${totales.duracionFuera.toFixed(2)} horas`,
+        duracionTotal: `${totales.duracionTotal.toFixed(2)} horas`,
+        duracionDentro: `${totales.duracionDentro.toFixed(2)} horas`,
+      }
+
+      const datosParaPDF = {
+        registros: horasArray, // ← Cambiar aquí también
+        resumenGeneral: resumenGeneralArray,
+        totales: totalesFormateados,
+      }
+
+      const configHoras = {
+        ...config,
+        horarioInicio: horarioInicio.value,
+        horarioFin: horarioFin.value,
+        mostrarMapaZona: mostrarMapaZona.value,
+      }
+
+      pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
     }
 
-    if (!pdfResult.blob) {
+    // ✅ VALIDAR QUE SE GENERÓ EL PDF
+    if (!pdfResult || !pdfResult.blob) {
       throw new Error('No se pudo generar el archivo PDF')
     }
 
+    // ✅ GUARDAR Y DESCARGAR (FUERA DE LOS IFs)
     const metadata = {
       nombre: `Reporte ${reportarPor.value}`,
       tipo: 'pdf',
@@ -1150,7 +1250,8 @@ const generarReporte = async () => {
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
       columnas: columnasSeleccionadas.value,
-      totalEventos: datosReales.totalEventos || datosReales.totalTrayectos || 0,
+      totalEventos:
+        datosReales.totalEventos || datosReales.totalTrayectos || datosReales.length || 0,
     }
 
     const reporteGuardado = await subirReporte(pdfResult.blob, metadata)
