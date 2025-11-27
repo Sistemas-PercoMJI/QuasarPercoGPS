@@ -313,6 +313,38 @@ function detenerSeguimientoGPS() {
   }
 }
 
+async function obtenerDireccionPunto(lat, lng) {
+  try {
+    const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+    
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&language=es&limit=1&access_token=${MAPBOX_TOKEN}`
+    )
+    
+    const data = await response.json()
+    
+    if (data.features && data.features.length > 0) {
+      const address = data.features[0]
+      // Extraer solo el nombre de la calle sin el número y ciudad
+      const placeName = address.place_name || ''
+      const parts = placeName.split(',')
+      
+      // Intentar obtener solo el nombre de la calle
+      if (parts.length > 0) {
+        const streetPart = parts[0].trim()
+        // Remover número si existe (patrón común en direcciones)
+        const streetOnly = streetPart.replace(/^\d+\s*/, '').replace(/\s*\d+$/, '')
+        return streetOnly || 'Calle desconocida'
+      }
+    }
+    
+    return 'Dirección no disponible'
+  } catch (error) {
+    console.error('❌ Error obteniendo dirección del punto:', error)
+    return 'Error al obtener dirección'
+  }
+}
+
 async function inicializarSistemaDeteccion() {
   try {
     console.log('🚀 Inicializando sistema de detección de eventos...')
@@ -592,9 +624,37 @@ const dibujarTodosEnMapa = async () => {
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
-    geozonas.forEach((geozona) => {
+    for (const geozona of geozonas) {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
+
+      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
+      let direccionesPuntos = []
+      
+      if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+        // Obtener direcciones para todos los puntos del polígono
+        const promesasDirecciones = geozona.puntos.map(async (punto, index) => {
+          try {
+            const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+            return {
+              index: index,
+              direccion: direccion,
+              lat: punto.lat,
+              lng: punto.lng
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error obteniendo dirección para punto ${index + 1}:`, error)
+            return {
+              index: index,
+              direccion: 'Dirección no disponible',
+              lat: punto.lat,
+              lng: punto.lng
+            }
+          }
+        })
+        
+        direccionesPuntos = await Promise.all(promesasDirecciones)
+      }
 
       const popupContent = `
         <div class="geozona-popup-container">
@@ -619,17 +679,20 @@ const dibujarTodosEnMapa = async () => {
           <!-- Cuerpo (oculto por defecto con max-height) -->
           <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
             <div class="points-list-container">
-              ${geozona.puntos.map((p, index) => `
+              ${direccionesPuntos.map((punto) => `
                 <div class="point-card">
-                  <div class="point-label">Punto ${index + 1}</div>
+                  <div class="point-label">Punto ${punto.index + 1}</div>
+                  <div class="point-address">
+                    <div class="address-name">${punto.direccion}</div>
+                  </div>
                   <div class="point-coords">
                     <div>
                       <span class="coord-label">Latitud:</span>
-                      <span class="coord-value">${p.lat.toFixed(6)}</span>
+                      <span class="coord-value">${punto.lat.toFixed(6)}</span>
                     </div>
                     <div>
                       <span class="coord-label">Longitud:</span>
-                      <span class="coord-value">${p.lng.toFixed(6)}</span>
+                      <span class="coord-value">${punto.lng.toFixed(6)}</span>
                     </div>
                   </div>
                 </div>
@@ -645,7 +708,6 @@ const dibujarTodosEnMapa = async () => {
           </div>
         </div>
       `
-
       // 🔵 GEOZONA CIRCULAR
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
@@ -828,7 +890,7 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
       }
-    })
+    }
 
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
@@ -1217,11 +1279,26 @@ const manejarToggleTrafico = () => {
   margin-bottom: 6px;
 }
 
+.point-address {
+  margin-bottom: 8px;
+}
+
+.address-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2937;
+  background-color: #F3F4F6;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 3px solid #3B82F6;
+  margin-bottom: 4px;
+}
+
 .point-coords {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .coord-label {
