@@ -8,6 +8,21 @@ import { ref } from 'vue'
 import { useReportesTrayectos } from './useReportesTrayectos'
 import { useRutasStorage } from './useRutasStorage'
 
+// Convierte horas decimales a formato HH:MM:SS
+// @param {number} horas - Horas en formato decimal (ej: 1.5 = 1 hora 30 minutos)
+//* @returns {string} Formato HH:MM:SS
+//*/
+function formatearDuracion(horas) {
+  if (!horas || horas === 0) return '00:00:00'
+
+  const horasEnteras = Math.floor(horas)
+  const minutosDecimales = (horas - horasEnteras) * 60
+  const minutosEnteros = Math.floor(minutosDecimales)
+  const segundos = Math.round((minutosDecimales - minutosEnteros) * 60)
+
+  return `${String(horasEnteras).padStart(2, '0')}:${String(minutosEnteros).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
+}
+
 export function useReportesHorasTrabajo() {
   const loading = ref(false)
   const error = ref(null)
@@ -254,9 +269,9 @@ export function useReportesHorasTrabajo() {
             ubicacionInicio:
               inicio.direccion || `${inicio.lat.toFixed(5)}, ${inicio.lng.toFixed(5)}`,
             ubicacionFin: fin.direccion || `${fin.lat.toFixed(5)}, ${fin.lng.toFixed(5)}`,
-            duracionDentro: duracionDentro.toFixed(2),
-            duracionFuera: duracionFuera.toFixed(2),
-            duracionTotal: duracionViaje.toFixed(2),
+            duracionDentro: formatearDuracion(duracionDentro), // 🔥 CAMBIO
+            duracionFuera: formatearDuracion(duracionFuera), // 🔥 CAMBIO
+            duracionTotal: formatearDuracion(duracionViaje), // 🔥 CAMBIO
           })
         }
 
@@ -284,9 +299,9 @@ export function useReportesHorasTrabajo() {
           ubicacionFin:
             ultimaCoordenada.direccion ||
             `${ultimaCoordenada.lat.toFixed(5)}, ${ultimaCoordenada.lng.toFixed(5)}`,
-          duracionTotal: duracionTotalDia.toFixed(2),
-          duracionDentroHorario: duracionDentroDia.toFixed(2),
-          duracionFueraHorario: duracionFueraDia.toFixed(2),
+          duracionTotal: formatearDuracion(duracionTotalDia), // 🔥 CAMBIO
+          duracionDentroHorario: formatearDuracion(duracionDentroDia), // 🔥 CAMBIO
+          duracionFueraHorario: formatearDuracion(duracionFueraDia),
           totalViajes: viajes.length,
           viajesDentroHorario: viajesDentroDia,
           viajesFueraHorario: viajesFueraDia,

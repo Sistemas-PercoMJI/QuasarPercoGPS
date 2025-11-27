@@ -1126,7 +1126,12 @@ const generarReporte = async () => {
   if (!validarFormulario()) return
 
   generando.value = true
-
+  const formatearDuracionHoras = (totalHoras) => {
+    const horas = Math.floor(totalHoras)
+    const minutos = Math.floor((totalHoras - horas) * 60)
+    const segundos = Math.round(((totalHoras - horas) * 60 - minutos) * 60)
+    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
+  }
   try {
     const datosReales = await obtenerDatosReporte()
 
@@ -1209,15 +1214,15 @@ const generarReporte = async () => {
       // Formatear para tabla
       const resumenGeneralArray = Object.values(resumenGeneral).map((item) => ({
         nombre: item.nombre,
-        duracionFuera: `${item.duracionFuera.toFixed(2)} horas`,
-        duracionTotal: `${item.duracionTotal.toFixed(2)} horas`,
-        duracionDentro: `${item.duracionDentro.toFixed(2)} horas`,
+        duracionFuera: formatearDuracionHoras(item.duracionFuera), // 🔥 CAMBIO
+        duracionTotal: formatearDuracionHoras(item.duracionTotal), // 🔥 CAMBIO
+        duracionDentro: formatearDuracionHoras(item.duracionDentro), // 🔥 CAMBIO
       }))
 
       const totalesFormateados = {
-        duracionFuera: `${totales.duracionFuera.toFixed(2)} horas`,
-        duracionTotal: `${totales.duracionTotal.toFixed(2)} horas`,
-        duracionDentro: `${totales.duracionDentro.toFixed(2)} horas`,
+        duracionFuera: formatearDuracionHoras(totales.duracionFuera), // 🔥 CAMBIO
+        duracionTotal: formatearDuracionHoras(totales.duracionTotal), // 🔥 CAMBIO
+        duracionDentro: formatearDuracionHoras(totales.duracionDentro), // 🔥 CAMBIO
       }
 
       const datosParaPDF = {
