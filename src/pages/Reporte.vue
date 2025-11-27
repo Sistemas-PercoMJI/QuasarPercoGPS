@@ -266,6 +266,14 @@
             <!-- 🔥 Opción de mapa para Horas de Trabajo -->
             <div v-if="tieneOpcion('mostrarMapaZona')" class="q-mb-md">
               <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
+
+              <q-checkbox
+                v-if="tipoInformeSeleccionado === 'horas_trabajo'"
+                v-model="remarcarHorasExtra"
+                label="Remarcar horas fuera de horario laboral"
+                dense
+                class="q-mb-sm"
+              />
             </div>
 
             <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
@@ -431,6 +439,7 @@ const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
+const remarcarHorasExtra = ref(true)
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -1236,6 +1245,7 @@ const generarReporte = async () => {
         horarioInicio: horarioInicio.value,
         horarioFin: horarioFin.value,
         mostrarMapaZona: mostrarMapaZona.value,
+        remarcarHorasExtra: remarcarHorasExtra.value,
       }
 
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)

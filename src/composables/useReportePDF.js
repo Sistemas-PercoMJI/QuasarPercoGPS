@@ -658,20 +658,53 @@ export function useReportePDF() {
       doc.text('Resumen del Informe', 14, yPosition)
       yPosition += 8
 
-      const resumenData = datosReales.resumenGeneral.map((item) => [
-        item.nombre,
-        item.duracionFuera,
-        item.duracionTotal,
-        item.duracionDentro,
-      ])
+      const resumenData = datosReales.resumenGeneral.map((item) => {
+        // Verificar si tiene horas extra (HH:MM:SS)
+        const partesFuera = item.duracionFuera.split(':')
+        const tieneHorasExtra =
+          parseInt(partesFuera[0]) > 0 ||
+          parseInt(partesFuera[1]) > 0 ||
+          parseInt(partesFuera[2]) > 0
 
-      // Agregar fila de totales
+        return [
+          { content: item.nombre, styles: {} },
+          {
+            content: item.duracionFuera,
+            styles:
+              config.remarcarHorasExtra && tieneHorasExtra
+                ? {
+                    fillColor: [255, 235, 238], // #ffebee (rosa claro)
+                    textColor: [211, 47, 47], // #d32f2f (rojo)
+                    fontStyle: 'bold',
+                  }
+                : {},
+          },
+          { content: item.duracionTotal, styles: {} },
+          { content: item.duracionDentro, styles: {} },
+        ]
+      })
       if (datosReales.totales) {
+        const partesTotales = datosReales.totales.duracionFuera.split(':')
+        const tieneTotalesExtra =
+          parseInt(partesTotales[0]) > 0 ||
+          parseInt(partesTotales[1]) > 0 ||
+          parseInt(partesTotales[2]) > 0
+
         resumenData.push([
-          'TOTALES',
-          datosReales.totales.duracionFuera,
-          datosReales.totales.duracionTotal,
-          datosReales.totales.duracionDentro,
+          { content: 'TOTALES', styles: { fontStyle: 'bold' } },
+          {
+            content: datosReales.totales.duracionFuera,
+            styles:
+              config.remarcarHorasExtra && tieneTotalesExtra
+                ? {
+                    fillColor: [255, 235, 238],
+                    textColor: [211, 47, 47],
+                    fontStyle: 'bold',
+                  }
+                : { fontStyle: 'bold' },
+          },
+          { content: datosReales.totales.duracionTotal, styles: { fontStyle: 'bold' } },
+          { content: datosReales.totales.duracionDentro, styles: { fontStyle: 'bold' } },
         ])
       }
 
@@ -764,41 +797,6 @@ export function useReportePDF() {
       }
 
       // 📊 RESUMEN DEL DÍA
-      if (yPosition > 200) {
-        doc.addPage()
-        yPosition = 20
-      }
-
-      doc.setFontSize(12)
-      doc.setFont(undefined, 'bold')
-      doc.text('Resumen del día', 14, yPosition)
-      yPosition += 8
-
-      const resumenDiaData = registros.map((r) => [
-        r.unidadNombre,
-        r.duracionFueraHorario,
-        r.duracionTotal,
-        r.duracionDentroHorario,
-      ])
-
-      autoTable(doc, {
-        startY: yPosition,
-        head: [
-          [
-            'Nombre de objeto',
-            'Duración fuera horario comercial',
-            'Duración trabajo total',
-            'Duración dentro horario comercial',
-          ],
-        ],
-        body: resumenDiaData,
-        theme: 'striped',
-        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
-        styles: { fontSize: 8 },
-      })
-
-      yPosition = doc.lastAutoTable.finalY + 10
-
       // 📋 DETALLES DE LOS TRAYECTOS
       if (yPosition > 230) {
         doc.addPage()
@@ -810,18 +808,34 @@ export function useReportePDF() {
       doc.text('Detalles de los trayectos', 14, yPosition)
       yPosition += 8
 
-      // Combinar todos los detalles de viajes de todas las unidades del día
+      // 🔥 PREPARAR DATOS CON ESTILOS
       const todosLosViajes = []
       registros.forEach((registro) => {
         if (registro.detallesViajes && registro.detallesViajes.length > 0) {
           registro.detallesViajes.forEach((viaje) => {
+            const partesFuera = viaje.duracionFuera.split(':')
+            const tieneHorasFuera =
+              parseInt(partesFuera[0]) > 0 ||
+              parseInt(partesFuera[1]) > 0 ||
+              parseInt(partesFuera[2]) > 0
+
             todosLosViajes.push([
-              viaje.horaInicio,
-              viaje.ubicacionInicio,
-              viaje.horaFin,
-              viaje.ubicacionFin,
-              viaje.duracionFuera,
-              viaje.duracionDentro,
+              { content: viaje.horaInicio, styles: {} },
+              { content: viaje.ubicacionInicio, styles: {} },
+              { content: viaje.horaFin, styles: {} },
+              { content: viaje.ubicacionFin, styles: {} },
+              {
+                content: viaje.duracionFuera,
+                styles:
+                  config.remarcarHorasExtra && tieneHorasFuera
+                    ? {
+                        fillColor: [255, 235, 238],
+                        textColor: [211, 47, 47],
+                        fontStyle: 'bold',
+                      }
+                    : {},
+              },
+              { content: viaje.duracionDentro, styles: {} },
             ])
           })
         }
