@@ -537,31 +537,61 @@ const dibujarTodosEnMapa = async () => {
         }
 
         const popupContent = `
-          <div style="min-width: 180px;">
-            <b style="font-size: 14px;">📍 ${poi.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              ${poi.direccion}
-            </p>
-            <button
-              onclick="window.verDetallesPOI('${poi.id}')"
-              style="
-                width: 100%;
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 12px;
-              "
-            >
-              📍 Ver detalles
-            </button>
+          <div class="popup-container" style="min-width: 180px; position: relative;">
+            <div class="popup-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <b style="font-size: 14px;">📍 ${poi.nombre}</b>
+              <button 
+                id="expand-collapse-btn-${poi.id}" 
+                class="expand-collapse-btn" 
+                onclick="togglePopupContent('${poi.id}')"
+                style="
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  padding: 0;
+                  width: 20px;
+                  height: 20px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border-radius: 50%;
+                  transition: all 0.2s ease;
+                "
+              >
+                <svg id="expand-icon-${poi.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 5V19M5 12H19" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <svg id="collapse-icon-${poi.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                  <path d="M5 12H19" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div id="popup-content-${poi.id}" class="popup-content">
+              ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-bottom: 8px; display: inline-block;">🔔 ${cantidadEventos}</span>` : ''}
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                ${poi.direccion}
+              </p>
+              <button
+                onclick="window.verDetallesPOI('${poi.id}')"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  padding: 8px 12px;
+                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 12px;
+                "
+              >
+                📍 Ver detalles
+              </button>
+            </div>
           </div>
-        `
+                `
 
         // ✅ USAR NUEVO ICONO ELEGANTE
         const markerEl = crearIconoPOI(tieneEventos)
@@ -589,9 +619,8 @@ const dibujarTodosEnMapa = async () => {
       }
     })
 
-    // ============================================
-    // 🗺️ DIBUJAR GEOZONAS CON ICONOS ELEGANTES
-    // ============================================
+    //  DIBUJAR GEOZONAS CON ICONOS ELEGANTES
+
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
@@ -600,29 +629,52 @@ const dibujarTodosEnMapa = async () => {
       const tieneEventos = cantidadEventos > 0
 
       const popupContent = `
-        <div style="min-width: 180px;">
-          <b style="font-size: 14px;">${geozona.tipoGeozona === 'circular' ? '🔵' : '🔷'} ${geozona.nombre}</b>
-          ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-            ${geozona.tipoGeozona === 'circular' ? `Radio: ${geozona.radio}m` : `${geozona.puntos.length} puntos`}
-          </p>
-          <button
-            onclick="window.verDetallesGeozona('${geozona.id}')"
-            style="
-              width: 100%;
-              margin-top: 8px;
-              padding: 8px 12px;
-              background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-              color: white;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-              font-weight: 600;
-              font-size: 12px;
-            "
-          >
-            📍 Ver detalles
-          </button>
+        <div class="geozona-popup-container">
+          <!-- Cabecera (siempre visible) -->
+          <div class="geozona-popup-header">
+            <div class="header-info">
+              <div class="header-title">🔷 ${geozona.nombre}</div>
+              <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
+            </div>
+            <!-- El botón de expandir ahora está aquí -->
+            <button 
+              id="toggle-btn-geo-${geozona.id}" 
+              class="toggle-geozona-btn" 
+              onclick="toggleGeozonaPopup('${geozona.id}')"
+            >
+              <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Cuerpo (oculto por defecto con max-height) -->
+          <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+            <div class="points-list-container">
+              ${geozona.puntos.map((p, index) => `
+                <div class="point-card">
+                  <div class="point-label">Punto ${index + 1}</div>
+                  <div class="point-coords">
+                    <div>
+                      <span class="coord-label">Latitud:</span>
+                      <span class="coord-value">${p.lat.toFixed(6)}</span>
+                    </div>
+                    <div>
+                      <span class="coord-label">Longitud:</span>
+                      <span class="coord-value">${p.lng.toFixed(6)}</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <button
+              onclick="window.verDetallesGeozona('${geozona.id}')"
+              class="details-btn"
+            >
+              Ver más detalles
+            </button>
+          </div>
         </div>
       `
 
@@ -716,12 +768,12 @@ const dibujarTodosEnMapa = async () => {
 
       // 🔷 GEOZONA POLIGONAL
       else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
-        const fillColor = geozona.color || '#4ECDC4'
-        const borderColor = oscurecerColor(fillColor, 30)
+      const fillColor = geozona.color || '#4ECDC4'
+      const borderColor = oscurecerColor(fillColor, 30)
 
-        const polygonId = `geozona-polygon-${geozona.id}`
-        const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
-        coordinates.push(coordinates[0])
+      const polygonId = `geozona-polygon-${geozona.id}`
+      const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
+      coordinates.push(coordinates[0])
 
         if (!mapaAPI.map.getSource(polygonId)) {
           mapaAPI.map.addSource(polygonId, {
@@ -918,6 +970,22 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
+  window.toggleGeozonaPopup = (geozonaId) => {
+    const body = document.getElementById(`geozona-popup-body-${geozonaId}`);
+    const button = document.getElementById(`toggle-btn-geo-${geozonaId}`);
+
+    // Alternamos una clase 'expanded' en el botón
+    button.classList.toggle('expanded');
+
+    if (button.classList.contains('expanded')) {
+      // Al expandir, calculamos la altura necesaria para una transición suave
+      body.style.maxHeight = body.scrollHeight + "px";
+    } else {
+      // Al contraer, lo ponemos a 0
+      body.style.maxHeight = "0";
+    }
+  };
+
   window.addEventListener('redibujarMapa', async () => {
     console.log('🔄 Redibujando mapa...')
 
@@ -932,6 +1000,8 @@ onMounted(async () => {
     iniciarEvaluacionContinuaEventos()
 
     await nextTick()
+
+    
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
@@ -942,6 +1012,7 @@ onMounted(async () => {
   console.log('🚀 Iniciando tracking GPS...')
   iniciarTracking()
 })
+
 
 const handleMostrarBoton = (e) => {
   mostrarBotonConfirmarGeozona.value = e.detail.mostrar
@@ -1029,7 +1100,237 @@ const manejarToggleTrafico = () => {
 }
 </script>
 
+<style>
+/* ============================================
+  ⚙️ ESTILOS GLOBALES (para el Popup de Mapbox)
+  ============================================
+  Estos estilos no son 'scoped' porque el popup de Mapbox
+  se inyecta en el body, fuera del componente Vue.
+============================================ */
+
+/* Contenedor principal del popup de Mapbox */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  background-color: #ffffff !important;
+}
+
+/* La pequeña flecha del popup */
+.mapboxgl-popup-tip {
+  border-top-color: #ffffff !important;
+}
+
+/* MODIFICADO: Botón de cerrar (X) más pequeño y mejor posicionado */
+.mapboxgl-popup-close-button {
+  width: 30px !important; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  height: 30px !important; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  padding: 0 !important;
+  background-color: #F3F4F6 !important;
+  color: #6B7280 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important; /* <-- ¡CAMBIO CLAVE! Fuente más pequeña */
+  font-weight: bold !important;
+  border: 1px solid #E5E7EB !important;
+  transition: all 0.2s ease !important;
+  top: 12px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  right: 12px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+}
+
+.mapboxgl-popup-close-button:hover {
+  background-color: #E5E7EB !important;
+  color: #374151 !important;
+}
+
+/* Contenedor personalizado para el popup de Geozona */
+.geozona-popup-container {
+  min-width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+
+.geozona-popup-header {
+  display: flex;
+  flex-direction: column; /* <-- ¡CAMBIO CLAVE! */
+  padding: 16px;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px; /* Espacio entre el título y el botón de expandir */
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1F2937;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.toggle-geozona-btn {
+  background: #ffffff;
+  border: 1px solid #D1D5DB;
+  border-radius: 50%;
+  cursor: pointer;
+  width: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  height: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  align-self: flex-end; /* <-- ¡CAMBIO CLAVE! Alinea a la derecha */
+}
+
+.toggle-geozona-btn:hover {
+  background-color: #F3F4F6;
+  border-color: #9CA3AF;
+  transform: scale(1.05);
+}
+
+
+.chevron-icon {
+  transition: transform 0.3s ease-in-out;
+}
+
+.toggle-geozona-btn.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* Cuerpo del popup (la parte que se expande y contrae) */
+.geozona-popup-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out;
+  padding: 0 16px;
+}
+
+/* Estilos del cuerpo cuando está expandido */
+.toggle-geozona-btn.expanded ~ .geozona-popup-body {
+  padding: 16px;
+}
+
+/* Contenedor de la lista de puntos con scroll */
+.points-list-container {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+/* Tarjeta para cada punto */
+.point-card {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.point-card:last-child {
+  margin-bottom: 0;
+}
+
+.point-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.point-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.coord-label {
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.coord-value {
+  color: #1F2937;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
+}
+
+.details-btn {
+  width: 100%;
+  padding: 18px 12px; /* <-- ¡CAMBIO CLAVE! Más padding */
+  margin-bottom: 16px;  /* <-- ¡CAMBIO CLAVE! Espacio abajo del botón */
+  background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+}
+
+.details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Scrollbar personalizado para la lista de puntos */
+.points-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.points-list-container::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 3px;
+}
+
+.points-list-container::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+.points-list-container::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Animación de entrada del popup */
+.popup-animated .mapboxgl-popup-content {
+  animation: popupFade 0.2s ease-out;
+}
+
+@keyframes popupFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+
 <style scoped>
+/* ============================================
+  🎨 ESTILOS DEL COMPONENTE (con 'scoped')
+  ============================================
+  Estos estilos solo aplican a los elementos dentro de
+  tu componente <template>.
+============================================ */
+
 .full-height {
   height: 100%;
   overflow: hidden;
@@ -1068,7 +1369,6 @@ const manejarToggleTrafico = () => {
   animation: slideInRight 0.3s ease-out;
 }
 
-/* 🆕 Indicador del simulador */
 .simulador-indicator {
   position: fixed;
   top: 220px;
@@ -1143,8 +1443,7 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse-badge {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
     box-shadow: 0 2px 8px rgba(255, 87, 34, 0.5);
   }
@@ -1155,8 +1454,7 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse-badge-geozona {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
     box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
   }
@@ -1229,8 +1527,7 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse-traffic {
-  0%,
-  100% {
+  0%, 100% {
     box-shadow: 0 4px 12px rgba(33, 186, 69, 0.4);
   }
   50% {
@@ -1249,8 +1546,7 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse-gps {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -1260,53 +1556,18 @@ const manejarToggleTrafico = () => {
   }
 }
 
-:deep(.popup-animated .mapboxgl-popup-content) {
-  animation: popupFade 0.2s ease-out;
-}
-
-@keyframes popupFade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 :deep(.icono-poi-hover:hover) {
   transform: scale(1.15);
   filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4)) !important;
 }
 
-/* Hover effect para iconos Geozona */
 :deep(.icono-geozona-hover:hover) {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)) !important;
 }
 
-/* Animación del badge de eventos */
-@keyframes pulse-badge {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
-  }
-  50% {
-    transform: scale(1.1);
-    box-shadow: 0 3px 10px rgba(255, 87, 34, 0.8);
-  }
-}
-
-/* Prevenir que el badge se escale con el icono */
 :deep(.icono-poi-hover:hover > div > div:last-child),
 :deep(.icono-geozona-hover:hover > div > div:last-child) {
   transform: scale(0.91) !important;
-}
-
-/* Marcadores personalizados sin fondo */
-:deep(.mapboxgl-marker) {
-  background: none !important;
-  border: none !important;
 }
 </style>
