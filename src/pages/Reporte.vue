@@ -262,42 +262,45 @@
                 :disable="!mostrarMapaTrayecto"
               />
             </div>
-
             <!-- 🔥 Opción de mapa para Horas de Trabajo -->
             <div v-if="tieneOpcion('mostrarMapaZona')" class="q-mb-md">
-              <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
-
-              <q-checkbox
-                v-if="tipoInformeSeleccionado === 'horas_trabajo'"
-                v-model="remarcarHorasExtra"
-                label="Remarcar horas fuera de horario laboral"
-                dense
-                class="q-mb-sm"
-              />
+              <div class="text-subtitle2 q-mb-sm">Opciones del informe</div>
+              <div class="column q-gutter-sm">
+                <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
+                <q-checkbox
+                  v-if="tipoInformeSeleccionado === 'horas_trabajo'"
+                  v-model="remarcarHorasExtra"
+                  label="Remarcar horas fuera de horario laboral"
+                />
+              </div>
             </div>
-
             <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
             <div v-if="tieneOpcion('seleccionColumnas')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
 
               <!-- Buscador de columnas -->
+              <!-- Buscador de columnas -->
               <q-select
-                v-model="columnaAgregar"
+                v-model="columnasSeleccionadas"
                 :options="columnasDisponiblesFiltradas"
                 outlined
                 dense
                 use-input
+                multiple
                 input-debounce="0"
                 placeholder="Buscar y agregar columnas..."
                 @filter="filtrarColumnas"
-                @update:model-value="agregarColumna"
               >
                 <template v-slot:prepend>
                   <q-icon name="add" />
                 </template>
-              </q-select>
 
-              <!-- Columnas seleccionadas -->
+                <!-- 🔥 OCULTAR los chips internos del q-select -->
+                <template v-slot:selected>
+                  <span></span>
+                </template>
+              </q-select>
+              <!-- Columnas seleccionadas (chips externos) -->
               <div class="q-gutter-sm q-mt-md">
                 <q-chip
                   v-for="col in columnasSeleccionadas"
@@ -440,6 +443,7 @@ const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
 const remarcarHorasExtra = ref(true)
+//const mostrarResumen = ref(false)
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -461,19 +465,31 @@ const {
 
 const instanciaColumnas = useColumnasReportes()
 setInstanciaColumnas(instanciaColumnas)
-
 const {
   columnasSeleccionadas,
-  columnaAgregar,
-  mostrarResumen,
+
+  mostrarResumen, // 🔥 AGREGAR
   columnasDisponiblesFiltradas,
-  agregarColumna,
+  //agregarColumna: agregarColumnaOriginal,
   removerColumna,
   filtrarColumnas,
   obtenerConfiguracionColumnas,
-  procesarNotificacionesParaReporte,
-  generarResumen,
+  procesarNotificacionesParaReporte, // 🔥 AGREGAR
+  generarResumen, // 🔥 AGREGAR
 } = instanciaColumnas
+
+/*const agregarColumna = (columna) => {
+  // Llamar a la función original del composable
+  agregarColumnaOriginal(columna)
+
+  // Mantener el menú abierto con un pequeño delay
+  setTimeout(() => {
+    if (selectorColumnas.value) {
+      selectorColumnas.value.showPopup()
+      selectorColumnas.value.focus()
+    }
+  }, 50) // 50ms para evitar conflicto con el cierre automático
+}*/
 
 const { generarExcelEventos } = useReporteExcel()
 
@@ -563,7 +579,7 @@ const cancelarReporte = () => {
   mostrarPlacaMapa.value = true
   mostrarMapaZona.value = false
   columnasSeleccionadas.value = []
-  columnaAgregar.value = null
+  //columnaAgregar.value = null
   mostrarResumen.value = false
   opcionesSelector.value = []
 

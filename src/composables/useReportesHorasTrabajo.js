@@ -19,9 +19,23 @@ function formatearDuracion(horas) {
   const horasEnteras = Math.floor(horas)
   const minutosDecimales = (horas - horasEnteras) * 60
   const minutosEnteros = Math.floor(minutosDecimales)
-  const segundos = Math.round((minutosDecimales - minutosEnteros) * 60)
+  let segundos = Math.round((minutosDecimales - minutosEnteros) * 60)
 
-  return `${String(horasEnteras).padStart(2, '0')}:${String(minutosEnteros).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
+  // 🔥 CORRECCIÓN: Si segundos llega a 60, ajustar
+  let minutosFinales = minutosEnteros
+  if (segundos >= 60) {
+    segundos = 0
+    minutosFinales += 1
+  }
+
+  // 🔥 CORRECCIÓN: Si minutos llega a 60, ajustar
+  let horasFinales = horasEnteras
+  if (minutosFinales >= 60) {
+    minutosFinales = 0
+    horasFinales += 1
+  }
+
+  return `${String(horasFinales).padStart(2, '0')}:${String(minutosFinales).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
 }
 const { obtenerDireccion } = useGeocoding()
 

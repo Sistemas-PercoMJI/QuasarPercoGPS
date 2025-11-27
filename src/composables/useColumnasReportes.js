@@ -656,7 +656,7 @@ export function useColumnasReportes() {
   const columnasSeleccionadas = ref([])
 
   // Columna temporal para agregar
-  const columnaAgregar = ref(null)
+  //const columnaAgregar = ref(null)
 
   // Mostrar resumen
   const mostrarResumen = ref(true)
@@ -697,12 +697,12 @@ export function useColumnasReportes() {
   /**
    * Agregar una columna
    */
-  const agregarColumna = (nombreColumna) => {
-    if (nombreColumna && !columnasSeleccionadas.value.includes(nombreColumna)) {
-      columnasSeleccionadas.value.push(nombreColumna)
-      columnaAgregar.value = null
-      console.log(`✅ Columna agregada: ${nombreColumna}`)
+  /*const agregarColumna = (columna) => {
+    if (columna && !columnasSeleccionadas.value.includes(columna)) {
+      columnasSeleccionadas.value.push(columna)
     }
+    columnaAgregar.value = null
+    // 🔥 QUITAR TODO EL nextTick(() => { ... })
   }
 
   /**
@@ -854,7 +854,7 @@ export function useColumnasReportes() {
     // Estado
     tipoInformeActivo,
     columnasSeleccionadas,
-    columnaAgregar,
+    //columnaAgregar,
     mostrarResumen,
     columnasDisponiblesFiltradas,
 
@@ -864,7 +864,7 @@ export function useColumnasReportes() {
 
     // Métodos
     cambiarTipoInforme,
-    agregarColumna,
+    //agregarColumna,
     removerColumna,
     filtrarColumnas,
     obtenerConfiguracionColumnas,
