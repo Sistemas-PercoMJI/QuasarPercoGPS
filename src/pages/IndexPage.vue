@@ -1023,7 +1023,7 @@ onMounted(async () => {
               if (conductorId) {
                 console.log(`Navegando a detalles del conductor con ID: ${conductorId}`)
                 // Navega al componente Conductores.vue, pasando el ID como parámetro
-                router.push({ name: 'Conductores', params: { id: conductorId } })
+                router.push({ name: 'DetalleConductor', params: { id: conductorId } })
               }
               return // Detiene aquí si fue un clic en el botón de detalles
             }
@@ -1202,8 +1202,8 @@ const manejarToggleTrafico = () => {
 
 /* MODIFICADO: Botón de cerrar (X) más pequeño y mejor posicionado */
 .mapboxgl-popup-close-button {
-  width: 30px !important; /* <-- ¡CAMBIO CLAVE! Más pequeño */
-  height: 30px !important; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  width: 28px !important;
+  height: 28px !important;
   padding: 0 !important;
   background-color: #f3f4f6 !important;
   color: #6b7280 !important;
@@ -1212,8 +1212,8 @@ const manejarToggleTrafico = () => {
   font-weight: bold !important;
   border: 1px solid #e5e7eb !important;
   transition: all 0.2s ease !important;
-  top: 12px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
-  right: 12px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  top: 6px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  right: 16px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
 }
 
 .mapboxgl-popup-close-button:hover {
@@ -1551,6 +1551,18 @@ const manejarToggleTrafico = () => {
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
+}
+
+/* ✅ NUEVO: Estilo para la dirección en el estado contraído */
+.unidad-direccion {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Ajusta según sea necesario */
 }
 
 .unidad-popup-header {
