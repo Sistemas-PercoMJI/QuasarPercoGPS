@@ -240,6 +240,13 @@ export function useReportesTrayectos() {
                 _simulado: false,
               }
 
+              if (trayecto.length === 0) {
+                // Solo el primero para no llenar consola
+                console.log('📊 Estructura de UN trayecto desde Firebase:', data)
+                console.log('📊 Tipo de coordinates:', typeof data.coordinates)
+                console.log('📊 Primer punto GPS:', data.coordinates?.[0])
+              }
+
               console.log(`  ✅ Trayecto con ${coordenadas.length} coordenadas`)
               todosTrayectos.push(trayecto)
             } else {
