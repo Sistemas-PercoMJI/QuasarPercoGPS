@@ -491,9 +491,6 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
-    // ============================================
-    // 📍 DIBUJAR POIs CON ICONOS ELEGANTES
-    // ============================================
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
@@ -536,62 +533,33 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
+        // 🆕 POPUP CON ESTILO SIMILAR A GEOZONA PERO SIN BOTÓN DE EXPANDIR
         const popupContent = `
-          <div class="popup-container" style="min-width: 180px; position: relative;">
-            <div class="popup-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <b style="font-size: 14px;">📍 ${poi.nombre}</b>
-              <button 
-                id="expand-collapse-btn-${poi.id}" 
-                class="expand-collapse-btn" 
-                onclick="togglePopupContent('${poi.id}')"
-                style="
-                  background: none;
-                  border: none;
-                  cursor: pointer;
-                  padding: 0;
-                  width: 20px;
-                  height: 20px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  border-radius: 50%;
-                  transition: all 0.2s ease;
-                "
-              >
-                <svg id="expand-icon-${poi.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 5V19M5 12H19" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <svg id="collapse-icon-${poi.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                  <path d="M5 12H19" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
+          <div class="poi-popup-container">
+            <!-- Cabecera -->
+            <div class="poi-popup-header">
+              <div class="header-info">
+                <div class="header-title">📍 ${poi.nombre}</div>
+                <div class="header-subtitle">Radio: ${radio}m</div>
+              </div>
             </div>
             
-            <div id="popup-content-${poi.id}" class="popup-content">
-              ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-bottom: 8px; display: inline-block;">🔔 ${cantidadEventos}</span>` : ''}
-              <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-                ${poi.direccion}
-              </p>
+            <!-- Cuerpo (siempre visible) -->
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-icon">📍</div>
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+              
               <button
                 onclick="window.verDetallesPOI('${poi.id}')"
-                style="
-                  width: 100%;
-                  margin-top: 8px;
-                  padding: 8px 12px;
-                  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                  color: white;
-                  border: none;
-                  border-radius: 6px;
-                  cursor: pointer;
-                  font-weight: 600;
-                  font-size: 12px;
-                "
+                class="details-btn"
               >
-                📍 Ver detalles
+                Ver más detalles
               </button>
             </div>
           </div>
-                `
+        `
 
         // ✅ USAR NUEVO ICONO ELEGANTE
         const markerEl = crearIconoPOI(tieneEventos)
@@ -1304,6 +1272,112 @@ const manejarToggleTrafico = () => {
 
 .points-list-container::-webkit-scrollbar-thumb:hover {
   background: #9CA3AF;
+}
+
+.poi-popup-container {
+  min-width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+.poi-popup-header {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1F2937;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.poi-popup-body {
+  padding: 16px;
+}
+
+.event-indicator {
+  display: flex;
+  align-items: center;
+  background-color: #FEF2F2;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.event-icon {
+  font-size: 24px;
+  margin-right: 8px;
+}
+
+.event-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-count {
+  font-size: 16px;
+  font-weight: bold;
+  color: #DC2626;
+}
+
+.event-label {
+  font-size: 11px;
+  color: #7F1D1D;
+}
+
+.address-info {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.address-icon {
+  font-size: 18px;
+  margin-right: 8px;
+  margin-top: 2px;
+}
+
+.address-text {
+  font-size: 13px;
+  color: #4B5563;
+  flex: 1;
+}
+
+.details-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #EF4444 0%, #F97316 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+}
+
+.details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* Animación de entrada del popup */
