@@ -7,6 +7,7 @@
 import { ref } from 'vue'
 import { useReportesTrayectos } from './useReportesTrayectos'
 import { useRutasStorage } from './useRutasStorage'
+import { useGeocoding } from './useGeocoding'
 
 // Convierte horas decimales a formato HH:MM:SS
 // @param {number} horas - Horas en formato decimal (ej: 1.5 = 1 hora 30 minutos)
@@ -22,6 +23,7 @@ function formatearDuracion(horas) {
 
   return `${String(horasEnteras).padStart(2, '0')}:${String(minutosEnteros).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
 }
+const { obtenerDireccion } = useGeocoding()
 
 export function useReportesHorasTrabajo() {
   const loading = ref(false)
@@ -256,7 +258,8 @@ export function useReportesHorasTrabajo() {
           } else {
             viajesFueraDia++
           }
-
+          const direccionInicio = await obtenerDireccion(inicio)
+          const direccionFin = await obtenerDireccion(fin)
           detallesViajes.push({
             horaInicio: timestampInicio.toLocaleString('es-MX', {
               hour: '2-digit',
@@ -266,9 +269,8 @@ export function useReportesHorasTrabajo() {
               hour: '2-digit',
               minute: '2-digit',
             }),
-            ubicacionInicio:
-              inicio.direccion || `${inicio.lat.toFixed(5)}, ${inicio.lng.toFixed(5)}`,
-            ubicacionFin: fin.direccion || `${fin.lat.toFixed(5)}, ${fin.lng.toFixed(5)}`,
+            ubicacionInicio: direccionInicio, // 🔥 CAMBIO
+            ubicacionFin: direccionFin, // 🔥 CAMBIO
             duracionDentro: formatearDuracion(duracionDentro), // 🔥 CAMBIO
             duracionFuera: formatearDuracion(duracionFuera), // 🔥 CAMBIO
             duracionTotal: formatearDuracion(duracionViaje), // 🔥 CAMBIO
@@ -278,7 +280,8 @@ export function useReportesHorasTrabajo() {
         // 🔥 PRIMER PUNTO Y ÚLTIMO PUNTO DEL DÍA
         const primeraCoordenada = coordenadas[0]
         const ultimaCoordenada = coordenadas[coordenadas.length - 1]
-
+        const ubicacionInicioDia = await obtenerDireccion(primeraCoordenada)
+        const ubicacionFinDia = await obtenerDireccion(ultimaCoordenada)
         registrosPorDia.push({
           fecha: trayecto.fecha,
           idUnidad: trayecto.idUnidad,
@@ -293,12 +296,8 @@ export function useReportesHorasTrabajo() {
             hour: '2-digit',
             minute: '2-digit',
           }),
-          ubicacionInicio:
-            primeraCoordenada.direccion ||
-            `${primeraCoordenada.lat.toFixed(5)}, ${primeraCoordenada.lng.toFixed(5)}`,
-          ubicacionFin:
-            ultimaCoordenada.direccion ||
-            `${ultimaCoordenada.lat.toFixed(5)}, ${ultimaCoordenada.lng.toFixed(5)}`,
+          ubicacionInicio: ubicacionInicioDia,
+          ubicacionFin: ubicacionFinDia,
           duracionTotal: formatearDuracion(duracionTotalDia), // 🔥 CAMBIO
           duracionDentroHorario: formatearDuracion(duracionDentroDia), // 🔥 CAMBIO
           duracionFueraHorario: formatearDuracion(duracionFueraDia),
