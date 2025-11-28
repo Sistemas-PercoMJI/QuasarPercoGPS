@@ -108,21 +108,12 @@ let mapaAPI = null
 let intervaloEvaluacionEventos = null
 let popupGlobalActivo = null
 
-let ultimaActualizacionMarcadores = 0
-const THROTTLE_MARCADORES = 2000
-
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) {
       return
     }
-
-    const ahora = Date.now()
-    if (ahora - ultimaActualizacionMarcadores < THROTTLE_MARCADORES) {
-      return
-    }
-    ultimaActualizacionMarcadores = ahora
 
     if (nuevasUnidades && nuevasUnidades.length > 0) {
       actualizarMarcadoresUnidades(nuevasUnidades)

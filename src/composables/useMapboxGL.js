@@ -1,11 +1,3 @@
-// src/composables/useMapboxGL.js - VERSIÓN 2.0 OPTIMIZADA
-// CAMBIOS:
-// ✅ Tile caching optimizado (50 tiles máx)
-// ✅ Throttling en actualizaciones de marcadores (300ms)
-// ✅ Lazy loading de capas de tráfico
-// ✅ Reducción de re-renders innecesarios
-// ✅ Cleanup mejorado de recursos
-
 import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -37,17 +29,21 @@ const THROTTLE_MS = 300 // Actualizar máximo cada 300ms
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
 
+// ✅ COLORES ESTANDARIZADOS (coinciden con EstadoFlota.vue)
+const COLORES_ESTADO = {
+  movimiento: '#4CAF50', // Verde
+  detenido: '#FF9800', // Naranja
+  inactivo: '#607D8B', // Gris azulado
+}
+
 export function useMapboxGL() {
   let marcadorTemporalElement = null
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
   const crearIconoUnidad = (estado) => {
-    const colores = {
-      movimiento: '#4CAF50',
-      detenido: '#FF9800',
-      inactivo: '#9E9E9E',
-    }
-    const color = colores[estado] || '#9E9E9E'
+    // ✅ Usar colores estandarizados
+    const color = COLORES_ESTADO[estado] || '#9E9E9E'
+    const colorIndicador = COLORES_ESTADO[estado] || '#9E9E9E'
 
     const el = document.createElement('div')
     el.className = 'custom-marker-unidad'
@@ -76,7 +72,7 @@ export function useMapboxGL() {
           right: -4px;
           width: 12px;
           height: 12px;
-          background: ${estado === 'movimiento' ? '#4CAF50' : '#FF9800'};
+          background: ${colorIndicador};
           border: 2px solid white;
           border-radius: 50%;
           ${estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
@@ -92,11 +88,8 @@ export function useMapboxGL() {
       detenido: 'Detenido',
       inactivo: 'Inactivo',
     }
-    const estadoColor = {
-      movimiento: '#4CAF50',
-      detenido: '#FF9800',
-      inactivo: '#9E9E9E',
-    }
+    // ✅ Usar colores estandarizados
+    const estadoColor = COLORES_ESTADO
 
     const unidadId = unidad.unidadId || unidad.id
     const popupId = `popup-unidad-${unidadId}`
@@ -114,11 +107,11 @@ export function useMapboxGL() {
           <div class="unidad-texto">
             <strong>${unidad.conductorNombre}</strong>
             <div>${unidad.unidadNombre}</div>
-            <!-- ✅ NUEVO: Dirección en estado contraído -->
+            <!-- ✅ Dirección en estado contraído -->
             <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
           </div>
         </div>
-        <!-- ✅ CAMBIO: Botón de toggle movido aquí -->
+        <!-- ✅ Botón de toggle -->
         <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -156,8 +149,6 @@ export function useMapboxGL() {
   }
 
   // ⚡ OPTIMIZADO: Con detección de cambio de estado para iconos
-  // En src/composables/useMapboxGL.js
-
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
       console.warn('⚠️ Mapa no disponible')
@@ -171,6 +162,15 @@ export function useMapboxGL() {
     ultimaActualizacion = ahora
 
     const idsActuales = new Set()
+
+    // ✅ Log de depuración
+    console.log('🔄 Actualizando marcadores:', {
+      total: unidades.length,
+      estados: unidades.reduce((acc, u) => {
+        acc[u.estado] = (acc[u.estado] || 0) + 1
+        return acc
+      }, {}),
+    })
 
     unidades.forEach((unidad) => {
       if (
@@ -200,11 +200,34 @@ export function useMapboxGL() {
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
+          // ✅ DETECTAR CAMBIO DE ESTADO
           if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-            // ... (código para recrear el marcador, este no cambia)
+            console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
+
+            // Remover el marcador anterior
+            marcadoresUnidades.value[unidadId].remove()
+
+            // Crear popup actualizado
+            const popup = new mapboxgl.Popup({
+              offset: 25,
+              closeButton: true,
+              closeOnClick: false,
+              maxWidth: '300px',
+            }).setHTML(crearPopupUnidad(unidad))
+
+            // ✅ Crear nuevo marcador con estado actualizado
+            const marker = new mapboxgl.Marker({
+              element: crearIconoUnidad(unidad.estado),
+              anchor: 'center',
+            })
+              .setLngLat([lng, lat])
+              .setPopup(popup)
+              .addTo(map.value)
+
+            marcadoresUnidades.value[unidadId] = marker
+            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
           } else {
-            // ✅ MODIFICA ESTA PARTE
-            // Solo actualizar posición
+            // ✅ Solo actualizar posición y popup
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
             const popup = marcadoresUnidades.value[unidadId].getPopup()
@@ -227,11 +250,12 @@ export function useMapboxGL() {
                 }
               }
             }
-          }
 
-          ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+          }
         }
       } else {
+        // ✅ Crear nuevo marcador
         const popup = new mapboxgl.Popup({
           offset: 25,
           closeButton: true,
