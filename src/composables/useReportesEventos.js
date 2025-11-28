@@ -1,6 +1,7 @@
 // src/composables/useReportesEventos.js
 import { ref } from 'vue'
 import { collection, getDocs, getFirestore, doc, getDoc } from 'firebase/firestore'
+import { useGeocoding } from './useGeocoding'
 
 const db = getFirestore()
 
@@ -88,6 +89,47 @@ export function useReportesEventos() {
     eventos.sort((a, b) => a.timestamp - b.timestamp)
 
     return eventos
+  }
+
+  const procesarEventosParaPDF = async (eventos) => {
+    if (!eventos || eventos.length === 0) {
+      return []
+    }
+
+    console.log(`🔄 Procesando ${eventos.length} evento(s) (geocodificando direcciones)...`)
+
+    const { obtenerDireccionDesdeCoordenadas } = useGeocoding()
+
+    const eventosProcesados = await Promise.all(
+      eventos.map(async (evento) => {
+        try {
+          let direccionGeocoded = evento.direccion || 'Sin dirección'
+
+          if (evento.coordenadas?.lat && evento.coordenadas?.lng) {
+            const direccion = await obtenerDireccionDesdeCoordenadas(
+              evento.coordenadas.lat,
+              evento.coordenadas.lng,
+            )
+
+            if (direccion && direccion !== 'Dirección no disponible') {
+              direccionGeocoded = direccion
+              console.log(`  🗺️ "${evento.eventoNombre}": ${direccion}`)
+            }
+          }
+
+          return {
+            ...evento,
+            direccion: direccionGeocoded,
+          }
+        } catch (error) {
+          console.error(`  ❌ Error geocodificando evento:`, error)
+          return evento
+        }
+      }),
+    )
+
+    console.log(`✅ ${eventosProcesados.length} evento(s) geocodificados`)
+    return eventosProcesados
   }
 
   /**
@@ -277,7 +319,8 @@ export function useReportesEventos() {
         console.log(`🔍 Filtrados ${eventosFiltrados.length} eventos de ${todosLosEventos.length}`)
       }
 
-      return eventosFiltrados
+      const eventosProcesados = await procesarEventosParaPDF(eventosFiltrados)
+      return eventosProcesados
     } catch (err) {
       console.error('❌ Error al obtener eventos:', err)
       error.value = err.message
@@ -297,7 +340,8 @@ export function useReportesEventos() {
         eventosFallback.push(...eventosSimulados)
       }
 
-      return eventosFallback
+      const eventosFallbackProcesados = await procesarEventosParaPDF(eventosFallback)
+      return eventosFallbackProcesados
     } finally {
       loading.value = false
     }
