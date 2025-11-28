@@ -54,21 +54,19 @@ const COLUMNAS_EVENTOS = {
     formato: 'texto',
   },
 
-  'Tipo de evento': {
+  Tipo: {
+    // 🔥 KEY = label
     key: 'tipoEvento',
     label: 'Tipo',
     obtenerValor: (notificacion) => {
-      // 🔥 CORREGIDO: Usar los campos correctos de Firebase
       const tipo = notificacion.tipoEvento || notificacion.TipoEvento
 
-      if (!tipo) return 'Sin tipo'
+      if (!tipo || tipo === 'desconocido') return 'N/A'
 
-      // Si ya viene en español (directamente desde Firebase)
       if (tipo === 'Entrada' || tipo === 'Salida') {
         return tipo
       }
 
-      // Si viene en formato legacy de notificaciones
       const tiposMap = {
         positive: 'Entrada',
         warning: 'Salida',
@@ -210,20 +208,25 @@ const COLUMNAS_EVENTOS = {
   Mensaje: {
     key: 'mensaje',
     label: 'Mensaje',
-    obtenerValor: (notificacion) => notificacion.message || 'Sin mensaje',
+    obtenerValor: (notificacion) => {
+      return (
+        notificacion.mensaje || notificacion.message || notificacion.eventoNombre || 'Sin mensaje'
+      )
+    },
     ancho: 250,
     formato: 'texto',
   },
-
   // ============ UBICACIÓN ============
-  'Ubicación de eventos': {
+  Ubicación: {
+    // 🔥 KEY = label
     key: 'ubicacion',
     label: 'Ubicación',
-    obtenerValor: (notificacion) => notificacion.ubicacionNombre || 'Sin ubicación',
+    obtenerValor: (notificacion) => {
+      return notificacion.geozonaNombre || notificacion.ubicacionNombre || 'Sin ubicación'
+    },
     ancho: 200,
     formato: 'texto',
   },
-
   'Tipo de ubicación': {
     key: 'tipoUbicacion',
     label: 'Tipo ubicación',
@@ -266,8 +269,9 @@ const COLUMNAS_EVENTOS = {
     key: 'coordenadas',
     label: 'Coordenadas',
     obtenerValor: (notificacion) => {
-      if (notificacion.ubicacion?.lat && notificacion.ubicacion?.lng) {
-        return `${notificacion.ubicacion.lat}, ${notificacion.ubicacion.lng}`
+      // 🔥 CORREGIDO:
+      if (notificacion.coordenadas?.lat && notificacion.coordenadas?.lng) {
+        return `${notificacion.coordenadas.lat.toFixed(6)}, ${notificacion.coordenadas.lng.toFixed(6)}`
       }
       return 'N/A'
     },
@@ -278,7 +282,19 @@ const COLUMNAS_EVENTOS = {
   Dirección: {
     key: 'direccion',
     label: 'Dirección',
-    obtenerValor: (notificacion) => notificacion.direccion || 'N/A',
+    obtenerValor: (notificacion) => {
+      // 🔥 CAMBIA ESTO:
+      if (notificacion.direccion && notificacion.direccion !== 'Sin dirección') {
+        return notificacion.direccion
+      }
+
+      // Si solo tiene coordenadas, mostrarlas
+      if (notificacion.coordenadas?.lat && notificacion.coordenadas?.lng) {
+        return `${notificacion.coordenadas.lat.toFixed(6)}, ${notificacion.coordenadas.lng.toFixed(6)}`
+      }
+
+      return 'N/A'
+    },
     ancho: 250,
     formato: 'texto',
   },
@@ -288,9 +304,9 @@ const COLUMNAS_EVENTOS = {
     key: 'velocidad',
     label: 'Velocidad',
     obtenerValor: (notificacion) => {
-      return notificacion.velocidad !== null && notificacion.velocidad !== undefined
-        ? `${notificacion.velocidad} km/h`
-        : 'N/A'
+      // 🔥 CAMBIA ESTO:
+      const velocidad = notificacion.velocidad ?? 0 // Usar ?? en lugar de ||
+      return velocidad !== null && velocidad !== undefined ? `${velocidad} km/h` : 'N/A'
     },
     ancho: 100,
     formato: 'numero',
@@ -334,7 +350,11 @@ const COLUMNAS_EVENTOS = {
     obtenerValor: (notificacion) => {
       if (notificacion.ignicion === true) return 'Encendida'
       if (notificacion.ignicion === false) return 'Apagada'
-      return 'N/A'
+
+      // 🔥 INFERIR por velocidad
+      const velocidad = notificacion.velocidad ?? 0
+      if (velocidad > 0) return 'Encendida'
+      return 'Apagada' // 🔥 En lugar de N/A
     },
     ancho: 100,
     formato: 'texto',

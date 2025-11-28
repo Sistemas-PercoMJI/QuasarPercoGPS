@@ -17,6 +17,10 @@ export function useReportePDF() {
    */
 
   const generarPDFEventos = (config, datosReales) => {
+    console.log('📊 datosReales en PDF Eventos:', datosReales)
+    console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
+    console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
+    console.log('📊 datosColumnas[0]:', datosReales.datosColumnas?.[0])
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
 

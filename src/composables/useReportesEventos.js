@@ -125,6 +125,17 @@ export function useReportesEventos() {
       for (const unidadId of unidadesIds) {
         console.log(`🚗 Procesando unidad: ${unidadId}`)
 
+        let unidadPlaca = 'Sin placa'
+        try {
+          const unidadRef = doc(db, `Unidades/${unidadId}`)
+          const unidadSnap = await getDoc(unidadRef)
+          if (unidadSnap.exists()) {
+            unidadPlaca = unidadSnap.data().SeguroUnidad || unidadSnap.data().placa || 'Sin placa'
+            console.log(`  🚗 Placa obtenida: ${unidadPlaca}`)
+          }
+        } catch (errUnidad) {
+          console.warn(`  ⚠️ Error al obtener datos de unidad:`, errUnidad.message)
+        }
         // Iterar por cada día en el rango
         const fechaActual = new Date(fechaInicio)
         while (fechaActual <= fechaFin) {
@@ -218,6 +229,7 @@ export function useReportesEventos() {
                   tipoUbicacion: data.tipoUbicacion || 'Geozona',
                   ubicacionId: data.ubicacionId || '',
                   finEvento: data.FinEvento?.toDate() || null,
+                  unidadPlaca: unidadPlaca,
                 })
               })
             } else {
