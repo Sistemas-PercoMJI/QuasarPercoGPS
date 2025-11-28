@@ -327,6 +327,16 @@ export function useReportePDF() {
    * @param {Object} mapaData - Datos del mapa (opcional) { dataURL, rutas }
    */
   const generarPDFTrayectos = async (config, datosReales) => {
+    const trayectosArray = datosReales.eventosAgrupados
+      ? Object.values(datosReales.eventosAgrupados).flat()
+      : Array.isArray(datosReales)
+        ? datosReales
+        : []
+
+    console.log('📦 Trayectos en PDF:', trayectosArray.length)
+    console.log('📦 Primer trayecto:', trayectosArray[0])
+    console.log('📍 Primera coordenada:', trayectosArray[0]?.coordenadas?.[0])
+    console.log('📍 Segunda coordenada:', trayectosArray[0]?.coordenadas?.[1])
     const doc = new jsPDF('landscape')
     let yPosition = 20
 
@@ -394,6 +404,9 @@ export function useReportePDF() {
     // ========================================
     // 📋 TABLA DE TRAYECTOS
     // ========================================
+    // ========================================
+    // 📋 TABLA DE TRAYECTOS
+    // ========================================
     if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
@@ -405,17 +418,14 @@ export function useReportePDF() {
       doc.text('Detalle de Trayectos', 14, yPosition)
       yPosition += 8
 
-      const headers = config.columnasSeleccionadas
+      // 🔥 Usar las labels cortas de configuracionColumnas
+      const headers = datosReales.configuracionColumnas
+        ? datosReales.configuracionColumnas.map((col) => col.label)
+        : Object.keys(datosReales.datosColumnas[0])
+
       const rows = datosReales.datosColumnas.map((fila) => headers.map((col) => fila[col] || 'N/A'))
 
-      const columnStyles = {}
-      headers.forEach((nombreCol, index) => {
-        const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
-        if (columnaConfig) {
-          columnStyles[index] = { cellWidth: columnaConfig.ancho / 4 }
-        }
-      })
-
+      // 🔥 OPCIÓN 3: AUTO-WRAP
       autoTable(doc, {
         startY: yPosition,
         head: [headers],
@@ -429,9 +439,11 @@ export function useReportePDF() {
         styles: {
           fontSize: 7,
           cellPadding: 2,
+          overflow: 'linebreak', // 🔥 Permite dividir texto en líneas
+          cellWidth: 'wrap', // 🔥 Ajusta ancho automáticamente
         },
-        columnStyles: columnStyles,
-        margin: { left: 14, right: 14 },
+        // 🔥 SIN columnStyles - deja que autoTable calcule
+        margin: { left: 10, right: 10 },
         didDrawPage: (data) => {
           const pageCount = doc.internal.getNumberOfPages()
           doc.setFontSize(8)

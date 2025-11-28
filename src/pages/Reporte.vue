@@ -1181,6 +1181,13 @@ const generarReporte = async () => {
     if (tipoInformeSeleccionado.value === 'trayectos') {
       console.log('🗺️ Generando PDF de trayectos...')
 
+      console.log('🔍 datosReales.datosColumnas[0]:', datosReales.datosColumnas[0])
+      console.log('🔍 datosReales.eventosAgrupados:', datosReales.eventosAgrupados)
+      console.log(
+        '🔍 Primer trayecto del grupo:',
+        Object.values(datosReales.eventosAgrupados)[0]?.[0],
+      )
+
       if (mostrarMapaTrayecto.value) {
         $q.notify({
           type: 'info',

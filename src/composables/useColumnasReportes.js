@@ -373,7 +373,7 @@ const COLUMNAS_TRAYECTOS = {
   'Ubicación de inicio de trabajo': {
     key: 'ubicacionInicio',
     label: 'Ubicación de inicio',
-    obtenerValor: (trayecto) => trayecto.inicioDireccion || 'N/A',
+    obtenerValor: (trayecto) => trayecto.ubicacionInicio || trayecto.inicioDireccion || 'N/A',
     ancho: 250,
     formato: 'texto',
   },
@@ -413,7 +413,7 @@ const COLUMNAS_TRAYECTOS = {
   'Ubicación de fin de trabajo': {
     key: 'ubicacionFin',
     label: 'Ubicación de fin',
-    obtenerValor: (trayecto) => trayecto.finDireccion || 'N/A',
+    obtenerValor: (trayecto) => trayecto.ubicacionFin || trayecto.finDireccion || 'N/A', // 🔥 CAMBIADO
     ancho: 250,
     formato: 'texto',
   },
