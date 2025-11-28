@@ -989,7 +989,6 @@ onMounted(async () => {
         const mapPage = document.getElementById('map-page')
         if (mapPage) {
           mapPage.addEventListener('click', (event) => {
-            // Comprueba si el clic fue en un botón con una acción definida (para POIs y Geozonas)
             const actionButton = event.target.closest('[data-action]')
             if (actionButton) {
               const action = actionButton.dataset.action
@@ -1000,10 +999,9 @@ onMounted(async () => {
               } else if (action === 'ver-detalles-geozona' && id) {
                 window.verDetallesGeozona(id)
               }
-              return // Detiene aquí si fue un clic en POI/Geozona
+              return
             }
 
-            // ✅ MANEJA EL CLIC EN EL BOTÓN DE EXPANDIR/CONTRAER DE LA UNIDAD
             const toggleBtn = event.target.closest('.toggle-popup-btn')
             if (toggleBtn) {
               const unidadId = toggleBtn.dataset.unidadId
