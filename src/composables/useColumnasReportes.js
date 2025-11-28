@@ -229,12 +229,14 @@ const COLUMNAS_EVENTOS = {
   },
   'Tipo de ubicación': {
     key: 'tipoUbicacion',
-    label: 'Tipo ubicación',
-    obtenerValor: (notificacion) => notificacion.tipoUbicacion || 'N/A',
+    label: 'Tipo de ubicación',
+    obtenerValor: (notificacion) => {
+      // 🔥 Verificar múltiples campos
+      return notificacion.tipoUbicacion || notificacion.tipo_ubicacion || 'N/A'
+    },
     ancho: 120,
     formato: 'texto',
   },
-
   Geozona: {
     key: 'geozona',
     label: 'Geozona',
