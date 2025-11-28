@@ -333,6 +333,10 @@ export function useReportePDF() {
         ? datosReales
         : []
 
+    console.log('📊 datosReales.resumen:', datosReales.resumen)
+    console.log('📊 datosReales.stats:', datosReales.stats)
+    console.log('📊 trayectosArray:', trayectosArray)
+
     console.log('📦 Trayectos en PDF:', trayectosArray.length)
     console.log('📦 Primer trayecto:', trayectosArray[0])
     console.log('📍 Primera coordenada:', trayectosArray[0]?.coordenadas?.[0])
@@ -371,7 +375,10 @@ export function useReportePDF() {
     // ========================================
     // 📊 RESUMEN ESTADÍSTICO
     // ========================================
-    if (config.mostrarResumen && datosReales.resumen) {
+    // ========================================
+    // 📊 RESUMEN ESTADÍSTICO (TRAYECTOS)
+    // ========================================
+    if (config.mostrarResumen && trayectosArray.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
         yPosition = 20
@@ -382,11 +389,28 @@ export function useReportePDF() {
       doc.text('Resumen Estadístico', 14, yPosition)
       yPosition += 8
 
+      // 🔥 CALCULAR desde trayectosArray
+      const totalTrayectos = trayectosArray.length
+      const unidadesUnicas = new Set(trayectosArray.map((t) => t.unidadNombre || t.idUnidad)).size
+      const kilometrajeTotal = trayectosArray.reduce(
+        (sum, t) => sum + (t.kilometrajeRecorrido || 0),
+        0,
+      )
+      const duracionTotalHoras = trayectosArray.reduce(
+        (sum, t) => sum + parseFloat(t.duracionHoras || 0),
+        0,
+      )
+
+      // 🔥 NUEVO: Convertir horas decimales a HH:MM
+      const horas = Math.floor(duracionTotalHoras)
+      const minutos = Math.round((duracionTotalHoras - horas) * 60)
+      const duracionFormateada = `${horas}h ${minutos}m`
+
       const resumenData = [
-        ['Total de trayectos', datosReales.resumen.totalTrayectos || 0],
-        ['Unidades únicas', datosReales.resumen.unidadesUnicas || 0],
-        ['Kilometraje total', `${datosReales.resumen.kilometrajeTotal || 0} km`],
-        ['Duración total', `${datosReales.resumen.duracionTotal || 0} hrs`],
+        ['Total de trayectos', totalTrayectos],
+        ['Unidades únicas', unidadesUnicas],
+        ['Kilometraje total', `${kilometrajeTotal.toFixed(2)} km`],
+        ['Duración total', duracionFormateada], // 🔥 Usar formato HH:MM
       ]
 
       autoTable(doc, {
@@ -400,10 +424,6 @@ export function useReportePDF() {
 
       yPosition = doc.lastAutoTable.finalY + 10
     }
-
-    // ========================================
-    // 📋 TABLA DE TRAYECTOS
-    // ========================================
     // ========================================
     // 📋 TABLA DE TRAYECTOS
     // ========================================
@@ -418,32 +438,64 @@ export function useReportePDF() {
       doc.text('Detalle de Trayectos', 14, yPosition)
       yPosition += 8
 
-      // 🔥 Usar las labels cortas de configuracionColumnas
       const headers = datosReales.configuracionColumnas
         ? datosReales.configuracionColumnas.map((col) => col.label)
         : Object.keys(datosReales.datosColumnas[0])
 
+      const totalColumnas = headers.length
+      const necesitaMultilinea = totalColumnas > 8
+
+      const headersFinales = necesitaMultilinea
+        ? headers.map((header) => {
+            const palabras = header.split(' ')
+            if (palabras.length > 2) {
+              const mitad = Math.ceil(palabras.length / 2)
+              return palabras.slice(0, mitad).join(' ') + '\n' + palabras.slice(mitad).join(' ')
+            }
+            return header
+          })
+        : headers
+
       const rows = datosReales.datosColumnas.map((fila) => headers.map((col) => fila[col] || 'N/A'))
 
-      // 🔥 OPCIÓN 3: AUTO-WRAP
+      // 🔥 NUEVO: Calcular anchos de columnas basados en el ancho de página
+      const pageWidth = doc.internal.pageSize.width
+      const marginTotal = 20 // left + right margins
+      const availableWidth = pageWidth - marginTotal
+      const columnWidth = availableWidth / totalColumnas
+
+      // 🔥 Crear columnStyles con anchos fijos
+      const columnStyles = {}
+      headers.forEach((header, index) => {
+        columnStyles[index] = {
+          cellWidth: columnWidth,
+          overflow: 'linebreak', // 🔥 Forzar wrap en celdas
+          halign: 'left',
+        }
+      })
+
       autoTable(doc, {
         startY: yPosition,
-        head: [headers],
+        head: [headersFinales],
         body: rows,
         theme: 'striped',
         headStyles: {
           fillColor: [66, 139, 202],
           fontStyle: 'bold',
-          fontSize: 8,
+          fontSize: necesitaMultilinea ? 7 : 8,
+          minCellHeight: necesitaMultilinea ? 10 : 8,
+          halign: 'left',
+          valign: 'middle',
         },
         styles: {
-          fontSize: 7,
-          cellPadding: 2,
-          overflow: 'linebreak', // 🔥 Permite dividir texto en líneas
-          cellWidth: 'wrap', // 🔥 Ajusta ancho automáticamente
+          fontSize: necesitaMultilinea ? 6 : 7, // 🔥 Más pequeño si hay muchas columnas
+          cellPadding: 1.5,
+          overflow: 'linebreak', // 🔥 Importante: permite wrap
+          cellWidth: 'wrap',
         },
-        // 🔥 SIN columnStyles - deja que autoTable calcule
+        columnStyles: columnStyles, // 🔥 Aplicar anchos fijos
         margin: { left: 10, right: 10 },
+        tableWidth: 'auto', // 🔥 Usar todo el ancho disponible
         didDrawPage: (data) => {
           const pageCount = doc.internal.getNumberOfPages()
           doc.setFontSize(8)
