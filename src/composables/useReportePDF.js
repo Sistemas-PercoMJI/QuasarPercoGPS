@@ -8,6 +8,267 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
+const generarHeaderGrupo = (nombreGrupo, eventos, config) => {
+  // 🔥 NUEVO: Considerar TANTO reportarPor COMO agruparPor
+  const agruparPor = config.agruparPor || 'unidad'
+
+  // Si agrupamos por DÍA
+  if (agruparPor === 'dia') {
+    // 🔥 CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
+    let fechaISO = nombreGrupo
+
+    if (nombreGrupo.includes('/')) {
+      const partes = nombreGrupo.split('/')
+
+      // Detectar formato: si primer número > 31, es YYYY/MM/DD
+      if (parseInt(partes[0]) > 31) {
+        // Formato YYYY/MM/DD
+        fechaISO = nombreGrupo.replace(/\//g, '-')
+      } else {
+        // Formato DD/MM/YYYY
+        fechaISO = `${partes[2]}-${partes[1]}-${partes[0]}`
+      }
+    }
+
+    const fecha = new Date(fechaISO + 'T00:00:00')
+
+    // 🔥 Validar que la fecha es válida
+    if (isNaN(fecha.getTime())) {
+      return {
+        titulo: `DÍA: ${nombreGrupo}`,
+        subtitulo: '',
+        stats: `Total de eventos: ${eventos.length}`,
+      }
+    }
+
+    const fechaFormateada = fecha.toLocaleDateString('es-MX', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    const unidades = [...new Set(eventos.map((e) => e.unidadNombre).filter(Boolean))]
+
+    return {
+      titulo: fechaFormateada.toUpperCase(),
+      subtitulo: `Unidades activas: ${unidades.length} (${unidades.slice(0, 3).join(', ')}${unidades.length > 3 ? '...' : ''})`,
+      stats: `Total de eventos: ${eventos.length}`,
+    }
+  }
+
+  // Si agrupamos por EVENTO
+  if (agruparPor === 'evento') {
+    const unidades = [...new Set(eventos.map((e) => e.unidadNombre).filter(Boolean))]
+    const conductores = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
+
+    return {
+      titulo: `EVENTO: ${nombreGrupo}`,
+      subtitulo: `Unidades: ${unidades.length} | Conductores: ${conductores.length}`,
+      stats: `Total de ocurrencias: ${eventos.length}`,
+    }
+  }
+
+  // Si agrupamos por CONDUCTOR
+  if (agruparPor === 'conductor') {
+    const unidades = [...new Set(eventos.map((e) => e.unidadNombre).filter(Boolean))]
+    const dias = [
+      ...new Set(
+        eventos.map((e) => {
+          const fecha = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp)
+          return fecha.toISOString().split('T')[0]
+        }),
+      ),
+    ]
+
+    return {
+      titulo: `CONDUCTOR: ${nombreGrupo}`,
+      subtitulo: `Unidades usadas: ${unidades.join(', ')}`,
+      stats: `Total de eventos: ${eventos.length} | Días activos: ${dias.length}`,
+    }
+  }
+
+  // Si agrupamos por UNIDAD (o por defecto)
+  if (agruparPor === 'unidad' || config.reportarPor === 'Unidades') {
+    const primerEvento = eventos[0]
+    const placa = primerEvento?.unidadPlaca || 'Sin placa'
+    const conductores = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
+    const conductorTexto =
+      conductores.length > 0 ? conductores.join(', ') : 'Sin conductor asignado'
+
+    return {
+      titulo: `UNIDAD: ${nombreGrupo}`,
+      subtitulo: `Placa: ${placa} | Conductores: ${conductorTexto}`,
+      stats: `Total de eventos: ${eventos.length}`,
+    }
+  }
+
+  // Fallback genérico
+  return {
+    titulo: nombreGrupo.toUpperCase(),
+    subtitulo: '',
+    stats: `Total de eventos: ${eventos.length}`,
+  }
+}
+
+/**
+ * Genera resumen estadístico según tipo de reporte
+ */
+const generarResumenPorTipo = (datosReales, config) => {
+  if (!config.mostrarResumen) return null
+
+  // 🔥 NUEVO: Considerar agruparPor
+  const agruparPor = config.agruparPor || 'unidad'
+
+  // Si agrupamos por DÍA
+  if (agruparPor === 'dia') {
+    const resumenPorDia = {}
+
+    Object.entries(datosReales.eventosAgrupados || {}).forEach(([fecha, eventos]) => {
+      const unidades = [...new Set(eventos.map((e) => e.unidadNombre).filter(Boolean))]
+
+      resumenPorDia[fecha] = {
+        total: eventos.length,
+        unidadesActivas: unidades.length,
+      }
+    })
+
+    return {
+      tipo: 'dias',
+      headers: ['Fecha', 'Total Eventos', 'Unidades Activas'],
+      rows: Object.entries(resumenPorDia).map(([fecha, stats]) => [
+        new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX'),
+        stats.total,
+        stats.unidadesActivas,
+      ]),
+    }
+  }
+
+  // Si agrupamos por EVENTO
+  if (agruparPor === 'evento') {
+    const resumenPorEvento = {}
+
+    Object.entries(datosReales.eventosAgrupados || {}).forEach(([evento, registros]) => {
+      const unidades = [...new Set(registros.map((e) => e.unidadNombre).filter(Boolean))]
+
+      resumenPorEvento[evento] = {
+        total: registros.length,
+        unidades: unidades.length,
+      }
+    })
+
+    return {
+      tipo: 'eventos',
+      headers: ['Tipo de Evento', 'Total Ocurrencias', 'Unidades Involucradas'],
+      rows: Object.entries(resumenPorEvento).map(([evento, stats]) => [
+        evento,
+        stats.total,
+        stats.unidades,
+      ]),
+    }
+  }
+
+  if (config.reportarPor === 'Unidades') {
+    const resumenPorUnidad = {}
+
+    Object.entries(datosReales.eventosAgrupados || {}).forEach(([unidad, eventos]) => {
+      const entradas = eventos.filter(
+        (e) => e.tipoEvento === 'Entrada' || e.tipoEvento === 'entrada',
+      ).length
+
+      const salidas = eventos.filter(
+        (e) => e.tipoEvento === 'Salida' || e.tipoEvento === 'salida',
+      ).length
+
+      resumenPorUnidad[unidad] = { total: eventos.length, entradas, salidas }
+    })
+
+    return {
+      tipo: 'unidades',
+      headers: ['Unidad', 'Total Eventos', 'Entradas', 'Salidas'],
+      rows: Object.entries(resumenPorUnidad).map(([unidad, stats]) => [
+        unidad,
+        stats.total,
+        stats.entradas,
+        stats.salidas,
+      ]),
+    }
+  }
+
+  if (config.reportarPor === 'Conductores') {
+    const resumenPorConductor = {}
+
+    Object.entries(datosReales.eventosAgrupados || {}).forEach(([conductor, eventos]) => {
+      const unidades = [...new Set(eventos.map((e) => e.unidadNombre).filter(Boolean))]
+      const dias = [
+        ...new Set(
+          eventos.map((e) => {
+            const fecha = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp)
+            return fecha.toISOString().split('T')[0]
+          }),
+        ),
+      ]
+
+      resumenPorConductor[conductor] = {
+        total: eventos.length,
+        unidadesUsadas: unidades.length,
+        diasActivos: dias.length,
+      }
+    })
+
+    return {
+      tipo: 'conductores',
+      headers: ['Conductor', 'Total Eventos', 'Unidades Usadas', 'Días Activos'],
+      rows: Object.entries(resumenPorConductor).map(([conductor, stats]) => [
+        conductor,
+        stats.total,
+        stats.unidadesUsadas,
+        stats.diasActivos,
+      ]),
+    }
+  }
+
+  return null
+}
+
+/**
+ * Genera metadata del encabezado del reporte
+ */
+const generarMetadataReporte = (config, datosReales) => {
+  const metadata = {
+    periodo: config.rangoFechaFormateado,
+    generado: new Date().toLocaleString('es-MX', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    totalEventos: datosReales.totalEventos || 0,
+  }
+
+  if (config.reportarPor === 'Unidades') {
+    const numUnidades = Object.keys(datosReales.eventosAgrupados || {}).length
+    const nombresUnidades = Object.keys(datosReales.eventosAgrupados || {})
+      .slice(0, 3)
+      .join(', ')
+    const masUnidades = numUnidades > 3 ? `, +${numUnidades - 3} más` : ''
+    metadata.reporteDe = ` ${numUnidades} unidad${numUnidades > 1 ? 'es' : ''} (${nombresUnidades}${masUnidades})`
+  } else if (config.reportarPor === 'Conductores') {
+    const numConductores = Object.keys(datosReales.eventosAgrupados || {}).length
+    const nombresConductores = Object.keys(datosReales.eventosAgrupados || {})
+      .slice(0, 2)
+      .join(', ')
+    const masConductores = numConductores > 2 ? `, +${numConductores - 2} más` : ''
+    metadata.reporteDe = `${numConductores} conductor${numConductores > 1 ? 'es' : ''} (${nombresConductores}${masConductores})`
+  } else {
+    metadata.reporteDe = config.reportarPor
+  }
+
+  metadata.agrupacion = `Agrupado por: ${config.agruparPor || 'unidad'}`
+
+  return metadata
+}
+
 export function useReportePDF() {
   /**
    *
@@ -17,6 +278,10 @@ export function useReportePDF() {
    */
 
   const generarPDFEventos = (config, datosReales) => {
+    console.log('🔍 config.reportarPor:', config.reportarPor)
+    console.log('🔍 config.agruparPor:', config.agruparPor)
+    console.log('🔍 Claves de eventosAgrupados:', Object.keys(datosReales.eventosAgrupados || {}))
+
     console.log('📊 datosReales en PDF Eventos:', datosReales)
     console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
     console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
@@ -31,81 +296,53 @@ export function useReportePDF() {
     yPosition += 10
 
     // Información del reporte
+    const metadata = generarMetadataReporte(config, datosReales)
+
     doc.setFontSize(10)
     doc.setFont(undefined, 'normal')
-    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPosition)
+    doc.text(`Periodo: ${metadata.periodo}`, 14, yPosition)
     yPosition += 6
-    doc.text(
-      `Generado: ${new Date().toLocaleString('es-MX', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`,
-      14,
-      yPosition,
-    )
+    doc.text(`Generado: ${metadata.generado}`, 14, yPosition)
     yPosition += 6
-    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPosition)
+    doc.text(`Reporte de: ${metadata.reporteDe}`, 14, yPosition)
     yPosition += 6
-    doc.text(`Agrupar por: ${config.agruparPor}`, 14, yPosition)
+    doc.text(metadata.agrupacion, 14, yPosition)
     yPosition += 6
-    doc.text(`Total de eventos: ${datosReales.totalEventos || 0}`, 14, yPosition)
+    doc.text(`Total de eventos: ${metadata.totalEventos}`, 14, yPosition)
     yPosition += 10
-
     // ========================================
     // 🔥 NUEVO: Resumen estadístico
     // ========================================
-    if (config.mostrarResumen && datosReales.resumen) {
+    const resumenPorTipo = generarResumenPorTipo(datosReales, config)
+
+    if (resumenPorTipo) {
+      if (yPosition > 200) {
+        doc.addPage()
+        yPosition = 20
+      }
+
       doc.setFontSize(12)
       doc.setFont(undefined, 'bold')
-      doc.text('Resumen del Informe', 14, yPosition)
-      yPosition += 8
+      const tituloResumen =
+        resumenPorTipo.tipo === 'unidades'
+          ? 'Resumen por Unidad'
+          : resumenPorTipo.tipo === 'conductores'
+            ? 'Resumen por Conductor'
+            : 'Resumen del Informe'
 
-      const resumenData = [
-        ['Total de eventos', datosReales.resumen.totalEventos],
-        ['Conductores únicos', datosReales.resumen.conductoresUnicos],
-        ['Vehículos únicos', datosReales.resumen.vehiculosUnicos],
-      ]
+      doc.text(tituloResumen, 14, yPosition)
+      yPosition += 8
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Concepto', 'Valor']],
-        body: resumenData,
+        head: [resumenPorTipo.headers],
+        body: resumenPorTipo.rows,
         theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202] },
-        styles: { fontSize: 10 },
+        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        styles: { fontSize: 8 },
       })
 
       yPosition = doc.lastAutoTable.finalY + 10
-
-      // Tabla de eventos por tipo
-      if (
-        datosReales.resumen.eventosPorTipo &&
-        Object.keys(datosReales.resumen.eventosPorTipo).length > 0
-      ) {
-        doc.setFontSize(10)
-        doc.setFont(undefined, 'bold')
-        doc.text('Eventos por Tipo', 14, yPosition)
-        yPosition += 6
-
-        const tiposData = Object.entries(datosReales.resumen.eventosPorTipo).map(([tipo, cant]) => [
-          tipo,
-          cant,
-        ])
-
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Tipo', 'Cantidad']],
-          body: tiposData,
-          theme: 'striped',
-          headStyles: { fillColor: [76, 175, 80] },
-          styles: { fontSize: 9 },
-        })
-
-        yPosition = doc.lastAutoTable.finalY + 10
-      }
     }
 
     // ========================================
@@ -197,15 +434,29 @@ export function useReportePDF() {
     // ========================================
     if (datosReales.eventosAgrupados && Object.keys(datosReales.eventosAgrupados).length > 0) {
       Object.entries(datosReales.eventosAgrupados).forEach(([grupo, eventos], index) => {
-        // Agregar nueva página si es necesario
         if (index > 0 || yPosition > 200) {
           doc.addPage()
           yPosition = 20
         }
 
+        // 🔥 NUEVO: Usar header contextual
+        const headerInfo = generarHeaderGrupo(grupo, eventos, config)
+
         doc.setFontSize(12)
         doc.setFont(undefined, 'bold')
-        doc.text(grupo.toUpperCase(), 14, yPosition)
+        doc.text(headerInfo.titulo, 14, yPosition)
+        yPosition += 6
+
+        if (headerInfo.subtitulo) {
+          doc.setFontSize(9)
+          doc.setFont(undefined, 'normal')
+          doc.text(headerInfo.subtitulo, 14, yPosition)
+          yPosition += 5
+        }
+
+        doc.setFontSize(9)
+        doc.setFont(undefined, 'italic')
+        doc.text(headerInfo.stats, 14, yPosition)
         yPosition += 8
 
         // 🔥 Headers de la tabla
@@ -948,6 +1199,7 @@ export function useReportePDF() {
       filename: filename,
     }
   }
+
   return {
     generarPDFEventos,
     generarPDFSimple,

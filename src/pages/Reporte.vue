@@ -1029,36 +1029,47 @@ const obtenerDatosReporte = async () => {
   // Agrupar datos
   let datosAgrupados = {}
   if (tipoInforme === 'eventos') {
-    const criterio = metodoAgrupacion.value || 'unidad'
-    console.log('📊 Agrupando por:', criterio)
+    // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
+    let criterioPrincipal = ''
 
+    if (reportarPor.value === 'Unidades') {
+      criterioPrincipal = 'unidad'
+    } else if (reportarPor.value === 'Conductores') {
+      criterioPrincipal = 'conductor'
+    } else if (reportarPor.value === 'Grupos') {
+      criterioPrincipal = 'grupo'
+    } else if (reportarPor.value === 'Geozonas') {
+      criterioPrincipal = 'geozona'
+    } else {
+      criterioPrincipal = 'unidad' // Fallback
+    }
+
+    console.log('📊 Agrupación PRINCIPAL por:', criterioPrincipal)
+    console.log('📊 Sub-agrupación por:', metodoAgrupacion.value)
+
+    // 🔥 PASO 2: Agrupar por criterio principal
     datosAgrupados = datosFiltrados.reduce((acc, dato) => {
-      let clave = ''
-      switch (criterio) {
+      let clavePrincipal = ''
+
+      switch (criterioPrincipal) {
         case 'unidad':
-          clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
+          clavePrincipal = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
           break
         case 'conductor':
-          clave = dato.conductorNombre || 'Sin conductor'
+          clavePrincipal = dato.conductorNombre || 'Sin conductor'
           break
-        case 'evento':
-          clave = dato.eventoNombre || 'Sin nombre'
+        case 'grupo':
+          clavePrincipal = dato.grupoNombre || 'Sin grupo'
           break
-        case 'dia':
-          clave = new Date(dato.timestamp).toLocaleDateString('es-MX')
+        case 'geozona':
+          clavePrincipal = dato.geozonaNombre || 'Sin geozona'
           break
         default:
-          clave = 'Sin clasificar'
+          clavePrincipal = 'Sin clasificar'
       }
-      if (!acc[clave]) acc[clave] = []
-      acc[clave].push(dato)
-      return acc
-    }, {})
-  } else {
-    datosAgrupados = datosFiltrados.reduce((acc, dato) => {
-      const clave = dato.unidadNombre || dato.idUnidad || 'Sin unidad'
-      if (!acc[clave]) acc[clave] = []
-      acc[clave].push(dato)
+
+      if (!acc[clavePrincipal]) acc[clavePrincipal] = []
+      acc[clavePrincipal].push(dato)
       return acc
     }, {})
   }
