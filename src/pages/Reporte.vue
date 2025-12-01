@@ -854,6 +854,7 @@ const obtenerDatosReporte = async () => {
   }
 
   let datosInforme = []
+  let criterioPrincipal = ''
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
   // 🔥 OBTENER DATOS SEGÚN TIPO
@@ -1030,7 +1031,7 @@ const obtenerDatosReporte = async () => {
   let datosAgrupados = {}
   if (tipoInforme === 'eventos') {
     // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
-    let criterioPrincipal = ''
+    criterioPrincipal = ''
 
     if (reportarPor.value === 'Unidades') {
       criterioPrincipal = 'unidad'
@@ -1155,6 +1156,7 @@ const obtenerDatosReporte = async () => {
     elementosSinDatos: elementosSinDatos,
     configuracionColumnas: configuracion,
     tipoInforme: tipoInforme,
+    agrupacionReal: criterioPrincipal,
   }
 }
 

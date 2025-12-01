@@ -8,9 +8,12 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
-const generarHeaderGrupo = (nombreGrupo, eventos, config) => {
-  // 🔥 NUEVO: Considerar TANTO reportarPor COMO agruparPor
-  const agruparPor = config.agruparPor || 'unidad'
+const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
+  // 🔥 Usar la agrupación REAL que se aplicó, no la del selector
+  const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
+
+  console.log('🔍 generarHeaderGrupo - agruparPor:', agruparPor)
+  console.log('🔍 nombreGrupo:', nombreGrupo)
 
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
@@ -117,7 +120,7 @@ const generarResumenPorTipo = (datosReales, config) => {
   if (!config.mostrarResumen) return null
 
   // 🔥 NUEVO: Considerar agruparPor
-  const agruparPor = config.agruparPor || 'unidad'
+  const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
@@ -440,7 +443,7 @@ export function useReportePDF() {
         }
 
         // 🔥 NUEVO: Usar header contextual
-        const headerInfo = generarHeaderGrupo(grupo, eventos, config)
+        const headerInfo = generarHeaderGrupo(grupo, eventos, config, datosReales)
 
         doc.setFontSize(12)
         doc.setFont(undefined, 'bold')
