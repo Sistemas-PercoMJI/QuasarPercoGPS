@@ -463,7 +463,7 @@
 <script setup>
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
-import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
+import { ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -1091,13 +1091,13 @@ function getColorTipo(tipo) {
 }
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  document.addEventListener('click', handleClickOutside)
-
-  // Precargar POIs y Geozonas para búsqueda más rápida
-  Promise.all([cargarDatosPOIs(), cargarDatosGeozonas()]).catch((err) => {
-    console.error('Error al precargar datos:', err)
+  window.addEventListener('cerrarTodosDialogs', () => {
+    cerrarTodosLosDialogs()
   })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('cerrarTodosDialogs', () => {})
 })
 
 onUnmounted(() => {
@@ -1184,17 +1184,34 @@ const eventosDrawerOpen = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
-  [estadoFlotaDrawerOpen, conductoresDrawerOpen, geozonaDrawerOpen, eventosDrawerOpen],
-  ([estado, conductores, geozona, eventos]) => {
-    const algunDialogAbierto = estado || conductores || geozona || eventos
-    dialogAbierto.value = algunDialogAbierto
+  () => estadoCompartido.value?.abrirConductoresConConductor,
+  (newValue) => {
+    console.log('🎯 MainLayout: Watch activado')
 
-    // Si algún dialog está abierto, forzar drawer mini
-    if (algunDialogAbierto) {
-      drawerExpanded.value = false
+    if (newValue && newValue.conductor) {
+      console.log('📦 Datos recibidos en MainLayout:', newValue.conductor)
+
+      // Asegurarse de estar en la ruta correcta
+      if (router.currentRoute.value.path !== '/') {
+        console.log('🔄 Redirigiendo a ruta principal')
+        router.push('/')
+      }
+
+      // Cerrar otros dialogs
+      cerrarTodosLosDialogs()
+
+      // Esperar para sincronización
+      setTimeout(() => {
+        console.log('🚪 Abriendo drawer de conductores')
+        conductoresDrawerOpen.value = true
+
+        nextTick(() => {
+          console.log('✅ Drawer renderizado, Conductores.vue debe recibir datos')
+        })
+      }, 150)
     }
   },
-  { immediate: true }, // Agregar immediate
+  { deep: true },
 )
 
 // Watch adicional por si algo intenta cerrarlo
@@ -1254,6 +1271,13 @@ function handleLinkClick(link) {
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
+
+    // Primero asegurarse de estar en la ruta principal
+    if (router.currentRoute.value.path !== '/') {
+      router.push('/')
+    }
+
+    // Luego abrir el drawer
     conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
     cerrarTodosLosDialogs()
@@ -1266,12 +1290,12 @@ function handleLinkClick(link) {
   }
 }
 
-// Nueva función para cerrar todos los dialogs
 function cerrarTodosLosDialogs() {
   estadoFlotaDrawerOpen.value = false
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
   eventosDrawerOpen.value = false
+  console.log('🚪 Todos los dialogs cerrados')
 }
 
 function cerrarEstadoFlota() {
