@@ -271,6 +271,188 @@ const generarMetadataReporte = (config, datosReales) => {
 
   return metadata
 }
+function subAgruparEventos(eventos, config, datosReales) {
+  const criterioSubAgrupacion = config.agruparPor || 'unidad'
+  const criterioPrincipal = datosReales?.agrupacionReal || 'unidad'
+
+  // Si el criterio de sub-agrupación es el mismo que el principal, no sub-agrupar
+  if (criterioSubAgrupacion === criterioPrincipal) {
+    return { 'Todos los eventos': eventos }
+  }
+
+  const subGrupos = {}
+
+  eventos.forEach((evento) => {
+    let claveSubGrupo = ''
+
+    switch (criterioSubAgrupacion) {
+      case 'unidad': {
+        claveSubGrupo = evento.unidadNombre || evento.idUnidad || 'Sin unidad'
+        break
+      }
+
+      case 'conductor': {
+        claveSubGrupo = evento.conductorNombre || 'Sin conductor'
+        break
+      }
+
+      case 'dia': {
+        let fechaStr = 'Fecha desconocida'
+
+        // USAR TIMESTAMP EN LUGAR DE horaInicioEvento
+        if (evento.timestamp) {
+          try {
+            const fecha = new Date(evento.timestamp)
+            const dia = String(fecha.getDate()).padStart(2, '0')
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+            const anio = fecha.getFullYear()
+            fechaStr = `${dia}/${mes}/${anio}`
+          } catch (error) {
+            console.error('Error extrayendo fecha:', error)
+            fechaStr = 'Fecha desconocida'
+          }
+        }
+
+        claveSubGrupo = fechaStr
+        break
+      }
+      case 'evento': {
+        claveSubGrupo = evento.eventoNombre || evento.mensaje || 'Sin evento'
+        break
+      }
+
+      case 'geozona': {
+        claveSubGrupo = evento.geozona || 'Sin geozona'
+        break
+      }
+
+      case 'grupo': {
+        claveSubGrupo = evento.grupo || 'Sin grupo'
+        break
+      }
+
+      default: {
+        claveSubGrupo = 'Otros'
+      }
+    }
+
+    if (!subGrupos[claveSubGrupo]) {
+      subGrupos[claveSubGrupo] = []
+    }
+    subGrupos[claveSubGrupo].push(evento)
+  })
+
+  return subGrupos
+}
+
+/**
+ * Genera el header para un sub-grupo
+ */
+function generarHeaderSubGrupo(nombreSubGrupo, eventos, config) {
+  const criterio = config.agruparPor || 'unidad'
+
+  if (nombreSubGrupo === 'Todos los eventos') {
+    return null
+  }
+
+  let titulo = ''
+  let subtitulo = ''
+  let stats = ''
+
+  const totalEventos = eventos.length
+
+  switch (criterio) {
+    case 'evento': {
+      titulo = `EVENTO: ${nombreSubGrupo}`
+      const entradas = eventos.filter((e) => e.tipo?.toLowerCase() === 'entrada').length
+      const salidas = eventos.filter((e) => e.tipo?.toLowerCase() === 'salida').length
+      subtitulo = `Tipo de evento: ${nombreSubGrupo}`
+      stats = `Total de ocurrencias: ${totalEventos} | Entradas: ${entradas} | Salidas: ${salidas}`
+      break
+    }
+
+    case 'dia': {
+      let fechaFormateada = nombreSubGrupo
+      try {
+        if (nombreSubGrupo.includes('/')) {
+          const partes = nombreSubGrupo.split('/')
+          let dia, mes, anio
+
+          // Detectar formato DD/MM/YYYY vs YYYY/MM/DD
+          if (parseInt(partes[0]) > 31) {
+            // Es YYYY/MM/DD
+            anio = parseInt(partes[0])
+            mes = parseInt(partes[1]) - 1 // Mes en JS es 0-11
+            dia = parseInt(partes[2])
+          } else {
+            // Es DD/MM/YYYY
+            dia = parseInt(partes[0])
+            mes = parseInt(partes[1]) - 1 // Mes en JS es 0-11
+            anio = parseInt(partes[2])
+          }
+
+          // Crear fecha en HORA LOCAL, no UTC
+          const fecha = new Date(anio, mes, dia)
+
+          if (!isNaN(fecha.getTime())) {
+            const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+            fechaFormateada = fecha.toLocaleDateString('es-ES', opciones)
+            // Capitalizar primera letra
+            fechaFormateada = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1)
+          }
+        }
+      } catch (error) {
+        console.error('Error formateando fecha:', error)
+      }
+
+      titulo = `DÍA: ${fechaFormateada}`
+      const unidadesDelDia = [...new Set(eventos.map((e) => e.unidadNombre || e.idUnidad))]
+      subtitulo = `Unidades activas: ${unidadesDelDia.join(', ')}`
+      stats = `Eventos del día: ${totalEventos}`
+      break
+    }
+
+    case 'unidad': {
+      titulo = `UNIDAD: ${nombreSubGrupo}`
+      const placa = eventos[0]?.placa || 'Sin placa'
+      const conductoresUnicos = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
+      subtitulo = `Placa: ${placa}`
+      if (conductoresUnicos.length > 0) {
+        subtitulo += ` | Conductores: ${conductoresUnicos.join(', ')}`
+      }
+      stats = `Total de eventos: ${totalEventos}`
+      break
+    }
+
+    case 'conductor': {
+      titulo = `CONDUCTOR: ${nombreSubGrupo}`
+      const unidadesUsadas = [
+        ...new Set(eventos.map((e) => e.unidadNombre || e.idUnidad).filter(Boolean)),
+      ]
+      subtitulo = `Unidades usadas: ${unidadesUsadas.join(', ')}`
+      stats = `Total de eventos: ${totalEventos}`
+      break
+    }
+    case 'geozona': {
+      titulo = `GEOZONA: ${nombreSubGrupo}`
+      stats = `Total de eventos: ${totalEventos}`
+      break
+    }
+
+    case 'grupo': {
+      titulo = `GRUPO: ${nombreSubGrupo}`
+      stats = `Total de eventos: ${totalEventos}`
+      break
+    }
+
+    default: {
+      titulo = `${nombreSubGrupo}`
+      stats = `Total de eventos: ${totalEventos}`
+    }
+  }
+
+  return { titulo, subtitulo, stats }
+}
 
 export function useReportePDF() {
   /**
@@ -432,90 +614,276 @@ export function useReportePDF() {
     // ========================================
     // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
     // ========================================
-    // ========================================
-    // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
-    // ========================================
     if (datosReales.eventosAgrupados && Object.keys(datosReales.eventosAgrupados).length > 0) {
-      Object.entries(datosReales.eventosAgrupados).forEach(([grupo, eventos], index) => {
+      Object.entries(datosReales.eventosAgrupados).forEach(([nombreGrupo, eventos], index) => {
         if (index > 0 || yPosition > 200) {
           doc.addPage()
           yPosition = 20
         }
 
         // 🔥 NUEVO: Usar header contextual
-        const headerInfo = generarHeaderGrupo(grupo, eventos, config, datosReales)
+        const headerInfo = generarHeaderGrupo(nombreGrupo, eventos, config, datosReales)
+        if (headerInfo) {
+          const pageWidth = doc.internal.pageSize.width
+          doc.addPage()
+          yPosition = 20
 
-        doc.setFontSize(12)
-        doc.setFont(undefined, 'bold')
-        doc.text(headerInfo.titulo, 14, yPosition)
-        yPosition += 6
+          doc.setFontSize(16)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(41, 128, 185)
+          doc.text(headerInfo.titulo, 20, yPosition)
+          yPosition += 8
 
-        if (headerInfo.subtitulo) {
-          doc.setFontSize(9)
-          doc.setFont(undefined, 'normal')
-          doc.text(headerInfo.subtitulo, 14, yPosition)
-          yPosition += 5
+          if (headerInfo.subtitulo) {
+            doc.setFontSize(10)
+            doc.setFont('helvetica', 'normal')
+            doc.setTextColor(100, 100, 100)
+            doc.text(headerInfo.subtitulo, 20, yPosition)
+            yPosition += 6
+          }
+
+          if (headerInfo.stats) {
+            doc.setFontSize(9)
+            doc.setFont('helvetica', 'italic')
+            doc.setTextColor(100, 100, 100)
+            doc.text(headerInfo.stats, 20, yPosition)
+            yPosition += 10
+          }
+
+          doc.setDrawColor(200, 200, 200)
+          doc.line(20, yPosition, pageWidth - 20, yPosition)
+          yPosition += 8
         }
 
-        doc.setFontSize(9)
-        doc.setFont(undefined, 'italic')
-        doc.text(headerInfo.stats, 14, yPosition)
-        yPosition += 8
+        // ========================================
+        // SUB-AGRUPACIÓN DE EVENTOS
+        // ========================================
+        const subGrupos = subAgruparEventos(eventos, config, datosReales)
 
-        // 🔥 Headers de la tabla
-        const headers = config.columnasSeleccionadas
+        console.log('🔍 Sub-grupos creados:', Object.keys(subGrupos))
+        console.log('🔍 Primer evento del primer sub-grupo:', Object.values(subGrupos)[0]?.[0])
 
-        // 🔥 CORREGIDO: Procesar eventos CON las funciones de columnas
-        const tableData = eventos.map((evento) => {
-          return headers.map((nombreCol) => {
-            const columnaConfig = datosReales.configuracionColumnas?.find(
-              (c) => c.label === nombreCol,
-            )
+        const pageHeight = doc.internal.pageSize.getHeight()
+        Object.entries(subGrupos).forEach(([nombreSubGrupo, eventosSubGrupo], indexSubGrupo) => {
+          console.log(`🔍 Sub-grupo "${nombreSubGrupo}":`, eventosSubGrupo.length, 'eventos')
+          console.log('🔍 Primer evento:', eventosSubGrupo[0])
 
-            if (columnaConfig && columnaConfig.obtenerValor) {
-              try {
-                const valor = columnaConfig.obtenerValor(evento)
-                return valor !== null && valor !== undefined ? valor : 'N/A'
-              } catch (error) {
-                console.error(`Error al obtener valor de columna "${nombreCol}":`, error)
-                return 'N/A'
-              }
+          if (!eventosSubGrupo || eventosSubGrupo.length === 0) return
+
+          // Header del sub-grupo
+          const headerSubGrupo = generarHeaderSubGrupo(nombreSubGrupo, eventosSubGrupo, config)
+
+          if (headerSubGrupo) {
+            if (indexSubGrupo > 0) {
+              yPosition += 5
             }
 
-            // Fallback: buscar directamente en el evento
-            return evento[nombreCol] || 'N/A'
+            if (yPosition > pageHeight - 40) {
+              doc.addPage()
+              yPosition = 20
+            }
+
+            doc.setFontSize(12)
+            doc.setFont('helvetica', 'bold')
+            doc.setTextColor(52, 152, 219)
+            doc.text(headerSubGrupo.titulo, 25, yPosition)
+            yPosition += 6
+
+            if (headerSubGrupo.subtitulo) {
+              doc.setFontSize(9)
+              doc.setFont('helvetica', 'normal')
+              doc.setTextColor(120, 120, 120)
+              doc.text(headerSubGrupo.subtitulo, 25, yPosition)
+              yPosition += 5
+            }
+
+            if (headerSubGrupo.stats) {
+              doc.setFontSize(8)
+              doc.setFont('helvetica', 'italic')
+              doc.setTextColor(120, 120, 120)
+              doc.text(headerSubGrupo.stats, 25, yPosition)
+              yPosition += 8
+            }
+          }
+
+          const columnasVisibles = config.columnasVisibles || [
+            'nombreEvento',
+            'horaInicioEvento',
+            'conductorNombre',
+            'unidadNombre',
+            'tipo',
+            'hora',
+            'fecha',
+            'duracion',
+          ]
+
+          const headers = columnasVisibles.map((col) => {
+            const nombres = {
+              nombreEvento: 'Nombre de evento',
+              horaInicioEvento: 'Hora de inicio de evento',
+              conductorNombre: 'Conductor',
+              unidadNombre: 'Vehículo',
+              tipo: 'Tipo',
+              hora: 'Hora',
+              fecha: 'Fecha',
+              duracion: 'Duración',
+              condicionEvento: 'Condición de evento',
+              mensaje: 'Mensaje',
+              ubicacion: 'Ubicación',
+              tipoUbicacion: 'Tipo de ubicación',
+              geozona: 'Geozona',
+              poi: 'POI',
+              coordenadas: 'Coordenadas',
+              direccion: 'Dirección',
+              kilometraje: 'Kilometraje',
+              velocidad: 'Velocidad',
+              bateria: 'Batería',
+              estadoVehiculo: 'Estado del vehículo',
+              ignicion: 'Ignición',
+              placa: 'Placa',
+            }
+            return nombres[col] || col
           })
+
+          const tableData = eventosSubGrupo.map((evento) => {
+            return columnasVisibles.map((col) => {
+              let valor = evento[col]
+
+              // MAPEO DE NOMBRES DE PROPIEDADES
+              switch (col) {
+                case 'nombreEvento':
+                  valor = evento.eventoNombre || evento.mensaje
+                  break
+
+                case 'horaInicioEvento':
+                  if (evento.timestamp) {
+                    try {
+                      const fecha = new Date(evento.timestamp)
+                      valor = fecha.toLocaleString('es-MX', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                      })
+                    } catch (error) {
+                      console.error(error)
+                      valor = 'N/A'
+                    }
+                  }
+                  break
+
+                case 'fecha':
+                  if (evento.timestamp) {
+                    try {
+                      const fecha = new Date(evento.timestamp)
+                      const dia = String(fecha.getDate()).padStart(2, '0')
+                      const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+                      const anio = fecha.getFullYear()
+                      valor = `${dia}/${mes}/${anio}`
+                    } catch (error) {
+                      valor = 'N/A'
+                      console.error(error)
+                    }
+                  }
+                  break
+
+                case 'hora':
+                  if (evento.timestamp) {
+                    try {
+                      const fecha = new Date(evento.timestamp)
+                      valor = fecha.toLocaleTimeString('es-MX', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
+                    } catch (error) {
+                      console.error(error)
+                      valor = 'N/A'
+                    }
+                  }
+                  break
+
+                case 'tipo':
+                  valor = evento.tipoEvento
+                  break
+
+                case 'placa':
+                  valor = evento.unidadPlaca
+                  break
+
+                case 'unidadNombre':
+                  // Ya existe con este nombre
+                  valor = evento.unidadNombre
+                  break
+
+                case 'conductorNombre':
+                  // Ya existe con este nombre
+                  valor = evento.conductorNombre
+                  break
+
+                case 'coordenadas':
+                  if (evento.coordenadas?.lat && evento.coordenadas?.lng) {
+                    valor = `${evento.coordenadas.lat}, ${evento.coordenadas.lng}`
+                  }
+                  break
+
+                case 'direccion':
+                  valor = evento.direccion
+                  break
+
+                case 'geozona':
+                  valor = evento.geozonaNombre
+                  break
+
+                case 'velocidad':
+                  valor = evento.velocidad !== undefined ? `${evento.velocidad} km/h` : 'N/A'
+                  break
+
+                case 'duracion':
+                  if (evento.duracionMinutos !== undefined && evento.duracionMinutos !== null) {
+                    valor = `${evento.duracionMinutos} min`
+                  }
+                  break
+
+                default:
+                  // Para cualquier otra columna, usar el valor directo
+                  valor = evento[col]
+              }
+
+              return valor !== undefined && valor !== null ? String(valor) : 'N/A'
+            })
+          })
+          console.log('Objeto doc antes de autoTable:', doc)
+          console.log('¿doc es una instancia de jsPDF?', doc instanceof jsPDF)
+          autoTable(doc, {
+            startY: yPosition,
+            head: [headers],
+            body: tableData,
+            theme: 'striped',
+            styles: {
+              fontSize: 7,
+              cellPadding: 2,
+            },
+            headStyles: {
+              fillColor: [52, 152, 219],
+              textColor: 255,
+              fontStyle: 'bold',
+              halign: 'center',
+            },
+            alternateRowStyles: {
+              fillColor: [245, 245, 245],
+            },
+            margin: { left: headerSubGrupo ? 25 : 20, right: 20 },
+            didDrawPage: function (data) {
+              yPosition = data.cursor.y + 5
+            },
+          })
+
+          yPosition = doc.lastAutoTable.finalY + 10
         })
-
-        autoTable(doc, {
-          startY: yPosition,
-          head: [headers],
-          body: tableData,
-          theme: 'striped',
-          headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
-          styles: { fontSize: 7, cellPadding: 2 },
-          margin: { left: 14, right: 14 },
-        })
-
-        yPosition = doc.lastAutoTable.finalY + 15
-      })
-    }
-
-    // Elementos sin datos
-    if (datosReales.elementosSinDatos && datosReales.elementosSinDatos.length > 0) {
-      if (yPosition > 250) {
-        doc.addPage()
-        yPosition = 20
-      }
-
-      doc.setFontSize(10)
-      doc.setFont(undefined, 'italic')
-      doc.text(`${config.reportarPor} sin datos en el período seleccionado:`, 14, yPosition)
-      yPosition += 6
-
-      datosReales.elementosSinDatos.forEach((elemento) => {
-        doc.text(`• ${elemento}`, 20, yPosition)
-        yPosition += 5
       })
     }
 
