@@ -1423,19 +1423,20 @@ export function useReportePDF() {
    */
   const generarPDFHorasTrabajo = async (config, datosReales) => {
     const doc = new jsPDF('landscape')
-    let yPosition = 20
+    let yPos = 20
 
-    // Título del documento
+    // ========================================
+    // ENCABEZADO DEL DOCUMENTO
+    // ========================================
     doc.setFontSize(16)
     doc.setFont(undefined, 'bold')
-    doc.text('Informe de Horas de Trabajo', 14, yPosition)
-    yPosition += 10
+    doc.text('Informe de Horas de Trabajo', 14, yPos)
+    yPos += 10
 
-    // Información del reporte
     doc.setFontSize(10)
     doc.setFont(undefined, 'normal')
-    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPosition)
-    yPosition += 6
+    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPos)
+    yPos += 6
     doc.text(
       `Generado: ${new Date().toLocaleString('es-MX', {
         day: 'numeric',
@@ -1445,25 +1446,24 @@ export function useReportePDF() {
         minute: '2-digit',
       })}`,
       14,
-      yPosition,
+      yPos,
     )
-    yPosition += 6
-    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPosition)
-    yPosition += 6
-    doc.text(`Horario comercial: ${config.horarioInicio} - ${config.horarioFin}`, 14, yPosition)
-    yPosition += 10
+    yPos += 6
+    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPos)
+    yPos += 6
+    doc.text(`Horario comercial: ${config.horarioInicio} - ${config.horarioFin}`, 14, yPos)
+    yPos += 10
 
     // ========================================
-    // 📊 RESUMEN GENERAL
+    // RESUMEN GENERAL (si está activo)
     // ========================================
     if (config.mostrarResumen && datosReales.resumenGeneral) {
       doc.setFontSize(12)
       doc.setFont(undefined, 'bold')
-      doc.text('Resumen del Informe', 14, yPosition)
-      yPosition += 8
+      doc.text('Resumen del Informe', 14, yPos)
+      yPos += 8
 
       const resumenData = datosReales.resumenGeneral.map((item) => {
-        // Verificar si tiene horas extra (HH:MM:SS)
         const partesFuera = item.duracionFuera.split(':')
         const tieneHorasExtra =
           parseInt(partesFuera[0]) > 0 ||
@@ -1477,8 +1477,8 @@ export function useReportePDF() {
             styles:
               config.remarcarHorasExtra && tieneHorasExtra
                 ? {
-                    fillColor: [255, 235, 238], // #ffebee (rosa claro)
-                    textColor: [211, 47, 47], // #d32f2f (rojo)
+                    fillColor: [255, 235, 238],
+                    textColor: [211, 47, 47],
                     fontStyle: 'bold',
                   }
                 : {},
@@ -1487,6 +1487,7 @@ export function useReportePDF() {
           { content: item.duracionDentro, styles: {} },
         ]
       })
+
       if (datosReales.totales) {
         const partesTotales = datosReales.totales.duracionFuera.split(':')
         const tieneTotalesExtra =
@@ -1513,7 +1514,7 @@ export function useReportePDF() {
       }
 
       autoTable(doc, {
-        startY: yPosition,
+        startY: yPos,
         head: [
           [
             'Nombre de objeto',
@@ -1534,143 +1535,438 @@ export function useReportePDF() {
         },
       })
 
-      yPosition = doc.lastAutoTable.finalY + 10
+      yPos = doc.lastAutoTable.finalY + 10
     }
 
     // ========================================
-    // 📅 POR CADA DÍA
+    // AGRUPAR REGISTROS POR UNIDAD/CONDUCTOR
+    // ========================================
+    const registrosPorEntidad = {}
+
+    datosReales.registros.forEach((registro) => {
+      const clave =
+        config.reportarPor === 'Unidades' ? registro.unidadNombre : registro.conductorNombre
+
+      if (!registrosPorEntidad[clave]) {
+        registrosPorEntidad[clave] = []
+      }
+      registrosPorEntidad[clave].push(registro)
+    })
+
+    console.log('📊 Registros agrupados por:', config.reportarPor)
+    console.log('📊 Grupos creados:', Object.keys(registrosPorEntidad))
+
+    // ========================================
+    // MAPEO DE COLUMNAS (español → propiedades)
+    // ========================================
+    const nombreColumnaAPropiedad = {
+      Fecha: 'fecha',
+      'Hora de inicio de trabajo': 'horaInicioTrabajo',
+      'Hora de fin de trabajo': 'horaFinTrabajo',
+      'Ubicación de inicio de trabajo': 'ubicacionInicio',
+      'Ubicación de fin de trabajo': 'ubicacionFin',
+      'Duración total de trabajo': 'duracionTotal',
+      'Duración dentro del horario comercial': 'duracionDentroHorario',
+      'Duración fuera del horario comercial': 'duracionFueraHorario',
+      'Total de viajes': 'totalViajes',
+      'Viajes dentro del horario': 'viajesDentroHorario',
+      'Viajes fuera del horario': 'viajesFueraHorario',
+      Conductor: 'conductorNombre',
+    }
+
+    // Convertir columnas seleccionadas de español a propiedades
+    const columnasVisibles = config.columnasSeleccionadas.map((nombreEspanol) => {
+      return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
+    })
+
+    console.log('🔍 Columnas convertidas:', columnasVisibles)
+
+    // ========================================
+    // LOOP POR CADA UNIDAD/CONDUCTOR
     // ========================================
     const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
       useMapboxStaticImage()
 
-    // Agrupar registros por fecha
-    const registrosPorFecha = {}
-    datosReales.registros.forEach((registro) => {
-      if (!registrosPorFecha[registro.fecha]) {
-        registrosPorFecha[registro.fecha] = []
-      }
-      registrosPorFecha[registro.fecha].push(registro)
-    })
-
-    for (const [fecha, registros] of Object.entries(registrosPorFecha)) {
-      // Nueva página para cada día
+    for (const [nombreEntidad, registros] of Object.entries(registrosPorEntidad)) {
+      // Nueva página para cada entidad
       doc.addPage()
-      yPosition = 20
+      yPos = 20
 
-      // 🔥 Título del día
-      doc.setFontSize(14)
+      // ========================================
+      // HEADER DE LA ENTIDAD (NIVEL 1)
+      // ========================================
+      doc.setFontSize(16)
       doc.setFont(undefined, 'bold')
-      const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-      doc.text(fechaFormateada, 14, yPosition)
-      yPosition += 10
+      doc.setTextColor(41, 128, 185) // Azul oscuro
 
-      // 🗺️ MAPA DEL DÍA (si mostrarMapaZona está activo)
-      if (config.mostrarMapaZona && registros.length > 0) {
-        try {
-          const trayectosParaMapa = prepararDatosTrayectos(registros)
+      const headerTitulo =
+        config.reportarPor === 'Unidades'
+          ? `UNIDAD: ${nombreEntidad}`
+          : `CONDUCTOR: ${nombreEntidad}`
 
-          if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
-            const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
-              width: 1200,
-              height: 800,
-              padding: 50,
-              mostrarPins: true,
+      doc.text(headerTitulo, 20, yPos)
+      yPos += 8
+
+      // Subtítulo con info adicional
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'normal')
+      doc.setTextColor(100, 100, 100)
+
+      const primerRegistro = registros[0]
+      if (config.reportarPor === 'Unidades') {
+        const placa = primerRegistro.unidadPlaca || 'Sin placa'
+        const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
+        doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
+      } else {
+        const unidades = [...new Set(registros.map((r) => r.unidadNombre).filter(Boolean))]
+        doc.text(`Unidades usadas: ${unidades.join(', ')}`, 20, yPos)
+      }
+      yPos += 6
+
+      // Stats de la entidad
+      const totalViajes = registros.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
+      doc.setFontSize(9)
+      doc.setFont(undefined, 'italic')
+      doc.text(`Total de viajes: ${totalViajes}`, 20, yPos)
+      yPos += 10
+
+      // Línea separadora
+      doc.setDrawColor(200, 200, 200)
+      doc.line(20, yPos, doc.internal.pageSize.getWidth() - 20, yPos)
+      yPos += 8
+
+      // ========================================
+      // DECIDIR QUÉ MOSTRAR SEGÚN tipoDetalle
+      // ========================================
+      if (config.tipoDetalle === 'dias_detallados') {
+        // ==========================================
+        // OPCIÓN 1: DÍAS DETALLADOS (resumen + viajes)
+        // ==========================================
+        console.log('📅 Generando días detallados...')
+
+        // Agrupar por fecha
+        const registrosPorFecha = {}
+        registros.forEach((registro) => {
+          const fecha = registro.fecha
+          if (!registrosPorFecha[fecha]) {
+            registrosPorFecha[fecha] = []
+          }
+          registrosPorFecha[fecha].push(registro)
+        })
+
+        // Loop por cada día
+        for (const [fecha, registrosDelDia] of Object.entries(registrosPorFecha)) {
+          // Header del día (NIVEL 2)
+          if (yPos > 230) {
+            doc.addPage()
+            yPos = 20
+          }
+
+          doc.setFontSize(12)
+          doc.setFont(undefined, 'bold')
+          doc.setTextColor(52, 152, 219) // Azul claro
+
+          const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+          const fechaTitulo = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1)
+
+          doc.text(`  DÍA: ${fechaTitulo}`, 25, yPos)
+          yPos += 6
+
+          // Stats del día
+          const viajesDelDia = registrosDelDia.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
+          doc.setFontSize(8)
+          doc.setFont(undefined, 'italic')
+          doc.setTextColor(120, 120, 120)
+          doc.text(`  Viajes del día: ${viajesDelDia}`, 25, yPos)
+          yPos += 8
+
+          // Mapa del día (si está activo)
+          if (config.mostrarMapaZona && registrosDelDia.length > 0) {
+            try {
+              const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
+
+              if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+                const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                  width: 1200,
+                  height: 800,
+                  padding: 50,
+                  mostrarPins: true,
+                })
+
+                const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+                const pageWidth = doc.internal.pageSize.getWidth()
+                const margin = 14
+                const availableWidth = pageWidth - margin * 2
+                const aspectRatio = 1.5
+                let mapWidth = availableWidth
+                let mapHeight = mapWidth / aspectRatio
+                const mapX = (pageWidth - mapWidth) / 2
+
+                doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
+                yPos += mapHeight + 10
+              }
+            } catch (error) {
+              console.error('Error generando mapa del día:', error)
+            }
+          }
+
+          // Tabla de viajes del día
+          if (yPos > 230) {
+            doc.addPage()
+            yPos = 20
+          }
+
+          // Preparar datos de viajes
+          const todosLosViajes = []
+          registrosDelDia.forEach((registro) => {
+            if (registro.detallesViajes && registro.detallesViajes.length > 0) {
+              registro.detallesViajes.forEach((viaje) => {
+                // Aplicar filtro de tipoInformeComercial
+                const [hD, mD, sD] = viaje.duracionDentro.split(':').map(Number)
+                const tieneDentro = hD > 0 || mD > 0 || sD > 0
+
+                const [hF, mF, sF] = viaje.duracionFuera.split(':').map(Number)
+                const tieneFuera = hF > 0 || mF > 0 || sF > 0
+
+                let incluirViaje = false
+                if (config.tipoInformeComercial === 'todos') {
+                  incluirViaje = true
+                } else if (config.tipoInformeComercial === 'dentro') {
+                  incluirViaje = tieneDentro
+                } else if (config.tipoInformeComercial === 'fuera') {
+                  incluirViaje = tieneFuera
+                }
+
+                if (!incluirViaje) return
+
+                todosLosViajes.push([
+                  { content: viaje.horaInicio, styles: {} },
+                  { content: viaje.ubicacionInicio, styles: {} },
+                  { content: viaje.horaFin, styles: {} },
+                  { content: viaje.ubicacionFin, styles: {} },
+                  {
+                    content: viaje.duracionFuera,
+                    styles:
+                      config.remarcarHorasExtra && tieneFuera
+                        ? {
+                            fillColor: [255, 235, 238],
+                            textColor: [211, 47, 47],
+                            fontStyle: 'bold',
+                          }
+                        : {},
+                  },
+                  { content: viaje.duracionDentro, styles: {} },
+                ])
+              })
+            }
+          })
+
+          if (todosLosViajes.length > 0) {
+            autoTable(doc, {
+              startY: yPos,
+              head: [
+                [
+                  'Hora inicio',
+                  'Ubicación inicio',
+                  'Hora fin',
+                  'Ubicación fin',
+                  'Duración fuera horario',
+                  'Duración dentro horario',
+                ],
+              ],
+              body: todosLosViajes,
+              theme: 'grid',
+              headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
+              styles: { fontSize: 7, cellPadding: 2 },
+              columnStyles: {
+                0: { cellWidth: 25 },
+                1: { cellWidth: 60 },
+                2: { cellWidth: 25 },
+                3: { cellWidth: 60 },
+                4: { cellWidth: 30 },
+                5: { cellWidth: 30 },
+              },
+              margin: { left: 25, right: 20 }, // Indentado
             })
 
-            const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
-
-            const pageWidth = doc.internal.pageSize.getWidth()
-            const margin = 14
-            const availableWidth = pageWidth - margin * 2
-            const aspectRatio = 1.5
-            let mapWidth = availableWidth
-            let mapHeight = mapWidth / aspectRatio
-
-            const mapX = (pageWidth - mapWidth) / 2
-
-            doc.addImage(imagenBase64, 'PNG', mapX, yPosition, mapWidth, mapHeight)
-            yPosition += mapHeight + 10
+            yPos = doc.lastAutoTable.finalY + 10
           }
-        } catch (error) {
-          console.error('Error generando mapa del día:', error)
         }
-      }
+      } else if (config.tipoDetalle === 'viajes_detallados') {
+        // ==========================================
+        // OPCIÓN 2: VIAJES DETALLADOS (sin agrupar por día)
+        // ==========================================
+        console.log('🚗 Generando viajes detallados...')
 
-      // 📊 RESUMEN DEL DÍA
-      // 📋 DETALLES DE LOS TRAYECTOS
-      if (yPosition > 230) {
-        doc.addPage()
-        yPosition = 20
-      }
+        // Obtener TODOS los viajes de la entidad (sin separar por día)
+        const todosLosViajes = []
 
-      doc.setFontSize(12)
-      doc.setFont(undefined, 'bold')
-      doc.text('Detalles de los trayectos', 14, yPosition)
-      yPosition += 8
+        registros.forEach((registro) => {
+          if (registro.detallesViajes && registro.detallesViajes.length > 0) {
+            registro.detallesViajes.forEach((viaje) => {
+              // Aplicar filtro
+              const [hD, mD, sD] = viaje.duracionDentro.split(':').map(Number)
+              const tieneDentro = hD > 0 || mD > 0 || sD > 0
 
-      // 🔥 PREPARAR DATOS CON ESTILOS
-      const todosLosViajes = []
-      registros.forEach((registro) => {
-        if (registro.detallesViajes && registro.detallesViajes.length > 0) {
-          registro.detallesViajes.forEach((viaje) => {
-            const partesFuera = viaje.duracionFuera.split(':')
-            const tieneHorasFuera =
-              parseInt(partesFuera[0]) > 0 ||
-              parseInt(partesFuera[1]) > 0 ||
-              parseInt(partesFuera[2]) > 0
+              const [hF, mF, sF] = viaje.duracionFuera.split(':').map(Number)
+              const tieneFuera = hF > 0 || mF > 0 || sF > 0
 
-            todosLosViajes.push([
-              { content: viaje.horaInicio, styles: {} },
-              { content: viaje.ubicacionInicio, styles: {} },
-              { content: viaje.horaFin, styles: {} },
-              { content: viaje.ubicacionFin, styles: {} },
-              {
-                content: viaje.duracionFuera,
-                styles:
-                  config.remarcarHorasExtra && tieneHorasFuera
-                    ? {
-                        fillColor: [255, 235, 238],
-                        textColor: [211, 47, 47],
-                        fontStyle: 'bold',
-                      }
-                    : {},
-              },
-              { content: viaje.duracionDentro, styles: {} },
-            ])
-          })
-        }
-      })
+              let incluirViaje = false
+              if (config.tipoInformeComercial === 'todos') {
+                incluirViaje = true
+              } else if (config.tipoInformeComercial === 'dentro') {
+                incluirViaje = tieneDentro
+              } else if (config.tipoInformeComercial === 'fuera') {
+                incluirViaje = tieneFuera
+              }
 
-      if (todosLosViajes.length > 0) {
-        autoTable(doc, {
-          startY: yPosition,
-          head: [
-            [
-              'Hora inicio',
-              'Ubicación inicio',
-              'Hora fin',
-              'Ubicación fin',
-              'Duración fuera horario',
-              'Duración dentro horario',
-            ],
-          ],
-          body: todosLosViajes,
-          theme: 'grid',
-          headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
-          styles: { fontSize: 7, cellPadding: 2 },
-          columnStyles: {
-            0: { cellWidth: 25 },
-            1: { cellWidth: 60 },
-            2: { cellWidth: 25 },
-            3: { cellWidth: 60 },
-            4: { cellWidth: 30 },
-            5: { cellWidth: 30 },
-          },
+              if (!incluirViaje) return
+
+              todosLosViajes.push([
+                { content: viaje.horaInicio, styles: {} },
+                { content: viaje.ubicacionInicio, styles: {} },
+                { content: viaje.horaFin, styles: {} },
+                { content: viaje.ubicacionFin, styles: {} },
+                {
+                  content: viaje.duracionFuera,
+                  styles:
+                    config.remarcarHorasExtra && tieneFuera
+                      ? {
+                          fillColor: [255, 235, 238],
+                          textColor: [211, 47, 47],
+                          fontStyle: 'bold',
+                        }
+                      : {},
+                },
+                { content: viaje.duracionDentro, styles: {} },
+              ])
+            })
+          }
         })
+
+        if (todosLosViajes.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [
+              [
+                'Hora inicio',
+                'Ubicación inicio',
+                'Hora fin',
+                'Ubicación fin',
+                'Duración fuera horario',
+                'Duración dentro horario',
+              ],
+            ],
+            body: todosLosViajes,
+            theme: 'grid',
+            headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
+            styles: { fontSize: 7, cellPadding: 2 },
+            columnStyles: {
+              0: { cellWidth: 25 },
+              1: { cellWidth: 60 },
+              2: { cellWidth: 25 },
+              3: { cellWidth: 60 },
+              4: { cellWidth: 30 },
+              5: { cellWidth: 30 },
+            },
+            margin: { left: 20, right: 20 }, // Sin indentación
+          })
+
+          yPos = doc.lastAutoTable.finalY + 10
+        }
+      } else if (config.tipoDetalle === 'dias_resumidos') {
+        // ==========================================
+        // OPCIÓN 3: DÍAS RESUMIDOS (solo resumen, sin tabla de viajes)
+        // ==========================================
+        console.log('📊 Generando días resumidos...')
+
+        // Agrupar por fecha
+        const registrosPorFecha = {}
+        registros.forEach((registro) => {
+          const fecha = registro.fecha
+          if (!registrosPorFecha[fecha]) {
+            registrosPorFecha[fecha] = []
+          }
+          registrosPorFecha[fecha].push(registro)
+        })
+
+        // Preparar resumen por día
+        const resumenPorDia = []
+
+        Object.entries(registrosPorFecha).forEach(([fecha, registrosDelDia]) => {
+          const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+
+          const viajesDelDia = registrosDelDia.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
+
+          // Calcular duraciones totales del día
+          let duracionTotalDia = '00:00:00'
+          let duracionDentroDia = '00:00:00'
+          let duracionFueraDia = '00:00:00'
+
+          // Sumar duraciones (aquí necesitarías una función helper para sumar tiempos HH:MM:SS)
+          // Por simplicidad, mostrar el del primer registro
+          if (registrosDelDia[0]) {
+            duracionTotalDia = registrosDelDia[0].duracionTotal || '00:00:00'
+            duracionDentroDia = registrosDelDia[0].duracionDentroHorario || '00:00:00'
+            duracionFueraDia = registrosDelDia[0].duracionFueraHorario || '00:00:00'
+          }
+
+          const tieneFuera = duracionFueraDia !== '00:00:00'
+
+          resumenPorDia.push([
+            { content: fechaFormateada, styles: {} },
+            { content: viajesDelDia.toString(), styles: {} },
+            { content: duracionTotalDia, styles: {} },
+            { content: duracionDentroDia, styles: {} },
+            {
+              content: duracionFueraDia,
+              styles:
+                config.remarcarHorasExtra && tieneFuera
+                  ? {
+                      fillColor: [255, 235, 238],
+                      textColor: [211, 47, 47],
+                      fontStyle: 'bold',
+                    }
+                  : {},
+            },
+          ])
+        })
+
+        if (resumenPorDia.length > 0) {
+          doc.setFontSize(12)
+          doc.setFont(undefined, 'bold')
+          doc.text('Resumen por Día', 20, yPos)
+          yPos += 8
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
+            body: resumenPorDia,
+            theme: 'grid',
+            headStyles: { fillColor: [76, 175, 80], fontSize: 9 },
+            styles: { fontSize: 8, cellPadding: 3 },
+            columnStyles: {
+              0: { cellWidth: 80 },
+              1: { cellWidth: 30 }, // Viajes
+              2: { cellWidth: 40 }, // Duración Total
+              3: { cellWidth: 40 }, // Dentro
+              4: { cellWidth: 40 }, // Fuera
+            },
+            margin: { left: 20, right: 20 },
+          })
+
+          yPos = doc.lastAutoTable.finalY + 10
+        }
       }
     }
 

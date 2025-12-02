@@ -179,7 +179,7 @@
 
             <!-- 🔥 Tipo de informe comercial (solo para Horas de Trabajo) -->
             <div v-if="tieneOpcion('tipoInformeComercial')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Tipo de informe</div>
+              <div class="text-subtitle2 q-mb-sm">Tipo de informe comercial</div>
               <q-select
                 v-model="tipoInformeComercial"
                 :options="TIPOS_INFORME_COMERCIAL"
@@ -1282,6 +1282,9 @@ const generarReporte = async () => {
         horarioFin: horarioFin.value,
         mostrarMapaZona: mostrarMapaZona.value,
         remarcarHorasExtra: remarcarHorasExtra.value,
+        tipoDetalle: tipoDetalle.value,
+        tipoInformeComercial: tipoInformeComercial.value,
+        diasLaborables: diasLaborablesSeleccionados.value,
       }
 
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
