@@ -364,7 +364,7 @@ function generarHeaderSubGrupo(nombreSubGrupo, eventos, config) {
   switch (criterio) {
     case 'evento': {
       titulo = `EVENTO: ${nombreSubGrupo}`
-      const entradas = eventos.filter((e) => e.tipo?.toLowerCase() === 'entrada').length
+      const entradas = eventos.filter((e) => e.tipoEvento?.toLowerCase() === 'entrada').length
       const salidas = eventos.filter((e) => e.tipo?.toLowerCase() === 'salida').length
       subtitulo = `Tipo de evento: ${nombreSubGrupo}`
       stats = `Total de ocurrencias: ${totalEventos} | Entradas: ${entradas} | Salidas: ${salidas}`
@@ -463,14 +463,16 @@ export function useReportePDF() {
    */
 
   const generarPDFEventos = (config, datosReales) => {
-    console.log('🔍 config.reportarPor:', config.reportarPor)
-    console.log('🔍 config.agruparPor:', config.agruparPor)
-    console.log('🔍 Claves de eventosAgrupados:', Object.keys(datosReales.eventosAgrupados || {}))
+    console.log('🔍 CONFIG COMPLETO:', config)
+    console.log('🔍 columnasVisibles en config:', config.columnasVisibles)
+    //  console.log('🔍 config.reportarPor:', config.reportarPor)
+    // console.log('🔍 config.agruparPor:', config.agruparPor)
+    //console.log('🔍 Claves de eventosAgrupados:', Object.keys(datosReales.eventosAgrupados || {}))
 
-    console.log('📊 datosReales en PDF Eventos:', datosReales)
-    console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
-    console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
-    console.log('📊 datosColumnas[0]:', datosReales.datosColumnas?.[0])
+    //console.log('📊 datosReales en PDF Eventos:', datosReales)
+    //console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
+    //console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
+    //console.log('📊 datosColumnas[0]:', datosReales.datosColumnas?.[0])
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
 
@@ -705,18 +707,74 @@ export function useReportePDF() {
               yPosition += 8
             }
           }
+          console.log('🔍 Columnas visibles:', config.columnasVisibles)
+          console.log('🔍 Número de columnas:', config.columnasVisibles?.length)
 
-          const columnasVisibles = config.columnasVisibles || [
-            'nombreEvento',
-            'horaInicioEvento',
-            'conductorNombre',
-            'unidadNombre',
-            'tipo',
-            'hora',
-            'fecha',
-            'duracion',
-          ]
+          // ========================================
+          // TABLA DE EVENTOS DEL SUB-GRUPO
+          // ========================================
 
+          // Mapeo de nombres en español a nombres de propiedades
+          const nombreColumnaAPropiedad = {
+            'Nombre de evento': 'nombreEvento',
+            'Hora de inicio de evento': 'horaInicioEvento',
+            Conductor: 'conductorNombre',
+            Vehículo: 'unidadNombre',
+            Tipo: 'tipo',
+            Hora: 'hora',
+            Fecha: 'fecha',
+            Duración: 'duracion',
+            'Condición de evento': 'condicionEvento',
+            Mensaje: 'mensaje',
+            Ubicación: 'ubicacion',
+            'Tipo de ubicación': 'tipoUbicacion',
+            Geozona: 'geozona',
+            POI: 'poi',
+            Coordenadas: 'coordenadas',
+            Dirección: 'direccion',
+            Kilometraje: 'kilometraje',
+            Velocidad: 'velocidad',
+            Batería: 'bateria',
+            'Estado del vehículo': 'estadoVehiculo',
+            Ignición: 'ignicion',
+            Placa: 'placa',
+          }
+
+          // Convertir columnasSeleccionadas (español) a nombres de propiedades (inglés)
+          let columnasVisibles
+          if (config.columnasSeleccionadas && config.columnasSeleccionadas.length > 0) {
+            columnasVisibles = config.columnasSeleccionadas.map((nombreEspanol) => {
+              return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
+            })
+          } else {
+            // Fallback: todas las columnas
+            columnasVisibles = [
+              'nombreEvento',
+              'horaInicioEvento',
+              'conductorNombre',
+              'unidadNombre',
+              'tipo',
+              'hora',
+              'fecha',
+              'duracion',
+              'condicionEvento',
+              'mensaje',
+              'ubicacion',
+              'tipoUbicacion',
+              'geozona',
+              'poi',
+              'coordenadas',
+              'direccion',
+              'kilometraje',
+              'velocidad',
+              'bateria',
+              'estadoVehiculo',
+              'ignicion',
+              'placa',
+            ]
+          }
+
+          // Preparar datos para la tabla
           const headers = columnasVisibles.map((col) => {
             const nombres = {
               nombreEvento: 'Nombre de evento',
@@ -751,11 +809,12 @@ export function useReportePDF() {
 
               // MAPEO DE NOMBRES DE PROPIEDADES
               switch (col) {
-                case 'nombreEvento':
+                case 'nombreEvento': {
                   valor = evento.eventoNombre || evento.mensaje
                   break
+                }
 
-                case 'horaInicioEvento':
+                case 'horaInicioEvento': {
                   if (evento.timestamp) {
                     try {
                       const fecha = new Date(evento.timestamp)
@@ -769,13 +828,14 @@ export function useReportePDF() {
                         hour12: true,
                       })
                     } catch (error) {
-                      console.error(error)
                       valor = 'N/A'
+                      console.error(error)
                     }
                   }
                   break
+                }
 
-                case 'fecha':
+                case 'fecha': {
                   if (evento.timestamp) {
                     try {
                       const fecha = new Date(evento.timestamp)
@@ -789,8 +849,9 @@ export function useReportePDF() {
                     }
                   }
                   break
+                }
 
-                case 'hora':
+                case 'hora': {
                   if (evento.timestamp) {
                     try {
                       const fecha = new Date(evento.timestamp)
@@ -805,59 +866,112 @@ export function useReportePDF() {
                     }
                   }
                   break
+                }
 
-                case 'tipo':
+                case 'tipo': {
                   valor = evento.tipoEvento
                   break
+                }
 
-                case 'placa':
+                case 'placa': {
                   valor = evento.unidadPlaca
                   break
+                }
 
-                case 'unidadNombre':
-                  // Ya existe con este nombre
+                case 'unidadNombre': {
                   valor = evento.unidadNombre
                   break
+                }
 
-                case 'conductorNombre':
-                  // Ya existe con este nombre
+                case 'conductorNombre': {
                   valor = evento.conductorNombre
                   break
+                }
 
-                case 'coordenadas':
+                case 'coordenadas': {
                   if (evento.coordenadas?.lat && evento.coordenadas?.lng) {
                     valor = `${evento.coordenadas.lat}, ${evento.coordenadas.lng}`
                   }
                   break
+                }
 
-                case 'direccion':
+                case 'direccion': {
                   valor = evento.direccion
                   break
+                }
 
-                case 'geozona':
+                case 'geozona': {
                   valor = evento.geozonaNombre
                   break
+                }
 
-                case 'velocidad':
+                case 'velocidad': {
                   valor = evento.velocidad !== undefined ? `${evento.velocidad} km/h` : 'N/A'
                   break
+                }
 
-                case 'duracion':
+                case 'duracion': {
                   if (evento.duracionMinutos !== undefined && evento.duracionMinutos !== null) {
                     valor = `${evento.duracionMinutos} min`
                   }
                   break
+                }
 
-                default:
-                  // Para cualquier otra columna, usar el valor directo
+                case 'mensaje': {
+                  valor = evento.mensaje
+                  break
+                }
+
+                case 'ubicacion': {
+                  valor = evento.geozonaNombre
+                  break
+                }
+
+                case 'tipoUbicacion': {
+                  valor = evento.tipoUbicacion
+                  break
+                }
+
+                case 'poi': {
+                  valor = evento.poi
+                  break
+                }
+
+                case 'kilometraje': {
+                  valor = evento.kilometraje
+                  break
+                }
+
+                case 'bateria': {
+                  valor = evento.bateria
+                  break
+                }
+
+                case 'estadoVehiculo': {
+                  valor = evento.estadoVehiculo
+                  break
+                }
+
+                case 'ignicion': {
+                  valor = evento.ignicion
+                  break
+                }
+
+                case 'condicionEvento': {
+                  valor = evento.condicionEvento
+                  break
+                }
+
+                default: {
                   valor = evento[col]
+                }
               }
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'
             })
           })
-          console.log('Objeto doc antes de autoTable:', doc)
-          console.log('¿doc es una instancia de jsPDF?', doc instanceof jsPDF)
+
+          // Generar tabla
           autoTable(doc, {
             startY: yPosition,
             head: [headers],
