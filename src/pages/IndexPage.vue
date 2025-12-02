@@ -66,7 +66,7 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
-import { useRouter } from 'vue-router'
+//import { useRouter } from 'vue-router'
 
 const {
   initMap,
@@ -76,11 +76,11 @@ const {
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
+
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
 
 const marcadoresPOIs = ref([])
-
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
@@ -95,11 +95,22 @@ const traficoActivo = ref(false)
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
-const router = useRouter()
+//const router = useRouter()
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
-const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
+
+const {
+  conductores,
+  unidades,
+  gruposConductores,
+  obtenerGruposConductores,
+  obtenerConductores,
+  obtenerUnidades,
+} = useConductoresFirebase()
+
+const { estadoCompartido } = useEventBus()
+
 const simuladorActivo = ref(false)
 let simuladorYaIniciado = false
 
@@ -933,9 +944,11 @@ onMounted(async () => {
         })
 
         mapaListo.value = true
-
         console.log('✅ Mapa completamente listo')
 
+        // ========================================
+        // FUNCIONES GLOBALES PARA ABRIR DETALLES
+        // ========================================
         window.abrirDetallesUbicacion = (ubicacionData) => {
           try {
             if (ubicacionData.tipo === 'poi') {
@@ -966,22 +979,36 @@ onMounted(async () => {
           window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
         }
 
+        // ========================================
+        // CARGAR DATOS Y SISTEMAS
+        // ========================================
         await dibujarTodosEnMapa()
         await inicializarSistemaDeteccion()
-
         iniciarEvaluacionContinuaEventos()
-
         iniciarSeguimientoGPS()
 
         console.log('🎯 Esperando 2 segundos antes de iniciar simulador...')
         setTimeout(async () => {
           await iniciarSimuladorAutomatico()
         }, 2000)
+
+        // ========================================
+        // 🆕 EVENT LISTENER DEL MAPA
+        // ========================================
         const mapPage = document.getElementById('map-page')
         if (mapPage) {
           mapPage.addEventListener('click', (event) => {
+            // ✅ VALIDACIÓN CRÍTICA
+            if (!event || !event.target) {
+              console.warn('⚠️ Evento sin target válido')
+              return
+            }
+
+            // ========================================
+            // MANEJO DE BOTONES DE POI/GEOZONA
+            // ========================================
             const actionButton = event.target.closest('[data-action]')
-            if (actionButton) {
+            if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
               const action = actionButton.dataset.action
               const id = actionButton.dataset.poiId || actionButton.dataset.geozonaId
 
@@ -993,6 +1020,9 @@ onMounted(async () => {
               return
             }
 
+            // ========================================
+            // TOGGLE DEL POPUP DE UNIDADES
+            // ========================================
             const toggleBtn = event.target.closest('.toggle-popup-btn')
             if (toggleBtn) {
               const unidadId = toggleBtn.dataset.unidadId
@@ -1002,19 +1032,79 @@ onMounted(async () => {
                   popupContainer.classList.toggle('expanded')
                 }
               }
-              return // Detiene aquí si fue un clic en el botón de toggle
+              return
             }
 
-            // ✅ MANEJA EL CLIC EN EL BOTÓN "VER DETALLES DEL CONDUCTOR"
+            // ========================================
+            // 🆕 VER DETALLES DEL CONDUCTOR
+            // ========================================
             const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
             if (detailsBtn) {
               const conductorId = detailsBtn.dataset.conductorId
+              const conductorNombre = detailsBtn.dataset.conductorNombre
+
               if (conductorId) {
-                console.log(`Navegando a detalles del conductor con ID: ${conductorId}`)
-                // Navega al componente Conductores.vue, pasando el ID como parámetro
-                router.push({ name: 'DetalleConductor', params: { id: conductorId } })
+                console.log(`🚀 Navegando a: ${conductorNombre} (ID: ${conductorId})`)
+
+                // Buscar conductor y grupo
+                obtenerConductores().then(() => {
+                  const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
+
+                  if (conductorEncontrado) {
+                    obtenerGruposConductores().then(() => {
+                      const grupoDelConductor = gruposConductores.value.find((g) =>
+                        g.ConductoresIds?.includes(conductorId),
+                      )
+
+                      if (grupoDelConductor) {
+                        console.log(`✅ Grupo encontrado: ${grupoDelConductor.Nombre}`)
+
+                        // Cerrar dialogs
+                        const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
+                        window.dispatchEvent(cerrarDialogs)
+
+                        // Delay para sincronización
+                        setTimeout(() => {
+                          // Actualizar estado compartido
+                          estadoCompartido.value.abrirConductoresConConductor = {
+                            conductor: {
+                              id: conductorId,
+                              grupoId: grupoDelConductor.id,
+                              grupoNombre: grupoDelConductor.Nombre,
+                            },
+                            timestamp: Date.now(),
+                          }
+
+                          $q.notify({
+                            type: 'positive',
+                            message: `Abriendo detalles de ${conductorNombre}`,
+                            icon: 'person',
+                            position: 'top',
+                            timeout: 2000,
+                          })
+                        }, 100)
+                      } else {
+                        console.warn('⚠️ Conductor sin grupo')
+                        $q.notify({
+                          type: 'warning',
+                          message: 'El conductor no está asignado a ningún grupo',
+                          icon: 'warning',
+                          position: 'top',
+                        })
+                      }
+                    })
+                  } else {
+                    console.error('❌ Conductor no encontrado')
+                    $q.notify({
+                      type: 'negative',
+                      message: 'No se encontró el conductor',
+                      icon: 'error',
+                      position: 'top',
+                    })
+                  }
+                })
               }
-              return // Detiene aquí si fue un clic en el botón de detalles
+              return
             }
           })
         }
@@ -1026,6 +1116,9 @@ onMounted(async () => {
     console.error('❌ Error inicializando mapa:', error)
   }
 
+  // ========================================
+  // OTROS EVENT LISTENERS
+  // ========================================
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -1040,32 +1133,27 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
+  // Función global para toggle de geozonas
   window.toggleGeozonaPopup = (geozonaId) => {
     const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
     const button = document.getElementById(`toggle-btn-geo-${geozonaId}`)
 
-    // Alternamos una clase 'expanded' en el botón
     button.classList.toggle('expanded')
 
     if (button.classList.contains('expanded')) {
-      // Al expandir, calculamos la altura necesaria para una transición suave
       body.style.maxHeight = body.scrollHeight + 'px'
     } else {
-      // Al contraer, lo ponemos a 0
       body.style.maxHeight = '0'
     }
   }
 
+  // Event listener para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
     console.log('🔄 Redibujando mapa...')
-
     limpiarCapasDelMapa()
-
     await dibujarTodosEnMapa()
-
     resetear()
     await inicializarSistemaDeteccion()
-
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
@@ -1086,7 +1174,7 @@ const handleMostrarBoton = (e) => {
   mostrarBotonConfirmarGeozona.value = e.detail.mostrar
 }
 
-const confirmarYVolverADialogo = () => {
+function confirmarYVolverADialogo() {
   const evento = new CustomEvent('confirmarGeozonaDesdeBoton', {
     detail: { confirmed: true },
   })

@@ -88,7 +88,6 @@ export function useMapboxGL() {
       detenido: 'Detenido',
       inactivo: 'Inactivo',
     }
-    // ✅ Usar colores estandarizados
     const estadoColor = COLORES_ESTADO
 
     const unidadId = unidad.unidadId || unidad.id
@@ -107,11 +106,9 @@ export function useMapboxGL() {
           <div class="unidad-texto">
             <strong>${unidad.conductorNombre}</strong>
             <div>${unidad.unidadNombre}</div>
-            <!-- ✅ Dirección en estado contraído -->
             <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
           </div>
         </div>
-        <!-- ✅ Botón de toggle -->
         <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -138,7 +135,12 @@ export function useMapboxGL() {
           <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
         </div>
 
-        <button class="details-btn" data-action="ver-detalles-conductor" data-unidad-id="${unidadId}" data-conductor-id="${unidad.conductorId || unidad.id}">
+        <button
+          class="details-btn"
+          data-action="ver-detalles-conductor"
+          data-conductor-id="${unidad.conductorId || unidad.id}"
+          data-conductor-nombre="${unidad.conductorNombre}"
+        >
           Ver Detalles del Conductor
         </button>
       </div>
