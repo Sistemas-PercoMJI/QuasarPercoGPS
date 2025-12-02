@@ -1,11 +1,3 @@
-// src/composables/useMapboxGL.js - VERSIÓN 2.0 OPTIMIZADA
-// CAMBIOS:
-// ✅ Tile caching optimizado (50 tiles máx)
-// ✅ Throttling en actualizaciones de marcadores (300ms)
-// ✅ Lazy loading de capas de tráfico
-// ✅ Reducción de re-renders innecesarios
-// ✅ Cleanup mejorado de recursos
-
 import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -37,17 +29,21 @@ const THROTTLE_MS = 300 // Actualizar máximo cada 300ms
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
 
+// ✅ COLORES ESTANDARIZADOS (coinciden con EstadoFlota.vue)
+const COLORES_ESTADO = {
+  movimiento: '#4CAF50', // Verde
+  detenido: '#FF9800', // Naranja
+  inactivo: '#607D8B', // Gris azulado
+}
+
 export function useMapboxGL() {
   let marcadorTemporalElement = null
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
   const crearIconoUnidad = (estado) => {
-    const colores = {
-      movimiento: '#4CAF50',
-      detenido: '#FF9800',
-      inactivo: '#9E9E9E',
-    }
-    const color = colores[estado] || '#9E9E9E'
+    // ✅ Usar colores estandarizados
+    const color = COLORES_ESTADO[estado] || '#9E9E9E'
+    const colorIndicador = COLORES_ESTADO[estado] || '#9E9E9E'
 
     const el = document.createElement('div')
     el.className = 'custom-marker-unidad'
@@ -76,7 +72,7 @@ export function useMapboxGL() {
           right: -4px;
           width: 12px;
           height: 12px;
-          background: ${estado === 'movimiento' ? '#4CAF50' : '#FF9800'};
+          background: ${colorIndicador};
           border: 2px solid white;
           border-radius: 50%;
           ${estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
@@ -92,160 +88,205 @@ export function useMapboxGL() {
       detenido: 'Detenido',
       inactivo: 'Inactivo',
     }
-    const estadoColor = {
-      movimiento: '#4CAF50',
-      detenido: '#FF9800',
-      inactivo: '#9E9E9E',
-    }
+    const estadoColor = COLORES_ESTADO
 
-    return `
-      <div style="min-width: 250px; font-family: 'Roboto', sans-serif;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee;">
-          ${
-            unidad.conductorFoto
-              ? `<img src="${unidad.conductorFoto}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid ${estadoColor[unidad.estado]};">`
-              : `<div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">${unidad.conductorNombre.charAt(0)}</div>`
-          }
-          <div style="flex: 1;">
-            <strong style="font-size: 15px; color: #212121;">${unidad.conductorNombre}</strong>
-            <div style="font-size: 12px; color: #666; margin-top: 2px;">${unidad.unidadNombre}</div>
+    const unidadId = unidad.unidadId || unidad.id
+    const popupId = `popup-unidad-${unidadId}`
+
+    const popupContent = `
+    <div id="${popupId}" class="unidad-popup-container">
+      <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
+      <div class="unidad-popup-header">
+        <div class="unidad-info">
+          <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+              <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+            </svg>
+          </div>
+          <div class="unidad-texto">
+            <strong>${unidad.conductorNombre}</strong>
+            <div>${unidad.unidadNombre}</div>
+            <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
           </div>
         </div>
-        <div style="background: #f5f7fa; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background: ${estadoColor[unidad.estado]};"></div>
-            <span style="font-size: 13px; font-weight: 600; color: ${estadoColor[unidad.estado]};">${estadoTexto[unidad.estado]}</span>
-          </div>
-          <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px; font-size: 12px; color: #424242;">
-            <span>⚡ Velocidad:</span><span>${unidad.velocidad} km/h</span>
-            <span>📍 Coordenadas:</span><span style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
-            <span>📬 Dirección:</span><span>${unidad.direccionTexto || 'Obteniendo...'}</span>
-            <span>🔋 Batería:</span><span>${unidad.bateria}%</span>
-            <span>🔑 Placa:</span><span>${unidad.unidadPlaca}</span>
-          </div>
-        </div>
-        <div style="font-size: 11px; color: #999; text-align: center; margin-top: 8px;">
-          Última actualización: ${new Date(unidad.timestamp).toLocaleTimeString('es-MX')}
-        </div>
+        <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
-    `
+
+      <!-- CUERPO (OCULTO POR DEFECTO) -->
+      <div class="unidad-popup-body">
+        <div class="popup-section">
+          <span class="label">Estado:</span>
+          <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+        </div>
+        <div class="popup-section">
+          <span class="label">Velocidad:</span>
+          <span class="value">${unidad.velocidad || 0} km/h</span>
+        </div>
+        <div class="popup-section">
+          <span class="label">Batería:</span>
+          <span class="value">${unidad.bateria || 0}%</span>
+        </div>
+        <div class="popup-section">
+          <span class="label">Coordenadas:</span>
+          <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
+        </div>
+
+        <button
+          class="details-btn"
+          data-action="ver-detalles-conductor"
+          data-conductor-id="${unidad.conductorId || unidad.id}"
+          data-conductor-nombre="${unidad.conductorNombre}"
+        >
+          Ver Detalles del Conductor
+        </button>
+      </div>
+    </div>
+  `
+
+    return popupContent
   }
 
   // ⚡ OPTIMIZADO: Con detección de cambio de estado para iconos
-const actualizarMarcadoresUnidades = (unidades) => {
-  if (!map.value) {
-    console.warn('⚠️ Mapa no disponible')
-    return
-  }
-
-  // ✅ Throttling - Evitar actualizaciones muy frecuentes
-  const ahora = Date.now()
-  if (ahora - ultimaActualizacion < THROTTLE_MS) {
-    return
-  }
-  ultimaActualizacion = ahora
-
-  const idsActuales = new Set()
-
-  unidades.forEach((unidad) => {
-    if (
-      !unidad.ubicacion ||
-      typeof unidad.ubicacion.lat !== 'number' ||
-      typeof unidad.ubicacion.lng !== 'number' ||
-      isNaN(unidad.ubicacion.lat) ||
-      isNaN(unidad.ubicacion.lng)
-    ) {
-      console.warn(`⚠️ Unidad sin ubicación válida:`, {
-        id: unidad.unidadId || unidad.id,
-        nombre: unidad.unidadNombre,
-        ubicacion: unidad.ubicacion,
-      })
+  const actualizarMarcadoresUnidades = (unidades) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
       return
     }
 
-    const unidadId = unidad.unidadId || unidad.id
-    idsActuales.add(unidadId)
+    const ahora = Date.now()
+    if (ahora - ultimaActualizacion < THROTTLE_MS) {
+      return
+    }
+    ultimaActualizacion = ahora
 
-    const { lat, lng } = unidad.ubicacion
+    const idsActuales = new Set()
 
-    // ✅ Verificar si cambió posición O estado
-    const ultimaPos = ultimasPosiciones.get(unidadId)
-    const cambioSignificativo =
-      !ultimaPos ||
-      Math.abs(ultimaPos.lat - lat) > 0.00005 ||
-      Math.abs(ultimaPos.lng - lng) > 0.00005 ||
-      ultimaPos.estado !== unidad.estado // ✅ NUEVO: Detectar cambio de estado
+    // ✅ Log de depuración
+    console.log('🔄 Actualizando marcadores:', {
+      total: unidades.length,
+      estados: unidades.reduce((acc, u) => {
+        acc[u.estado] = (acc[u.estado] || 0) + 1
+        return acc
+      }, {}),
+    })
 
-    if (marcadoresUnidades.value[unidadId]) {
-      // ✅ Actualizar si hay cambio en posición O estado
-      if (cambioSignificativo) {
-        // ✅ Si cambió el estado, recrear el marcador completamente
-        if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-          // Eliminar el marcador antiguo
-          marcadoresUnidades.value[unidadId].remove()
-          
-          // Crear popup
-          const popup = new mapboxgl.Popup({ 
-            offset: 25,
-            closeButton: true,
-            closeOnClick: false,
-            maxWidth: '300px'
-          }).setHTML(crearPopupUnidad(unidad))
-          
-          // Crear nuevo marcador con el icono actualizado
-          const nuevoMarker = new mapboxgl.Marker({
-            element: crearIconoUnidad(unidad.estado),
-            anchor: 'center',
-          })
-            .setLngLat([lng, lat])
-            .setPopup(popup)
-            .addTo(map.value)
-          
-          // Reemplazar en nuestro mapa de marcadores
-          marcadoresUnidades.value[unidadId] = nuevoMarker
-          
-          console.log(`🔄 Marcador recreado: ${unidad.unidadNombre} → ${unidad.estado}`)
-        } else {
-          // Solo actualizar posición
-          marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
-          marcadoresUnidades.value[unidadId].getPopup().setHTML(crearPopupUnidad(unidad))
+    unidades.forEach((unidad) => {
+      if (
+        !unidad.ubicacion ||
+        typeof unidad.ubicacion.lat !== 'number' ||
+        typeof unidad.ubicacion.lng !== 'number' ||
+        isNaN(unidad.ubicacion.lat) ||
+        isNaN(unidad.ubicacion.lng)
+      ) {
+        console.warn(`⚠️ Unidad sin ubicación válida:`, {
+          id: unidad.unidadId || unidad.id,
+          nombre: unidad.unidadNombre,
+        })
+        return
+      }
+
+      const unidadId = unidad.unidadId || unidad.id
+      idsActuales.add(unidadId)
+
+      const { lat, lng } = unidad.ubicacion
+      const ultimaPos = ultimasPosiciones.get(unidadId)
+      const cambioSignificativo =
+        !ultimaPos ||
+        Math.abs(ultimaPos.lat - lat) > 0.00005 ||
+        Math.abs(ultimaPos.lng - lng) > 0.00005 ||
+        ultimaPos.estado !== unidad.estado
+
+      if (marcadoresUnidades.value[unidadId]) {
+        if (cambioSignificativo) {
+          // ✅ DETECTAR CAMBIO DE ESTADO
+          if (ultimaPos && ultimaPos.estado !== unidad.estado) {
+            console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
+
+            // Remover el marcador anterior
+            marcadoresUnidades.value[unidadId].remove()
+
+            // Crear popup actualizado
+            const popup = new mapboxgl.Popup({
+              offset: 25,
+              closeButton: true,
+              closeOnClick: false,
+              maxWidth: '300px',
+            }).setHTML(crearPopupUnidad(unidad))
+
+            // ✅ Crear nuevo marcador con estado actualizado
+            const marker = new mapboxgl.Marker({
+              element: crearIconoUnidad(unidad.estado),
+              anchor: 'center',
+            })
+              .setLngLat([lng, lat])
+              .setPopup(popup)
+              .addTo(map.value)
+
+            marcadoresUnidades.value[unidadId] = marker
+            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+          } else {
+            // ✅ Solo actualizar posición y popup
+            marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
+
+            const popup = marcadoresUnidades.value[unidadId].getPopup()
+            if (popup) {
+              // 1. Obtener el contenedor del popup ANTES de actualizar
+              const popupContent = popup.getElement()
+              const oldContainer = popupContent
+                ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
+                : null
+              const wasExpanded = oldContainer ? oldContainer.classList.contains('expanded') : false
+
+              // 2. Actualizar el HTML del popup
+              popup.setHTML(crearPopupUnidad(unidad))
+
+              // 3. Si estaba expandido, volver a expandir
+              if (wasExpanded) {
+                const newContainer = popup.getElement().querySelector(`#popup-unidad-${unidadId}`)
+                if (newContainer) {
+                  newContainer.classList.add('expanded')
+                }
+              }
+            }
+
+            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+          }
         }
-        
+      } else {
+        // ✅ Crear nuevo marcador
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: true,
+          closeOnClick: false,
+          maxWidth: '300px',
+        }).setHTML(crearPopupUnidad(unidad))
+
+        const marker = new mapboxgl.Marker({
+          element: crearIconoUnidad(unidad.estado),
+          anchor: 'center',
+        })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map.value)
+
+        marcadoresUnidades.value[unidadId] = marker
         ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
       }
-    } else {
-      // Crear nuevo marcador
-      const popup = new mapboxgl.Popup({ 
-        offset: 25,
-        closeButton: true,
-        closeOnClick: false,
-        maxWidth: '300px'
-      }).setHTML(crearPopupUnidad(unidad))
+    })
 
-      const marker = new mapboxgl.Marker({
-        element: crearIconoUnidad(unidad.estado),
-        anchor: 'center',
-      })
-        .setLngLat([lng, lat])
-        .setPopup(popup)
-        .addTo(map.value)
-
-      marcadoresUnidades.value[unidadId] = marker
-      ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
-      console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
-    }
-  })
-
-  // Limpiar marcadores inactivos
-  Object.keys(marcadoresUnidades.value).forEach((id) => {
-    if (!idsActuales.has(id)) {
-      marcadoresUnidades.value[id].remove()
-      delete marcadoresUnidades.value[id]
-      ultimasPosiciones.delete(id)
-      console.log(`🗑️ Marcador GPS removido: ${id}`)
-    }
-  })
-}
+    // Limpiar marcadores inactivos
+    Object.keys(marcadoresUnidades.value).forEach((id) => {
+      if (!idsActuales.has(id)) {
+        marcadoresUnidades.value[id].remove()
+        delete marcadoresUnidades.value[id]
+        ultimasPosiciones.delete(id)
+      }
+    })
+  }
 
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
@@ -899,18 +940,27 @@ const actualizarMarcadoresUnidades = (unidades) => {
                 'interpolate',
                 ['exponential', 1.5],
                 ['zoom'],
-                10, 1,
-                13, 2,
-                15, 3,
-                18, 6,
-                20, 10,
+                10,
+                1,
+                13,
+                2,
+                15,
+                3,
+                18,
+                6,
+                20,
+                10,
               ],
               'line-color': [
                 'case',
-                ['==', ['get', 'congestion'], 'low'], '#4CAF50',
-                ['==', ['get', 'congestion'], 'moderate'], '#FF9800',
-                ['==', ['get', 'congestion'], 'heavy'], '#F44336',
-                ['==', ['get', 'congestion'], 'severe'], '#9C27B0',
+                ['==', ['get', 'congestion'], 'low'],
+                '#4CAF50',
+                ['==', ['get', 'congestion'], 'moderate'],
+                '#FF9800',
+                ['==', ['get', 'congestion'], 'heavy'],
+                '#F44336',
+                ['==', ['get', 'congestion'], 'severe'],
+                '#9C27B0',
                 '#888888',
               ],
             },
@@ -1052,10 +1102,10 @@ const actualizarMarcadoresUnidades = (unidades) => {
 
   const cleanup = () => {
     limpiarMarcadoresUnidades()
-    
+
     // ⚡ Limpiar cache de posiciones
     ultimasPosiciones.clear()
-    
+
     if (map.value) {
       map.value.remove()
       map.value = null

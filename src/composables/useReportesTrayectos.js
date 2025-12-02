@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
+import { useProcesamientoTrayectos } from './useProcesamientoTrayectos'
 
 export function useReportesTrayectos() {
   const loading = ref(false)
@@ -240,6 +241,13 @@ export function useReportesTrayectos() {
                 _simulado: false,
               }
 
+              if (trayecto.length === 0) {
+                // Solo el primero para no llenar consola
+                console.log('📊 Estructura de UN trayecto desde Firebase:', data)
+                console.log('📊 Tipo de coordinates:', typeof data.coordinates)
+                console.log('📊 Primer punto GPS:', data.coordinates?.[0])
+              }
+
               console.log(`  ✅ Trayecto con ${coordenadas.length} coordenadas`)
               todosTrayectos.push(trayecto)
             } else {
@@ -273,7 +281,12 @@ export function useReportesTrayectos() {
         console.log(`✅ Total de trayectos simulados: ${todosTrayectos.length}`)
       }
 
-      return todosTrayectos
+      // 🔥 PROCESAR TRAYECTOS (ya sea reales o simulados)
+      console.log('🔄 Procesando trayectos (calculando km, velocidad, geocodificando)...')
+      const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
+      const trayectosProcesados = await procesarTrayectosParaPDF(todosTrayectos)
+
+      return trayectosProcesados
     } catch (err) {
       console.error('❌ Error al obtener trayectos:', err)
       error.value = err.message
@@ -293,7 +306,10 @@ export function useReportesTrayectos() {
         trayectosFallback.push(...trayectosSimulados)
       }
 
-      return trayectosFallback
+      const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
+      const trayectosFallbackProcesados = await procesarTrayectosParaPDF(trayectosFallback)
+
+      return trayectosFallbackProcesados
     } finally {
       loading.value = false
     }

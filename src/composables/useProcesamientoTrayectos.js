@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRutasStorage } from './useRutasStorage'
 import { useMapboxStaticImage } from './useMapboxStaticImage'
+import { useGeocoding } from './useGeocoding'
 
 export function useProcesamientoTrayectos() {
   const loading = ref(false)
@@ -9,6 +10,7 @@ export function useProcesamientoTrayectos() {
 
   const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
   const { generarImagenMapa, obtenerColorVehiculo } = useMapboxStaticImage()
+  const { obtenerDireccionDesdeCoordenadas } = useGeocoding()
 
   /**
    * Obtiene las coordenadas de un trayecto desde Storage o simulación
@@ -246,6 +248,107 @@ export function useProcesamientoTrayectos() {
     return R * c
   }
 
+  const calcularKilometrajeRecorrido = (coordenadas) => {
+    if (!coordenadas || coordenadas.length < 2) {
+      return 0
+    }
+
+    let kilometrajeTotal = 0
+
+    for (let i = 0; i < coordenadas.length - 1; i++) {
+      const p1 = coordenadas[i]
+      const p2 = coordenadas[i + 1]
+
+      if (p1.lat && p1.lng && p2.lat && p2.lng) {
+        kilometrajeTotal += calcularDistanciaEnKm(p1.lat, p1.lng, p2.lat, p2.lng)
+      }
+    }
+
+    return parseFloat(kilometrajeTotal.toFixed(2))
+  }
+  const calcularVelocidadPromedio = (kilometraje, duracionHoras) => {
+    if (!duracionHoras || duracionHoras === 0) {
+      return 0
+    }
+
+    const velocidad = kilometraje / parseFloat(duracionHoras)
+    return parseFloat(velocidad.toFixed(2))
+  }
+  const procesarTrayectosParaPDF = async (trayectos) => {
+    if (!trayectos || trayectos.length === 0) {
+      return []
+    }
+
+    console.log(`🔄 Procesando ${trayectos.length} trayecto(s) para PDF...`)
+
+    // Importar geocoding dinámicamente para evitar dependencias circulares
+
+    const trayectosProcesados = await Promise.all(
+      trayectos.map(async (trayecto) => {
+        try {
+          // 1. Validar que tenga coordenadas
+          if (!trayecto.coordenadas || trayecto.coordenadas.length === 0) {
+            console.warn(`⚠️ Trayecto ${trayecto.id} no tiene coordenadas`)
+            return {
+              ...trayecto,
+              kilometrajeRecorrido: 0,
+              velocidadPromedio: 0,
+              ubicacionInicio: 'Sin coordenadas',
+              ubicacionFin: 'Sin coordenadas',
+            }
+          }
+
+          // 2. Calcular kilometraje recorrido
+          const kilometrajeRecorrido = calcularKilometrajeRecorrido(trayecto.coordenadas)
+
+          // 3. Calcular velocidad promedio
+          const velocidadPromedio = calcularVelocidadPromedio(
+            kilometrajeRecorrido,
+            trayecto.duracionHoras || 0,
+          )
+
+          // 4. Geocodificar inicio
+          const primeraCoord = trayecto.coordenadas[0]
+          const ubicacionInicio = await obtenerDireccionDesdeCoordenadas(
+            primeraCoord.lat,
+            primeraCoord.lng,
+          )
+
+          // 5. Geocodificar fin
+          const ultimaCoord = trayecto.coordenadas[trayecto.coordenadas.length - 1]
+          const ubicacionFin = await obtenerDireccionDesdeCoordenadas(
+            ultimaCoord.lat,
+            ultimaCoord.lng,
+          )
+
+          console.log(
+            `✅ Trayecto ${trayecto.id}: ${kilometrajeRecorrido} km, ${velocidadPromedio} km/h`,
+          )
+
+          return {
+            ...trayecto,
+            kilometrajeRecorrido,
+            velocidadPromedio,
+            ubicacionInicio: ubicacionInicio || 'Dirección no disponible',
+            ubicacionFin: ubicacionFin || 'Dirección no disponible',
+          }
+        } catch (error) {
+          console.error(`❌ Error procesando trayecto ${trayecto.id}:`, error)
+          return {
+            ...trayecto,
+            kilometrajeRecorrido: 0,
+            velocidadPromedio: 0,
+            ubicacionInicio: 'Error al geocodificar',
+            ubicacionFin: 'Error al geocodificar',
+          }
+        }
+      }),
+    )
+
+    console.log(`✅ ${trayectosProcesados.length} trayecto(s) procesado(s)`)
+
+    return trayectosProcesados
+  }
   return {
     loading,
     error,
@@ -253,5 +356,8 @@ export function useProcesamientoTrayectos() {
     procesarTrayectosParaMapa,
     generarMapaTrayectos,
     obtenerEstadisticasRutas,
+    calcularKilometrajeRecorrido,
+    calcularVelocidadPromedio,
+    procesarTrayectosParaPDF,
   }
 }

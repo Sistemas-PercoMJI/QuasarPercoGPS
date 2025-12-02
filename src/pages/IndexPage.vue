@@ -66,6 +66,7 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
+//import { useRouter } from 'vue-router'
 
 const {
   initMap,
@@ -75,11 +76,11 @@ const {
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
+
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
 
 const marcadoresPOIs = ref([])
-
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
@@ -94,10 +95,22 @@ const traficoActivo = ref(false)
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
+//const router = useRouter()
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
-const { conductores, unidades, obtenerConductores, obtenerUnidades } = useConductoresFirebase()
+
+const {
+  conductores,
+  unidades,
+  gruposConductores,
+  obtenerGruposConductores,
+  obtenerConductores,
+  obtenerUnidades,
+} = useConductoresFirebase()
+
+const { estadoCompartido } = useEventBus()
+
 const simuladorActivo = ref(false)
 let simuladorYaIniciado = false
 
@@ -106,9 +119,6 @@ let mapaAPI = null
 let intervaloEvaluacionEventos = null
 let popupGlobalActivo = null
 
-let ultimaActualizacionMarcadores = 0
-const THROTTLE_MARCADORES = 2000
-
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
@@ -116,19 +126,13 @@ watch(
       return
     }
 
-    const ahora = Date.now()
-    if (ahora - ultimaActualizacionMarcadores < THROTTLE_MARCADORES) {
-      return
-    }
-    ultimaActualizacionMarcadores = ahora
-
     if (nuevasUnidades && nuevasUnidades.length > 0) {
       actualizarMarcadoresUnidades(nuevasUnidades)
     } else {
       limpiarMarcadoresUnidades()
     }
   },
-  { deep: true, immediate: false }
+  { deep: true, immediate: false },
 )
 
 function iniciarEvaluacionContinuaEventos() {
@@ -165,52 +169,48 @@ const iniciarSimuladorAutomatico = async () => {
 
   try {
     console.log('🔄 Cargando datos para simulador automático...')
-    
-    await Promise.all([
-      obtenerConductores(),
-      obtenerUnidades()
-    ])
 
-    const conductoresConUnidad = conductores.value.filter(c => c.UnidadAsignada)
-    
+    await Promise.all([obtenerConductores(), obtenerUnidades()])
+
+    const conductoresConUnidad = conductores.value.filter((c) => c.UnidadAsignada)
+
     if (conductoresConUnidad.length === 0) {
       console.warn('⚠️ No hay conductores con unidades asignadas')
       $q.notify({
         type: 'warning',
         message: 'No hay conductores con unidades para simular',
         position: 'top',
-        timeout: 3000
+        timeout: 3000,
       })
       return
     }
 
     console.log(`🚀 Iniciando simulador automático con ${conductoresConUnidad.length} unidades...`)
-    
+
     simuladorYaIniciado = true
-    
+
     await iniciarSimulacion(conductores.value, unidades.value)
-    
+
     simuladorActivo.value = true
-    
+
     $q.notify({
       type: 'positive',
       message: `🎯 Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
       position: 'top',
       timeout: 3000,
-      icon: 'explore'
+      icon: 'explore',
     })
-    
+
     console.log(`✅ Simulador automático activo con ${conductoresConUnidad.length} unidades`)
-    
   } catch (error) {
     console.error('❌ Error al iniciar simulador automático:', error)
     simuladorYaIniciado = false
-    
+
     $q.notify({
       type: 'negative',
       message: 'Error al iniciar el simulador GPS',
       position: 'top',
-      timeout: 3000
+      timeout: 3000,
     })
   }
 }
@@ -313,6 +313,39 @@ function detenerSeguimientoGPS() {
   }
 }
 
+async function obtenerDireccionPunto(lat, lng) {
+  try {
+    const MAPBOX_TOKEN =
+      'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&language=es&limit=1&access_token=${MAPBOX_TOKEN}`,
+    )
+
+    const data = await response.json()
+
+    if (data.features && data.features.length > 0) {
+      const address = data.features[0]
+      // Extraer solo el nombre de la calle sin el número y ciudad
+      const placeName = address.place_name || ''
+      const parts = placeName.split(',')
+
+      // Intentar obtener solo el nombre de la calle
+      if (parts.length > 0) {
+        const streetPart = parts[0].trim()
+        // Remover número si existe (patrón común en direcciones)
+        const streetOnly = streetPart.replace(/^\d+\s*/, '').replace(/\s*\d+$/, '')
+        return streetOnly || 'Calle desconocida'
+      }
+    }
+
+    return 'Dirección no disponible'
+  } catch (error) {
+    console.error('❌ Error obteniendo dirección del punto:', error)
+    return 'Error al obtener dirección'
+  }
+}
+
 async function inicializarSistemaDeteccion() {
   try {
     console.log('🚀 Inicializando sistema de detección de eventos...')
@@ -366,7 +399,6 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-
 // ============================================
 // 🎨 FUNCIÓN: Crear icono POI elegante
 // ============================================
@@ -377,8 +409,10 @@ function crearIconoPOI(tieneEventos = false) {
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
         <path fill="white" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       </svg>
-      
-      ${tieneEventos ? `
+
+      ${
+        tieneEventos
+          ? `
         <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
@@ -398,27 +432,28 @@ function crearIconoPOI(tieneEventos = false) {
         ">
           🔔
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
   `
-  
+
   const markerEl = document.createElement('div')
   markerEl.innerHTML = iconoHTML
   markerEl.style.cursor = 'pointer'
-  
+
   return markerEl
 }
-
 
 // ============================================
 // 🎨 FUNCIÓN: Crear icono Geozona elegante
 // ============================================
 function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null) {
   const colorFinal = color || '#FFFFFF'
-  
+
   // Diferentes SVGs según el tipo de geozona
   let iconoSVG = ''
-  
+
   if (tipo === 'circular') {
     iconoSVG = `
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
@@ -433,12 +468,14 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
       </svg>
     `
   }
-  
+
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
       ${iconoSVG}
-      
-      ${tieneEventos ? `
+
+      ${
+        tieneEventos
+          ? `
         <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
@@ -458,21 +495,22 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
         ">
           🔔
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
   `
-  
+
   const markerEl = document.createElement('div')
   markerEl.innerHTML = iconoHTML
   markerEl.style.cursor = 'pointer'
-  
+
   return markerEl
 }
 
 /*function getHueRotation(_hexColor) {
   return '0deg'
 }*/
-
 
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
@@ -491,9 +529,6 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
-    // ============================================
-    // 📍 DIBUJAR POIs CON ICONOS ELEGANTES
-    // ============================================
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
@@ -536,30 +571,31 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
+        // 🆕 POPUP CON ESTILO SIMILAR A GEOZONA PERO SIN BOTÓN DE EXPANDIR
         const popupContent = `
-          <div style="min-width: 180px;">
-            <b style="font-size: 14px;">📍 ${poi.nombre}</b>
-            ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-            <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-              ${poi.direccion}
-            </p>
-            <button
-              onclick="window.verDetallesPOI('${poi.id}')"
-              style="
-                width: 100%;
-                margin-top: 8px;
-                padding: 8px 12px;
-                background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 12px;
-              "
-            >
-              📍 Ver detalles
-            </button>
+          <div class="poi-popup-container">
+            <!-- Cabecera -->
+            <div class="poi-popup-header">
+              <div class="header-info">
+                <div class="header-title">📍 ${poi.nombre}</div>
+                <div class="header-subtitle">Radio: ${radio}m</div>
+              </div>
+            </div>
+
+            <!-- Cuerpo (siempre visible) -->
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-icon">📍</div>
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+
+              <button
+                onclick="window.verDetallesPOI('${poi.id}')"
+                class="details-btn"
+              >
+                Ver más detalles
+              </button>
+            </div>
           </div>
         `
 
@@ -589,43 +625,99 @@ const dibujarTodosEnMapa = async () => {
       }
     })
 
-    // ============================================
-    // 🗺️ DIBUJAR GEOZONAS CON ICONOS ELEGANTES
-    // ============================================
+    //  DIBUJAR GEOZONAS CON ICONOS ELEGANTES
+
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
-    geozonas.forEach((geozona) => {
+    for (const geozona of geozonas) {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
 
+      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
+      let direccionesPuntos = []
+
+      if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+        // Obtener direcciones para todos los puntos del polígono
+        const promesasDirecciones = geozona.puntos.map(async (punto, index) => {
+          try {
+            const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+            return {
+              index: index,
+              direccion: direccion,
+              lat: punto.lat,
+              lng: punto.lng,
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error obteniendo dirección para punto ${index + 1}:`, error)
+            return {
+              index: index,
+              direccion: 'Dirección no disponible',
+              lat: punto.lat,
+              lng: punto.lng,
+            }
+          }
+        })
+
+        direccionesPuntos = await Promise.all(promesasDirecciones)
+      }
+
       const popupContent = `
-        <div style="min-width: 180px;">
-          <b style="font-size: 14px;">${geozona.tipoGeozona === 'circular' ? '🔵' : '🔷'} ${geozona.nombre}</b>
-          ${tieneEventos ? `<span style="background: #ff5722; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 5px;">🔔 ${cantidadEventos}</span>` : ''}
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-            ${geozona.tipoGeozona === 'circular' ? `Radio: ${geozona.radio}m` : `${geozona.puntos.length} puntos`}
-          </p>
-          <button
-            onclick="window.verDetallesGeozona('${geozona.id}')"
-            style="
-              width: 100%;
-              margin-top: 8px;
-              padding: 8px 12px;
-              background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-              color: white;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-              font-weight: 600;
-              font-size: 12px;
-            "
-          >
-            📍 Ver detalles
-          </button>
+        <div class="geozona-popup-container">
+          <!-- Cabecera (siempre visible) -->
+          <div class="geozona-popup-header">
+            <div class="header-info">
+              <div class="header-title">🔷 ${geozona.nombre}</div>
+              <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
+            </div>
+            <!-- El botón de expandir ahora está aquí -->
+            <button
+              id="toggle-btn-geo-${geozona.id}"
+              class="toggle-geozona-btn"
+              onclick="toggleGeozonaPopup('${geozona.id}')"
+            >
+              <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Cuerpo (oculto por defecto con max-height) -->
+          <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+            <div class="points-list-container">
+              ${direccionesPuntos
+                .map(
+                  (punto) => `
+                <div class="point-card">
+                  <div class="point-label">Punto ${punto.index + 1}</div>
+                  <div class="point-address">
+                    <div class="address-name">${punto.direccion}</div>
+                  </div>
+                  <div class="point-coords">
+                    <div>
+                      <span class="coord-label">Latitud:</span>
+                      <span class="coord-value">${punto.lat.toFixed(6)}</span>
+                    </div>
+                    <div>
+                      <span class="coord-label">Longitud:</span>
+                      <span class="coord-value">${punto.lng.toFixed(6)}</span>
+                    </div>
+                  </div>
+                </div>
+              `,
+                )
+                .join('')}
+            </div>
+
+            <button
+              onclick="window.verDetallesGeozona('${geozona.id}')"
+              class="details-btn"
+            >
+              Ver más detalles
+            </button>
+          </div>
         </div>
       `
-
       // 🔵 GEOZONA CIRCULAR
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
@@ -808,7 +900,7 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
       }
-    })
+    }
 
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
@@ -852,9 +944,11 @@ onMounted(async () => {
         })
 
         mapaListo.value = true
-
         console.log('✅ Mapa completamente listo')
 
+        // ========================================
+        // FUNCIONES GLOBALES PARA ABRIR DETALLES
+        // ========================================
         window.abrirDetallesUbicacion = (ubicacionData) => {
           try {
             if (ubicacionData.tipo === 'poi') {
@@ -885,17 +979,135 @@ onMounted(async () => {
           window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
         }
 
+        // ========================================
+        // CARGAR DATOS Y SISTEMAS
+        // ========================================
         await dibujarTodosEnMapa()
         await inicializarSistemaDeteccion()
-
         iniciarEvaluacionContinuaEventos()
-
         iniciarSeguimientoGPS()
 
         console.log('🎯 Esperando 2 segundos antes de iniciar simulador...')
         setTimeout(async () => {
           await iniciarSimuladorAutomatico()
         }, 2000)
+
+        // ========================================
+        // 🆕 EVENT LISTENER DEL MAPA
+        // ========================================
+        const mapPage = document.getElementById('map-page')
+        if (mapPage) {
+          mapPage.addEventListener('click', (event) => {
+            // ✅ VALIDACIÓN CRÍTICA
+            if (!event || !event.target) {
+              console.warn('⚠️ Evento sin target válido')
+              return
+            }
+
+            // ========================================
+            // MANEJO DE BOTONES DE POI/GEOZONA
+            // ========================================
+            const actionButton = event.target.closest('[data-action]')
+            if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
+              const action = actionButton.dataset.action
+              const id = actionButton.dataset.poiId || actionButton.dataset.geozonaId
+
+              if (action === 'ver-detalles-poi' && id) {
+                window.verDetallesPOI(id)
+              } else if (action === 'ver-detalles-geozona' && id) {
+                window.verDetallesGeozona(id)
+              }
+              return
+            }
+
+            // ========================================
+            // TOGGLE DEL POPUP DE UNIDADES
+            // ========================================
+            const toggleBtn = event.target.closest('.toggle-popup-btn')
+            if (toggleBtn) {
+              const unidadId = toggleBtn.dataset.unidadId
+              if (unidadId) {
+                const popupContainer = document.getElementById(`popup-unidad-${unidadId}`)
+                if (popupContainer) {
+                  popupContainer.classList.toggle('expanded')
+                }
+              }
+              return
+            }
+
+            // ========================================
+            // 🆕 VER DETALLES DEL CONDUCTOR
+            // ========================================
+            const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
+            if (detailsBtn) {
+              const conductorId = detailsBtn.dataset.conductorId
+              const conductorNombre = detailsBtn.dataset.conductorNombre
+
+              if (conductorId) {
+                console.log(`🚀 Navegando a: ${conductorNombre} (ID: ${conductorId})`)
+
+                // Buscar conductor y grupo
+                obtenerConductores().then(() => {
+                  const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
+
+                  if (conductorEncontrado) {
+                    obtenerGruposConductores().then(() => {
+                      const grupoDelConductor = gruposConductores.value.find((g) =>
+                        g.ConductoresIds?.includes(conductorId),
+                      )
+
+                      if (grupoDelConductor) {
+                        console.log(`✅ Grupo encontrado: ${grupoDelConductor.Nombre}`)
+
+                        // Cerrar dialogs
+                        const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
+                        window.dispatchEvent(cerrarDialogs)
+
+                        // Delay para sincronización
+                        setTimeout(() => {
+                          // Actualizar estado compartido
+                          estadoCompartido.value.abrirConductoresConConductor = {
+                            conductor: {
+                              id: conductorId,
+                              grupoId: grupoDelConductor.id,
+                              grupoNombre: grupoDelConductor.Nombre,
+                            },
+                            timestamp: Date.now(),
+                          }
+
+                          $q.notify({
+                            type: 'positive',
+                            message: `Abriendo detalles de ${conductorNombre}`,
+                            icon: 'person',
+                            position: 'top',
+                            timeout: 2000,
+                          })
+                        }, 100)
+                      } else {
+                        console.warn('⚠️ Conductor sin grupo')
+                        $q.notify({
+                          type: 'warning',
+                          message: 'El conductor no está asignado a ningún grupo',
+                          icon: 'warning',
+                          position: 'top',
+                        })
+                      }
+                    })
+                  } else {
+                    console.error('❌ Conductor no encontrado')
+                    $q.notify({
+                      type: 'negative',
+                      message: 'No se encontró el conductor',
+                      icon: 'error',
+                      position: 'top',
+                    })
+                  }
+                })
+              }
+              return
+            }
+          })
+        }
       }, 500)
 
       window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
@@ -904,6 +1116,9 @@ onMounted(async () => {
     console.error('❌ Error inicializando mapa:', error)
   }
 
+  // ========================================
+  // OTROS EVENT LISTENERS
+  // ========================================
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -918,20 +1133,32 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
+  // Función global para toggle de geozonas
+  window.toggleGeozonaPopup = (geozonaId) => {
+    const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
+    const button = document.getElementById(`toggle-btn-geo-${geozonaId}`)
+
+    button.classList.toggle('expanded')
+
+    if (button.classList.contains('expanded')) {
+      body.style.maxHeight = body.scrollHeight + 'px'
+    } else {
+      body.style.maxHeight = '0'
+    }
+  }
+
+  // Event listener para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
     console.log('🔄 Redibujando mapa...')
-
     limpiarCapasDelMapa()
-
     await dibujarTodosEnMapa()
-
     resetear()
     await inicializarSistemaDeteccion()
-
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
     await nextTick()
+
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
@@ -947,7 +1174,7 @@ const handleMostrarBoton = (e) => {
   mostrarBotonConfirmarGeozona.value = e.detail.mostrar
 }
 
-const confirmarYVolverADialogo = () => {
+function confirmarYVolverADialogo() {
   const evento = new CustomEvent('confirmarGeozonaDesdeBoton', {
     detail: { confirmed: true },
   })
@@ -1029,6 +1256,463 @@ const manejarToggleTrafico = () => {
 }
 </script>
 
+<style>
+/* ============================================
+  ⚙️ ESTILOS GLOBALES (para el Popup de Mapbox)
+  ============================================
+  Estos estilos no son 'scoped' porque el popup de Mapbox
+  se inyecta en el body, fuera del componente Vue.
+============================================ */
+
+/* Contenedor principal del popup de Mapbox */
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  background-color: #ffffff !important;
+}
+
+/* La pequeña flecha del popup */
+.mapboxgl-popup-tip {
+  border-top-color: #ffffff !important;
+}
+
+/* MODIFICADO: Botón de cerrar (X) más pequeño y mejor posicionado */
+.mapboxgl-popup-close-button {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  background-color: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important; /* <-- ¡CAMBIO CLAVE! Fuente más pequeña */
+  font-weight: bold !important;
+  border: 1px solid #e5e7eb !important;
+  transition: all 0.2s ease !important;
+  top: 6px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  right: 16px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+}
+
+.mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  color: #374151 !important;
+}
+
+/* Contenedor personalizado para el popup de Geozona */
+.geozona-popup-container {
+  min-width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+.geozona-popup-header {
+  display: flex;
+  flex-direction: column; /* <-- ¡CAMBIO CLAVE! */
+  padding: 16px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px; /* Espacio entre el título y el botón de expandir */
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.toggle-geozona-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  cursor: pointer;
+  width: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  height: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  align-self: flex-end; /* <-- ¡CAMBIO CLAVE! Alinea a la derecha */
+}
+
+.toggle-geozona-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}
+
+.chevron-icon {
+  transition: transform 0.3s ease-in-out;
+}
+
+.toggle-geozona-btn.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* Cuerpo del popup (la parte que se expande y contrae) */
+.geozona-popup-body {
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.4s ease-in-out,
+    padding 0.4s ease-in-out;
+  padding: 0 16px;
+}
+
+/* Estilos del cuerpo cuando está expandido */
+.toggle-geozona-btn.expanded ~ .geozona-popup-body {
+  padding: 16px;
+}
+
+/* Contenedor de la lista de puntos con scroll */
+.points-list-container {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+/* Tarjeta para cada punto */
+.point-card {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.point-card:last-child {
+  margin-bottom: 0;
+}
+
+.point-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.point-address {
+  margin-bottom: 8px;
+}
+
+.address-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  background-color: #f3f4f6;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 3px solid #3b82f6;
+  margin-bottom: 4px;
+}
+
+.point-coords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.coord-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.coord-value {
+  color: #1f2937;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
+}
+
+.details-btn {
+  width: 100%;
+  padding: 18px 12px; /* <-- ¡CAMBIO CLAVE! Más padding */
+  margin-bottom: 16px; /* <-- ¡CAMBIO CLAVE! Espacio abajo del botón */
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+}
+
+.details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Scrollbar personalizado para la lista de puntos */
+.points-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.points-list-container::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 3px;
+}
+
+.points-list-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.points-list-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.poi-popup-container {
+  min-width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+.poi-popup-header {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.poi-popup-body {
+  padding: 16px;
+}
+
+.event-indicator {
+  display: flex;
+  align-items: center;
+  background-color: #fef2f2;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.event-icon {
+  font-size: 24px;
+  margin-right: 8px;
+}
+
+.event-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-count {
+  font-size: 16px;
+  font-weight: bold;
+  color: #dc2626;
+}
+
+.event-label {
+  font-size: 11px;
+  color: #7f1d1d;
+}
+
+.address-info {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.address-icon {
+  font-size: 18px;
+  margin-right: 8px;
+  margin-top: 2px;
+}
+
+.address-text {
+  font-size: 13px;
+  color: #4b5563;
+  flex: 1;
+}
+
+.details-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+}
+
+.details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Animación de entrada del popup */
+.popup-animated .mapboxgl-popup-content {
+  animation: popupFade 0.2s ease-out;
+}
+
+.popup-section {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.popup-section:last-child {
+  border-bottom: none;
+}
+
+.popup-section .label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.popup-section .value {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+@keyframes popupFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.unidad-popup-container {
+  min-width: 280px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+/* ✅ NUEVO: Estilo para la dirección en el estado contraído */
+.unidad-direccion {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Ajusta según sea necesario */
+}
+
+.unidad-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.unidad-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.unidad-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.unidad-texto strong {
+  font-size: 15px;
+  color: #1f2937;
+  display: block;
+}
+
+.unidad-texto div {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.toggle-popup-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
+}
+
+.toggle-popup-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.unidad-popup-body {
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.4s ease-in-out,
+    padding 0.4s ease-in-out;
+  padding: 0 16px;
+}
+
+.unidad-popup-container.expanded .unidad-popup-body {
+  max-height: 400px; /* Un valor lo suficientemente grande */
+  padding: 16px;
+}
+
+.unidad-popup-container.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+</style>
+
 <style scoped>
 .full-height {
   height: 100%;
@@ -1068,7 +1752,6 @@ const manejarToggleTrafico = () => {
   animation: slideInRight 0.3s ease-out;
 }
 
-/* 🆕 Indicador del simulador */
 .simulador-indicator {
   position: fixed;
   top: 220px;
@@ -1091,7 +1774,8 @@ const manejarToggleTrafico = () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -1260,53 +1944,18 @@ const manejarToggleTrafico = () => {
   }
 }
 
-:deep(.popup-animated .mapboxgl-popup-content) {
-  animation: popupFade 0.2s ease-out;
-}
-
-@keyframes popupFade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 :deep(.icono-poi-hover:hover) {
   transform: scale(1.15);
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4)) !important;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) !important;
 }
 
-/* Hover effect para iconos Geozona */
 :deep(.icono-geozona-hover:hover) {
   transform: scale(1.15);
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)) !important;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
 }
 
-/* Animación del badge de eventos */
-@keyframes pulse-badge {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
-  }
-  50% {
-    transform: scale(1.1);
-    box-shadow: 0 3px 10px rgba(255, 87, 34, 0.8);
-  }
-}
-
-/* Prevenir que el badge se escale con el icono */
 :deep(.icono-poi-hover:hover > div > div:last-child),
 :deep(.icono-geozona-hover:hover > div > div:last-child) {
   transform: scale(0.91) !important;
-}
-
-/* Marcadores personalizados sin fondo */
-:deep(.mapboxgl-marker) {
-  background: none !important;
-  border: none !important;
 }
 </style>

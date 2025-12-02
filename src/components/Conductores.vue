@@ -722,7 +722,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 import { useEventBus } from 'src/composables/useEventBus.js'
@@ -732,6 +732,22 @@ const { estadoCompartido, resetAbrirConductores } = useEventBus()
 if (!estadoCompartido.value) {
   console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
 }
+
+const opcionesUnidades = computed(() => {
+  // Obtener unidades ya asignadas (excepto la del conductor actual)
+  const unidadesAsignadas = conductores.value
+    .filter((c) => c.id !== conductorEditando.value?.id)
+    .map((c) => c.UnidadAsignada)
+    .filter(Boolean)
+
+  // Retornar solo unidades NO asignadas
+  return unidades.value
+    .filter((u) => !unidadesAsignadas.includes(u.id))
+    .map((u) => ({
+      label: u.Unidad,
+      value: u.id,
+    }))
+})
 
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
@@ -857,14 +873,6 @@ const nuevoGrupo = ref({
   ConductoresIds: [],
 })
 
-// Computed
-const opcionesUnidades = computed(() => {
-  return unidades.value.map((u) => ({
-    label: u.Unidad,
-    value: u.id,
-  }))
-})
-
 const conductoresFiltrados = computed(() => {
   let resultado = []
 
@@ -889,6 +897,28 @@ const conductoresFiltrados = computed(() => {
 const conductoresDisponiblesParaGrupo = computed(() => {
   let disponibles = conductores.value
 
+  const conductoresGrupoActual =
+    modoEdicion.value && grupoMenu.value ? grupoMenu.value.ConductoresIds || [] : []
+
+  // Filtrar conductores que NO estén en otros grupos
+  disponibles = disponibles.filter((conductor) => {
+    // Permitir conductores del grupo actual
+    if (conductoresGrupoActual.includes(conductor.id)) {
+      return true
+    }
+
+    // Verificar si está en otro grupo
+    const estaEnOtroGrupo = gruposConductores.value.some((grupo) => {
+      if (modoEdicion.value && grupoMenu.value && grupo.id === grupoMenu.value.id) {
+        return false
+      }
+      return grupo.ConductoresIds?.includes(conductor.id)
+    })
+
+    return !estaEnOtroGrupo
+  })
+
+  // Aplicar filtro de búsqueda
   if (busquedaConductoresGrupo.value) {
     const busquedaLower = busquedaConductoresGrupo.value.toLowerCase()
     disponibles = disponibles.filter(
@@ -1098,6 +1128,23 @@ async function actualizarFechaVencimiento(fecha) {
 async function asignarUnidadAConductor(unidadId) {
   if (!conductorEditando.value?.id) return
 
+  // Validar duplicados
+  const unidadYaAsignada = conductores.value.find(
+    (c) => c.id !== conductorEditando.value.id && c.UnidadAsignada === unidadId,
+  )
+
+  if (unidadYaAsignada) {
+    Notify.create({
+      type: 'negative',
+      message: `Esta unidad ya está asignada a ${unidadYaAsignada.Nombre}`,
+      icon: 'error',
+      timeout: 3000,
+    })
+
+    conductorEditando.value.UnidadAsignada = null
+    return
+  }
+
   try {
     await asignarUnidad(conductorEditando.value.id, unidadId)
 
@@ -1107,7 +1154,6 @@ async function asignarUnidadAConductor(unidadId) {
       icon: 'check_circle',
     })
 
-    // Recargar fotos de la nueva unidad
     await cargarFotosConductor()
   } catch (error) {
     Notify.create({
@@ -1205,10 +1251,10 @@ async function subirNuevaFotoLicencia(event) {
   try {
     cargandoFotosLicencia.value = true
     await subirFotoLicencia(conductorEditando.value.id, file)
-    
+
     // Recargar fotos
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de licencia subida correctamente',
@@ -1245,9 +1291,9 @@ async function subirNuevaFotoSeguro(event) {
   try {
     cargandoFotosSeguro.value = true
     await subirFotoSeguroUnidad(unidadAsignadaData.value.id, file)
-    
+
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de seguro subida correctamente',
@@ -1283,9 +1329,9 @@ async function subirNuevaFotoTargeta(event) {
   try {
     cargandoFotosTargeta.value = true
     await subirFotoTargetaCirculacion(unidadAsignadaData.value.id, file)
-    
+
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de tarjeta subida correctamente',
@@ -1312,11 +1358,11 @@ async function eliminarFotoLicenciaHandler(fotoUrl) {
     await eliminarFotoLicencia(
       conductorEditando.value.id,
       fotoUrl,
-      conductorEditando.value.LicenciaConducirFecha
+      conductorEditando.value.LicenciaConducirFecha,
     )
-    
+
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de licencia eliminada correctamente',
@@ -1336,11 +1382,11 @@ async function eliminarFotoSeguroHandler(fotoUrl) {
     await eliminarFotoSeguroUnidad(
       unidadAsignadaData.value.id,
       fotoUrl,
-      unidadAsignadaData.value.SeguroUnidadFecha
+      unidadAsignadaData.value.SeguroUnidadFecha,
     )
-    
+
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de seguro eliminada correctamente',
@@ -1360,11 +1406,11 @@ async function eliminarFotoTargetaHandler(fotoUrl) {
     await eliminarFotoTargetaCirculacion(
       unidadAsignadaData.value.id,
       fotoUrl,
-      unidadAsignadaData.value.TargetaCirculacionFecha
+      unidadAsignadaData.value.TargetaCirculacionFecha,
     )
-    
+
     await cargarFotosConductor()
-    
+
     Notify.create({
       type: 'positive',
       message: 'Foto de tarjeta eliminada correctamente',
@@ -1398,6 +1444,39 @@ function toggleConductor(conductorId) {
 
 async function guardarGrupo() {
   try {
+    // --- INICIO: Bloque de validación de duplicados ---
+    const conductoresDuplicados = []
+
+    for (const conductorId of conductoresSeleccionados.value) {
+      const estaEnOtroGrupo = gruposConductores.value.some((grupo) => {
+        // Si estamos en modo edición, ignoramos el grupo que se está editando para no marcar sus propios conductores como duplicados.
+        if (modoEdicion.value && grupoMenu.value && grupo.id === grupoMenu.value.id) {
+          return false
+        }
+        return grupo.ConductoresIds?.includes(conductorId)
+      })
+
+      if (estaEnOtroGrupo) {
+        const conductor = conductores.value.find((c) => c.id === conductorId)
+        if (conductor) {
+          conductoresDuplicados.push(conductor.Nombre)
+        }
+      }
+    }
+
+    if (conductoresDuplicados.length > 0) {
+      Notify.create({
+        type: 'negative',
+        message: `Los siguientes conductores ya están en otro grupo: ${conductoresDuplicados.join(', ')}`,
+        icon: 'error',
+        timeout: 5000,
+        position: 'top', // Opcional: para mejor visibilidad
+      })
+      return // Detiene la función si hay duplicados
+    }
+    // --- FIN: Bloque de validación de duplicados ---
+
+    // Si la validación pasa, se ejecuta el resto del código
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -1422,7 +1501,7 @@ async function guardarGrupo() {
     console.error('Error al guardar grupo:', error)
     Notify.create({
       type: 'negative',
-      message: 'Error: ' + error.message,
+      message: 'Error al guardar el grupo: ' + error.message,
       icon: 'error',
     })
   }
@@ -1530,6 +1609,134 @@ onMounted(async () => {
     })
   }
 })
+
+watch(
+  () => estadoCompartido.value?.abrirConductoresConConductor,
+  (newValue) => {
+    console.log('👀 Conductores.vue: Watch activado')
+    console.log('📦 newValue completo:', JSON.stringify(newValue, null, 2))
+
+    if (newValue && newValue.conductor) {
+      const { id, grupoId, grupoNombre } = newValue.conductor
+
+      console.log('✅ Datos recibidos:', { id, grupoId, grupoNombre })
+      console.log('📂 Grupos disponibles:', gruposConductores.value.length)
+      console.log('👥 Conductores disponibles:', conductores.value.length)
+
+      // Verificar si el grupo existe
+      const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
+      console.log('🔍 ¿Grupo existe?', grupoExiste ? 'SÍ' : 'NO')
+
+      if (!grupoExiste) {
+        console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
+        // Dar tiempo a que se carguen los grupos
+        setTimeout(() => {
+          console.log('🔄 Re-intentando después de espera...')
+          procesarSeleccionConductor(id, grupoId, grupoNombre)
+        }, 500)
+      } else {
+        procesarSeleccionConductor(id, grupoId, grupoNombre)
+      }
+
+      // Limpiar el estado
+      resetAbrirConductores()
+    }
+  },
+  { deep: true, immediate: true },
+)
+
+function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
+  console.log('🎯 Procesando selección de conductor...')
+  console.log('   - ID:', conductorId)
+  console.log('   - Grupo ID:', grupoId)
+  console.log('   - Grupo Nombre:', grupoNombre)
+
+  // 1. Cambiar al grupo correcto
+  if (grupoId && grupoId !== grupoSeleccionado.value) {
+    console.log(`📂 Cambiando a grupo: ${grupoNombre} (${grupoId})`)
+    grupoSeleccionado.value = grupoId
+  }
+
+  nextTick(() => {
+    console.log('🔄 NextTick ejecutado')
+    console.log('📊 Conductores filtrados disponibles:', conductoresFiltrados.value.length)
+
+    // 3. Buscar el conductor en los filtrados
+    const conductorEncontrado = conductoresFiltrados.value.find((c) => c.id === conductorId)
+
+    if (conductorEncontrado) {
+      console.log(`✅ Conductor encontrado: ${conductorEncontrado.Nombre}`)
+
+      // 4. Seleccionar el conductor (abre el dialog)
+      seleccionarConductor(conductorEncontrado)
+
+      // 5. Scroll y highlight después de que el dialog se abra
+      setTimeout(() => {
+        const elemento = document.querySelector(`[data-conductor-id="${conductorId}"]`)
+        if (elemento) {
+          console.log('📍 Haciendo scroll al elemento')
+          elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+          // Agregar clase de highlight
+          elemento.classList.add('flash-highlight')
+          setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
+        } else {
+          console.warn('⚠️ Elemento DOM no encontrado para scroll')
+        }
+      }, 400)
+
+      // 6. Notificación de éxito
+      Notify.create({
+        type: 'positive',
+        message: `👤 ${conductorEncontrado.Nombre}`,
+        caption: `Grupo: ${grupoNombre || 'Sin grupo'}`,
+        icon: 'person',
+        timeout: 2500,
+        position: 'top',
+      })
+    } else {
+      console.warn('⚠️ Conductor no encontrado en lista filtrada')
+      console.log('🔍 Buscando en todos los conductores...')
+
+      // Buscar en TODOS los conductores (bypass del filtro)
+      const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
+
+      if (conductorEnTodos) {
+        console.log('✅ Encontrado en lista general')
+        console.log('   Conductor:', conductorEnTodos.Nombre)
+
+        // Intentar cambiar de grupo nuevamente por si acaso
+        if (grupoId) {
+          grupoSeleccionado.value = grupoId
+
+          // Esperar y volver a intentar
+          setTimeout(() => {
+            seleccionarConductor(conductorEnTodos)
+          }, 200)
+        } else {
+          seleccionarConductor(conductorEnTodos)
+        }
+      } else {
+        console.error('❌ Conductor no existe en la base de datos')
+        console.log(
+          '📋 Conductores disponibles:',
+          conductores.value.map((c) => ({
+            id: c.id,
+            nombre: c.Nombre,
+          })),
+        )
+
+        Notify.create({
+          type: 'negative',
+          message: 'No se encontró el conductor',
+          caption: 'El conductor podría haber sido eliminado',
+          icon: 'error',
+          position: 'top',
+        })
+      }
+    }
+  })
+}
 
 onUnmounted(() => {
   if (unsubscribeConductores) unsubscribeConductores()

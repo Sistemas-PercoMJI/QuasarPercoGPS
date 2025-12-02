@@ -21,56 +21,59 @@ export function useTrackingUnidades() {
 
     try {
       const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
-      
+
       // Escuchar cambios en tiempo real
-      unsubscribe = onValue(unidadesRef, (snapshot) => {
-        const data = snapshot.val()
-        
-        if (data) {
-          // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
-          const unidadesValidas = Object.entries(data)
-            .filter(([, value]) => {
-              // Validar que tenga estructura completa
-              const esValida = value && 
-                              value.ubicacion && 
-                              typeof value.ubicacion.lat === 'number' &&
-                              typeof value.ubicacion.lng === 'number' &&
-                              !isNaN(value.ubicacion.lat) &&
-                              !isNaN(value.ubicacion.lng) &&
-                              value.conductorNombre &&
-                              value.unidadNombre
-              
-              return esValida
-            })
-            .map(([key, value]) => ({
-              // 🔧 FIX: Usar el ID correcto del objeto
-              id: value.unidadId || value.id || key,
-              ...value,
-              // 🆕 Normalizar estructura para evaluación de eventos
-              lat: value.ubicacion.lat,
-              lng: value.ubicacion.lng,
-              nombre: value.conductorNombre
-            }))
-          
-          unidadesActivas.value = unidadesValidas
-          
-          // 🔧 NUEVO: Guardar globalmente para evaluación de eventos
-          window._unidadesTrackeadas = unidadesValidas
-          
-        } else {
-          unidadesActivas.value = []
-          console.log('📡 No hay unidades activas')
-        }
-        
-        loading.value = false
-      }, (err) => {
-        console.error('❌ Error en tracking:', err)
-        error.value = err.message
-        loading.value = false
-      })
+      unsubscribe = onValue(
+        unidadesRef,
+        (snapshot) => {
+          const data = snapshot.val()
+
+          if (data) {
+            // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
+            const unidadesValidas = Object.entries(data)
+              .filter(([, value]) => {
+                // Validar que tenga estructura completa
+                const esValida =
+                  value &&
+                  value.ubicacion &&
+                  typeof value.ubicacion.lat === 'number' &&
+                  typeof value.ubicacion.lng === 'number' &&
+                  !isNaN(value.ubicacion.lat) &&
+                  !isNaN(value.ubicacion.lng) &&
+                  value.conductorNombre &&
+                  value.unidadNombre
+
+                return esValida
+              })
+              .map(([key, value]) => ({
+                // 🔧 FIX: Usar el ID correcto del objeto
+                id: value.unidadId || value.id || key,
+                ...value,
+                // 🆕 Normalizar estructura para evaluación de eventos
+                lat: value.ubicacion.lat,
+                lng: value.ubicacion.lng,
+                nombre: value.conductorNombre,
+              }))
+
+            unidadesActivas.value = unidadesValidas
+
+            // 🔧 NUEVO: Guardar globalmente para evaluación de eventos
+            window._unidadesTrackeadas = unidadesValidas
+          } else {
+            unidadesActivas.value = []
+            console.log('📡 No hay unidades activas')
+          }
+
+          loading.value = false
+        },
+        (err) => {
+          console.error('❌ Error en tracking:', err)
+          error.value = err.message
+          loading.value = false
+        },
+      )
 
       console.log('✅ Tracking GPS iniciado con evaluación de eventos')
-      
     } catch (err) {
       console.error('❌ Error al iniciar tracking:', err)
       error.value = err.message
@@ -94,10 +97,14 @@ export function useTrackingUnidades() {
 
   // 🆕 Watch para evaluar eventos cuando cambien las unidades
   // (solo si NO estás usando el simulador)
-  watch(unidadesActivas, () => {
-    // Descomenta esto si quieres evaluación automática sin simulador
-    // evaluarEventosParaTodasLasUnidades()
-  }, { deep: true })
+  watch(
+    unidadesActivas,
+    () => {
+      // Descomenta esto si quieres evaluación automática sin simulador
+      // evaluarEventosParaTodasLasUnidades()
+    },
+    { deep: true },
+  )
 
   /**
    * Detiene el tracking
@@ -115,7 +122,7 @@ export function useTrackingUnidades() {
    * Obtiene una unidad específica por ID
    */
   const obtenerUnidad = (unidadId) => {
-    return unidadesActivas.value.find(u => u.id === unidadId || u.unidadId === unidadId)
+    return unidadesActivas.value.find((u) => u.id === unidadId || u.unidadId === unidadId)
   }
 
   /**
@@ -125,7 +132,7 @@ export function useTrackingUnidades() {
     if (estado === 'todos') {
       return unidadesActivas.value
     }
-    return unidadesActivas.value.filter(u => u.estado === estado)
+    return unidadesActivas.value.filter((u) => u.estado === estado)
   }
 
   /**
@@ -136,10 +143,10 @@ export function useTrackingUnidades() {
       todos: unidadesActivas.value.length,
       movimiento: 0,
       detenido: 0,
-      inactivo: 0
+      inactivo: 0,
     }
 
-    unidadesActivas.value.forEach(unidad => {
+    unidadesActivas.value.forEach((unidad) => {
       if (conteo[unidad.estado] !== undefined) {
         conteo[unidad.estado]++
       }
@@ -153,13 +160,12 @@ export function useTrackingUnidades() {
    */
   const estadisticas = () => {
     const total = unidadesActivas.value.length
-    const enMovimiento = unidadesActivas.value.filter(u => u.estado === 'movimiento').length
-    const detenidas = unidadesActivas.value.filter(u => u.estado === 'detenido').length
-    const inactivas = unidadesActivas.value.filter(u => u.estado === 'inactivo').length
-    
-    const velocidadPromedio = total > 0
-      ? unidadesActivas.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total
-      : 0
+    const enMovimiento = unidadesActivas.value.filter((u) => u.estado === 'movimiento').length
+    const detenidas = unidadesActivas.value.filter((u) => u.estado === 'detenido').length
+    const inactivas = unidadesActivas.value.filter((u) => u.estado === 'inactivo').length
+
+    const velocidadPromedio =
+      total > 0 ? unidadesActivas.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total : 0
 
     return {
       total,
@@ -167,7 +173,7 @@ export function useTrackingUnidades() {
       detenidas,
       inactivas,
       velocidadPromedio: Math.round(velocidadPromedio),
-      porcentajeActivo: total > 0 ? Math.round((enMovimiento / total) * 100) : 0
+      porcentajeActivo: total > 0 ? Math.round((enMovimiento / total) * 100) : 0,
     }
   }
 
@@ -186,6 +192,6 @@ export function useTrackingUnidades() {
     unidadesPorEstado,
     contarPorEstado,
     estadisticas,
-    evaluarEventosParaTodasLasUnidades // 🆕 Exponer método
+    evaluarEventosParaTodasLasUnidades, // 🆕 Exponer método
   }
 }
