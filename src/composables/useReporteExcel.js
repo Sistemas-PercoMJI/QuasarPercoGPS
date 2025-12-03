@@ -236,7 +236,7 @@ export function useReporteExcel() {
         // 🔥 Datos de eventos usando el sistema de columnas
         eventos.forEach((evento) => {
           const rowData = config.columnasSeleccionadas.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+            const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol] // ← CAMBIO AQUÍ
             if (columnaConfig && columnaConfig.obtenerValor) {
               return columnaConfig.obtenerValor(evento)
             }
@@ -256,9 +256,8 @@ export function useReporteExcel() {
           })
         })
 
-        // 🔥 Ajustar anchos según configuración
         config.columnasSeleccionadas.forEach((nombreCol, index) => {
-          const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+          const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol] // ← CAMBIO AQUÍ
           if (columnaConfig) {
             detalleSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
           } else {
