@@ -1,10 +1,22 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="conductores-drawer">
-    <!-- Header -->
+    <!-- Header con gradiente y estadísticas -->
     <div class="drawer-header">
-      <div class="text-h6 text-weight-medium">Conductores</div>
-      <div>
+      <div class="header-content">
+        <div class="text-h6 text-weight-medium">Conductores</div>
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-number">{{ conductores.length }}</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ gruposConductores.length }}</span>
+            <span class="stat-label">Grupos</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
         <q-btn flat dense round icon="sync" color="white" size="sm" @click="sincronizarDatos">
           <q-tooltip>Sincronizar con Firebase</q-tooltip>
         </q-btn>
@@ -12,24 +24,49 @@
       </div>
     </div>
 
-    <!-- Botones de acción - Solo crear grupo -->
+    <!-- Tabs de navegación (Grupos primero) -->
+    <div class="tabs-container">
+      <q-tabs
+        v-model="tab"
+        dense
+        class="text-grey"
+        active-color="primary"
+        indicator-color="primary"
+        align="justify"
+        narrow-indicator
+      >
+        <q-tab name="grupos" label="Grupos" />
+        <q-tab name="todos" label="Todos" />
+      </q-tabs>
+    </div>
+
+    <!-- Botones de acción -->
     <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
       <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
         <q-tooltip>Crear grupo</q-tooltip>
       </q-btn>
     </div>
 
-    <!-- Búsqueda -->
+    <!-- Búsqueda mejorada -->
     <div class="q-px-md q-pb-sm">
-      <q-input v-model="busqueda" outlined dense placeholder="Búsqueda" class="search-input">
+      <q-input
+        v-model="busqueda"
+        outlined
+        dense
+        placeholder="Buscar conductor..."
+        class="search-input"
+      >
         <template v-slot:prepend>
           <q-icon name="search" />
         </template>
       </q-input>
     </div>
 
-    <!-- Lista de grupos -->
-    <div class="grupos-lista q-px-md q-pb-sm" v-if="gruposConductores.length > 0">
+    <!-- Lista de grupos (solo visible en tab grupos) -->
+    <div
+      class="grupos-lista q-px-md q-pb-sm"
+      v-if="tab === 'grupos' && gruposConductores.length > 0"
+    >
       <div class="text-caption text-grey-7 q-mb-xs">GRUPOS</div>
       <q-list dense bordered class="rounded-borders">
         <q-item
@@ -39,9 +76,10 @@
           v-ripple
           @click="filtrarPorGrupo(grupo)"
           :active="grupoSeleccionado === grupo.id"
+          class="group-item"
         >
           <q-item-section avatar>
-            <q-icon name="folder" color="blue" />
+            <q-icon name="folder" :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue'" />
           </q-item-section>
 
           <q-item-section>
@@ -65,47 +103,26 @@
       </q-list>
     </div>
 
-    <!-- Headers de la tabla -->
-    <div class="tabla-header q-px-md">
-      <div class="header-item">Conductores</div>
-      <div class="header-item text-center">Unidad</div>
-      <div class="header-item text-right">{{ conductoresFiltrados.length }}</div>
-    </div>
-
-    <!-- Lista de conductores -->
+    <!-- Lista de conductores con diseño de tarjetas -->
     <q-scroll-area class="conductores-list">
-      <q-list>
-        <q-item
+      <div class="conductores-grid">
+        <q-card
           v-for="conductor in conductoresFiltrados"
           :key="conductor.id"
+          class="conductor-card"
           clickable
           v-ripple
           @click="seleccionarConductor(conductor)"
-          :active="conductorSeleccionado?.id === conductor.id"
-          class="conductor-item"
-          :data-conductor-id="conductor.id"
+          :class="{ 'conductor-selected': conductorSeleccionado?.id === conductor.id }"
         >
-          <q-item-section avatar>
-            <q-avatar color="primary" text-color="white" size="40px">
+          <q-card-section class="card-header">
+            <q-avatar color="primary" text-color="white" size="40px" class="card-avatar">
               {{ obtenerIniciales(conductor.Nombre) }}
             </q-avatar>
-          </q-item-section>
-
-          <q-item-section>
-            <q-item-label class="text-weight-medium">{{ conductor.Nombre }}</q-item-label>
-            <q-item-label caption class="text-grey-7">{{ conductor.Telefono }}</q-item-label>
-          </q-item-section>
-
-          <q-item-section center>
-            <q-badge
-              v-if="obtenerUnidadDeConductor(conductor.id)"
-              color="blue-6"
-              :label="obtenerUnidadDeConductor(conductor.id)?.Unidad"
-            />
-            <span v-else class="text-grey-5 text-caption">Sin unidad</span>
-          </q-item-section>
-
-          <q-item-section side>
+            <div class="card-info">
+              <div class="text-weight-medium">{{ conductor.Nombre }}</div>
+              <div class="text-caption text-grey-7">{{ conductor.Telefono }}</div>
+            </div>
             <q-btn
               flat
               dense
@@ -113,9 +130,21 @@
               icon="more_vert"
               size="sm"
               @click.stop="mostrarMenuConductor($event, conductor)"
+              class="card-menu"
             />
-          </q-item-section>
-        </q-item>
+          </q-card-section>
+
+          <q-card-section class="card-body">
+            <div class="unit-badge">
+              <q-badge
+                v-if="obtenerUnidadDeConductor(conductor.id)"
+                color="blue-6"
+                :label="obtenerUnidadDeConductor(conductor.id)?.Unidad"
+              />
+              <span v-else class="text-grey-5 text-caption">Sin unidad</span>
+            </div>
+          </q-card-section>
+        </q-card>
 
         <!-- Mensaje si no hay conductores -->
         <div
@@ -133,7 +162,7 @@
             @click="verTodosConductores"
           />
         </div>
-      </q-list>
+      </div>
     </q-scroll-area>
 
     <!-- Loading -->
@@ -141,430 +170,442 @@
       <q-spinner-gears size="50px" color="primary" />
     </q-inner-loading>
 
-    <!-- Dialog: Detalles del Conductor -->
-    <q-dialog v-model="dialogDetallesConductor" position="right" seamless>
-      <q-card style="width: 500px; max-width: 90vw">
-        <!-- Header del card -->
-        <q-card-section class="bg-gradient text-white row items-center">
+    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada) -->
+    <q-dialog v-model="dialogDetallesConductor" position="right" seamless maximized>
+      <q-card class="detalle-card">
+        <!-- Header del card con avatar -->
+        <q-card-section class="bg-gradient text-white row items-center q-pa-none">
+          <q-avatar color="white" text-color="primary" size="80px" class="q-ma-md">
+            {{ obtenerIniciales(conductorSeleccionado?.Nombre) }}
+          </q-avatar>
           <div class="col">
-            <div class="text-h6">{{ conductorSeleccionado?.Nombre }}</div>
+            <div class="text-h5">{{ conductorSeleccionado?.Nombre }}</div>
+            <div class="text-subtitle2">{{ conductorSeleccionado?.Telefono }}</div>
           </div>
-          <q-btn flat dense round icon="close" @click="dialogDetallesConductor = false" />
+          <q-btn
+            flat
+            dense
+            round
+            icon="close"
+            color="white"
+            @click="dialogDetallesConductor = false"
+            class="q-mr-md"
+          />
         </q-card-section>
 
         <q-separator />
 
-        <!-- Contenido -->
-        <q-card-section style="max-height: 70vh" class="scroll">
-          <!-- Nombre completo -->
-          <div class="detalle-section">
-            <div class="detalle-label">Nombre completo</div>
-            <q-input
-              v-model="conductorEditando.Nombre"
-              outlined
-              dense
-              @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
-            />
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <!-- Teléfono -->
-          <div class="detalle-section">
-            <div class="detalle-label">Teléfono</div>
-            <q-input
-              v-model="conductorEditando.Telefono"
-              outlined
-              dense
-              mask="(###) ### ####"
-              @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
-            />
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <!-- Código de licencia de conducir -->
-          <div class="detalle-section">
-            <div class="detalle-label">Código de licencia de conducir</div>
-            <q-input
-              v-model="conductorEditando.LicenciaConducirCodigo"
-              outlined
-              dense
-              placeholder="Ej: A1234567"
-              @blur="
-                actualizarCampo('LicenciaConducirCodigo', conductorEditando.LicenciaConducirCodigo)
-              "
-            />
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <!-- 📸 FOTOS DE LICENCIA DE CONDUCIR -->
-          <div class="detalle-section">
-            <div class="detalle-label">
-              <q-icon name="image" class="q-mr-xs" />
-              Fotos de Licencia de Conducir
-              <q-space />
-              <q-btn
-                flat
-                dense
-                round
-                icon="add_photo_alternate"
-                size="sm"
-                color="primary"
-                @click="abrirSelectorFotoLicencia"
-              >
-                <q-tooltip>Subir nueva foto</q-tooltip>
-              </q-btn>
-              <input
-                ref="inputFotoLicencia"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="subirNuevaFotoLicencia"
-              />
-            </div>
-            <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
-              <q-spinner color="primary" size="30px" />
-            </div>
-            <div v-else-if="fotosLicencia.length > 0" class="fotos-grid">
-              <div v-for="foto in fotosLicencia" :key="foto.fullPath" class="foto-card">
-                <q-img
-                  :src="foto.url"
-                  class="foto-thumbnail"
-                  @click="verFotoEnGrande(foto.url)"
-                  style="cursor: pointer"
-                />
-                <div class="foto-actions">
-                  <q-btn
-                    flat
-                    dense
-                    icon="visibility"
-                    size="sm"
-                    color="primary"
-                    @click="verFotoEnGrande(foto.url)"
-                  >
-                    <q-tooltip>Ver</q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    flat
-                    dense
-                    icon="download"
-                    size="sm"
-                    color="positive"
-                    @click="descargarFotoHandler(foto.url, foto.name)"
-                  >
-                    <q-tooltip>Descargar</q-tooltip>
-                  </q-btn>
-                  <q-btn
-                    flat
-                    dense
-                    icon="delete"
-                    size="sm"
-                    :color="esLicenciaVigente ? 'grey-5' : 'negative'"
-                    :disable="esLicenciaVigente"
-                    @click="eliminarFotoLicenciaHandler(foto.url)"
-                  >
-                    <q-tooltip>
-                      {{ esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar' }}
-                    </q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-            </div>
-            <div v-else class="no-fotos">
-              <q-icon name="image_not_supported" size="32px" color="grey-4" />
-              <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de licencia</div>
-            </div>
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <!-- Fecha de vencimiento -->
-          <div class="detalle-section">
-            <div class="detalle-label">Fecha de vencimiento de licencia</div>
-            <q-input :model-value="fechaVencimientoFormato" outlined dense readonly>
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date
-                      :model-value="fechaVencimientoFormato"
-                      mask="DD/MM/YYYY"
-                      @update:model-value="actualizarFechaVencimiento"
-                    >
-                      <div class="row items-center justify-end">
-                        <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                      </div>
-                    </q-date>
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-              <template v-slot:after>
-                <q-badge
-                  v-if="conductorEditando?.LicenciaConducirFecha"
-                  :color="esLicenciaVigente ? 'positive' : 'negative'"
-                  :label="esLicenciaVigente ? 'Vigente' : 'Expirada'"
-                />
-              </template>
-            </q-input>
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <!-- Unidad asignada -->
-          <div class="detalle-section">
-            <div class="detalle-label">Unidad asignada</div>
-            <q-select
-              v-model="conductorEditando.UnidadAsignada"
-              :options="opcionesUnidades"
-              outlined
-              dense
-              emit-value
-              map-options
-              clearable
-              label="Seleccionar unidad"
-              @update:model-value="asignarUnidadAConductor"
-            />
-          </div>
-
-          <!-- Información de la unidad asignada -->
-          <div v-if="unidadAsignadaData" class="q-mt-md">
-            <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
-
-            <q-separator class="q-my-md" />
-
-            <!-- Seguro de la unidad -->
-            <div class="detalle-section">
-              <div class="detalle-label">Código de seguro</div>
-              <q-input
-                :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
-                outlined
-                dense
-                readonly
-              />
-            </div>
-
-            <q-separator class="q-my-sm" />
-
-            <!-- 📸 FOTOS DE SEGURO -->
-            <div class="detalle-section">
-              <div class="detalle-label">
-                <q-icon name="image" class="q-mr-xs" />
-                Fotos del Seguro
-                <q-space />
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="add_photo_alternate"
-                  size="sm"
-                  color="primary"
-                  @click="abrirSelectorFotoSeguro"
-                >
-                  <q-tooltip>Subir nueva foto</q-tooltip>
-                </q-btn>
-                <input
-                  ref="inputFotoSeguro"
-                  type="file"
-                  accept="image/*"
-                  style="display: none"
-                  @change="subirNuevaFotoSeguro"
-                />
-              </div>
-              <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
-                <q-spinner color="primary" size="30px" />
-              </div>
-              <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
-                <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
-                  <q-img
-                    :src="foto.url"
-                    class="foto-thumbnail"
-                    @click="verFotoEnGrande(foto.url)"
-                    style="cursor: pointer"
-                  />
-                  <div class="foto-actions">
-                    <q-btn
-                      flat
+        <!-- Contenido con Expansion Items -->
+        <q-card-section class="scroll detalle-content">
+          <!-- Información Personal -->
+          <q-expansion-item
+            icon="person"
+            label="Información Personal"
+            class="expansion-item"
+            default-opened
+          >
+            <q-card flat bordered class="q-ma-md">
+              <q-card-section>
+                <div class="row q-gutter-md">
+                  <div class="col-12">
+                    <div class="detalle-label">Nombre completo</div>
+                    <q-input
+                      v-model="conductorEditando.Nombre"
+                      outlined
                       dense
-                      icon="visibility"
-                      size="sm"
-                      color="primary"
-                      @click="verFotoEnGrande(foto.url)"
-                    >
-                      <q-tooltip>Ver</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                      flat
+                      @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
+                    />
+                  </div>
+                  <div class="col-12">
+                    <div class="detalle-label">Teléfono</div>
+                    <q-input
+                      v-model="conductorEditando.Telefono"
+                      outlined
                       dense
-                      icon="download"
-                      size="sm"
-                      color="positive"
-                      @click="descargarFotoHandler(foto.url, foto.name)"
-                    >
-                      <q-tooltip>Descargar</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                      flat
-                      dense
-                      icon="delete"
-                      size="sm"
-                      :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
-                      :disable="esSeguroUnidadVigente"
-                      @click="eliminarFotoSeguroHandler(foto.url)"
-                    >
-                      <q-tooltip>
-                        {{ esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar' }}
-                      </q-tooltip>
-                    </q-btn>
+                      mask="(###) ### ####"
+                      @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
+                    />
                   </div>
                 </div>
-              </div>
-              <div v-else class="no-fotos">
-                <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
-              </div>
-            </div>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
 
-            <q-separator class="q-my-sm" />
-
-            <!-- Fecha de vencimiento del seguro -->
-            <div class="detalle-section">
-              <div class="detalle-label">Vencimiento del seguro</div>
-              <q-input
-                :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
-                outlined
-                dense
-                readonly
-              >
-                <template v-slot:after>
-                  <q-badge
-                    v-if="unidadAsignadaData.SeguroUnidadFecha"
-                    :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
-                    :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
-                  />
-                </template>
-              </q-input>
-            </div>
-
-            <q-separator class="q-my-md" />
-
-            <!-- Tarjeta de circulación -->
-            <div class="detalle-section">
-              <div class="detalle-label">Código de tarjeta de circulación</div>
-              <q-input
-                :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
-                outlined
-                dense
-                readonly
-              />
-            </div>
-
-            <q-separator class="q-my-sm" />
-
-            <!-- 📸 FOTOS DE TARJETA DE CIRCULACIÓN -->
-            <div class="detalle-section">
-              <div class="detalle-label">
-                <q-icon name="image" class="q-mr-xs" />
-                Fotos de Tarjeta de Circulación
-                <q-space />
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="add_photo_alternate"
-                  size="sm"
-                  color="primary"
-                  @click="abrirSelectorFotoTargeta"
-                >
-                  <q-tooltip>Subir nueva foto</q-tooltip>
-                </q-btn>
-                <input
-                  ref="inputFotoTargeta"
-                  type="file"
-                  accept="image/*"
-                  style="display: none"
-                  @change="subirNuevaFotoTargeta"
-                />
-              </div>
-              <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
-                <q-spinner color="primary" size="30px" />
-              </div>
-              <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
-                <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
-                  <q-img
-                    :src="foto.url"
-                    class="foto-thumbnail"
-                    @click="verFotoEnGrande(foto.url)"
-                    style="cursor: pointer"
-                  />
-                  <div class="foto-actions">
-                    <q-btn
-                      flat
+          <!-- Licencia de Conducir -->
+          <q-expansion-item icon="badge" label="Licencia de Conducir" class="expansion-item">
+            <q-card flat bordered class="q-ma-md">
+              <q-card-section>
+                <div class="row q-gutter-md">
+                  <div class="col-12 col-md-6">
+                    <div class="detalle-label">Código de licencia</div>
+                    <q-input
+                      v-model="conductorEditando.LicenciaConducirCodigo"
+                      outlined
                       dense
-                      icon="visibility"
-                      size="sm"
-                      color="primary"
+                      placeholder="Ej: A1234567"
+                      @blur="
+                        actualizarCampo(
+                          'LicenciaConducirCodigo',
+                          conductorEditando.LicenciaConducirCodigo,
+                        )
+                      "
+                    />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="detalle-label">Fecha de vencimiento</div>
+                    <q-input :model-value="fechaVencimientoFormato" outlined dense readonly>
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="fechaVencimientoFormato"
+                              mask="DD/MM/YYYY"
+                              @update:model-value="actualizarFechaVencimiento"
+                            >
+                              <div class="row items-center justify-end">
+                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
+                      <template v-slot:after>
+                        <q-badge
+                          v-if="conductorEditando?.LicenciaConducirFecha"
+                          :color="esLicenciaVigente ? 'positive' : 'negative'"
+                          :label="esLicenciaVigente ? 'Vigente' : 'Expirada'"
+                        />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+                <q-separator class="q-my-md" />
+                <div class="detalle-label">
+                  <q-icon name="image" class="q-mr-xs" />
+                  Fotos de Licencia
+                  <q-space />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="add_photo_alternate"
+                    size="sm"
+                    color="primary"
+                    @click="abrirSelectorFotoLicencia"
+                  >
+                    <q-tooltip>Subir nueva foto</q-tooltip>
+                  </q-btn>
+                  <input
+                    ref="inputFotoLicencia"
+                    type="file"
+                    accept="image/*"
+                    style="display: none"
+                    @change="subirNuevaFotoLicencia"
+                  />
+                </div>
+                <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
+                  <q-spinner color="primary" size="30px" />
+                </div>
+                <div v-else-if="fotosLicencia.length > 0" class="fotos-grid">
+                  <div v-for="foto in fotosLicencia" :key="foto.fullPath" class="foto-card">
+                    <q-img
+                      :src="foto.url"
+                      class="foto-thumbnail"
                       @click="verFotoEnGrande(foto.url)"
-                    >
-                      <q-tooltip>Ver</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                      flat
+                      style="cursor: pointer"
+                    />
+                    <div class="foto-actions">
+                      <q-btn
+                        flat
+                        dense
+                        icon="visibility"
+                        size="sm"
+                        color="primary"
+                        @click="verFotoEnGrande(foto.url)"
+                      >
+                        <q-tooltip>Ver</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="download"
+                        size="sm"
+                        color="positive"
+                        @click="descargarFotoHandler(foto.url, foto.name)"
+                      >
+                        <q-tooltip>Descargar</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="delete"
+                        size="sm"
+                        :color="esLicenciaVigente ? 'grey-5' : 'negative'"
+                        :disable="esLicenciaVigente"
+                        @click="eliminarFotoLicenciaHandler(foto.url)"
+                      >
+                        <q-tooltip>{{
+                          esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                        }}</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="no-fotos">
+                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de licencia</div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
+          <!-- Unidad Asignada -->
+          <q-expansion-item icon="directions_car" label="Unidad Asignada" class="expansion-item">
+            <q-card flat bordered class="q-ma-md">
+              <q-card-section>
+                <div class="detalle-label">Asignar unidad</div>
+                <q-select
+                  v-model="conductorEditando.UnidadAsignada"
+                  :options="opcionesUnidades"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  clearable
+                  label="Seleccionar unidad"
+                  @update:model-value="asignarUnidadAConductor"
+                />
+              </q-card-section>
+              <q-separator v-if="unidadAsignadaData" />
+              <q-card-section v-if="unidadAsignadaData">
+                <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
+                <div class="row q-gutter-md">
+                  <div class="col-12">
+                    <div class="detalle-label">Código de seguro</div>
+                    <q-input
+                      :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
+                      outlined
                       dense
-                      icon="download"
-                      size="sm"
-                      color="positive"
-                      @click="descargarFotoHandler(foto.url, foto.name)"
-                    >
-                      <q-tooltip>Descargar</q-tooltip>
-                    </q-btn>
-                    <q-btn
-                      flat
+                      readonly
+                    />
+                  </div>
+                  <div class="col-12">
+                    <div class="detalle-label">Vencimiento del seguro</div>
+                    <q-input
+                      :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
+                      outlined
                       dense
-                      icon="delete"
-                      size="sm"
-                      :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
-                      :disable="esTarjetaCirculacionVigente"
-                      @click="eliminarFotoTargetaHandler(foto.url)"
+                      readonly
                     >
-                      <q-tooltip>
-                        {{
+                      <template v-slot:after>
+                        <q-badge
+                          v-if="unidadAsignadaData.SeguroUnidadFecha"
+                          :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                          :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-12">
+                    <div class="detalle-label">Código de tarjeta de circulación</div>
+                    <q-input
+                      :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
+                      outlined
+                      dense
+                      readonly
+                    />
+                  </div>
+                  <div class="col-12">
+                    <div class="detalle-label">Vencimiento de tarjeta</div>
+                    <q-input
+                      :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
+                      outlined
+                      dense
+                      readonly
+                    >
+                      <template v-slot:after>
+                        <q-badge
+                          v-if="unidadAsignadaData.TargetaCirculacionFecha"
+                          :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                          :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                        />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
+          <!-- Documentación de la Unidad (si hay unidad asignada) -->
+          <q-expansion-item
+            v-if="unidadAsignadaData"
+            icon="description"
+            label="Documentación de la Unidad"
+            class="expansion-item"
+          >
+            <q-card flat bordered class="q-ma-md">
+              <!-- Fotos de Seguro -->
+              <q-card-section>
+                <div class="detalle-label">
+                  <q-icon name="image" class="q-mr-xs" />
+                  Fotos del Seguro
+                  <q-space />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="add_photo_alternate"
+                    size="sm"
+                    color="primary"
+                    @click="abrirSelectorFotoSeguro"
+                  >
+                    <q-tooltip>Subir nueva foto</q-tooltip>
+                  </q-btn>
+                  <input
+                    ref="inputFotoSeguro"
+                    type="file"
+                    accept="image/*"
+                    style="display: none"
+                    @change="subirNuevaFotoSeguro"
+                  />
+                </div>
+                <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
+                  <q-spinner color="primary" size="30px" />
+                </div>
+                <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
+                  <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
+                    <q-img
+                      :src="foto.url"
+                      class="foto-thumbnail"
+                      @click="verFotoEnGrande(foto.url)"
+                      style="cursor: pointer"
+                    />
+                    <div class="foto-actions">
+                      <q-btn
+                        flat
+                        dense
+                        icon="visibility"
+                        size="sm"
+                        color="primary"
+                        @click="verFotoEnGrande(foto.url)"
+                      >
+                        <q-tooltip>Ver</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="download"
+                        size="sm"
+                        color="positive"
+                        @click="descargarFotoHandler(foto.url, foto.name)"
+                      >
+                        <q-tooltip>Descargar</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="delete"
+                        size="sm"
+                        :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
+                        :disable="esSeguroUnidadVigente"
+                        @click="eliminarFotoSeguroHandler(foto.url)"
+                      >
+                        <q-tooltip>{{
+                          esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                        }}</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="no-fotos">
+                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
+                </div>
+              </q-card-section>
+              <q-separator />
+              <!-- Fotos de Tarjeta -->
+              <q-card-section>
+                <div class="detalle-label">
+                  <q-icon name="image" class="q-mr-xs" />
+                  Fotos de Tarjeta de Circulación
+                  <q-space />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="add_photo_alternate"
+                    size="sm"
+                    color="primary"
+                    @click="abrirSelectorFotoTargeta"
+                  >
+                    <q-tooltip>Subir nueva foto</q-tooltip>
+                  </q-btn>
+                  <input
+                    ref="inputFotoTargeta"
+                    type="file"
+                    accept="image/*"
+                    style="display: none"
+                    @change="subirNuevaFotoTargeta"
+                  />
+                </div>
+                <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
+                  <q-spinner color="primary" size="30px" />
+                </div>
+                <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
+                  <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
+                    <q-img
+                      :src="foto.url"
+                      class="foto-thumbnail"
+                      @click="verFotoEnGrande(foto.url)"
+                      style="cursor: pointer"
+                    />
+                    <div class="foto-actions">
+                      <q-btn
+                        flat
+                        dense
+                        icon="visibility"
+                        size="sm"
+                        color="primary"
+                        @click="verFotoEnGrande(foto.url)"
+                      >
+                        <q-tooltip>Ver</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="download"
+                        size="sm"
+                        color="positive"
+                        @click="descargarFotoHandler(foto.url, foto.name)"
+                      >
+                        <q-tooltip>Descargar</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        flat
+                        dense
+                        icon="delete"
+                        size="sm"
+                        :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
+                        :disable="esTarjetaCirculacionVigente"
+                        @click="eliminarFotoTargetaHandler(foto.url)"
+                      >
+                        <q-tooltip>{{
                           esTarjetaCirculacionVigente
                             ? 'No se puede eliminar (vigente)'
                             : 'Eliminar'
-                        }}
-                      </q-tooltip>
-                    </q-btn>
+                        }}</q-tooltip>
+                      </q-btn>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div v-else class="no-fotos">
-                <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
-              </div>
-            </div>
-
-            <q-separator class="q-my-sm" />
-
-            <!-- Fecha de vencimiento de tarjeta de circulación -->
-            <div class="detalle-section">
-              <div class="detalle-label">Vencimiento de tarjeta de circulación</div>
-              <q-input
-                :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
-                outlined
-                dense
-                readonly
-              >
-                <template v-slot:after>
-                  <q-badge
-                    v-if="unidadAsignadaData.TargetaCirculacionFecha"
-                    :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
-                    :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
-                  />
-                </template>
-              </q-input>
-            </div>
-          </div>
+                <div v-else class="no-fotos">
+                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -734,13 +775,11 @@ if (!estadoCompartido.value) {
 }
 
 const opcionesUnidades = computed(() => {
-  // Obtener unidades ya asignadas (excepto la del conductor actual)
   const unidadesAsignadas = conductores.value
     .filter((c) => c.id !== conductorEditando.value?.id)
     .map((c) => c.UnidadAsignada)
     .filter(Boolean)
 
-  // Retornar solo unidades NO asignadas
   return unidades.value
     .filter((u) => !unidadesAsignadas.includes(u.id))
     .map((u) => ({
@@ -833,6 +872,7 @@ const eliminarFotoSeguroUnidad = composable.eliminarFotoSeguroUnidad
 const eliminarFotoTargetaCirculacion = composable.eliminarFotoTargetaCirculacion
 
 // Estado local
+const tab = ref('grupos') // Cambiado a 'grupos' por defecto
 const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
@@ -877,7 +917,7 @@ const conductoresFiltrados = computed(() => {
   let resultado = []
 
   if (grupoSeleccionado.value === 'todos') {
-    resultado = []
+    resultado = conductores.value
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
@@ -900,14 +940,11 @@ const conductoresDisponiblesParaGrupo = computed(() => {
   const conductoresGrupoActual =
     modoEdicion.value && grupoMenu.value ? grupoMenu.value.ConductoresIds || [] : []
 
-  // Filtrar conductores que NO estén en otros grupos
   disponibles = disponibles.filter((conductor) => {
-    // Permitir conductores del grupo actual
     if (conductoresGrupoActual.includes(conductor.id)) {
       return true
     }
 
-    // Verificar si está en otro grupo
     const estaEnOtroGrupo = gruposConductores.value.some((grupo) => {
       if (modoEdicion.value && grupoMenu.value && grupo.id === grupoMenu.value.id) {
         return false
@@ -918,7 +955,6 @@ const conductoresDisponiblesParaGrupo = computed(() => {
     return !estaEnOtroGrupo
   })
 
-  // Aplicar filtro de búsqueda
   if (busquedaConductoresGrupo.value) {
     const busquedaLower = busquedaConductoresGrupo.value.toLowerCase()
     disponibles = disponibles.filter(
@@ -1031,10 +1067,12 @@ function obtenerIniciales(nombre) {
 
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
+  tab.value = 'grupos'
 }
 
 function verTodosConductores() {
   grupoSeleccionado.value = 'todos'
+  tab.value = 'todos'
 }
 
 async function seleccionarConductor(conductor) {
@@ -1128,7 +1166,6 @@ async function actualizarFechaVencimiento(fecha) {
 async function asignarUnidadAConductor(unidadId) {
   if (!conductorEditando.value?.id) return
 
-  // Validar duplicados
   const unidadYaAsignada = conductores.value.find(
     (c) => c.id !== conductorEditando.value.id && c.UnidadAsignada === unidadId,
   )
@@ -1168,7 +1205,6 @@ async function asignarUnidadAConductor(unidadId) {
 async function cargarFotosConductor() {
   if (!conductorEditando.value?.id) return
 
-  // Cargar fotos de licencia
   cargandoFotosLicencia.value = true
   try {
     fotosLicencia.value = await obtenerFotosLicencia(conductorEditando.value.id)
@@ -1179,9 +1215,7 @@ async function cargarFotosConductor() {
     cargandoFotosLicencia.value = false
   }
 
-  // Cargar fotos de la unidad si está asignada
   if (unidadAsignadaData.value?.id) {
-    // Fotos de seguro
     cargandoFotosSeguro.value = true
     try {
       fotosSeguro.value = await obtenerFotosSeguroUnidad(unidadAsignadaData.value.id)
@@ -1192,7 +1226,6 @@ async function cargarFotosConductor() {
       cargandoFotosSeguro.value = false
     }
 
-    // Fotos de tarjeta de circulación
     cargandoFotosTargeta.value = true
     try {
       fotosTargeta.value = await obtenerFotosTargetaCirculacion(unidadAsignadaData.value.id)
@@ -1252,7 +1285,6 @@ async function subirNuevaFotoLicencia(event) {
     cargandoFotosLicencia.value = true
     await subirFotoLicencia(conductorEditando.value.id, file)
 
-    // Recargar fotos
     await cargarFotosConductor()
 
     Notify.create({
@@ -1268,7 +1300,6 @@ async function subirNuevaFotoLicencia(event) {
     })
   } finally {
     cargandoFotosLicencia.value = false
-    // Limpiar input
     if (inputFotoLicencia.value) {
       inputFotoLicencia.value.value = ''
     }
@@ -1444,12 +1475,10 @@ function toggleConductor(conductorId) {
 
 async function guardarGrupo() {
   try {
-    // --- INICIO: Bloque de validación de duplicados ---
     const conductoresDuplicados = []
 
     for (const conductorId of conductoresSeleccionados.value) {
       const estaEnOtroGrupo = gruposConductores.value.some((grupo) => {
-        // Si estamos en modo edición, ignoramos el grupo que se está editando para no marcar sus propios conductores como duplicados.
         if (modoEdicion.value && grupoMenu.value && grupo.id === grupoMenu.value.id) {
           return false
         }
@@ -1470,13 +1499,11 @@ async function guardarGrupo() {
         message: `Los siguientes conductores ya están en otro grupo: ${conductoresDuplicados.join(', ')}`,
         icon: 'error',
         timeout: 5000,
-        position: 'top', // Opcional: para mejor visibilidad
+        position: 'top',
       })
-      return // Detiene la función si hay duplicados
+      return
     }
-    // --- FIN: Bloque de validación de duplicados ---
 
-    // Si la validación pasa, se ejecuta el resto del código
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -1623,13 +1650,11 @@ watch(
       console.log('📂 Grupos disponibles:', gruposConductores.value.length)
       console.log('👥 Conductores disponibles:', conductores.value.length)
 
-      // Verificar si el grupo existe
       const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
       console.log('🔍 ¿Grupo existe?', grupoExiste ? 'SÍ' : 'NO')
 
       if (!grupoExiste) {
         console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
-        // Dar tiempo a que se carguen los grupos
         setTimeout(() => {
           console.log('🔄 Re-intentando después de espera...')
           procesarSeleccionConductor(id, grupoId, grupoNombre)
@@ -1638,7 +1663,6 @@ watch(
         procesarSeleccionConductor(id, grupoId, grupoNombre)
       }
 
-      // Limpiar el estado
       resetAbrirConductores()
     }
   },
@@ -1651,33 +1675,29 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
   console.log('   - Grupo ID:', grupoId)
   console.log('   - Grupo Nombre:', grupoNombre)
 
-  // 1. Cambiar al grupo correcto
   if (grupoId && grupoId !== grupoSeleccionado.value) {
     console.log(`📂 Cambiando a grupo: ${grupoNombre} (${grupoId})`)
     grupoSeleccionado.value = grupoId
+    tab.value = 'grupos'
   }
 
   nextTick(() => {
     console.log('🔄 NextTick ejecutado')
     console.log('📊 Conductores filtrados disponibles:', conductoresFiltrados.value.length)
 
-    // 3. Buscar el conductor en los filtrados
     const conductorEncontrado = conductoresFiltrados.value.find((c) => c.id === conductorId)
 
     if (conductorEncontrado) {
       console.log(`✅ Conductor encontrado: ${conductorEncontrado.Nombre}`)
 
-      // 4. Seleccionar el conductor (abre el dialog)
       seleccionarConductor(conductorEncontrado)
 
-      // 5. Scroll y highlight después de que el dialog se abra
       setTimeout(() => {
         const elemento = document.querySelector(`[data-conductor-id="${conductorId}"]`)
         if (elemento) {
           console.log('📍 Haciendo scroll al elemento')
           elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
-          // Agregar clase de highlight
           elemento.classList.add('flash-highlight')
           setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
         } else {
@@ -1685,7 +1705,6 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
         }
       }, 400)
 
-      // 6. Notificación de éxito
       Notify.create({
         type: 'positive',
         message: `👤 ${conductorEncontrado.Nombre}`,
@@ -1698,18 +1717,16 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
       console.warn('⚠️ Conductor no encontrado en lista filtrada')
       console.log('🔍 Buscando en todos los conductores...')
 
-      // Buscar en TODOS los conductores (bypass del filtro)
       const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
 
       if (conductorEnTodos) {
         console.log('✅ Encontrado en lista general')
         console.log('   Conductor:', conductorEnTodos.Nombre)
 
-        // Intentar cambiar de grupo nuevamente por si acaso
         if (grupoId) {
           grupoSeleccionado.value = grupoId
+          tab.value = 'grupos'
 
-          // Esperar y volver a intentar
           setTimeout(() => {
             seleccionarConductor(conductorEnTodos)
           }, 200)
@@ -1745,6 +1762,24 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Animaciones y transiciones */
+.conductor-card {
+  transition: all 0.3s ease;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.conductor-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.conductor-selected {
+  border: 2px solid #1976d2;
+  background-color: #e3f2fd;
+}
+
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -1767,108 +1802,120 @@ onUnmounted(() => {
   }
 }
 
+/* Estilos del contenedor principal */
 .conductores-drawer {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: #f8f9fa;
 }
 
+/* Header mejorado con estadísticas */
 .drawer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
   color: white;
-  min-height: 48px;
+  box-shadow: 0 4px 12px rgba(187, 0, 0, 0.2);
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-number {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.stat-label {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
 
-.drawer-header .text-h6 {
-  color: white;
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.search-input {
+/* Tabs de navegación */
+.tabs-container {
   background: white;
-}
-
-.grupos-lista {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.tabla-header {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
+}
+
+/* Lista de grupos resaltada */
+.grupos-lista {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.group-item {
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.group-item.q-item--active {
+  background-color: #e3f2fd;
   font-weight: 500;
-  color: #666;
-  font-size: 11px;
 }
 
-.header-item {
-  flex: 1;
-}
-
+/* Lista de conductores con diseño de tarjetas */
 .conductores-list {
   flex: 1;
   overflow-y: auto;
+  padding: 16px;
 }
 
-.conductor-item {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 10px 12px;
+.conductores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
 }
 
-.conductor-item.q-item--active {
-  background-color: #e3f2fd;
-}
-
-.conductor-item:hover {
-  background-color: #f5f5f5;
-}
-
-.no-data {
+.card-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  padding: 12px 16px;
+}
+
+.card-avatar {
+  margin-right: 12px;
+}
+
+.card-info {
+  flex: 1;
+}
+
+.card-menu {
+  opacity: 0.7;
+}
+
+.card-body {
+  padding: 0 16px 12px;
+}
+
+.unit-badge {
+  display: flex;
   justify-content: center;
-  min-height: 200px;
-}
-
-.detalle-section {
-  margin-bottom: 16px;
-}
-
-.detalle-label {
-  font-size: 12px;
-  color: #757575;
-  margin-bottom: 8px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-}
-
-.detalle-valor {
-  font-size: 14px;
-  color: #212121;
-  padding: 8px 0;
-}
-
-.bordered {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
 }
 
 /* Estilos para las fotos */
@@ -1914,5 +1961,81 @@ onUnmounted(() => {
   background: #fafafa;
   border-radius: 8px;
   margin-top: 8px;
+}
+
+/* Estilos para los detalles */
+.detalle-section {
+  margin-bottom: 16px;
+}
+
+.detalle-label {
+  font-size: 12px;
+  color: #757575;
+  margin-bottom: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.detalle-valor {
+  font-size: 14px;
+  color: #212121;
+  padding: 8px 0;
+}
+
+.bordered {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+/* Estilos para el mensaje sin datos */
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  grid-column: 1 / -1;
+}
+
+/* Mejoras para el input de búsqueda */
+.search-input {
+  border-radius: 8px;
+}
+
+/* Mejoras para la lista de grupos */
+.grupos-lista {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Mejoras para el scroll */
+.q-scrollarea {
+  border-radius: 8px;
+}
+
+/* Estilos para el diálogo de detalles mejorado */
+.detalle-card {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.detalle-content {
+  padding: 0;
+}
+
+.expansion-item {
+  border-bottom: 1px solid #eee;
+}
+
+.expansion-item:last-child {
+  border-bottom: none;
+}
+
+.expansion-item .q-item {
+  font-weight: 500;
+  color: #424242;
 }
 </style>
