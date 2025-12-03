@@ -1143,7 +1143,14 @@ const obtenerDatosReporte = async () => {
     configuracion.map((c) => c.label),
   )
   if (tipoInforme === 'horas_trabajo') {
-    return datosFiltrados // Array de registros por día
+    return {
+      registros: datosFiltrados, // Array de registros por día
+      totalRegistros: datosFiltrados.length,
+      resumen: resumenMejorado,
+      stats: stats,
+      elementosSinDatos: elementosSinDatos,
+      tipoInforme: 'horas_trabajo',
+    } // Array de registros por día
   }
 
   return {
@@ -1375,23 +1382,46 @@ const generarExcel = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
+      // 🔥 AGREGAR CAMPOS PARA HORAS DE TRABAJO
+      tipoDetalle: tipoDetalle.value,
+      tipoInformeComercial: tipoInformeComercial.value,
+      horarioInicio: horarioInicio.value,
+      horarioFin: horarioFin.value,
+      remarcarHorasExtra: remarcarHorasExtra.value,
+      diasLaborables: diasLaborablesSeleccionados.value,
     }
 
-    const { blob } = await generarExcelEventos(config, datosReales)
+    let blob, filename
+
+    // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
+    if (tipoInformeSeleccionado.value === 'horas_trabajo') {
+      console.log('📊 Generando Excel de Horas de Trabajo...')
+      const { generarExcelHorasTrabajo } = useReporteExcel()
+      const resultado = await generarExcelHorasTrabajo(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'eventos') {
+      console.log('📊 Generando Excel de Eventos...')
+      const resultado = await generarExcelEventos(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else {
+      throw new Error(`Tipo de informe no soportado para Excel: ${tipoInformeSeleccionado.value}`)
+    }
 
     if (!blob) {
       throw new Error('No se pudo generar el archivo Excel')
     }
 
     const metadata = {
-      nombre: `Reporte ${reportarPor.value}`,
+      nombre: filename || `Reporte ${reportarPor.value}`,
       tipo: 'excel',
       tipoInforme: tipoInformeSeleccionado.value,
       reportarPor: reportarPor.value,
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
       columnas: columnasSeleccionadas.value,
-      totalEventos: datosReales.totalEventos,
+      totalEventos: datosReales.totalRegistros || datosReales.totalEventos || 0,
     }
 
     const reporteGuardado = await subirReporte(blob, metadata)

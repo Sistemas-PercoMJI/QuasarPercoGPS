@@ -527,130 +527,141 @@ const COLUMNAS_TRAYECTOS = {
  * ============================================
  */
 const COLUMNAS_HORAS_TRABAJO = {
-  // ============ JORNADA LABORAL ============
+  // ============ JORNADA LABORAL (para registros de día completo) ============
   Fecha: {
     key: 'fecha',
     label: 'Fecha',
-    obtenerValor: (registro) => {
-      if (!registro.fecha) return 'N/A'
-      const fecha = new Date(registro.fecha)
-      return fecha.toLocaleDateString('es-MX', {
+    obtenerValor: (item) => {
+      // Funciona tanto para registro como para viaje (hereda del padre)
+      const fecha = item.fecha
+      if (!fecha) return 'N/A'
+
+      // Si es string formato YYYY-MM-DD
+      if (typeof fecha === 'string') {
+        const [year, month, day] = fecha.split('-')
+        return `${day}/${month}/${year}`
+      }
+
+      // Si es Date object
+      const fechaObj = new Date(fecha)
+      return fechaObj.toLocaleDateString('es-MX', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
       })
     },
-    ancho: 120,
+    ancho: 100,
     formato: 'fecha',
   },
 
+  // ============ VIAJE INDIVIDUAL ============
   'Hora de inicio de trabajo': {
-    key: 'horaInicioTrabajo',
-    label: 'Hora de inicio',
-    obtenerValor: (registro) => registro.horaInicioTrabajo || 'N/A',
+    key: 'horaInicio',
+    label: 'Hora de inicio de trabajo',
+    obtenerValor: (item) => {
+      // Prioridad: horaInicio (viaje) > horaInicioTrabajo (registro día)
+      return item.horaInicio || item.horaInicioTrabajo || 'N/A'
+    },
     ancho: 120,
     formato: 'texto',
   },
 
   'Ubicación de inicio de trabajo': {
     key: 'ubicacionInicio',
-    label: 'Ubicación de inicio',
-    obtenerValor: (registro) => registro.ubicacionInicio || 'N/A',
+    label: 'Ubicación de inicio de trabajo',
+    obtenerValor: (item) => item.ubicacionInicio || 'N/A',
     ancho: 250,
     formato: 'texto',
   },
 
   'Hora de fin de trabajo': {
-    key: 'horaFinTrabajo',
-    label: 'Hora de fin',
-    obtenerValor: (registro) => registro.horaFinTrabajo || 'N/A',
+    key: 'horaFin',
+    label: 'Hora de fin de trabajo',
+    obtenerValor: (item) => {
+      // Prioridad: horaFin (viaje) > horaFinTrabajo (registro día)
+      return item.horaFin || item.horaFinTrabajo || 'N/A'
+    },
     ancho: 120,
     formato: 'texto',
   },
 
   'Ubicación de fin de trabajo': {
     key: 'ubicacionFin',
-    label: 'Ubicación de fin',
-    obtenerValor: (registro) => registro.ubicacionFin || 'N/A',
+    label: 'Ubicación de fin de trabajo',
+    obtenerValor: (item) => item.ubicacionFin || 'N/A',
     ancho: 250,
     formato: 'texto',
   },
 
-  // ============ DURACIONES ============
+  // ============ DURACIONES (funcionan para ambos) ============
   'Duración total de trabajo': {
     key: 'duracionTotal',
-    label: 'Duración total',
-    obtenerValor: (registro) => {
-      return registro.duracionTotal !== null && registro.duracionTotal !== undefined
-        ? `${registro.duracionTotal} horas`
-        : 'N/A'
+    label: 'Duración total de trabajo',
+    obtenerValor: (item) => {
+      // Funciona tanto para viaje como para registro de día
+      return item.duracionTotal || 'N/A'
     },
-    ancho: 150,
-    formato: 'numero',
+    ancho: 120,
+    formato: 'texto',
   },
 
   'Duración dentro del horario comercial': {
     key: 'duracionDentro',
-    label: 'Duración dentro horario',
-    obtenerValor: (registro) => {
-      return registro.duracionDentroHorario !== null && registro.duracionDentroHorario !== undefined
-        ? `${registro.duracionDentroHorario} horas`
-        : 'N/A'
+    label: 'Duración dentro del horario comercial',
+    obtenerValor: (item) => {
+      // Prioridad: duracionDentro (viaje) > duracionDentroHorario (registro día)
+      return item.duracionDentro || item.duracionDentroHorario || 'N/A'
     },
-    ancho: 180,
-    formato: 'numero',
+    ancho: 150,
+    formato: 'texto',
   },
 
   'Duración fuera del horario comercial': {
     key: 'duracionFuera',
-    label: 'Duración fuera horario',
-    obtenerValor: (registro) => {
-      return registro.duracionFueraHorario !== null && registro.duracionFueraHorario !== undefined
-        ? `${registro.duracionFueraHorario} horas`
-        : 'N/A'
+    label: 'Duración fuera del horario comercial',
+    obtenerValor: (item) => {
+      // Prioridad: duracionFuera (viaje) > duracionFueraHorario (registro día)
+      return item.duracionFuera || item.duracionFueraHorario || 'N/A'
     },
-    ancho: 180,
-    formato: 'numero',
+    ancho: 150,
+    formato: 'texto',
   },
 
-  // ============ VIAJES ============
+  // ============ MÉTRICAS AGREGADAS (solo para registros de día) ============
   'Total de viajes': {
     key: 'totalViajes',
     label: 'Total de viajes',
-    obtenerValor: (registro) => {
-      return registro.totalViajes !== null && registro.totalViajes !== undefined
-        ? registro.totalViajes
-        : 'N/A'
+    obtenerValor: (item) => {
+      const total = item.totalViajes
+      return total !== null && total !== undefined ? total : 'N/A'
+    },
+    ancho: 100,
+    formato: 'numero',
+  },
+
+  'Viajes dentro del horario': {
+    key: 'viajesDentroHorario',
+    label: 'Viajes dentro del horario',
+    obtenerValor: (item) => {
+      const viajes = item.viajesDentroHorario
+      return viajes !== null && viajes !== undefined ? viajes : 'N/A'
     },
     ancho: 120,
     formato: 'numero',
   },
 
-  'Viajes dentro del horario': {
-    key: 'viajesDentro',
-    label: 'Viajes dentro horario',
-    obtenerValor: (registro) => {
-      return registro.viajesDentroHorario !== null && registro.viajesDentroHorario !== undefined
-        ? registro.viajesDentroHorario
-        : 'N/A'
-    },
-    ancho: 150,
-    formato: 'numero',
-  },
-
   'Viajes fuera del horario': {
-    key: 'viajesFuera',
-    label: 'Viajes fuera horario',
-    obtenerValor: (registro) => {
-      return registro.viajesFueraHorario !== null && registro.viajesFueraHorario !== undefined
-        ? registro.viajesFueraHorario
-        : 'N/A'
+    key: 'viajesFueraHorario',
+    label: 'Viajes fuera del horario',
+    obtenerValor: (item) => {
+      const viajes = item.viajesFueraHorario
+      return viajes !== null && viajes !== undefined ? viajes : 'N/A'
     },
-    ancho: 150,
+    ancho: 120,
     formato: 'numero',
   },
 
-  // Incluir solo Conductor (no vehículo ni placa)
+  // Incluir solo Conductor (no vehículo ni placa, se agregan en headers)
   Conductor: COLUMNAS_COMPARTIDAS['Conductor'],
 }
 
