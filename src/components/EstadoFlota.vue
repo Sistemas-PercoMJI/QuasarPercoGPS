@@ -23,31 +23,17 @@
 
     <!-- Vista de Lista de Vehículos -->
     <div v-show="!vehiculoSeleccionado" class="vista-lista">
-      <!-- Selector todos los vehículos -->
-      <div class="selector-todos">
-        <q-checkbox
-          v-model="todosVehiculos"
-          label="Todos los vehículos"
-          @update:model-value="seleccionarTodos"
-          dense
-          color="primary"
-        />
-        <q-chip dense color="grey-3" text-color="grey-8">
-          {{ totalVehiculos }}
-        </q-chip>
-      </div>
-
-      <!-- Grid de estados -->
+      <!-- Grid de estados (ahora más compacto) -->
       <div class="estados-container">
-        <div class="estados-grid">
+        <div class="estados-grid compact-grid">
           <div
             v-for="estado in estadosVehiculos"
             :key="estado.tipo"
-            class="estado-card"
+            class="estado-card compact-card"
             :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
             @click="seleccionarEstado(estado)"
           >
-            <q-icon :name="estado.icono" size="24px" :color="estado.color" />
+            <q-icon :name="estado.icono" size="20px" :color="estado.color" />
             <div class="estado-badge" :style="{ backgroundColor: getColorHex(estado.color) }">
               {{ estado.cantidad }}
             </div>
@@ -77,6 +63,7 @@
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
         <div class="header-col-velocidad">Velocidad</div>
+        <div class="header-col-acciones">Acciones</div>
       </div>
 
       <!-- Lista de vehículos -->
@@ -87,7 +74,7 @@
             :key="vehiculo.id"
             clickable
             v-ripple
-            @click="seleccionarVehiculo(vehiculo)"
+            @click="seleccionarVehiculoParaMapa(vehiculo)"
             class="vehiculo-item"
           >
             <q-item-section avatar>
@@ -114,6 +101,20 @@
               <div class="velocidad-badge">
                 {{ vehiculo.velocidad }}
               </div>
+            </q-item-section>
+
+            <q-item-section side class="acciones-section">
+              <q-btn
+                flat
+                dense
+                round
+                icon="arrow_forward_ios"
+                color="primary"
+                @click.stop="seleccionarVehiculo(vehiculo)"
+                class="btn-detalles"
+              >
+                <q-tooltip>Ver detalles</q-tooltip>
+              </q-btn>
             </q-item-section>
           </q-item>
         </q-list>
@@ -446,13 +447,12 @@ const {
 } = useTrackingUnidades()
 
 // Props y emits
-const emit = defineEmits(['close', 'vehiculo-seleccionado'])
+const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
 
 // Estado local
 const vehiculoSeleccionado = ref(null)
 const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
-const todosVehiculos = ref(true)
 const tabActual = ref('resumen')
 const filtroNotificaciones = ref('todos')
 
@@ -474,7 +474,6 @@ const vehiculos = computed(() => {
     ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
 
     // Datos de ejemplo para tabs
-
     bloqueado: false,
     tiempoConductionHoy: '3h 24m',
     tiempoConductionSemana: '18h 45m',
@@ -522,6 +521,7 @@ const vehiculos = computed(() => {
     },
   }))
 })
+
 // Computed para estados
 const estadosVehiculos = computed(() => {
   const conteo = contarPorEstado()
@@ -558,8 +558,6 @@ const estadosVehiculos = computed(() => {
   ]
 })
 
-const totalVehiculos = computed(() => vehiculos.value.length)
-
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
@@ -581,33 +579,18 @@ const vehiculosFiltrados = computed(() => {
   return resultado
 })
 
-/*const eventosFiltrados = computed(() => {
-  if (!vehiculoSeleccionado.value) return []
-
-  const eventos = vehiculoSeleccionado.value.eventos || []
-
-  if (filtroNotificaciones.value === 'todos') {
-    return eventos
-  }
-
-  return eventos.filter(e => e.tipo === filtroNotificaciones.value)
-})*/
-
 // Methods
-function seleccionarTodos(valor) {
-  if (valor) {
-    estadoSeleccionado.value = 'todos'
-  }
-}
-
 function seleccionarEstado(estado) {
   estadoSeleccionado.value = estado.tipo
-  todosVehiculos.value = estado.tipo === 'todos'
 }
 
 function seleccionarVehiculo(vehiculo) {
   vehiculoSeleccionado.value = vehiculo
   emit('vehiculo-seleccionado', vehiculo)
+}
+
+function seleccionarVehiculoParaMapa(vehiculo) {
+  emit('vehiculo-mapa', vehiculo)
 }
 
 function volverALista() {
@@ -737,51 +720,42 @@ onBeforeUnmount(() => {
   background: white;
 }
 
-.selector-todos {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-/* === ESTADOS GRID === */
+/* === ESTADOS GRID (COMPACTO) === */
 .estados-container {
-  padding: 16px 20px;
+  padding: 12px 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.estados-grid {
+.compact-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
-.estado-card {
+.compact-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 8px;
+  padding: 8px 6px;
   background: #fafafa;
   border: 2px solid #e0e0e0;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 80px;
+  min-height: 60px;
 }
 
-.estado-card:hover {
+.compact-card:hover {
   border-color: #2196f3;
   background: #f5f9ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
 
-.estado-card.estado-activo {
+.compact-card.estado-activo {
   border-color: #2196f3;
   background: #e3f2fd;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
@@ -789,18 +763,18 @@ onBeforeUnmount(() => {
 
 .estado-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  min-width: 24px;
-  height: 24px;
-  border-radius: 12px;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 700;
-  font-size: 12px;
-  padding: 0 8px;
+  font-size: 11px;
+  padding: 0 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -838,6 +812,11 @@ onBeforeUnmount(() => {
 .header-col-velocidad {
   text-align: right;
   min-width: 80px;
+}
+
+.header-col-acciones {
+  text-align: center;
+  min-width: 60px;
 }
 
 /* === LISTA VEHÍCULOS === */
@@ -888,6 +867,19 @@ onBeforeUnmount(() => {
   font-weight: 600;
   font-size: 13px;
   text-align: center;
+}
+
+.acciones-section {
+  min-width: 60px;
+}
+
+.btn-detalles {
+  transition: all 0.2s ease;
+}
+
+.btn-detalles:hover {
+  background-color: rgba(33, 150, 243, 0.1);
+  transform: scale(1.1);
 }
 
 /* === VISTA DETALLES === */
@@ -1062,17 +1054,6 @@ onBeforeUnmount(() => {
   background: #e0e0e0;
 }
 
-/* === BOTÓN DETALLES === */
-.btn-detalles {
-  margin-top: 8px;
-  height: 48px;
-  font-weight: 600;
-  font-size: 14px;
-  border-radius: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
 /* === TAB HOY === */
 .filtro-dia-card {
   display: flex;
@@ -1105,7 +1086,7 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-/* === RESUMEN DIA === */
+/* === RESUMEN DÍA === */
 .resumen-dia-card {
   background: white;
   border-radius: 12px;
@@ -1386,14 +1367,14 @@ onBeforeUnmount(() => {
     font-size: 16px;
   }
 
-  .estados-grid {
+  .compact-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
   }
 
-  .estado-card {
-    min-height: 70px;
-    padding: 12px 6px;
+  .compact-card {
+    min-height: 55px;
+    padding: 6px 4px;
   }
 
   .tab-panel-padding {
