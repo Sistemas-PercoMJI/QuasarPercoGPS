@@ -1424,7 +1424,23 @@ export function useReportePDF() {
   const generarPDFHorasTrabajo = async (config, datosReales) => {
     const doc = new jsPDF('landscape')
     let yPos = 20
+    const sumarTiempos = (tiempo1, tiempo2) => {
+      const parsearASegundos = (t) => {
+        if (!t || t === 'N/A') return 0
+        const partes = t.split(':')
+        return parseInt(partes[0]) * 3600 + parseInt(partes[1]) * 60 + parseInt(partes[2])
+      }
 
+      const formatearDesdeSegundos = (s) => {
+        const horas = Math.floor(s / 3600)
+        const minutos = Math.floor((s % 3600) / 60)
+        const segundos = s % 60
+        return [horas, minutos, segundos].map((v) => String(v).padStart(2, '0')).join(':')
+      }
+
+      const totalSegundos = parsearASegundos(tiempo1) + parsearASegundos(tiempo2)
+      return formatearDesdeSegundos(totalSegundos)
+    }
     // ========================================
     // ENCABEZADO DEL DOCUMENTO
     // ========================================
@@ -1457,13 +1473,55 @@ export function useReportePDF() {
     // ========================================
     // RESUMEN GENERAL (si está activo)
     // ========================================
-    if (config.mostrarResumen && datosReales.resumenGeneral) {
+    if (config.mostrarResumen) {
       doc.setFontSize(12)
       doc.setFont(undefined, 'bold')
       doc.text('Resumen del Informe', 14, yPos)
       yPos += 8
 
-      const resumenData = datosReales.resumenGeneral.map((item) => {
+      // 🔥 PASO 1: RECALCULAR LOS TOTALES A PARTIR DE LOS DATOS DETALLADOS
+      const resumenRecalculado = {}
+      const totalesRecalculados = { duracionFuera: '00:00:00', duracionDentro: '00:00:00' }
+
+      datosReales.registros.forEach((registro) => {
+        const clave =
+          config.reportarPor === 'Unidades' ? registro.unidadNombre : registro.conductorNombre
+
+        if (!resumenRecalculado[clave]) {
+          resumenRecalculado[clave] = {
+            nombre: clave,
+            duracionFuera: '00:00:00',
+            duracionDentro: '00:00:00',
+          }
+        }
+
+        // Acumular las duraciones de este registro
+        resumenRecalculado[clave].duracionFuera = sumarTiempos(
+          resumenRecalculado[clave].duracionFuera,
+          registro.duracionFueraHorario || '00:00:00',
+        )
+        resumenRecalculado[clave].duracionDentro = sumarTiempos(
+          resumenRecalculado[clave].duracionDentro,
+          registro.duracionDentroHorario || '00:00:00',
+        )
+
+        // Acumular los totales generales
+        totalesRecalculados.duracionFuera = sumarTiempos(
+          totalesRecalculados.duracionFuera,
+          registro.duracionFueraHorario || '00:00:00',
+        )
+        totalesRecalculados.duracionDentro = sumarTiempos(
+          totalesRecalculados.duracionDentro,
+          registro.duracionDentroHorario || '00:00:00',
+        )
+      })
+
+      // 🔥 PASO 2: PREPARAR LOS DATOS PARA LA TABLA USANDO NUESTRO RESUMEN RECALCULADO
+      const resumenData = Object.values(resumenRecalculado).map((item) => {
+        // Calcular duración total
+        const duracionTotal = sumarTiempos(item.duracionFuera, item.duracionDentro)
+
+        // Verificar si tiene horas extra
         const partesFuera = item.duracionFuera.split(':')
         const tieneHorasExtra =
           parseInt(partesFuera[0]) > 0 ||
@@ -1483,36 +1541,40 @@ export function useReportePDF() {
                   }
                 : {},
           },
-          { content: item.duracionTotal, styles: {} },
+          { content: duracionTotal, styles: {} },
           { content: item.duracionDentro, styles: {} },
         ]
       })
 
-      if (datosReales.totales) {
-        const partesTotales = datosReales.totales.duracionFuera.split(':')
-        const tieneTotalesExtra =
-          parseInt(partesTotales[0]) > 0 ||
-          parseInt(partesTotales[1]) > 0 ||
-          parseInt(partesTotales[2]) > 0
+      // 🔥 PASO 3: AÑADIR LA FILA DE TOTALES RECALCULADA
+      const duracionTotalFinal = sumarTiempos(
+        totalesRecalculados.duracionFuera,
+        totalesRecalculados.duracionDentro,
+      )
+      const partesTotales = totalesRecalculados.duracionFuera.split(':')
+      const tieneTotalesExtra =
+        parseInt(partesTotales[0]) > 0 ||
+        parseInt(partesTotales[1]) > 0 ||
+        parseInt(partesTotales[2]) > 0
 
-        resumenData.push([
-          { content: 'TOTALES', styles: { fontStyle: 'bold' } },
-          {
-            content: datosReales.totales.duracionFuera,
-            styles:
-              config.remarcarHorasExtra && tieneTotalesExtra
-                ? {
-                    fillColor: [255, 235, 238],
-                    textColor: [211, 47, 47],
-                    fontStyle: 'bold',
-                  }
-                : { fontStyle: 'bold' },
-          },
-          { content: datosReales.totales.duracionTotal, styles: { fontStyle: 'bold' } },
-          { content: datosReales.totales.duracionDentro, styles: { fontStyle: 'bold' } },
-        ])
-      }
+      resumenData.push([
+        { content: 'TOTALES', styles: { fontStyle: 'bold' } },
+        {
+          content: totalesRecalculados.duracionFuera,
+          styles:
+            config.remarcarHorasExtra && tieneTotalesExtra
+              ? {
+                  fillColor: [255, 235, 238],
+                  textColor: [211, 47, 47],
+                  fontStyle: 'bold',
+                }
+              : { fontStyle: 'bold' },
+        },
+        { content: duracionTotalFinal, styles: { fontStyle: 'bold' } },
+        { content: totalesRecalculados.duracionDentro, styles: { fontStyle: 'bold' } },
+      ])
 
+      // 🔥 PASO 4: DIBUJAR LA TABLA
       autoTable(doc, {
         startY: yPos,
         head: [
