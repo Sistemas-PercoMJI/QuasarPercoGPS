@@ -1636,14 +1636,21 @@ export function useReportePDF() {
       Conductor: 'conductorNombre',
     }
 
+    const columnasAgregadas = ['totalViajes', 'viajesDentroHorario', 'viajesFueraHorario']
+
+    // Filtrar columnas: convertir a propiedades Y excluir las agregadas
     const columnasVisiblesViajes = config.columnasSeleccionadas
       .map((nombreEspanol) => nombreColumnaAPropiedad[nombreEspanol])
       .filter(Boolean) // Eliminar undefined
+      .filter((prop) => !columnasAgregadas.includes(prop))
 
     console.log('🔍 Columnas para viajes:', columnasVisiblesViajes)
 
     // Preparar headers en español
-    const headersViajes = config.columnasSeleccionadas.filter((col) => nombreColumnaAPropiedad[col])
+    const headersViajes = config.columnasSeleccionadas.filter((col) => {
+      const prop = nombreColumnaAPropiedad[col]
+      return prop && !columnasAgregadas.includes(prop)
+    })
 
     console.log('🔍 Headers para tabla:', headersViajes)
     // Convertir columnas seleccionadas de español a propiedades
@@ -1885,7 +1892,31 @@ export function useReportePDF() {
               margin: { left: 20, right: 20 },
             })
 
-            yPos = doc.lastAutoTable.finalY + 10
+            yPos = doc.lastAutoTable.finalY + 5 // 🔥 Cambiar de +10 a +5
+
+            // 🔥 AGREGAR MÉTRICAS DEL DÍA
+            const totalViajesDelDia = registrosDelDia.reduce(
+              (sum, r) => sum + (r.totalViajes || 0),
+              0,
+            )
+            const viajesDentroDelDia = registrosDelDia.reduce(
+              (sum, r) => sum + (r.viajesDentroHorario || 0),
+              0,
+            )
+            const viajesFueraDelDia = registrosDelDia.reduce(
+              (sum, r) => sum + (r.viajesFueraHorario || 0),
+              0,
+            )
+
+            doc.setFontSize(9)
+            doc.setFont(undefined, 'bold')
+            doc.setTextColor(80, 80, 80)
+            doc.text(
+              `Total de viajes: ${totalViajesDelDia} | Viajes dentro del horario: ${viajesDentroDelDia} | Viajes fuera del horario: ${viajesFueraDelDia}`,
+              20,
+              yPos,
+            )
+            yPos += 10
           }
         }
       } else if (config.tipoDetalle === 'dias_resumidos') {

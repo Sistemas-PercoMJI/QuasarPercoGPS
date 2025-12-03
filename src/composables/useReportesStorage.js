@@ -95,7 +95,7 @@ export function useReportesStorage() {
    * @param {number} cantidad - Cantidad de reportes a obtener
    * @returns {Promise<Array>} - Lista de reportes
    */
-  const obtenerHistorialReportes = async (userId, cantidad = 20) => {
+  const obtenerHistorialReportes = async (userId, cantidad) => {
     try {
       const db = getFirestore()
       const reportesRef = collection(db, 'Usuarios', userId, 'HistorialReportes')
