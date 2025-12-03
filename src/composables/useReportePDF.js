@@ -1734,14 +1734,18 @@ export function useReportePDF() {
           // Preparar datos de viajes
           const todosLosViajes = []
 
-          registros.forEach((registro) => {
+          registrosDelDia.forEach((registro) => {
+            // Asegúrate de usar registrosDelDia aquí
             if (registro.detallesViajes && registro.detallesViajes.length > 0) {
               registro.detallesViajes.forEach((viaje) => {
-                // Aplicar filtro
-                const [hD, mD, sD] = viaje.duracionDentro.split(':').map(Number)
+                // 🔥 PASO 1: Calcular si tiene horas extra (usando nombres de propiedad correctos y valores por defecto)
+                const duracionDentro = viaje.duracionDentro || '00:00:00'
+                const duracionFuera = viaje.duracionFuera || '00:00:00'
+
+                const [hD, mD, sD] = duracionDentro.split(':').map(Number)
                 const tieneDentro = hD > 0 || mD > 0 || sD > 0
 
-                const [hF, mF, sF] = viaje.duracionFuera.split(':').map(Number)
+                const [hF, mF, sF] = duracionFuera.split(':').map(Number)
                 const tieneFuera = hF > 0 || mF > 0 || sF > 0
 
                 let incluirViaje = false
@@ -1755,21 +1759,48 @@ export function useReportePDF() {
 
                 if (!incluirViaje) return
 
-                // 🔥 MAPEAR VALORES SEGÚN COLUMNAS SELECCIONADAS
+                // 🔥 PASO 2: Mapear valores según columnas seleccionadas
                 const fila = columnasVisiblesViajes.map((prop) => {
-                  let valor = viaje[prop] || registro[prop] || 'N/A'
+                  let valor = 'N/A'
 
-                  if (prop === 'duracionFuera') {
+                  // Propiedades que vienen del REGISTRO (padre)
+                  if (
+                    prop === 'fecha' ||
+                    prop === 'totalViajes' ||
+                    prop === 'viajesDentroHorario' ||
+                    prop === 'viajesFueraHorario' ||
+                    prop === 'conductorNombre'
+                  ) {
+                    valor = registro[prop] || 'N/A'
+                  }
+                  // Propiedades que vienen del VIAJE (hijo)
+                  else {
+                    if (prop === 'duracionDentroHorario') {
+                      valor = duracionDentro // Usar la variable que ya preparamos
+                    } else if (prop === 'duracionFueraHorario') {
+                      valor = duracionFuera // Usar la variable que ya preparamos
+                    }
+                    // 🔥 CORRECCIÓN AQUÍ: Mapear los nombres de las horas
+                    else if (prop === 'horaInicioTrabajo') {
+                      valor = viaje.horaInicio || 'N/A'
+                    } else if (prop === 'horaFinTrabajo') {
+                      valor = viaje.horaFin || 'N/A'
+                    }
+                    // Para el resto de las propiedades, buscar en el viaje
+                    else {
+                      valor = viaje[prop] || 'N/A'
+                    }
+                  }
+
+                  // 🔥 PASO 3: Aplicar estilo especial para horas fuera de horario
+                  if (prop === 'duracionFueraHorario' && config.remarcarHorasExtra && tieneFuera) {
                     return {
                       content: valor,
-                      styles:
-                        config.remarcarHorasExtra && tieneFuera
-                          ? {
-                              fillColor: [255, 235, 238],
-                              textColor: [211, 47, 47],
-                              fontStyle: 'bold',
-                            }
-                          : {},
+                      styles: {
+                        fillColor: [255, 235, 238],
+                        textColor: [211, 47, 47],
+                        fontStyle: 'bold',
+                      },
                     }
                   }
 
