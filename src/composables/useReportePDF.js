@@ -1574,6 +1574,16 @@ export function useReportePDF() {
       Conductor: 'conductorNombre',
     }
 
+    const columnasVisiblesViajes = config.columnasSeleccionadas
+      .map((nombreEspanol) => nombreColumnaAPropiedad[nombreEspanol])
+      .filter(Boolean) // Eliminar undefined
+
+    console.log('🔍 Columnas para viajes:', columnasVisiblesViajes)
+
+    // Preparar headers en español
+    const headersViajes = config.columnasSeleccionadas.filter((col) => nombreColumnaAPropiedad[col])
+
+    console.log('🔍 Headers para tabla:', headersViajes)
     // Convertir columnas seleccionadas de español a propiedades
     const columnasVisibles = config.columnasSeleccionadas.map((nombreEspanol) => {
       return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
@@ -1723,10 +1733,11 @@ export function useReportePDF() {
 
           // Preparar datos de viajes
           const todosLosViajes = []
-          registrosDelDia.forEach((registro) => {
+
+          registros.forEach((registro) => {
             if (registro.detallesViajes && registro.detallesViajes.length > 0) {
               registro.detallesViajes.forEach((viaje) => {
-                // Aplicar filtro de tipoInformeComercial
+                // Aplicar filtro
                 const [hD, mD, sD] = viaje.duracionDentro.split(':').map(Number)
                 const tieneDentro = hD > 0 || mD > 0 || sD > 0
 
@@ -1744,24 +1755,28 @@ export function useReportePDF() {
 
                 if (!incluirViaje) return
 
-                todosLosViajes.push([
-                  { content: viaje.horaInicio, styles: {} },
-                  { content: viaje.ubicacionInicio, styles: {} },
-                  { content: viaje.horaFin, styles: {} },
-                  { content: viaje.ubicacionFin, styles: {} },
-                  {
-                    content: viaje.duracionFuera,
-                    styles:
-                      config.remarcarHorasExtra && tieneFuera
-                        ? {
-                            fillColor: [255, 235, 238],
-                            textColor: [211, 47, 47],
-                            fontStyle: 'bold',
-                          }
-                        : {},
-                  },
-                  { content: viaje.duracionDentro, styles: {} },
-                ])
+                // 🔥 MAPEAR VALORES SEGÚN COLUMNAS SELECCIONADAS
+                const fila = columnasVisiblesViajes.map((prop) => {
+                  let valor = viaje[prop] || registro[prop] || 'N/A'
+
+                  if (prop === 'duracionFuera') {
+                    return {
+                      content: valor,
+                      styles:
+                        config.remarcarHorasExtra && tieneFuera
+                          ? {
+                              fillColor: [255, 235, 238],
+                              textColor: [211, 47, 47],
+                              fontStyle: 'bold',
+                            }
+                          : {},
+                    }
+                  }
+
+                  return { content: valor, styles: {} }
+                })
+
+                todosLosViajes.push(fila)
               })
             }
           })
@@ -1769,115 +1784,16 @@ export function useReportePDF() {
           if (todosLosViajes.length > 0) {
             autoTable(doc, {
               startY: yPos,
-              head: [
-                [
-                  'Hora inicio',
-                  'Ubicación inicio',
-                  'Hora fin',
-                  'Ubicación fin',
-                  'Duración fuera horario',
-                  'Duración dentro horario',
-                ],
-              ],
+              head: [headersViajes], // 🔥 USAR HEADERS CONFIGURABLES
               body: todosLosViajes,
               theme: 'grid',
               headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
               styles: { fontSize: 7, cellPadding: 2 },
-              columnStyles: {
-                0: { cellWidth: 25 },
-                1: { cellWidth: 60 },
-                2: { cellWidth: 25 },
-                3: { cellWidth: 60 },
-                4: { cellWidth: 30 },
-                5: { cellWidth: 30 },
-              },
-              margin: { left: 25, right: 20 }, // Indentado
+              margin: { left: 20, right: 20 },
             })
 
             yPos = doc.lastAutoTable.finalY + 10
           }
-        }
-      } else if (config.tipoDetalle === 'viajes_detallados') {
-        // ==========================================
-        // OPCIÓN 2: VIAJES DETALLADOS (sin agrupar por día)
-        // ==========================================
-        console.log('🚗 Generando viajes detallados...')
-
-        // Obtener TODOS los viajes de la entidad (sin separar por día)
-        const todosLosViajes = []
-
-        registros.forEach((registro) => {
-          if (registro.detallesViajes && registro.detallesViajes.length > 0) {
-            registro.detallesViajes.forEach((viaje) => {
-              // Aplicar filtro
-              const [hD, mD, sD] = viaje.duracionDentro.split(':').map(Number)
-              const tieneDentro = hD > 0 || mD > 0 || sD > 0
-
-              const [hF, mF, sF] = viaje.duracionFuera.split(':').map(Number)
-              const tieneFuera = hF > 0 || mF > 0 || sF > 0
-
-              let incluirViaje = false
-              if (config.tipoInformeComercial === 'todos') {
-                incluirViaje = true
-              } else if (config.tipoInformeComercial === 'dentro') {
-                incluirViaje = tieneDentro
-              } else if (config.tipoInformeComercial === 'fuera') {
-                incluirViaje = tieneFuera
-              }
-
-              if (!incluirViaje) return
-
-              todosLosViajes.push([
-                { content: viaje.horaInicio, styles: {} },
-                { content: viaje.ubicacionInicio, styles: {} },
-                { content: viaje.horaFin, styles: {} },
-                { content: viaje.ubicacionFin, styles: {} },
-                {
-                  content: viaje.duracionFuera,
-                  styles:
-                    config.remarcarHorasExtra && tieneFuera
-                      ? {
-                          fillColor: [255, 235, 238],
-                          textColor: [211, 47, 47],
-                          fontStyle: 'bold',
-                        }
-                      : {},
-                },
-                { content: viaje.duracionDentro, styles: {} },
-              ])
-            })
-          }
-        })
-
-        if (todosLosViajes.length > 0) {
-          autoTable(doc, {
-            startY: yPos,
-            head: [
-              [
-                'Hora inicio',
-                'Ubicación inicio',
-                'Hora fin',
-                'Ubicación fin',
-                'Duración fuera horario',
-                'Duración dentro horario',
-              ],
-            ],
-            body: todosLosViajes,
-            theme: 'grid',
-            headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
-            styles: { fontSize: 7, cellPadding: 2 },
-            columnStyles: {
-              0: { cellWidth: 25 },
-              1: { cellWidth: 60 },
-              2: { cellWidth: 25 },
-              3: { cellWidth: 60 },
-              4: { cellWidth: 30 },
-              5: { cellWidth: 30 },
-            },
-            margin: { left: 20, right: 20 }, // Sin indentación
-          })
-
-          yPos = doc.lastAutoTable.finalY + 10
         }
       } else if (config.tipoDetalle === 'dias_resumidos') {
         // ==========================================
