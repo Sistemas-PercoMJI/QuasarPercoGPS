@@ -843,9 +843,9 @@ export function useReporteExcel() {
           // Fila de totales del día (OPCIÓN B: 3 celdas separadas)
           const totalesRow = detalleSheet.addRow([
             'TOTALES DEL DÍA',
-            totalViajesDelDia,
-            viajesDentroDelDia,
-            viajesFueraDelDia,
+            `Total de viajes: ${totalViajesDelDia}`,
+            `Dentro del horario: ${viajesDentroDelDia}`,
+            `Fuera del horario: ${viajesFueraDelDia}`,
           ])
           totalesRow.font = { bold: true, size: 10 }
           totalesRow.fill = {
@@ -853,6 +853,10 @@ export function useReporteExcel() {
             pattern: 'solid',
             fgColor: { argb: 'FFFFEB3B' },
           }
+          totalesRow.getCell(2).alignment = { horizontal: 'left' }
+          totalesRow.getCell(3).alignment = { horizontal: 'left' }
+          totalesRow.getCell(4).alignment = { horizontal: 'left' }
+
           totalesRow.eachCell((cell) => {
             cell.border = {
               top: { style: 'medium' },
