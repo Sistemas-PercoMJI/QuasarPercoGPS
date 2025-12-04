@@ -1155,9 +1155,319 @@ export function useReporteExcel() {
     }
   }
 
+  const generarExcelTrayectos = async (config, datosReales) => {
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'MJ GPS'
+    workbook.created = new Date()
+
+    // ========================================
+    // HOJA 1: Información del informe
+    // ========================================
+    const infoSheet = workbook.addWorksheet('Información')
+
+    // Título
+    infoSheet.addRow(['Informe de Trayectos'])
+    infoSheet.getCell('A1').font = { bold: true, size: 14 }
+
+    infoSheet.addRow([])
+    infoSheet.addRow([`Periodo: ${config.rangoFechaFormateado || 'No especificado'}`])
+    infoSheet.addRow([`Reportar por: ${config.reportarPor || 'N/A'}`])
+    infoSheet.addRow([
+      `Generado: ${new Date().toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+    ])
+    infoSheet.addRow([])
+
+    // Resumen general (si está activo)
+    if (config.mostrarResumen && datosReales.resumen) {
+      infoSheet.addRow(['RESUMEN DEL INFORME'])
+      infoSheet.getCell(`A${infoSheet.rowCount}`).font = { bold: true, size: 12 }
+      infoSheet.addRow([])
+
+      // Calcular totales
+      let totalKilometros = 0
+      let totalDuracion = 0
+      let velocidadesPromedio = []
+      let velocidadMaximaGlobal = 0
+
+      // Extraer trayectos de eventosAgrupados
+      const todosTrayectos = Object.values(datosReales.eventosAgrupados || {}).flat()
+
+      todosTrayectos.forEach((trayecto) => {
+        totalKilometros += trayecto.kilometrajeRecorrido || 0
+        totalDuracion += trayecto.duracion || 0
+        if (trayecto.velocidadPromedio) velocidadesPromedio.push(trayecto.velocidadPromedio)
+        if (trayecto.velocidadMaxima > velocidadMaximaGlobal) {
+          velocidadMaximaGlobal = trayecto.velocidadMaxima
+        }
+      })
+
+      const velocidadPromedioGlobal =
+        velocidadesPromedio.length > 0
+          ? (velocidadesPromedio.reduce((a, b) => a + b, 0) / velocidadesPromedio.length).toFixed(2)
+          : 0
+
+      const duracionTotal = Math.floor(totalDuracion / 3600000) // Convertir ms a horas
+      const minutosTotal = Math.floor((totalDuracion % 3600000) / 60000)
+
+      const statsHeaderRow = infoSheet.addRow(['Concepto', 'Valor'])
+      statsHeaderRow.font = { bold: true }
+      statsHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD3D3D3' },
+      }
+
+      infoSheet.addRow(['Total de trayectos', todosTrayectos.length])
+      infoSheet.addRow(['Kilómetros totales recorridos', `${totalKilometros.toFixed(2)} km`])
+      infoSheet.addRow(['Duración total de manejo', `${duracionTotal}h ${minutosTotal}m`])
+      infoSheet.addRow(['Velocidad promedio general', `${velocidadPromedioGlobal} km/h`])
+      infoSheet.addRow(['Velocidad máxima registrada', `${velocidadMaximaGlobal} km/h`])
+      infoSheet.addRow([
+        `${config.reportarPor === 'Unidades' ? 'Unidades' : 'Conductores'} únicos`,
+        Object.keys(datosReales.eventosAgrupados || {}).length,
+      ])
+      infoSheet.addRow([])
+    }
+
+    // Elementos sin datos
+    if (datosReales.elementosSinDatos && datosReales.elementosSinDatos.length > 0) {
+      infoSheet.addRow(['El informe contiene solo los datos disponibles del período seleccionado.'])
+      infoSheet.addRow([])
+      infoSheet.addRow([
+        `${config.reportarPor} que no contienen ningún dato del período seleccionado:`,
+      ])
+      datosReales.elementosSinDatos.forEach((elemento) => {
+        infoSheet.addRow([elemento.toUpperCase()])
+      })
+    }
+
+    // Ajustar anchos de columna
+    infoSheet.getColumn(1).width = 50
+    infoSheet.getColumn(2).width = 20
+
+    // ========================================
+    // HOJA 2: Todos los Trayectos
+    // ========================================
+    const todosSheet = workbook.addWorksheet('Todos los Trayectos')
+
+    todosSheet.addRow(['TODOS LOS TRAYECTOS'])
+    todosSheet.getCell('A1').font = { bold: true, size: 12 }
+    todosSheet.addRow([`Total: ${datosReales.totalTrayectos || 0} trayectos`])
+    todosSheet.addRow([])
+
+    // Headers
+    const headerRowTodos = todosSheet.addRow(config.columnasSeleccionadas)
+    headerRowTodos.font = { bold: true }
+    headerRowTodos.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4A90E2' },
+    }
+    headerRowTodos.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      }
+    })
+
+    // Datos
+    if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
+      datosReales.datosColumnas.forEach((fila) => {
+        const rowData = config.columnasSeleccionadas.map((col) => fila[col] || 'N/A')
+        const dataRow = todosSheet.addRow(rowData)
+
+        dataRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+      })
+    } else {
+      const emptyRow = todosSheet.addRow(['No hay trayectos en el período seleccionado'])
+      emptyRow.getCell(1).alignment = { horizontal: 'center' }
+      emptyRow.getCell(1).font = { italic: true, color: { argb: 'FF999999' } }
+      todosSheet.mergeCells(
+        todosSheet.rowCount,
+        1,
+        todosSheet.rowCount,
+        config.columnasSeleccionadas.length,
+      )
+    }
+
+    // Ajustar anchos
+    config.columnasSeleccionadas.forEach((nombreCol, index) => {
+      const columnaConfig = COLUMNAS_POR_TIPO.trayectos[nombreCol]
+      if (columnaConfig) {
+        todosSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
+      } else {
+        todosSheet.getColumn(index + 1).width = 15
+      }
+    })
+
+    // ========================================
+    // HOJAS 3+: Agrupadas por Unidad/Conductor
+    // ========================================
+    if (datosReales.eventosAgrupados) {
+      Object.entries(datosReales.eventosAgrupados).forEach(([nombreEntidad, trayectos]) => {
+        const sheetName = nombreEntidad.substring(0, 30)
+        const detalleSheet = workbook.addWorksheet(sheetName)
+
+        let currentRow = 1
+
+        // ========================================
+        // HEADER DE ENTIDAD (NIVEL 1)
+        // ========================================
+        const headerEntidad = detalleSheet.addRow([nombreEntidad.toUpperCase()])
+        headerEntidad.font = { bold: true, size: 14, color: { argb: 'FF2980B9' } }
+        headerEntidad.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE3F2FD' },
+        }
+        detalleSheet.mergeCells(
+          currentRow,
+          1,
+          currentRow,
+          Math.max(config.columnasSeleccionadas.length, 6),
+        )
+        currentRow++
+
+        // Subtítulo
+        const primerTrayecto = trayectos[0]
+        let subtitulo = ''
+        if (config.reportarPor === 'Unidades') {
+          const placa = primerTrayecto.unidadPlaca || 'Sin placa'
+          const conductores = [...new Set(trayectos.map((t) => t.conductorNombre).filter(Boolean))]
+          subtitulo = `Placa: ${placa} | Conductores: ${conductores.join(', ')}`
+        } else {
+          const unidades = [...new Set(trayectos.map((t) => t.unidadNombre).filter(Boolean))]
+          subtitulo = `Unidades usadas: ${unidades.join(', ')}`
+        }
+
+        const subtituloRow = detalleSheet.addRow([subtitulo])
+        subtituloRow.font = { size: 9, color: { argb: 'FF646464' } }
+        detalleSheet.mergeCells(
+          currentRow,
+          1,
+          currentRow,
+          Math.max(config.columnasSeleccionadas.length, 6),
+        )
+        currentRow++
+
+        // Stats
+        const totalKm = trayectos
+          .reduce((sum, t) => sum + (t.kilometrajeRecorrido || 0), 0)
+          .toFixed(2)
+        const statsRow = detalleSheet.addRow([
+          `Total de trayectos: ${trayectos.length} | Kilómetros: ${totalKm} km`,
+        ])
+        statsRow.font = { size: 9, italic: true, color: { argb: 'FF787878' } }
+        detalleSheet.mergeCells(
+          currentRow,
+          1,
+          currentRow,
+          Math.max(config.columnasSeleccionadas.length, 6),
+        )
+        currentRow++
+
+        detalleSheet.addRow([]) // Espacio
+        currentRow++
+
+        // Headers de columnas
+        const headerRow = detalleSheet.addRow(config.columnasSeleccionadas)
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4CAF50' },
+        }
+        headerRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+        currentRow++
+
+        // Datos de trayectos
+        trayectos.forEach((trayecto) => {
+          const rowData = config.columnasSeleccionadas.map((nombreCol) => {
+            const columnaConfig = COLUMNAS_POR_TIPO.trayectos[nombreCol]
+            if (columnaConfig && columnaConfig.obtenerValor) {
+              return columnaConfig.obtenerValor(trayecto)
+            }
+            return 'N/A'
+          })
+
+          const dataRow = detalleSheet.addRow(rowData)
+
+          dataRow.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' },
+            }
+          })
+
+          currentRow++
+        })
+
+        // Ajustar anchos
+        config.columnasSeleccionadas.forEach((nombreCol, index) => {
+          const columnaConfig = COLUMNAS_POR_TIPO.trayectos[nombreCol]
+          if (columnaConfig) {
+            detalleSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
+          } else {
+            detalleSheet.getColumn(index + 1).width = 15
+          }
+        })
+      })
+    }
+
+    // ========================================
+    // Guardar el archivo
+    // ========================================
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+
+    const fecha = new Date().toISOString().split('T')[0]
+    const filename = `Informe_Trayectos_${fecha}.xlsx`
+
+    // Descargar automáticamente
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    return {
+      blob: blob,
+      filename: filename,
+    }
+  }
+
   return {
     generarExcelEventos,
     generarExcelSimple,
     generarExcelHorasTrabajo,
+    generarExcelTrayectos,
   }
 }

@@ -378,7 +378,13 @@ const COLUMNAS_TRAYECTOS = {
     label: 'Hora de inicio de trabajo',
     obtenerValor: (trayecto) => {
       if (!trayecto.inicioTimestamp) return 'N/A'
-      const fecha = new Date(trayecto.inicioTimestamp)
+
+      // Manejar si es Date object o timestamp
+      const fecha =
+        trayecto.inicioTimestamp instanceof Date
+          ? trayecto.inicioTimestamp
+          : new Date(trayecto.inicioTimestamp)
+
       return fecha.toLocaleString('es-MX', {
         day: '2-digit',
         month: '2-digit',
@@ -394,7 +400,7 @@ const COLUMNAS_TRAYECTOS = {
 
   'Ubicación de inicio de trabajo': {
     key: 'ubicacionInicio',
-    label: 'Ubicación de inicio',
+    label: 'Ubicación de inicio de trabajo',
     obtenerValor: (trayecto) => trayecto.ubicacionInicio || trayecto.inicioDireccion || 'N/A',
     ancho: 250,
     formato: 'texto',
@@ -404,9 +410,12 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeInicio',
     label: 'Kilometraje al inicio',
     obtenerValor: (trayecto) => {
-      return trayecto.inicioKilometraje !== null && trayecto.inicioKilometraje !== undefined
-        ? `${trayecto.inicioKilometraje} km`
-        : 'N/A'
+      // Los trayectos no tienen kilometraje al inicio/fin en Firebase
+      // Mostrar odómetro virtual si está disponible
+      if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
+        return `${trayecto.odometroVirtual} km`
+      }
+      return 'N/A'
     },
     ancho: 150,
     formato: 'numero',
@@ -418,7 +427,13 @@ const COLUMNAS_TRAYECTOS = {
     label: 'Hora de fin de trabajo',
     obtenerValor: (trayecto) => {
       if (!trayecto.finTimestamp) return 'N/A'
-      const fecha = new Date(trayecto.finTimestamp)
+
+      // Manejar si es Date object o timestamp
+      const fecha =
+        trayecto.finTimestamp instanceof Date
+          ? trayecto.finTimestamp
+          : new Date(trayecto.finTimestamp)
+
       return fecha.toLocaleString('es-MX', {
         day: '2-digit',
         month: '2-digit',
@@ -431,11 +446,10 @@ const COLUMNAS_TRAYECTOS = {
     ancho: 180,
     formato: 'fecha',
   },
-
   'Ubicación de fin de trabajo': {
     key: 'ubicacionFin',
-    label: 'Ubicación de fin',
-    obtenerValor: (trayecto) => trayecto.ubicacionFin || trayecto.finDireccion || 'N/A', // 🔥 CAMBIADO
+    label: 'Ubicación de fin de trabajo',
+    obtenerValor: (trayecto) => trayecto.ubicacionFin || trayecto.finDireccion || 'N/A',
     ancho: 250,
     formato: 'texto',
   },
@@ -444,9 +458,13 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeFinal',
     label: 'Kilometraje al final',
     obtenerValor: (trayecto) => {
-      return trayecto.finKilometraje !== null && trayecto.finKilometraje !== undefined
-        ? `${trayecto.finKilometraje} km`
-        : 'N/A'
+      // Los trayectos no tienen kilometraje final
+      // Calcular: odómetro inicial + km recorridos
+      if (trayecto.odometroVirtual && trayecto.kilometrajeRecorrido) {
+        const kmFinal = trayecto.odometroVirtual + trayecto.kilometrajeRecorrido
+        return `${kmFinal.toFixed(2)} km`
+      }
+      return 'N/A'
     },
     ancho: 150,
     formato: 'numero',
@@ -455,14 +473,38 @@ const COLUMNAS_TRAYECTOS = {
   // ============ DATOS CALCULADOS ============
   'Duración del trayecto': {
     key: 'duracionTrayecto',
-    label: 'Duración',
+    label: 'Duración del trayecto',
     obtenerValor: (trayecto) => {
+      // Prioridad: duracion en ms, duracionHoras, o calcular desde timestamps
       if (trayecto.duracion) {
         const duracionMs = trayecto.duracion
         const horas = Math.floor(duracionMs / 3600000)
         const minutos = Math.floor((duracionMs % 3600000) / 60000)
         return `${horas}h ${minutos}m`
       }
+
+      if (trayecto.duracionHoras) {
+        const horas = Math.floor(parseFloat(trayecto.duracionHoras))
+        const minutos = Math.floor((parseFloat(trayecto.duracionHoras) - horas) * 60)
+        return `${horas}h ${minutos}m`
+      }
+
+      if (trayecto.inicioTimestamp && trayecto.finTimestamp) {
+        const inicio =
+          trayecto.inicioTimestamp instanceof Date
+            ? trayecto.inicioTimestamp
+            : new Date(trayecto.inicioTimestamp)
+        const fin =
+          trayecto.finTimestamp instanceof Date
+            ? trayecto.finTimestamp
+            : new Date(trayecto.finTimestamp)
+
+        const duracionMs = fin - inicio
+        const horas = Math.floor(duracionMs / 3600000)
+        const minutos = Math.floor((duracionMs % 3600000) / 60000)
+        return `${horas}h ${minutos}m`
+      }
+
       return 'N/A'
     },
     ancho: 120,

@@ -855,6 +855,7 @@ const obtenerDatosReporte = async () => {
 
   let datosInforme = []
   let criterioPrincipal = ''
+  let datosAgrupados = {}
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
   // 🔥 OBTENER DATOS SEGÚN TIPO
@@ -980,6 +981,25 @@ const obtenerDatosReporte = async () => {
     // Llamar a obtenerTrayectos con los IDs correctos
     datosInforme = await obtenerTrayectos(unidadesParaBuscar, fechaInicio, fechaFin)
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
+
+    // 🔥 AGREGAR: AGRUPAR TRAYECTOS POR UNIDAD/CONDUCTOR
+    datosAgrupados = datosInforme.reduce((acc, trayecto) => {
+      let clave = ''
+
+      if (reportarPor.value === 'Unidades') {
+        clave = trayecto.unidadNombre || trayecto.unidad || 'Sin unidad'
+      } else if (reportarPor.value === 'Conductores') {
+        clave = trayecto.conductorNombre || trayecto.conductor || 'Sin conductor'
+      } else {
+        clave = trayecto.unidadNombre || 'Sin unidad'
+      }
+
+      if (!acc[clave]) acc[clave] = []
+      acc[clave].push(trayecto)
+      return acc
+    }, {})
+
+    console.log('🗺️ Trayectos agrupados:', Object.keys(datosAgrupados))
   } else if (tipoInforme === 'horas_trabajo') {
     console.log('⏰ Calculando horas de trabajo...')
     const { calcularHorasTrabajo } = useReportesHorasTrabajo()
@@ -1028,7 +1048,7 @@ const obtenerDatosReporte = async () => {
   }
 
   // Agrupar datos
-  let datosAgrupados = {}
+
   if (tipoInforme === 'eventos') {
     // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
     criterioPrincipal = ''
@@ -1076,7 +1096,7 @@ const obtenerDatosReporte = async () => {
   }
 
   console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
-
+  console.log('🔍 Claves de grupos:', Object.keys(datosAgrupados))
   // Elementos sin datos
   let elementosConDatos = []
 
@@ -1393,6 +1413,12 @@ const generarExcel = async () => {
 
     let blob, filename
 
+    if (tipoInformeSeleccionado.value === 'trayectos') {
+      console.log('🗺️ DATOS DE TRAYECTOS PARA EXCEL:', datosReales)
+      console.log('🗺️ datosColumnas:', datosReales.datosColumnas)
+      console.log('🗺️ Primer trayecto en datosColumnas:', datosReales.datosColumnas[0])
+      console.log('🗺️ Campos disponibles:', Object.keys(datosReales.datosColumnas[0] || {}))
+    }
     // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       console.log('📊 Generando Excel de Horas de Trabajo...')
@@ -1403,6 +1429,12 @@ const generarExcel = async () => {
     } else if (tipoInformeSeleccionado.value === 'eventos') {
       console.log('📊 Generando Excel de Eventos...')
       const resultado = await generarExcelEventos(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'trayectos') {
+      console.log('📊 Generando Excel de Trayectos...')
+      const { generarExcelTrayectos } = useReporteExcel()
+      const resultado = await generarExcelTrayectos(config, datosReales)
       blob = resultado.blob
       filename = resultado.filename
     } else {
