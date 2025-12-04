@@ -1296,22 +1296,22 @@ export function useReportePDF() {
         // ========================================
         if (config.mostrarMapaTrayecto && trayectos.length > 0) {
           try {
+            // Crear una nueva página específica para el mapa
+            doc.addPage('a4', 'landscape')
+
+            // Empezar desde arriba en esta nueva página
+            yPos = 20
+
+            doc.setFontSize(12)
+            doc.setFont(undefined, 'bold')
+            doc.setTextColor(0, 0, 0)
+            doc.text(`Mapa de Trayecto - ${nombreEntidad}`, 20, yPos)
+            yPos += 10
+
             // Preparar trayectos para el mapa
             const trayectosParaMapa = prepararDatosTrayectos(trayectos)
 
             if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
-              // Nueva página para el mapa si es necesario
-              if (yPos > 100) {
-                doc.addPage()
-                yPos = 20
-              }
-
-              doc.setFontSize(12)
-              doc.setFont(undefined, 'bold')
-              doc.setTextColor(0, 0, 0)
-              doc.text(`Mapa de Trayecto - ${nombreEntidad}`, 20, yPos)
-              yPos += 10
-
               const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
                 width: 1200,
                 height: 800,
@@ -1320,13 +1320,31 @@ export function useReportePDF() {
               })
 
               const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+
+              // Ajustar dimensiones del mapa
+              const pageWidth = doc.internal.pageSize.getWidth()
+              const pageHeight = doc.internal.pageSize.getHeight()
               const margin = 14
+
+              // Calcular dimensiones del mapa para que quepa bien
               const availableWidth = pageWidth - margin * 2
-              const aspectRatio = 1.5
+              const availableHeight = pageHeight - yPos - 40 // 40px para info y leyenda
+
+              // Mantener relación de aspecto
+              const aspectRatio = 1200 / 800 // 1.5
               let mapWidth = availableWidth
               let mapHeight = mapWidth / aspectRatio
+
+              // Si es muy alto, ajustar por altura
+              if (mapHeight > availableHeight) {
+                mapHeight = availableHeight
+                mapWidth = mapHeight * aspectRatio
+              }
+
+              // Centrar horizontalmente
               const mapX = (pageWidth - mapWidth) / 2
 
+              // Posicionar el mapa
               doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
               yPos += mapHeight + 10
 
@@ -1338,7 +1356,7 @@ export function useReportePDF() {
               doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
               yPos += 10
 
-              // Leyenda
+              // Leyenda (en la parte inferior)
               doc.setFontSize(9)
               doc.setFillColor(76, 175, 80)
               doc.circle(22, yPos - 2, 2, 'F')
