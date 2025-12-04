@@ -208,45 +208,145 @@ export function useReporteExcel() {
         const sheetName = nombreElemento.substring(0, 30)
         const detalleSheet = workbook.addWorksheet(sheetName)
 
-        // Título con el nombre del elemento
-        detalleSheet.addRow([nombreElemento.toUpperCase()])
-        detalleSheet.getCell('A1').font = { bold: true, size: 12 }
-        detalleSheet.addRow([`Total: ${eventos.length} eventos`])
-        detalleSheet.addRow([])
+        let currentRow = 1
 
-        // Headers de columnas
-        const headerRow = detalleSheet.addRow(config.columnasSeleccionadas)
-        headerRow.font = { bold: true }
-        headerRow.fill = {
+        // ========================================
+        // HEADER DE ENTIDAD (NIVEL 1)
+        // ========================================
+        const headerEntidad = detalleSheet.addRow([nombreElemento.toUpperCase()])
+        headerEntidad.font = { bold: true, size: 14, color: { argb: 'FF2980B9' } }
+        headerEntidad.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: 'FFD3D3D3' },
+          fgColor: { argb: 'FFE3F2FD' },
+        }
+        detalleSheet.mergeCells(
+          currentRow,
+          1,
+          currentRow,
+          Math.max(config.columnasSeleccionadas.length, 6),
+        )
+        currentRow++
+
+        // Subtítulo con total
+        const subtituloRow = detalleSheet.addRow([`Total: ${eventos.length} eventos`])
+        subtituloRow.font = { size: 10, color: { argb: 'FF646464' } }
+        detalleSheet.mergeCells(
+          currentRow,
+          1,
+          currentRow,
+          Math.max(config.columnasSeleccionadas.length, 6),
+        )
+        currentRow++
+
+        detalleSheet.addRow([]) // Espacio
+        currentRow++
+
+        // ========================================
+        // SUB-AGRUPAR EVENTOS SEGÚN config.agruparPor
+        // ========================================
+        let eventosAgrupados = {}
+
+        if (config.agruparPor === 'evento') {
+          // Agrupar por nombre de evento
+          eventos.forEach((evento) => {
+            const clave = evento.eventoNombre || 'Sin nombre'
+            if (!eventosAgrupados[clave]) eventosAgrupados[clave] = []
+            eventosAgrupados[clave].push(evento)
+          })
+        } else if (config.agruparPor === 'dia') {
+          // Agrupar por día
+          eventos.forEach((evento) => {
+            if (!evento.timestamp) return
+            const fecha = new Date(evento.timestamp)
+            const fechaStr = fecha.toLocaleDateString('es-ES', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })
+            const clave = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1)
+            if (!eventosAgrupados[clave]) eventosAgrupados[clave] = []
+            eventosAgrupados[clave].push(evento)
+          })
+        } else if (config.agruparPor === 'tipo') {
+          // Agrupar por tipo de evento
+          eventos.forEach((evento) => {
+            const tipo = evento.tipoEvento || 'Sin tipo'
+            if (!eventosAgrupados[tipo]) eventosAgrupados[tipo] = []
+            eventosAgrupados[tipo].push(evento)
+          })
+        } else if (config.agruparPor === 'geozona') {
+          // Agrupar por geozona
+          eventos.forEach((evento) => {
+            const geozona = evento.geozonaNombre || evento.ubicacionNombre || 'Sin geozona'
+            if (!eventosAgrupados[geozona]) eventosAgrupados[geozona] = []
+            eventosAgrupados[geozona].push(evento)
+          })
+        } else {
+          // Sin sub-agrupación - mostrar todos juntos
+          eventosAgrupados['Todos'] = eventos
         }
 
-        // Agregar bordes al header
-        headerRow.eachCell((cell) => {
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' },
+        // ========================================
+        // LOOP POR CADA SUB-GRUPO
+        // ========================================
+        Object.entries(eventosAgrupados).forEach(([nombreSubGrupo, eventosSubGrupo]) => {
+          // Header del sub-grupo (NIVEL 2)
+          let tituloSubGrupo = ''
+
+          if (config.agruparPor === 'evento') {
+            // Contar entradas y salidas
+            const entradas = eventosSubGrupo.filter(
+              (e) => e.tipoEvento?.toLowerCase() === 'entrada',
+            ).length
+            const salidas = eventosSubGrupo.filter(
+              (e) => e.tipoEvento?.toLowerCase() === 'salida',
+            ).length
+            tituloSubGrupo = `EVENTO: ${nombreSubGrupo} (Entradas: ${entradas} | Salidas: ${salidas})`
+          } else if (config.agruparPor === 'dia') {
+            tituloSubGrupo = `DÍA: ${nombreSubGrupo}`
+          } else if (config.agruparPor === 'tipo') {
+            tituloSubGrupo = `TIPO: ${nombreSubGrupo}`
+          } else if (config.agruparPor === 'geozona') {
+            tituloSubGrupo = `GEOZONA: ${nombreSubGrupo}`
+          } else {
+            tituloSubGrupo = nombreSubGrupo
           }
-        })
 
-        // 🔥 Datos de eventos usando el sistema de columnas
-        eventos.forEach((evento) => {
-          const rowData = config.columnasSeleccionadas.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol] // ← CAMBIO AQUÍ
-            if (columnaConfig && columnaConfig.obtenerValor) {
-              return columnaConfig.obtenerValor(evento)
+          const headerSubGrupo = detalleSheet.addRow([tituloSubGrupo])
+          headerSubGrupo.font = { bold: true, size: 12, color: { argb: 'FF3498DB' } }
+          headerSubGrupo.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF0F8FF' },
+          }
+
+          // Borde grueso
+          for (let i = 1; i <= Math.max(config.columnasSeleccionadas.length, 6); i++) {
+            headerSubGrupo.getCell(i).border = {
+              top: { style: 'medium' },
+              bottom: { style: 'medium' },
             }
-            return 'N/A'
-          })
+          }
+          detalleSheet.mergeCells(
+            currentRow,
+            1,
+            currentRow,
+            Math.max(config.columnasSeleccionadas.length, 6),
+          )
+          currentRow++
 
-          const dataRow = detalleSheet.addRow(rowData)
+          // Headers de columnas
+          const headerRow = detalleSheet.addRow(config.columnasSeleccionadas)
+          headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+          headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4CAF50' },
+          }
 
-          // Agregar bordes a cada celda
-          dataRow.eachCell((cell) => {
+          headerRow.eachCell((cell) => {
             cell.border = {
               top: { style: 'thin' },
               left: { style: 'thin' },
@@ -254,10 +354,65 @@ export function useReporteExcel() {
               right: { style: 'thin' },
             }
           })
+          currentRow++
+
+          // Datos de eventos del sub-grupo
+          eventosSubGrupo.forEach((evento) => {
+            const rowData = config.columnasSeleccionadas.map((nombreCol) => {
+              const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
+              if (columnaConfig && columnaConfig.obtenerValor) {
+                return columnaConfig.obtenerValor(evento)
+              }
+              return 'N/A'
+            })
+
+            const dataRow = detalleSheet.addRow(rowData)
+
+            // Agregar bordes
+            dataRow.eachCell((cell) => {
+              cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' },
+              }
+            })
+
+            currentRow++
+          })
+
+          // Fila de totales del sub-grupo
+          const totalRow = detalleSheet.addRow([`TOTAL: ${eventosSubGrupo.length} eventos`])
+          totalRow.font = { bold: true, size: 10 }
+          totalRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFEB3B' },
+          }
+          totalRow.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'medium' },
+              left: { style: 'thin' },
+              bottom: { style: 'medium' },
+              right: { style: 'thin' },
+            }
+          })
+          detalleSheet.mergeCells(
+            currentRow,
+            1,
+            currentRow,
+            Math.max(config.columnasSeleccionadas.length, 6),
+          )
+          currentRow++
+
+          // Espacio entre sub-grupos
+          detalleSheet.addRow([])
+          currentRow++
         })
 
+        // Ajustar anchos de columnas
         config.columnasSeleccionadas.forEach((nombreCol, index) => {
-          const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol] // ← CAMBIO AQUÍ
+          const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
           if (columnaConfig) {
             detalleSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
           } else {
