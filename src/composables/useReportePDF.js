@@ -1067,34 +1067,21 @@ export function useReportePDF() {
    * @param {Object} mapaData - Datos del mapa (opcional) { dataURL, rutas }
    */
   const generarPDFTrayectos = async (config, datosReales) => {
-    const trayectosArray = datosReales.eventosAgrupados
-      ? Object.values(datosReales.eventosAgrupados).flat()
-      : Array.isArray(datosReales)
-        ? datosReales
-        : []
-
-    console.log('📊 datosReales.resumen:', datosReales.resumen)
-    console.log('📊 datosReales.stats:', datosReales.stats)
-    console.log('📊 trayectosArray:', trayectosArray)
-
-    console.log('📦 Trayectos en PDF:', trayectosArray.length)
-    console.log('📦 Primer trayecto:', trayectosArray[0])
-    console.log('📍 Primera coordenada:', trayectosArray[0]?.coordenadas?.[0])
-    console.log('📍 Segunda coordenada:', trayectosArray[0]?.coordenadas?.[1])
     const doc = new jsPDF('landscape')
-    let yPosition = 20
+    let yPos = 20
 
-    // Título del documento
+    // ========================================
+    // ENCABEZADO DEL DOCUMENTO
+    // ========================================
     doc.setFontSize(16)
     doc.setFont(undefined, 'bold')
-    doc.text('Informe de Trayectos', 14, yPosition)
-    yPosition += 10
+    doc.text('Informe de Trayectos', 14, yPos)
+    yPos += 10
 
-    // Información del reporte
     doc.setFontSize(10)
     doc.setFont(undefined, 'normal')
-    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPosition)
-    yPosition += 6
+    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPos)
+    yPos += 6
     doc.text(
       `Generado: ${new Date().toLocaleString('es-MX', {
         day: 'numeric',
@@ -1104,189 +1091,173 @@ export function useReportePDF() {
         minute: '2-digit',
       })}`,
       14,
-      yPosition,
+      yPos,
     )
-    yPosition += 6
-    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPosition)
-    yPosition += 6
-    doc.text(`Total de trayectos: ${datosReales.totalTrayectos || 0}`, 14, yPosition)
-    yPosition += 10
+    yPos += 6
+    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPos)
+    yPos += 6
+    doc.text(`Total de trayectos: ${datosReales.totalTrayectos || 0}`, 14, yPos)
+    yPos += 10
 
     // ========================================
-    // 📊 RESUMEN ESTADÍSTICO
+    // RESUMEN GENERAL (si está activo)
     // ========================================
-    // ========================================
-    // 📊 RESUMEN ESTADÍSTICO (TRAYECTOS)
-    // ========================================
-    if (config.mostrarResumen && trayectosArray.length > 0) {
-      if (yPosition > 200) {
-        doc.addPage()
-        yPosition = 20
-      }
+    if (config.mostrarResumen && datosReales.eventosAgrupados) {
+      const trayectosArray = Object.values(datosReales.eventosAgrupados).flat()
 
-      doc.setFontSize(12)
-      doc.setFont(undefined, 'bold')
-      doc.text('Resumen Estadístico', 14, yPosition)
-      yPosition += 8
-
-      // 🔥 CALCULAR desde trayectosArray
-      const totalTrayectos = trayectosArray.length
-      const unidadesUnicas = new Set(trayectosArray.map((t) => t.unidadNombre || t.idUnidad)).size
-      const kilometrajeTotal = trayectosArray.reduce(
-        (sum, t) => sum + (t.kilometrajeRecorrido || 0),
-        0,
-      )
-      const duracionTotalHoras = trayectosArray.reduce(
-        (sum, t) => sum + parseFloat(t.duracionHoras || 0),
-        0,
-      )
-
-      // 🔥 NUEVO: Convertir horas decimales a HH:MM
-      const horas = Math.floor(duracionTotalHoras)
-      const minutos = Math.round((duracionTotalHoras - horas) * 60)
-      const duracionFormateada = `${horas}h ${minutos}m`
-
-      const resumenData = [
-        ['Total de trayectos', totalTrayectos],
-        ['Unidades únicas', unidadesUnicas],
-        ['Kilometraje total', `${kilometrajeTotal.toFixed(2)} km`],
-        ['Duración total', duracionFormateada], // 🔥 Usar formato HH:MM
-      ]
-
-      autoTable(doc, {
-        startY: yPosition,
-        head: [['Concepto', 'Valor']],
-        body: resumenData,
-        theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202] },
-        styles: { fontSize: 10 },
-      })
-
-      yPosition = doc.lastAutoTable.finalY + 10
-    }
-    // ========================================
-    // 📋 TABLA DE TRAYECTOS
-    // ========================================
-    if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
-      if (yPosition > 200) {
-        doc.addPage()
-        yPosition = 20
-      }
-
-      doc.setFontSize(12)
-      doc.setFont(undefined, 'bold')
-      doc.text('Detalle de Trayectos', 14, yPosition)
-      yPosition += 8
-
-      const headers = datosReales.configuracionColumnas
-        ? datosReales.configuracionColumnas.map((col) => col.label)
-        : Object.keys(datosReales.datosColumnas[0])
-
-      const totalColumnas = headers.length
-      const necesitaMultilinea = totalColumnas > 8
-
-      const headersFinales = necesitaMultilinea
-        ? headers.map((header) => {
-            const palabras = header.split(' ')
-            if (palabras.length > 2) {
-              const mitad = Math.ceil(palabras.length / 2)
-              return palabras.slice(0, mitad).join(' ') + '\n' + palabras.slice(mitad).join(' ')
-            }
-            return header
-          })
-        : headers
-
-      const rows = datosReales.datosColumnas.map((fila) => headers.map((col) => fila[col] || 'N/A'))
-
-      // 🔥 NUEVO: Calcular anchos de columnas basados en el ancho de página
-      const pageWidth = doc.internal.pageSize.width
-      const marginTotal = 20 // left + right margins
-      const availableWidth = pageWidth - marginTotal
-      const columnWidth = availableWidth / totalColumnas
-
-      // 🔥 Crear columnStyles con anchos fijos
-      const columnStyles = {}
-      headers.forEach((header, index) => {
-        columnStyles[index] = {
-          cellWidth: columnWidth,
-          overflow: 'linebreak', // 🔥 Forzar wrap en celdas
-          halign: 'left',
-        }
-      })
-
-      autoTable(doc, {
-        startY: yPosition,
-        head: [headersFinales],
-        body: rows,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [66, 139, 202],
-          fontStyle: 'bold',
-          fontSize: necesitaMultilinea ? 7 : 8,
-          minCellHeight: necesitaMultilinea ? 10 : 8,
-          halign: 'left',
-          valign: 'middle',
-        },
-        styles: {
-          fontSize: necesitaMultilinea ? 6 : 7, // 🔥 Más pequeño si hay muchas columnas
-          cellPadding: 1.5,
-          overflow: 'linebreak', // 🔥 Importante: permite wrap
-          cellWidth: 'wrap',
-        },
-        columnStyles: columnStyles, // 🔥 Aplicar anchos fijos
-        margin: { left: 10, right: 10 },
-        tableWidth: 'auto', // 🔥 Usar todo el ancho disponible
-        didDrawPage: (data) => {
-          const pageCount = doc.internal.getNumberOfPages()
-          doc.setFontSize(8)
-          doc.text(
-            `Página ${data.pageNumber} de ${pageCount}`,
-            doc.internal.pageSize.width / 2,
-            doc.internal.pageSize.height - 10,
-            { align: 'center' },
-          )
-        },
-      })
-
-      yPosition = doc.lastAutoTable.finalY + 10
-    }
-
-    // ========================================
-    // 📋 TRAYECTOS AGRUPADOS (alternativa)
-    // ========================================
-    if (datosReales.trayectosAgrupados && Object.keys(datosReales.trayectosAgrupados).length > 0) {
-      Object.entries(datosReales.trayectosAgrupados).forEach(([grupo, trayectos], index) => {
-        if (index > 0 || yPosition > 200) {
-          doc.addPage()
-          yPosition = 20
-        }
-
+      if (trayectosArray.length > 0) {
         doc.setFontSize(12)
         doc.setFont(undefined, 'bold')
-        doc.text(grupo.toUpperCase(), 14, yPosition)
-        yPosition += 8
+        doc.text('Resumen del Informe', 14, yPos)
+        yPos += 8
 
-        // Información de la unidad
-        if (trayectos.length > 0) {
-          doc.setFontSize(10)
-          doc.setFont(undefined, 'normal')
-          doc.text(`Total de trayectos: ${trayectos.length}`, 14, yPosition)
-          yPosition += 6
-        }
+        const totalTrayectos = trayectosArray.length
+        const unidadesUnicas = new Set(trayectosArray.map((t) => t.unidadNombre || t.idUnidad)).size
+        const kilometrajeTotal = trayectosArray.reduce(
+          (sum, t) => sum + (t.kilometrajeRecorrido || 0),
+          0,
+        )
+        const duracionTotalHoras = trayectosArray.reduce(
+          (sum, t) => sum + parseFloat(t.duracionHoras || 0),
+          0,
+        )
 
-        // Tabla de trayectos
-        const headers = config.columnasSeleccionadas || [
-          'Fecha',
-          'Inicio',
-          'Fin',
-          'Duración',
-          'Kilometraje',
-          'Velocidad Promedio',
+        const horas = Math.floor(duracionTotalHoras)
+        const minutos = Math.round((duracionTotalHoras - horas) * 60)
+        const duracionFormateada = `${horas}h ${minutos}m`
+
+        const resumenData = [
+          ['Total de trayectos', totalTrayectos],
+          ['Unidades únicas', unidadesUnicas],
+          ['Kilometraje total', `${kilometrajeTotal.toFixed(2)} km`],
+          ['Duración total', duracionFormateada],
         ]
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Concepto', 'Valor']],
+          body: resumenData,
+          theme: 'grid',
+          headStyles: { fillColor: [66, 139, 202] },
+          styles: { fontSize: 10 },
+        })
+
+        yPos = doc.lastAutoTable.finalY + 10
+      }
+    }
+
+    // ========================================
+    // PREPARAR COLUMNAS
+    // ========================================
+    const headers = config.columnasSeleccionadas || [
+      'Hora de inicio de trabajo',
+      'Ubicación de inicio de trabajo',
+      'Hora de fin de trabajo',
+      'Ubicación de fin de trabajo',
+      'Duración del trayecto',
+      'Kilometraje recorrido',
+    ]
+
+    const totalColumnas = headers.length
+    const necesitaMultilinea = totalColumnas > 8
+
+    const headersFinales = necesitaMultilinea
+      ? headers.map((header) => {
+          const palabras = header.split(' ')
+          if (palabras.length > 2) {
+            const mitad = Math.ceil(palabras.length / 2)
+            return palabras.slice(0, mitad).join(' ') + '\n' + palabras.slice(mitad).join(' ')
+          }
+          return header
+        })
+      : headers
+
+    // Calcular anchos de columnas
+    const pageWidth = doc.internal.pageSize.width
+    const marginTotal = 40 // left + right margins
+    const availableWidth = pageWidth - marginTotal
+    const columnWidth = availableWidth / totalColumnas
+
+    const columnStyles = {}
+    headers.forEach((header, index) => {
+      columnStyles[index] = {
+        cellWidth: columnWidth,
+        overflow: 'linebreak',
+        halign: 'left',
+      }
+    })
+
+    // ========================================
+    // LOOP POR CADA UNIDAD/CONDUCTOR
+    // ========================================
+    const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
+      useMapboxStaticImage()
+
+    if (datosReales.eventosAgrupados) {
+      for (const [nombreEntidad, trayectos] of Object.entries(datosReales.eventosAgrupados)) {
+        // Nueva página para cada entidad
+        doc.addPage()
+        yPos = 20
+
+        // ========================================
+        // HEADER DE LA ENTIDAD (NIVEL 1)
+        // ========================================
+        doc.setFontSize(16)
+        doc.setFont(undefined, 'bold')
+        doc.setTextColor(41, 128, 185) // Azul oscuro
+
+        const headerTitulo =
+          config.reportarPor === 'Unidades'
+            ? `UNIDAD: ${nombreEntidad}`
+            : `CONDUCTOR: ${nombreEntidad}`
+
+        doc.text(headerTitulo, 20, yPos)
+        yPos += 8
+
+        // Subtítulo con info adicional
+        doc.setFontSize(10)
+        doc.setFont(undefined, 'normal')
+        doc.setTextColor(100, 100, 100)
+
+        const primerTrayecto = trayectos[0]
+        if (config.reportarPor === 'Unidades') {
+          const placa = primerTrayecto.unidadPlaca || 'Sin placa'
+          const conductores = [...new Set(trayectos.map((t) => t.conductorNombre).filter(Boolean))]
+          doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
+        } else {
+          const unidades = [...new Set(trayectos.map((t) => t.unidadNombre).filter(Boolean))]
+          doc.text(`Unidades usadas: ${unidades.join(', ')}`, 20, yPos)
+        }
+        yPos += 6
+
+        // Stats de la entidad
+        const totalKm = trayectos
+          .reduce((sum, t) => sum + (t.kilometrajeRecorrido || 0), 0)
+          .toFixed(2)
+        doc.setFontSize(9)
+        doc.setFont(undefined, 'italic')
+        doc.text(`Total de trayectos: ${trayectos.length} | Kilómetros: ${totalKm} km`, 20, yPos)
+        yPos += 10
+
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200)
+        doc.line(20, yPos, doc.internal.pageSize.getWidth() - 20, yPos)
+        yPos += 8
+
+        // Resetear color de texto
+        doc.setTextColor(0, 0, 0)
+
+        // ========================================
+        // TABLA DE TRAYECTOS
+        // ========================================
+        if (yPos > 200) {
+          doc.addPage()
+          yPos = 20
+        }
 
         const tableData = trayectos.map((trayecto) => {
           return headers.map((nombreCol) => {
-            const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+            const columnaConfig = COLUMNAS_POR_TIPO.trayectos[nombreCol]
             if (columnaConfig && columnaConfig.obtenerValor) {
               return columnaConfig.obtenerValor(trayecto)
             }
@@ -1295,114 +1266,110 @@ export function useReportePDF() {
         })
 
         autoTable(doc, {
-          startY: yPosition,
-          head: [headers],
+          startY: yPos,
+          head: [headersFinales],
           body: tableData,
-          theme: 'striped',
-          headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
-          styles: { fontSize: 7 },
+          theme: 'grid',
+          headStyles: {
+            fillColor: [76, 175, 80],
+            fontStyle: 'bold',
+            fontSize: necesitaMultilinea ? 7 : 8,
+            minCellHeight: necesitaMultilinea ? 10 : 8,
+            halign: 'left',
+            valign: 'middle',
+          },
+          styles: {
+            fontSize: necesitaMultilinea ? 6 : 7,
+            cellPadding: 1.5,
+            overflow: 'linebreak',
+            cellWidth: 'wrap',
+          },
+          columnStyles: columnStyles,
+          margin: { left: 20, right: 20 },
+          tableWidth: 'auto',
         })
 
-        yPosition = doc.lastAutoTable.finalY + 15
-      })
-    }
+        yPos = doc.lastAutoTable.finalY + 10
 
-    // ========================================
-    // 🗺️ MAPAS DE TRAYECTOS (AL FINAL)
-    // ========================================
-    if (
-      config.mostrarMapaTrayecto &&
-      datosReales.datosColumnas &&
-      datosReales.datosColumnas.length > 0
-    ) {
-      try {
-        const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
-          useMapboxStaticImage()
+        // ========================================
+        // MAPA DEL TRAYECTO (si está activo)
+        // ========================================
+        if (config.mostrarMapaTrayecto && trayectos.length > 0) {
+          try {
+            // Preparar trayectos para el mapa
+            const trayectosParaMapa = prepararDatosTrayectos(trayectos)
 
-        const todosTrayectos = prepararDatosTrayectos(datosReales.datosColumnas)
+            if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+              // Nueva página para el mapa si es necesario
+              if (yPos > 100) {
+                doc.addPage()
+                yPos = 20
+              }
 
-        // 🔥 GENERAR UN MAPA POR CADA VEHÍCULO
-        for (let i = 0; i < todosTrayectos.length; i++) {
-          const trayecto = todosTrayectos[i]
+              doc.setFontSize(12)
+              doc.setFont(undefined, 'bold')
+              doc.setTextColor(0, 0, 0)
+              doc.text(`Mapa de Trayecto - ${nombreEntidad}`, 20, yPos)
+              yPos += 10
 
-          if (trayecto.coordenadas.length === 0) continue
+              const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                width: 1200,
+                height: 800,
+                padding: 50,
+                mostrarMarcadores: true,
+              })
 
-          // Nueva página para cada mapa
-          doc.addPage()
-          let yPosition = 20
-          const margin = 14
+              const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+              const margin = 14
+              const availableWidth = pageWidth - margin * 2
+              const aspectRatio = 1.5
+              let mapWidth = availableWidth
+              let mapHeight = mapWidth / aspectRatio
+              const mapX = (pageWidth - mapWidth) / 2
 
-          // Título del mapa
-          doc.setFontSize(16)
-          doc.setFont(undefined, 'bold')
-          doc.text(`Mapa de Trayecto - ${trayecto.vehiculoNombre}`, margin, yPosition)
-          yPosition += 12
+              doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
+              yPos += mapHeight + 10
 
-          // Generar URL del mapa (solo este vehículo)
-          const urlMapa = generarURLMapaTrayectos([trayecto], {
-            width: 1200,
-            height: 800,
-            padding: 50,
-            mostrarMarcadores: true,
-          })
+              // Info del mapa
+              doc.setFontSize(10)
+              doc.setFont(undefined, 'normal')
+              doc.text(`Placa: ${primerTrayecto.unidadPlaca || 'N/A'}`, 20, yPos)
+              yPos += 6
+              doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
+              yPos += 10
 
-          const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+              // Leyenda
+              doc.setFontSize(9)
+              doc.setFillColor(76, 175, 80)
+              doc.circle(22, yPos - 2, 2, 'F')
+              doc.text('Punto de inicio', 26, yPos)
 
-          const pageWidth = doc.internal.pageSize.getWidth()
-          const pageHeight = doc.internal.pageSize.getHeight()
-          const availableWidth = pageWidth - margin * 2
-          const availableHeight = pageHeight - yPosition - margin - 40
-
-          const aspectRatio = 1.5
-          let mapWidth = availableWidth
-          let mapHeight = mapWidth / aspectRatio
-
-          if (mapHeight > availableHeight) {
-            mapHeight = availableHeight
-            mapWidth = mapHeight * aspectRatio
+              doc.setFillColor(244, 67, 54)
+              doc.rect(100, yPos - 3, 4, 4, 'F')
+              doc.text('Punto de fin', 107, yPos)
+            }
+          } catch (error) {
+            console.error('Error generando mapa:', error)
           }
-
-          const mapX = (pageWidth - mapWidth) / 2
-
-          doc.addImage(imagenBase64, 'PNG', mapX, yPosition, mapWidth, mapHeight)
-          yPosition += mapHeight + 10
-
-          doc.setFontSize(10)
-          doc.setFont(undefined, 'normal')
-          doc.text(`Placa: ${trayecto.placa || 'N/A'}`, margin, yPosition)
-          yPosition += 6
-          doc.text(`Total de puntos GPS: ${trayecto.coordenadas.length}`, margin, yPosition)
-          yPosition += 6
-
-          doc.setFontSize(9)
-          doc.setFillColor(76, 175, 80)
-          doc.circle(margin + 2, yPosition - 2, 2, 'F')
-          doc.text('Punto de inicio', margin + 6, yPosition)
-
-          doc.setFillColor(244, 67, 54)
-          doc.rect(margin + 80, yPosition - 3, 4, 4, 'F')
-          doc.text('Punto de fin', margin + 87, yPosition)
         }
-      } catch (error) {
-        console.error('Error generando mapas en PDF:', error)
       }
     }
 
-    // Elementos sin datos
+    // ========================================
+    // PÁGINA FINAL: Elementos sin datos
+    // ========================================
     if (datosReales.elementosSinDatos && datosReales.elementosSinDatos.length > 0) {
-      if (yPosition > 250) {
-        doc.addPage()
-        yPosition = 20
-      }
+      doc.addPage()
+      yPos = 20
 
       doc.setFontSize(10)
       doc.setFont(undefined, 'italic')
-      doc.text(`${config.reportarPor} sin datos en el período seleccionado:`, 14, yPosition)
-      yPosition += 6
+      doc.text(`${config.reportarPor} sin datos en el período seleccionado:`, 14, yPos)
+      yPos += 6
 
       datosReales.elementosSinDatos.forEach((elemento) => {
-        doc.text(`• ${elemento}`, 20, yPosition)
-        yPosition += 5
+        doc.text(`• ${elemento}`, 20, yPos)
+        yPos += 5
       })
     }
 
