@@ -517,7 +517,7 @@ const elementosSeleccionados = ref([])
 const eventos = ref([])
 
 // Opciones
-const opcionesReportar = ['Unidades', 'Conductores', 'Grupos', 'Geozonas']
+const opcionesReportar = ['Unidades', 'Conductores']
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
 
