@@ -7,12 +7,12 @@ service firebase.storage {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 🆕 Archivos JSON de rutas diarias por unidad
-    match /rutas/{unidadId}/{fecha} {
+    // 🔥 Archivos de rutas diarias (CORREGIDO)
+    match /rutas/{unidadId}/{allPaths=**} {
       allow read, write: if request.auth != null;
     }
     
-    // Temporal: permite acceso total para testing (mantener al final como fallback)
+    // Fallback: acceso total para usuarios autenticados
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

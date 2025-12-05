@@ -188,11 +188,47 @@ const COLUMNAS_EVENTOS = {
   'Condición de evento': {
     key: 'condicion',
     label: 'Condición',
-    obtenerValor: (notificacion) => notificacion.accion || 'N/A',
-    ancho: 150,
+    obtenerValor: (notificacion) => {
+      // Si ya tiene una acción definida, usarla
+      if (notificacion.accion && notificacion.accion !== 'N/A') {
+        return notificacion.accion
+      }
+
+      // Obtener valores
+      const tipo = notificacion.tipoEvento || notificacion.TipoEvento
+      const tipoUbicacion = notificacion.tipoUbicacion
+      const nombreUbicacion =
+        notificacion.geozonaNombre || notificacion.ubicacionNombre || notificacion.eventoNombre
+
+      // Normalizar tipo de evento
+      let tipoTexto = tipo
+      if (tipo === 'Entrada' || tipo === 'entrada' || tipo === 'positive') {
+        tipoTexto = 'Entrada'
+      } else if (tipo === 'Salida' || tipo === 'salida' || tipo === 'warning') {
+        tipoTexto = 'Salida'
+      }
+      // 🔥 DEBUG PASO A PASO
+      console.log('📊 Valores extraídos:', {
+        tipoTexto,
+        tipoUbicacion,
+        nombreUbicacion,
+        resultado: tipoTexto && nombreUbicacion ? 'DEBERÍA FUNCIONAR' : 'FALTA ALGO',
+      })
+      // 🔥 CONSTRUCCIÓN PASO A PASO (más seguro)
+      if (!tipoTexto) return 'N/A'
+      if (!nombreUbicacion) return 'N/A'
+
+      // Con tipo de ubicación
+      if (tipoUbicacion) {
+        return `${tipoTexto} a ${tipoUbicacion}: ${nombreUbicacion}`
+      }
+
+      // Sin tipo de ubicación (fallback)
+      return `${tipoTexto}: ${nombreUbicacion}`
+    },
+    ancho: 250,
     formato: 'texto',
   },
-
   Mensaje: {
     key: 'mensaje',
     label: 'Mensaje',
