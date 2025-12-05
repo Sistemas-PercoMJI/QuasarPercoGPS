@@ -15,24 +15,25 @@ export function useSimuladorUnidades() {
   const simulacionActiva = ref(false)
   const intervalos = ref([])
   const unidadesSimuladas = ref([])
-  
+
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   // 🆕 Usamos las nuevas funciones de batching en lugar de la llamada directa
-  const { agregarCoordenadaAlBuffer, forzarEnvioDeTodosLosBatches } = useRutaDiaria()
-  
+  const { agregarCoordenadaSimple } = useRutaDiaria()
+
   const LIMITES_TIJUANA = {
     latMin: 32.43,
     latMax: 32.56,
     lngMin: -117.13,
-    lngMax: -116.88
+    lngMax: -116.88,
   }
-  
-  const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+
+  const MAPBOX_TOKEN =
+    'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
   const ESTADOS = {
     MOVIMIENTO: 'movimiento',
     DETENIDO: 'detenido',
-    INACTIVO: 'inactivo'
+    INACTIVO: 'inactivo',
   }
 
   const DURACION_ESTADO = 20000
@@ -44,18 +45,18 @@ export function useSimuladorUnidades() {
   const obtenerDireccionDesdeCoordenadas = async (lat, lng) => {
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&types=address,poi,locality&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&types=address,poi,locality&limit=1`,
       )
       const data = await response.json()
-      
+
       if (data.features && data.features.length > 0) {
         const feature = data.features[0]
         const place_name = feature.place_name || ''
         const text = feature.text || ''
         const address = feature.address || ''
-        
+
         let direccionFinal = ''
-        
+
         if (address && text) {
           direccionFinal = `${text} ${address}`
         } else if (text) {
@@ -63,7 +64,7 @@ export function useSimuladorUnidades() {
         } else {
           direccionFinal = place_name.split(',')[0] || ''
         }
-        
+
         direccionFinal = direccionFinal
           .replace(/, Baja California, México/g, '')
           .replace(/, Baja California/g, '')
@@ -72,19 +73,19 @@ export function useSimuladorUnidades() {
           .replace(/, México/g, '')
           .replace(/22[0-9]{3}/g, '')
           .trim()
-        
+
         if (direccionFinal && direccionFinal.length > 3) {
           console.log(`🗺️ Geocoding exitoso: ${direccionFinal}`)
           return direccionFinal
         }
       }
-      
+
       console.warn('⚠️ Sin resultado específico, intentando búsqueda amplia...')
       const responseAmplia = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&limit=1`,
       )
       const dataAmplia = await responseAmplia.json()
-      
+
       if (dataAmplia.features && dataAmplia.features.length > 0) {
         const feature = dataAmplia.features[0]
         const parts = feature.place_name.split(',')
@@ -94,11 +95,10 @@ export function useSimuladorUnidades() {
           return direccion
         }
       }
-      
     } catch (error) {
       console.error('❌ Error en geocoding:', error)
     }
-    
+
     return '📍 Sin nombre de calle'
   }
 
@@ -110,8 +110,10 @@ export function useSimuladorUnidades() {
   }
 
   const generarUbicacionAleatoria = () => {
-    const lat = LIMITES_TIJUANA.latMin + Math.random() * (LIMITES_TIJUANA.latMax - LIMITES_TIJUANA.latMin)
-    const lng = LIMITES_TIJUANA.lngMin + Math.random() * (LIMITES_TIJUANA.lngMax - LIMITES_TIJUANA.lngMin)
+    const lat =
+      LIMITES_TIJUANA.latMin + Math.random() * (LIMITES_TIJUANA.latMax - LIMITES_TIJUANA.latMin)
+    const lng =
+      LIMITES_TIJUANA.lngMin + Math.random() * (LIMITES_TIJUANA.lngMax - LIMITES_TIJUANA.lngMin)
     return { lat, lng }
   }
 
@@ -120,8 +122,10 @@ export function useSimuladorUnidades() {
     do {
       nuevoDestino = generarUbicacionAleatoria()
       distancia = calcularDistancia(
-        ubicacionActual.lat, ubicacionActual.lng,
-        nuevoDestino.lat, nuevoDestino.lng
+        ubicacionActual.lat,
+        ubicacionActual.lng,
+        nuevoDestino.lat,
+        nuevoDestino.lng,
       )
     } while (distancia < 1000)
     return nuevoDestino
@@ -134,8 +138,9 @@ export function useSimuladorUnidades() {
     const Δφ = ((lat2 - lat1) * Math.PI) / 180
     const Δλ = ((lng2 - lng1) * Math.PI) / 180
 
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
     return R * c
@@ -150,7 +155,7 @@ export function useSimuladorUnidades() {
 
   const procesarMovimientoUnidad = (estadoActual) => {
     const ahora = Date.now()
-    
+
     if (!estadoActual.ubicacion?.lat || !estadoActual.ubicacion?.lng) {
       const ubicacionInicial = generarUbicacionAleatoria()
       return {
@@ -161,19 +166,23 @@ export function useSimuladorUnidades() {
         ignicion: true,
         destinoAleatorio: generarDestinoAleatorio(ubicacionInicial),
         tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-        ultimaActualizacionDireccion: 0
+        ultimaActualizacionDireccion: 0,
       }
     }
 
     const tiempoRestante = (estadoActual.tiempoProximoCambioEstado || 0) - ahora
     if (tiempoRestante > 0 && tiempoRestante < 5000) {
-      console.log(`⏱️ ${estadoActual.unidadNombre}: ${Math.floor(tiempoRestante / 1000)}s hasta cambio de estado`)
+      console.log(
+        `⏱️ ${estadoActual.unidadNombre}: ${Math.floor(tiempoRestante / 1000)}s hasta cambio de estado`,
+      )
     }
 
     if (ahora >= (estadoActual.tiempoProximoCambioEstado || 0)) {
       const nuevoEstado = determinarSiguienteEstado()
-      console.log(`🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado} (${new Date().toLocaleTimeString()})`)
-      
+      console.log(
+        `🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado} (${new Date().toLocaleTimeString()})`,
+      )
+
       if (nuevoEstado === ESTADOS.MOVIMIENTO) {
         return {
           ubicacion: estadoActual.ubicacion,
@@ -183,11 +192,12 @@ export function useSimuladorUnidades() {
           ignicion: true,
           destinoAleatorio: generarDestinoAleatorio(estadoActual.ubicacion),
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
-      } 
-      else if (nuevoEstado === ESTADOS.DETENIDO) {
-        console.log(`⏸️ ${estadoActual.unidadNombre} ahora está DETENIDO - mantendrá posición por 20s`)
+      } else if (nuevoEstado === ESTADOS.DETENIDO) {
+        console.log(
+          `⏸️ ${estadoActual.unidadNombre} ahora está DETENIDO - mantendrá posición por 20s`,
+        )
         return {
           ubicacion: estadoActual.ubicacion,
           direccion: estadoActual.direccion,
@@ -196,11 +206,12 @@ export function useSimuladorUnidades() {
           ignicion: true,
           destinoAleatorio: estadoActual.ubicacion,
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
-      } 
-      else {
-        console.log(`🔌 ${estadoActual.unidadNombre} ahora está INACTIVO - mantendrá posición por 20s`)
+      } else {
+        console.log(
+          `🔌 ${estadoActual.unidadNombre} ahora está INACTIVO - mantendrá posición por 20s`,
+        )
         return {
           ubicacion: estadoActual.ubicacion,
           direccion: estadoActual.direccion,
@@ -209,7 +220,7 @@ export function useSimuladorUnidades() {
           ignicion: false,
           destinoAleatorio: estadoActual.ubicacion,
           tiempoProximoCambioEstado: ahora + DURACION_ESTADO,
-          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
       }
     }
@@ -218,16 +229,18 @@ export function useSimuladorUnidades() {
       if (!estadoActual.destinoAleatorio?.lat || !estadoActual.destinoAleatorio?.lng) {
         estadoActual.destinoAleatorio = generarDestinoAleatorio(estadoActual.ubicacion)
       }
-      
+
       const tiempoTranscurrido = (ahora - (estadoActual.ultimoPuntoTiempo || ahora)) / 1000
       const velocidadMs = (estadoActual.velocidad * 1000) / 3600
       const distanciaAMover = velocidadMs * tiempoTranscurrido
-      
+
       const distanciaAlDestino = calcularDistancia(
-        estadoActual.ubicacion.lat, estadoActual.ubicacion.lng,
-        estadoActual.destinoAleatorio.lat, estadoActual.destinoAleatorio.lng
+        estadoActual.ubicacion.lat,
+        estadoActual.ubicacion.lng,
+        estadoActual.destinoAleatorio.lat,
+        estadoActual.destinoAleatorio.lng,
       )
-      
+
       if (distanciaAMover >= distanciaAlDestino || distanciaAlDestino < 100) {
         const nuevoDestino = generarDestinoAleatorio(estadoActual.ubicacion)
         return {
@@ -238,24 +251,26 @@ export function useSimuladorUnidades() {
           ignicion: true,
           destinoAleatorio: nuevoDestino,
           tiempoProximoCambioEstado: estadoActual.tiempoProximoCambioEstado,
-          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+          ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
       }
-      
+
       const proporcion = Math.min(distanciaAMover / distanciaAlDestino, 1)
-      const nuevaLat = estadoActual.ubicacion.lat + 
+      const nuevaLat =
+        estadoActual.ubicacion.lat +
         (estadoActual.destinoAleatorio.lat - estadoActual.ubicacion.lat) * proporcion
-      const nuevaLng = estadoActual.ubicacion.lng + 
+      const nuevaLng =
+        estadoActual.ubicacion.lng +
         (estadoActual.destinoAleatorio.lng - estadoActual.ubicacion.lng) * proporcion
-      
+
       const latFinal = Math.max(LIMITES_TIJUANA.latMin, Math.min(LIMITES_TIJUANA.latMax, nuevaLat))
       const lngFinal = Math.max(LIMITES_TIJUANA.lngMin, Math.min(LIMITES_TIJUANA.lngMax, nuevaLng))
-      
+
       let nuevaVelocidad = estadoActual.velocidad
       if (Math.random() < 0.15) {
         nuevaVelocidad = Math.max(35, Math.min(65, nuevaVelocidad + (Math.random() - 0.5) * 12))
       }
-      
+
       return {
         ubicacion: { lat: latFinal, lng: lngFinal },
         direccion: calcularDireccion(estadoActual.ubicacion, estadoActual.destinoAleatorio),
@@ -264,7 +279,7 @@ export function useSimuladorUnidades() {
         ignicion: true,
         destinoAleatorio: estadoActual.destinoAleatorio,
         tiempoProximoCambioEstado: estadoActual.tiempoProximoCambioEstado,
-        ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+        ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
       }
     }
 
@@ -276,14 +291,14 @@ export function useSimuladorUnidades() {
       ignicion: estadoActual.estado === ESTADOS.DETENIDO,
       destinoAleatorio: estadoActual.ubicacion,
       tiempoProximoCambioEstado: estadoActual.tiempoProximoCambioEstado,
-      ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0
+      ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
     }
   }
 
   const iniciarSimulacionUnidad = async (conductor, unidad) => {
     const unidadId = `unidad_${unidad.id}`
     const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
-    
+
     // ✅ Verificar si ya existe en Firebase
     let estadoExistente = null
     try {
@@ -295,42 +310,45 @@ export function useSimuladorUnidades() {
       // Sin estado previo, continuará para crear uno nuevo
       console.log(`📍 ${unidad.Unidad}: No hay estado previo`)
     }
-    
+
     // ✅ SI EXISTE: Restaurar ubicación anterior
     if (estadoExistente && estadoExistente.ubicacion) {
       console.log(`🔄 ${unidad.Unidad}: Restaurando desde última posición`)
       console.log(`   📍 Última ubicación: ${estadoExistente.direccionTexto}`)
       console.log(`   🎯 Último estado: ${estadoExistente.estado}`) // ✅ CORREGIDO
-      
+
       await update(unidadRef, {
         timestamp: Date.now(),
         ultimaActualizacion: new Date().toISOString(),
         ultimoPuntoTiempo: Date.now(),
         conductorId: conductor.id,
         conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
-        conductorFoto: conductor.LicenciaConducirFoto || null
+        conductorFoto: conductor.LicenciaConducirFoto || null,
       })
-      
+
       console.log(`✅ ${unidad.Unidad} continúa desde su última posición`)
-      
+
       // Iniciar intervalo
       iniciarIntervaloActualizacion(conductor, unidad, unidadRef)
       return
     }
-    
+
     // ✅ SI NO EXISTE: Crear nueva posición
     console.log(`🆕 ${unidad.Unidad}: Primera vez, generando posición inicial`)
-    
+
     const ubicacionInicial = generarUbicacionAleatoria()
     const destinoInicial = generarDestinoAleatorio(ubicacionInicial)
     const velocidadBase = Math.floor(Math.random() * 20) + 40
     const estadoInicial = determinarSiguienteEstado()
-    const direccionReal = await obtenerDireccionDesdeCoordenadas(ubicacionInicial.lat, ubicacionInicial.lng)
-    
+    const direccionReal = await obtenerDireccionDesdeCoordenadas(
+      ubicacionInicial.lat,
+      ubicacionInicial.lng,
+    )
+
     console.log(`🚗 INICIO: ${unidad.Unidad}`)
     console.log(`   📍 Dirección: ${direccionReal}`)
     console.log(`   🎯 Estado: ${estadoInicial}`)
-    
+
     const estado = {
       id: unidad.id,
       conductorId: conductor.id,
@@ -352,16 +370,16 @@ export function useSimuladorUnidades() {
       velocidadBase: velocidadBase,
       destinoAleatorio: estadoInicial === ESTADOS.MOVIMIENTO ? destinoInicial : ubicacionInicial,
       tiempoProximoCambioEstado: Date.now() + DURACION_ESTADO,
-      ultimaActualizacionDireccion: Date.now()
+      ultimaActualizacionDireccion: Date.now(),
     }
 
     await set(unidadRef, estado)
     console.log(`✅ ${unidad.Unidad} guardada en Firebase`)
-    
+
     // 🆕 Si la unidad está en movimiento, agregamos la coordenada inicial al buffer
     if (estadoInicial === ESTADOS.MOVIMIENTO) {
       try {
-        await agregarCoordenadaAlBuffer(unidad.id, {
+        await agregarCoordenadaSimple(unidad.id, {
           conductor_id: conductor.id,
           conductor_nombre: `${conductor.Nombre} ${conductor.Apellido}`,
           odometro_inicio: '0',
@@ -369,27 +387,27 @@ export function useSimuladorUnidades() {
           nuevaCoordenada: {
             lat: ubicacionInicial.lat,
             lng: ubicacionInicial.lng,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         })
       } catch (err) {
         console.error(`❌ Error agregando coordenada inicial al buffer:`, err)
       }
     }
-    
+
     iniciarIntervaloActualizacion(conductor, unidad, unidadRef)
   }
 
   const iniciarIntervaloActualizacion = (conductor, unidad, unidadRef) => {
     const unidadId = `unidad_${unidad.id}`
-    
+
     // 🆕 Cambiamos el intervalo de 5000ms a INTERVALO_ACTUALIZACION (10000ms)
     const intervalo = setInterval(async () => {
       try {
         const snapshot = await new Promise((resolve, reject) => {
           onValue(unidadRef, (snap) => resolve(snap), reject, { onlyOnce: true })
         })
-        
+
         const estadoActual = snapshot.val()
         if (!estadoActual) return
 
@@ -397,31 +415,35 @@ export function useSimuladorUnidades() {
 
         let nuevaDireccionTexto = estadoActual.direccionTexto
         let actualizarTimestampDireccion = estadoActual.ultimaActualizacionDireccion || 0
-        
+
         if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
           const distanciaCambio = calcularDistancia(
-            estadoActual.ubicacion.lat, estadoActual.ubicacion.lng,
-            nuevoMovimiento.ubicacion.lat, nuevoMovimiento.ubicacion.lng
+            estadoActual.ubicacion.lat,
+            estadoActual.ubicacion.lng,
+            nuevoMovimiento.ubicacion.lat,
+            nuevoMovimiento.ubicacion.lng,
           )
-          
+
           if (distanciaCambio > 0.1) {
-            const tiempoDesdeUltimaActualizacion = Date.now() - (estadoActual.ultimaActualizacionDireccion || 0)
-            const debeActualizarDireccion = distanciaCambio > DISTANCIA_MIN_ACTUALIZACION || 
-                                           tiempoDesdeUltimaActualizacion > TIEMPO_ACTUALIZACION_DIRECCION
-            
+            const tiempoDesdeUltimaActualizacion =
+              Date.now() - (estadoActual.ultimaActualizacionDireccion || 0)
+            const debeActualizarDireccion =
+              distanciaCambio > DISTANCIA_MIN_ACTUALIZACION ||
+              tiempoDesdeUltimaActualizacion > TIEMPO_ACTUALIZACION_DIRECCION
+
             if (debeActualizarDireccion) {
               try {
                 nuevaDireccionTexto = await obtenerDireccionDesdeCoordenadas(
                   nuevoMovimiento.ubicacion.lat,
-                  nuevoMovimiento.ubicacion.lng
+                  nuevoMovimiento.ubicacion.lng,
                 )
                 actualizarTimestampDireccion = Date.now()
-                
+
                 console.log('📍 Dirección actualizada:', {
                   unidad: estadoActual.unidadNombre,
                   direccionNueva: nuevaDireccionTexto.substring(0, 40) + '...',
                   distanciaMovida: `${distanciaCambio.toFixed(0)}m`,
-                  estado: nuevoMovimiento.estado
+                  estado: nuevoMovimiento.estado,
                 })
               } catch (error) {
                 console.warn('⚠️ Error geocoding:', error)
@@ -453,21 +475,21 @@ export function useSimuladorUnidades() {
           unidadId: estadoActual.unidadId,
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca,
-          bateria: estadoActual.bateria
+          bateria: estadoActual.bateria,
         })
 
         // 🆕 Si la unidad está en movimiento, agregamos la coordenada al buffer en lugar de guardarla directamente
         if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
           try {
-            await agregarCoordenadaAlBuffer(unidad.id, {
+            await agregarCoordenadaSimple(unidad.id, {
               conductor_id: estadoActual.conductorId,
               conductor_nombre: estadoActual.conductorNombre,
               velocidad_actual: String(nuevoMovimiento.velocidad),
               nuevaCoordenada: {
                 lat: nuevoMovimiento.ubicacion.lat,
                 lng: nuevoMovimiento.ubicacion.lng,
-                timestamp: new Date().toISOString()
-              }
+                timestamp: new Date().toISOString(),
+              },
             })
           } catch (errRuta) {
             // Este error ahora es menos crítico, ya que si falla, el buffer lo reintentará
@@ -476,33 +498,34 @@ export function useSimuladorUnidades() {
         }
 
         try {
-          await evaluarEventosParaUnidadesSimulacion([{
-            id: unidad.id,
-            conductorId: estadoActual.conductorId,
-            conductorNombre: estadoActual.conductorNombre,
-            unidadNombre: estadoActual.unidadNombre,
-            nombre: estadoActual.conductorNombre,
-            ubicacion: nuevoMovimiento.ubicacion,
-            lat: nuevoMovimiento.ubicacion.lat,
-            lng: nuevoMovimiento.ubicacion.lng,
-            estado: nuevoMovimiento.estado,
-            velocidad: nuevoMovimiento.velocidad
-          }])
+          await evaluarEventosParaUnidadesSimulacion([
+            {
+              id: unidad.id,
+              conductorId: estadoActual.conductorId,
+              conductorNombre: estadoActual.conductorNombre,
+              unidadNombre: estadoActual.unidadNombre,
+              nombre: estadoActual.conductorNombre,
+              ubicacion: nuevoMovimiento.ubicacion,
+              lat: nuevoMovimiento.ubicacion.lat,
+              lng: nuevoMovimiento.ubicacion.lng,
+              estado: nuevoMovimiento.estado,
+              velocidad: nuevoMovimiento.velocidad,
+            },
+          ])
         } catch (errorEvento) {
           console.error('⚠️ Error eventos:', errorEvento)
         }
-
       } catch (error) {
         console.error(`❌ Error actualizando ${unidadId}:`, error)
       }
     }, INTERVALO_ACTUALIZACION) // 🆕 Usamos la constante en lugar de 5000 hardcoded
 
     intervalos.value.push({ unidadId, intervalo })
-    unidadesSimuladas.value.push({ 
-      conductorId: conductor.id, 
+    unidadesSimuladas.value.push({
+      conductorId: conductor.id,
       unidadId,
       unidadNombre: unidad.Unidad,
-      unidadIdReal: unidad.id
+      unidadIdReal: unidad.id,
     })
   }
 
@@ -512,44 +535,35 @@ export function useSimuladorUnidades() {
       return
     }
 
-    const conductoresConUnidad = conductores.filter(c => c.UnidadAsignada)
-    
+    const conductoresConUnidad = conductores.filter((c) => c.UnidadAsignada)
+
     if (conductoresConUnidad.length === 0) {
       console.warn('⚠️ Sin conductores asignados')
       return
     }
 
     simulacionActiva.value = true
-    
+
     console.log('🎲 Simulación v3.4 - CON BATCHING')
     console.log('   ✅ Restaura última posición desde Firebase')
     console.log('   🆕 Implementa batching para evitar error 429')
-    
+
     for (const conductor of conductoresConUnidad) {
-      const unidad = unidades.find(u => u.id === conductor.UnidadAsignada)
+      const unidad = unidades.find((u) => u.id === conductor.UnidadAsignada)
       if (unidad) {
         await iniciarSimulacionUnidad(conductor, unidad)
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
-    
+
     console.log(`✅ ${conductoresConUnidad.length} unidades activas`)
   }
 
   const detenerSimulacion = async () => {
     console.log('🛑 Deteniendo...')
-    
+
     intervalos.value.forEach(({ intervalo }) => clearInterval(intervalo))
-    
-    // 🆕 Forzar el envío de todos los buffers pendientes antes de detener
-    console.log('📤 Enviando datos de ruta pendientes antes de detener...')
-    try {
-      await forzarEnvioDeTodosLosBatches()
-      console.log('✅ Todos los datos de ruta han sido enviados')
-    } catch (err) {
-      console.error('❌ Error forzando envío de batches:', err)
-    }
-    
+
     // 🆕 Corregido: solo usamos unidadId en lugar de desestructurar unidadIdReal que no se usa
     for (const { unidadId } of unidadesSimuladas.value) {
       try {
@@ -560,11 +574,11 @@ export function useSimuladorUnidades() {
         console.error(`❌ Error finalizando ${unidadId}:`, err)
       }
     }
-    
+
     intervalos.value = []
     unidadesSimuladas.value = []
     simulacionActiva.value = false
-    
+
     console.log('✅ Simulación detenida y datos guardados')
   }
 
@@ -581,6 +595,6 @@ export function useSimuladorUnidades() {
     unidadesSimuladas,
     iniciarSimulacion,
     detenerSimulacion,
-    toggleSimulacion
+    toggleSimulacion,
   }
 }

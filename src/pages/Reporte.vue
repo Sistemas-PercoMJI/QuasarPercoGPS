@@ -179,7 +179,7 @@
 
             <!-- 🔥 Tipo de informe comercial (solo para Horas de Trabajo) -->
             <div v-if="tieneOpcion('tipoInformeComercial')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Tipo de informe</div>
+              <div class="text-subtitle2 q-mb-sm">Tipo de informe comercial</div>
               <q-select
                 v-model="tipoInformeComercial"
                 :options="TIPOS_INFORME_COMERCIAL"
@@ -517,7 +517,7 @@ const elementosSeleccionados = ref([])
 const eventos = ref([])
 
 // Opciones
-const opcionesReportar = ['Unidades', 'Conductores', 'Grupos', 'Geozonas']
+const opcionesReportar = ['Unidades', 'Conductores']
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
 
@@ -855,6 +855,7 @@ const obtenerDatosReporte = async () => {
 
   let datosInforme = []
   let criterioPrincipal = ''
+  let datosAgrupados = {}
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
   // 🔥 OBTENER DATOS SEGÚN TIPO
@@ -980,6 +981,25 @@ const obtenerDatosReporte = async () => {
     // Llamar a obtenerTrayectos con los IDs correctos
     datosInforme = await obtenerTrayectos(unidadesParaBuscar, fechaInicio, fechaFin)
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
+
+    // 🔥 AGREGAR: AGRUPAR TRAYECTOS POR UNIDAD/CONDUCTOR
+    datosAgrupados = datosInforme.reduce((acc, trayecto) => {
+      let clave = ''
+
+      if (reportarPor.value === 'Unidades') {
+        clave = trayecto.unidadNombre || trayecto.unidad || 'Sin unidad'
+      } else if (reportarPor.value === 'Conductores') {
+        clave = trayecto.conductorNombre || trayecto.conductor || 'Sin conductor'
+      } else {
+        clave = trayecto.unidadNombre || 'Sin unidad'
+      }
+
+      if (!acc[clave]) acc[clave] = []
+      acc[clave].push(trayecto)
+      return acc
+    }, {})
+
+    console.log('🗺️ Trayectos agrupados:', Object.keys(datosAgrupados))
   } else if (tipoInforme === 'horas_trabajo') {
     console.log('⏰ Calculando horas de trabajo...')
     const { calcularHorasTrabajo } = useReportesHorasTrabajo()
@@ -1028,7 +1048,7 @@ const obtenerDatosReporte = async () => {
   }
 
   // Agrupar datos
-  let datosAgrupados = {}
+
   if (tipoInforme === 'eventos') {
     // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
     criterioPrincipal = ''
@@ -1076,7 +1096,7 @@ const obtenerDatosReporte = async () => {
   }
 
   console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
-
+  console.log('🔍 Claves de grupos:', Object.keys(datosAgrupados))
   // Elementos sin datos
   let elementosConDatos = []
 
@@ -1143,7 +1163,14 @@ const obtenerDatosReporte = async () => {
     configuracion.map((c) => c.label),
   )
   if (tipoInforme === 'horas_trabajo') {
-    return datosFiltrados // Array de registros por día
+    return {
+      registros: datosFiltrados, // Array de registros por día
+      totalRegistros: datosFiltrados.length,
+      resumen: resumenMejorado,
+      stats: stats,
+      elementosSinDatos: elementosSinDatos,
+      tipoInforme: 'horas_trabajo',
+    } // Array de registros por día
   }
 
   return {
@@ -1218,7 +1245,9 @@ const generarReporte = async () => {
       console.log('⏰ Generando PDF de horas de trabajo...')
 
       // 🔥 EXTRAER EL ARRAY DE DATOS:
-      const horasArray = Array.isArray(datosReales) ? datosReales : datosReales.datosColumnas || []
+      const horasArray = Array.isArray(datosReales)
+        ? datosReales
+        : datosReales.registros || datosReales.datosColumnas || []
 
       console.log('📊 Datos de horas extraídos:', {
         longitud: horasArray.length,
@@ -1282,6 +1311,9 @@ const generarReporte = async () => {
         horarioFin: horarioFin.value,
         mostrarMapaZona: mostrarMapaZona.value,
         remarcarHorasExtra: remarcarHorasExtra.value,
+        tipoDetalle: tipoDetalle.value,
+        tipoInformeComercial: tipoInformeComercial.value,
+        diasLaborables: diasLaborablesSeleccionados.value,
       }
 
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
@@ -1372,23 +1404,58 @@ const generarExcel = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
+      // 🔥 AGREGAR CAMPOS PARA HORAS DE TRABAJO
+      tipoDetalle: tipoDetalle.value,
+      tipoInformeComercial: tipoInformeComercial.value,
+      horarioInicio: horarioInicio.value,
+      horarioFin: horarioFin.value,
+      remarcarHorasExtra: remarcarHorasExtra.value,
+      diasLaborables: diasLaborablesSeleccionados.value,
     }
 
-    const { blob } = await generarExcelEventos(config, datosReales)
+    let blob, filename
+
+    if (tipoInformeSeleccionado.value === 'trayectos') {
+      console.log('🗺️ DATOS DE TRAYECTOS PARA EXCEL:', datosReales)
+      console.log('🗺️ datosColumnas:', datosReales.datosColumnas)
+      console.log('🗺️ Primer trayecto en datosColumnas:', datosReales.datosColumnas[0])
+      console.log('🗺️ Campos disponibles:', Object.keys(datosReales.datosColumnas[0] || {}))
+    }
+    // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
+    if (tipoInformeSeleccionado.value === 'horas_trabajo') {
+      console.log('📊 Generando Excel de Horas de Trabajo...')
+      const { generarExcelHorasTrabajo } = useReporteExcel()
+      const resultado = await generarExcelHorasTrabajo(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'eventos') {
+      console.log('📊 Generando Excel de Eventos...')
+      const resultado = await generarExcelEventos(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'trayectos') {
+      console.log('📊 Generando Excel de Trayectos...')
+      const { generarExcelTrayectos } = useReporteExcel()
+      const resultado = await generarExcelTrayectos(config, datosReales)
+      blob = resultado.blob
+      filename = resultado.filename
+    } else {
+      throw new Error(`Tipo de informe no soportado para Excel: ${tipoInformeSeleccionado.value}`)
+    }
 
     if (!blob) {
       throw new Error('No se pudo generar el archivo Excel')
     }
 
     const metadata = {
-      nombre: `Reporte ${reportarPor.value}`,
+      nombre: filename || `Reporte ${reportarPor.value}`,
       tipo: 'excel',
       tipoInforme: tipoInformeSeleccionado.value,
       reportarPor: reportarPor.value,
       elementos: elementosSeleccionados.value,
       rangoFechas: rangoFechaFormateado.value,
       columnas: columnasSeleccionadas.value,
-      totalEventos: datosReales.totalEventos,
+      totalEventos: datosReales.totalRegistros || datosReales.totalEventos || 0,
     }
 
     const reporteGuardado = await subirReporte(blob, metadata)

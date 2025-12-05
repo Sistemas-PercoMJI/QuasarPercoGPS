@@ -18,6 +18,9 @@ const circuloTemporalPOI = ref(null)
 let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 
+// 🆕 SISTEMA DE POPUP GLOBAL UNIFICADO
+let popupGlobalActivo = null
+
 // 🔑 Tu API key de Mapbox
 const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
@@ -36,12 +39,36 @@ const COLORES_ESTADO = {
   inactivo: '#607D8B', // Gris azulado
 }
 
+const cerrarPopupGlobal = () => {
+  if (popupGlobalActivo) {
+    try {
+      popupGlobalActivo.remove()
+      popupGlobalActivo = null
+      console.log('🔒 Popup global cerrado')
+    } catch (error) {
+      console.warn('⚠️ Error al cerrar popup:', error)
+      popupGlobalActivo = null
+    }
+  }
+}
+
+const registrarPopupActivo = (popup) => {
+  cerrarPopupGlobal()
+  popupGlobalActivo = popup
+
+  // Listener para cuando el usuario cierre el popup manualmente
+  popup.on('close', () => {
+    if (popupGlobalActivo === popup) {
+      popupGlobalActivo = null
+    }
+  })
+}
+
 export function useMapboxGL() {
   let marcadorTemporalElement = null
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
   const crearIconoUnidad = (estado) => {
-    // ✅ Usar colores estandarizados
     const color = COLORES_ESTADO[estado] || '#9E9E9E'
     const colorIndicador = COLORES_ESTADO[estado] || '#9E9E9E'
 
@@ -165,7 +192,6 @@ export function useMapboxGL() {
 
     const idsActuales = new Set()
 
-    // ✅ Log de depuración
     console.log('🔄 Actualizando marcadores:', {
       total: unidades.length,
       estados: unidades.reduce((acc, u) => {
@@ -202,14 +228,12 @@ export function useMapboxGL() {
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
-          // ✅ DETECTAR CAMBIO DE ESTADO
           if (ultimaPos && ultimaPos.estado !== unidad.estado) {
             console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
 
-            // Remover el marcador anterior
             marcadoresUnidades.value[unidadId].remove()
 
-            // Crear popup actualizado
+            // 🆕 CREAR POPUP CON SISTEMA UNIFICADO
             const popup = new mapboxgl.Popup({
               offset: 25,
               closeButton: true,
@@ -217,7 +241,11 @@ export function useMapboxGL() {
               maxWidth: '300px',
             }).setHTML(crearPopupUnidad(unidad))
 
-            // ✅ Crear nuevo marcador con estado actualizado
+            // 🆕 REGISTRAR POPUP AL ABRIRSE
+            popup.on('open', () => {
+              registrarPopupActivo(popup)
+            })
+
             const marker = new mapboxgl.Marker({
               element: crearIconoUnidad(unidad.estado),
               anchor: 'center',
@@ -229,22 +257,18 @@ export function useMapboxGL() {
             marcadoresUnidades.value[unidadId] = marker
             ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
           } else {
-            // ✅ Solo actualizar posición y popup
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
             const popup = marcadoresUnidades.value[unidadId].getPopup()
             if (popup) {
-              // 1. Obtener el contenedor del popup ANTES de actualizar
               const popupContent = popup.getElement()
               const oldContainer = popupContent
                 ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
                 : null
               const wasExpanded = oldContainer ? oldContainer.classList.contains('expanded') : false
 
-              // 2. Actualizar el HTML del popup
               popup.setHTML(crearPopupUnidad(unidad))
 
-              // 3. Si estaba expandido, volver a expandir
               if (wasExpanded) {
                 const newContainer = popup.getElement().querySelector(`#popup-unidad-${unidadId}`)
                 if (newContainer) {
@@ -257,13 +281,18 @@ export function useMapboxGL() {
           }
         }
       } else {
-        // ✅ Crear nuevo marcador
+        // 🆕 CREAR NUEVO MARCADOR CON SISTEMA UNIFICADO
         const popup = new mapboxgl.Popup({
           offset: 25,
           closeButton: true,
           closeOnClick: false,
           maxWidth: '300px',
         }).setHTML(crearPopupUnidad(unidad))
+
+        // 🆕 REGISTRAR POPUP AL ABRIRSE
+        popup.on('open', () => {
+          registrarPopupActivo(popup)
+        })
 
         const marker = new mapboxgl.Marker({
           element: crearIconoUnidad(unidad.estado),
@@ -311,6 +340,9 @@ export function useMapboxGL() {
         zoom: 16,
         duration: 1000,
       })
+
+      // 🆕 CERRAR POPUP ANTERIOR Y ABRIR ESTE
+      cerrarPopupGlobal()
       marcador.togglePopup()
     }
   }
@@ -1102,9 +1134,8 @@ export function useMapboxGL() {
 
   const cleanup = () => {
     limpiarMarcadoresUnidades()
-
-    // ⚡ Limpiar cache de posiciones
     ultimasPosiciones.clear()
+    cerrarPopupGlobal()
 
     if (map.value) {
       map.value.remove()
@@ -1182,6 +1213,8 @@ export function useMapboxGL() {
       return marker
     },
     cleanup,
+    cerrarPopupGlobal,
+    registrarPopupActivo,
     activarModoSeleccion,
     desactivarModoSeleccion,
     getUbicacionSeleccionada: () => ubicacionSeleccionada.value,
