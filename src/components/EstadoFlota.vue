@@ -461,7 +461,8 @@ const vehiculos = computed(() => {
   return unidadesActivas.value.map((unidad) => ({
     id: unidad.id,
     nombre: unidad.unidadNombre,
-    ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
+    ubicacion: unidad.direccionTexto || 'Ubicación desconocida', // 👈 Para MOSTRAR
+    ubicacionCoords: unidad.ubicacion, // 👈 Para NAVEGAR {lat, lng}
     coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
     velocidad: `${unidad.velocidad} km/h`,
     estado: unidad.estado,
@@ -473,7 +474,7 @@ const vehiculos = computed(() => {
     timestamp: unidad.timestamp,
     ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
 
-    // Datos de ejemplo para tabs
+    // Resto de tus propiedades...
     bloqueado: false,
     tiempoConductionHoy: '3h 24m',
     tiempoConductionSemana: '18h 45m',
@@ -483,7 +484,6 @@ const vehiculos = computed(() => {
     tipoTrayecto: 'Ruta comercial',
     notificaciones: 0,
 
-    // Timeline de ejemplo
     fechaTimeline: new Date().toLocaleDateString('es-MX'),
     ubicacionInicio: 'Zona Centro',
     ubicacionFin: unidad.direccionTexto,
@@ -591,6 +591,27 @@ function seleccionarVehiculo(vehiculo) {
 
 function seleccionarVehiculoParaMapa(vehiculo) {
   emit('vehiculo-mapa', vehiculo)
+
+  const mapPage = document.getElementById('map-page')
+  if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+    // 🎯 Usar ubicacionCoords que tiene {lat, lng}
+    const { lat, lng } = vehiculo.ubicacionCoords || { lat: 0, lng: 0 }
+
+    mapPage._mapaAPI.map.flyTo({
+      center: [lng, lat],
+      zoom: 16,
+      duration: 1000,
+      essential: true,
+    })
+
+    // 🎯 Opcional: Abrir el popup del marcador
+    const unidadId = vehiculo.id
+    if (mapPage._mapaAPI.centrarEnUnidad) {
+      mapPage._mapaAPI.centrarEnUnidad(unidadId)
+    }
+
+    console.log(`📍 Mapa centrado en: ${vehiculo.nombre} (${lat}, ${lng})`)
+  }
 }
 
 function volverALista() {
