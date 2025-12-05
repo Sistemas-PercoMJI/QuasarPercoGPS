@@ -27,7 +27,7 @@ const MAPBOX_TOKEN =
 
 // ⚡ OPTIMIZACIÓN: Throttle para actualizaciones
 let ultimaActualizacion = 0
-const THROTTLE_MS = 300 // Actualizar máximo cada 300ms
+const THROTTLE_MS = 500 // Actualizar máximo cada 300ms
 
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
@@ -943,6 +943,13 @@ export function useMapboxGL() {
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {
         console.log('✅ Mapa Mapbox GL cargado correctamente')
+        map.value.on('styleimagemissing', (e) => {
+          const id = e.id
+          const canvas = document.createElement('canvas')
+          canvas.width = 1
+          canvas.height = 1
+          map.value.addImage(id, canvas)
+        })
 
         // Agregar fuente de tráfico
         map.value.addSource('mapbox-traffic', {
