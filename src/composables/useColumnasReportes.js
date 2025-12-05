@@ -85,42 +85,30 @@ const COLUMNAS_EVENTOS = {
     key: 'horaInicio',
     label: 'Hora de inicio de evento',
     obtenerValor: (notificacion) => {
-      // 🔍 DEBUG TEMPORAL
-      console.log('🕐 Procesando timestamp para:', notificacion.eventoNombre)
-      console.log('   - timestamp:', notificacion.timestamp)
-      console.log('   - tipo:', typeof notificacion.timestamp)
-      console.log('   - es Date?:', notificacion.timestamp instanceof Date)
-      console.log('   - objeto completo:', notificacion)
-
       const timestamp = notificacion.timestamp
 
       if (!timestamp) {
-        console.warn('⚠️ NO HAY timestamp')
         return 'N/A'
       }
 
       try {
         if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
-          const formatted = timestamp.toLocaleString('es-MX', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
+          return timestamp.toLocaleTimeString('es-MX', {
+            // ← 🔥 CAMBIADO
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
+            hour12: true,
           })
-          console.log('✅ Formateado como:', formatted)
-          return formatted
         }
 
-        console.warn('⚠️ Timestamp existe pero NO es Date válido')
         return 'N/A'
       } catch (error) {
-        console.error('❌ Error:', error)
+        console.error('❌ Error al formatear hora:', error)
         return 'N/A'
       }
     },
-    ancho: 180,
+    ancho: 120, // ← 🔥 También reduje el ancho (era 180)
     formato: 'fecha',
   },
   Fecha: {

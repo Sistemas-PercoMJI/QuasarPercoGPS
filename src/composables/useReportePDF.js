@@ -538,6 +538,9 @@ export function useReportePDF() {
     // ========================================
     // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
     // ========================================
+    // ========================================
+    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS (OPTIMIZADA PARA 22 COLUMNAS)
+    // ========================================
     if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
       if (yPosition > 200) {
         doc.addPage()
@@ -552,7 +555,7 @@ export function useReportePDF() {
       const headers = config.columnasSeleccionadas
       const configuracionColumnas = datosReales.configuracionColumnas || []
 
-      // 🔥 CORREGIDO: Usar los datos ORIGINALES, no los procesados
+      // 🔥 OBTENER DATOS ORIGINALES (NO PROCESADOS)
       const rows = datosReales.eventosAgrupados
         ? Object.values(datosReales.eventosAgrupados).flat()
         : datosReales.datosColumnas
@@ -575,13 +578,56 @@ export function useReportePDF() {
         })
       })
 
+      // 🔥 CONFIGURACIÓN DE ANCHOS INTELIGENTES
+      const pageWidth = doc.internal.pageSize.width
+      const margins = 28 // left + right
+      const availableWidth = pageWidth - margins
+      const totalColumnas = headers.length
+
+      // 🔥 DEFINIR PRIORIDADES DE COLUMNAS
+      const columnasImportantes = [
+        'Nombre de evento',
+        'Hora de inicio de evento',
+        'Conductor',
+        'Vehículo',
+        'Tipo',
+        'Fecha',
+        'Hora',
+      ]
+
+      const columnasMenosImportantes = [
+        'Ubicación',
+        'Duración',
+        'Dirección',
+        'Coordenadas',
+        'Kilometraje',
+        'Batería',
+      ]
+
+      // 🔥 ASIGNAR ANCHOS DINÁMICOS
       const columnStyles = {}
-      configuracionColumnas.forEach((col, index) => {
-        if (col.ancho) {
-          columnStyles[index] = { cellWidth: col.ancho / 4 }
+
+      headers.forEach((nombreCol, index) => {
+        let ancho = availableWidth / totalColumnas // Ancho base
+
+        // Columnas importantes: +20% más ancho
+        if (columnasImportantes.includes(nombreCol)) {
+          ancho = ancho * 1.2
+        }
+        // Columnas menos importantes: -30% más estrecho
+        else if (columnasMenosImportantes.includes(nombreCol)) {
+          ancho = ancho * 0.7
+        }
+
+        columnStyles[index] = {
+          cellWidth: ancho,
+          overflow: 'linebreak', // 🔥 CRÍTICO: permite saltos de línea
+          valign: 'middle',
+          halign: 'left',
         }
       })
 
+      // 🔥 GENERAR TABLA OPTIMIZADA
       autoTable(doc, {
         startY: yPosition,
         head: [headers],
@@ -590,15 +636,24 @@ export function useReportePDF() {
         headStyles: {
           fillColor: [66, 139, 202],
           fontStyle: 'bold',
-          fontSize: 8,
+          fontSize: 5, // 🔥 Reducido de 8 a 5
+          cellPadding: 1, // 🔥 Reducido de 2 a 1
+          valign: 'middle',
+          halign: 'center',
+          minCellHeight: 6, // 🔥 Altura mínima para headers
         },
         styles: {
-          fontSize: 7,
-          cellPadding: 2,
+          fontSize: 5, // 🔥 Reducido de 7 a 5
+          cellPadding: 0.8, // 🔥 Reducido de 2 a 0.8
+          overflow: 'linebreak',
+          cellWidth: 'wrap',
+          minCellHeight: 5,
         },
         columnStyles: columnStyles,
         margin: { left: 14, right: 14 },
+        tableWidth: 'auto',
         didDrawPage: (data) => {
+          // Pie de página con número de página
           const pageCount = doc.internal.getNumberOfPages()
           doc.setFontSize(8)
           doc.text(
@@ -818,10 +873,7 @@ export function useReportePDF() {
                   if (evento.timestamp) {
                     try {
                       const fecha = new Date(evento.timestamp)
-                      valor = fecha.toLocaleString('es-MX', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
+                      valor = fecha.toLocaleTimeString('es-MX', {
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
