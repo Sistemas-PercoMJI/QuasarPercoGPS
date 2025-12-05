@@ -1245,7 +1245,9 @@ const generarReporte = async () => {
       console.log('⏰ Generando PDF de horas de trabajo...')
 
       // 🔥 EXTRAER EL ARRAY DE DATOS:
-      const horasArray = Array.isArray(datosReales) ? datosReales : datosReales.datosColumnas || []
+      const horasArray = Array.isArray(datosReales)
+        ? datosReales
+        : datosReales.registros || datosReales.datosColumnas || []
 
       console.log('📊 Datos de horas extraídos:', {
         longitud: horasArray.length,
