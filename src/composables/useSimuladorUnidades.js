@@ -21,10 +21,10 @@ export function useSimuladorUnidades() {
   const { agregarCoordenadaSimple } = useRutaDiaria()
 
   const LIMITES_TIJUANA = {
-    latMin: 32.43,
-    latMax: 32.56,
-    lngMin: -117.13,
-    lngMax: -116.88,
+    latMin: 32.2,
+    latMax: 32.8,
+    lngMin: -117.3,
+    lngMax: -116.5,
   }
 
   const MAPBOX_TOKEN =
