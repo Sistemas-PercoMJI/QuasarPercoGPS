@@ -36,7 +36,7 @@ export function useSimuladorUnidades() {
     INACTIVO: 'inactivo',
   }
 
-  const DURACION_ESTADO = 20000
+  const DURACION_ESTADO = 30000
   const TIEMPO_ACTUALIZACION_DIRECCION = 30000
   const DISTANCIA_MIN_ACTUALIZACION = 50
   // 🆕 Reducimos la frecuencia de actualización para disminuir la carga

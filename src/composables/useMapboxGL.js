@@ -27,7 +27,7 @@ const MAPBOX_TOKEN =
 
 // ⚡ OPTIMIZACIÓN: Throttle para actualizaciones
 let ultimaActualizacion = 0
-const THROTTLE_MS = 500 // Actualizar máximo cada 300ms
+const THROTTLE_MS = 1000 // Actualizar máximo cada 300ms
 
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
@@ -192,13 +192,13 @@ export function useMapboxGL() {
 
     const idsActuales = new Set()
 
-    console.log('🔄 Actualizando marcadores:', {
+    /*console.log('🔄 Actualizando marcadores:', {
       total: unidades.length,
       estados: unidades.reduce((acc, u) => {
         acc[u.estado] = (acc[u.estado] || 0) + 1
         return acc
       }, {}),
-    })
+    })*/
 
     unidades.forEach((unidad) => {
       if (
@@ -229,7 +229,7 @@ export function useMapboxGL() {
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
           if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-            console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
+            //console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
 
             marcadoresUnidades.value[unidadId].remove()
 
