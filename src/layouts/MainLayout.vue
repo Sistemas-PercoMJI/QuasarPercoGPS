@@ -1272,13 +1272,17 @@ function handleLinkClick(link) {
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
 
-    // Primero asegurarse de estar en la ruta principal
-    if (router.currentRoute.value.path !== '/') {
-      router.push('/')
+    // SOLUCIÓN: Solo navegar si NO estamos en la ruta principal
+    const rutaActual = router.currentRoute.value.path
+    if (rutaActual !== '/' && rutaActual !== '/dashboard') {
+      router.push('/').then(() => {
+        nextTick(() => {
+          conductoresDrawerOpen.value = true
+        })
+      })
+    } else {
+      conductoresDrawerOpen.value = true
     }
-
-    // Luego abrir el drawer
-    conductoresDrawerOpen.value = true
   } else if (link.action === 'open-geozonas') {
     cerrarTodosLosDialogs()
     geozonaDrawerOpen.value = true

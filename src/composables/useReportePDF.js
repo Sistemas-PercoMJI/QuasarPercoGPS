@@ -562,7 +562,10 @@ export function useReportePDF() {
 
       const tableData = rows.map((evento) => {
         return headers.map((nombreCol) => {
-          const columnaConfig = configuracionColumnas.find((c) => c.label === nombreCol)
+          // 🔥 MAPEO DE NOMBRES
+          const nombreMapeado = nombreCol === 'Condición de evento' ? 'Condición' : nombreCol
+
+          const columnaConfig = configuracionColumnas.find((c) => c.label === nombreMapeado)
 
           if (columnaConfig && columnaConfig.obtenerValor) {
             try {
@@ -840,7 +843,7 @@ export function useReportePDF() {
               hora: 'Hora',
               fecha: 'Fecha',
               duracion: 'Duración',
-              condicionEvento: 'Condición de evento',
+              condicionEvento: 'Condición',
               mensaje: 'Mensaje',
               ubicacion: 'Ubicación',
               tipoUbicacion: 'Tipo de ubicación',
@@ -858,165 +861,63 @@ export function useReportePDF() {
             return nombres[col] || col
           })
 
+          console.log('📋 DEBUG configuracionColumnas completa:')
+          console.log('   - Existe?:', !!datosReales.configuracionColumnas)
+          console.log('   - Total columnas:', datosReales.configuracionColumnas?.length)
+          console.log(
+            '   - Labels disponibles:',
+            datosReales.configuracionColumnas?.map((c) => c.label),
+          )
+          console.log('   - Headers buscados:', headers)
+          // 🔥 SIMPLIFICADO: Usar configuracionColumnas directamente
           const tableData = eventosSubGrupo.map((evento) => {
             return columnasVisibles.map((col) => {
-              let valor = evento[col]
+              // Buscar la configuración de la columna
+              const nombreHeader = headers[columnasVisibles.indexOf(col)]
+              const columnaConfig = datosReales.configuracionColumnas?.find(
+                (c) => c.label === nombreHeader,
+              )
 
-              // MAPEO DE NOMBRES DE PROPIEDADES
-              switch (col) {
-                case 'nombreEvento': {
-                  valor = evento.eventoNombre || evento.mensaje
-                  break
-                }
+              // 🔥 DEBUG PARA CONDICIÓN DE EVENTO
+              if (nombreHeader === 'Condición de evento') {
+                console.log('🔍 DEBUG Condición de evento en PDF:')
+                console.log('   - nombreHeader:', nombreHeader)
+                console.log('   - columnaConfig encontrada?:', !!columnaConfig)
+                console.log('   - columnaConfig.label:', columnaConfig?.label)
+                console.log(
+                  '   - columnaConfig.obtenerValor existe?:',
+                  !!columnaConfig?.obtenerValor,
+                )
+                console.log('   - evento completo:', evento)
+                console.log(
+                  '   - configuracionColumnas disponibles:',
+                  datosReales.configuracionColumnas?.map((c) => c.label),
+                )
+              }
 
-                case 'horaInicioEvento': {
-                  if (evento.timestamp) {
-                    try {
-                      const fecha = new Date(evento.timestamp)
-                      valor = fecha.toLocaleTimeString('es-MX', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: true,
-                      })
-                    } catch (error) {
-                      valor = 'N/A'
-                      console.error(error)
-                    }
+              // Si la columna tiene obtenerValor, usarlo
+              if (columnaConfig && columnaConfig.obtenerValor) {
+                try {
+                  const valor = columnaConfig.obtenerValor(evento)
+
+                  // 🔥 DEBUG RESULTADO
+                  if (nombreHeader === 'Condición de evento') {
+                    console.log('   ✅ Valor obtenido:', valor)
                   }
-                  break
-                }
 
-                case 'fecha': {
-                  if (evento.timestamp) {
-                    try {
-                      const fecha = new Date(evento.timestamp)
-                      const dia = String(fecha.getDate()).padStart(2, '0')
-                      const mes = String(fecha.getMonth() + 1).padStart(2, '0')
-                      const anio = fecha.getFullYear()
-                      valor = `${dia}/${mes}/${anio}`
-                    } catch (error) {
-                      valor = 'N/A'
-                      console.error(error)
-                    }
-                  }
-                  break
+                  return valor !== null && valor !== undefined ? String(valor) : 'N/A'
+                } catch (error) {
+                  console.error(`Error al obtener valor de columna "${nombreHeader}":`, error)
+                  return 'N/A'
                 }
+              }
 
-                case 'hora': {
-                  if (evento.timestamp) {
-                    try {
-                      const fecha = new Date(evento.timestamp)
-                      valor = fecha.toLocaleTimeString('es-MX', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true,
-                      })
-                    } catch (error) {
-                      console.error(error)
-                      valor = 'N/A'
-                    }
-                  }
-                  break
-                }
+              // Fallback: usar la propiedad directamente
+              const valor = evento[col]
 
-                case 'tipo': {
-                  valor = evento.tipoEvento
-                  break
-                }
-
-                case 'placa': {
-                  valor = evento.unidadPlaca
-                  break
-                }
-
-                case 'unidadNombre': {
-                  valor = evento.unidadNombre
-                  break
-                }
-
-                case 'conductorNombre': {
-                  valor = evento.conductorNombre
-                  break
-                }
-
-                case 'coordenadas': {
-                  if (evento.coordenadas?.lat && evento.coordenadas?.lng) {
-                    valor = `${evento.coordenadas.lat}, ${evento.coordenadas.lng}`
-                  }
-                  break
-                }
-
-                case 'direccion': {
-                  valor = evento.direccion
-                  break
-                }
-
-                case 'geozona': {
-                  valor = evento.geozonaNombre
-                  break
-                }
-
-                case 'velocidad': {
-                  valor = evento.velocidad !== undefined ? `${evento.velocidad} km/h` : 'N/A'
-                  break
-                }
-
-                case 'duracion': {
-                  if (evento.duracionMinutos !== undefined && evento.duracionMinutos !== null) {
-                    valor = `${evento.duracionMinutos} min`
-                  }
-                  break
-                }
-
-                case 'mensaje': {
-                  valor = evento.mensaje
-                  break
-                }
-
-                case 'ubicacion': {
-                  valor = evento.geozonaNombre
-                  break
-                }
-
-                case 'tipoUbicacion': {
-                  valor = evento.tipoUbicacion
-                  break
-                }
-
-                case 'poi': {
-                  valor = evento.poi
-                  break
-                }
-
-                case 'kilometraje': {
-                  valor = evento.kilometraje
-                  break
-                }
-
-                case 'bateria': {
-                  valor = evento.bateria
-                  break
-                }
-
-                case 'estadoVehiculo': {
-                  valor = evento.estadoVehiculo
-                  break
-                }
-
-                case 'ignicion': {
-                  valor = evento.ignicion
-                  break
-                }
-
-                case 'condicionEvento': {
-                  valor = evento.condicionEvento
-                  break
-                }
-
-                default: {
-                  valor = evento[col]
-                }
+              // 🔥 DEBUG FALLBACK
+              if (nombreHeader === 'Condición de evento') {
+                console.log('   ⚠️ Usando fallback - valor:', valor)
               }
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'

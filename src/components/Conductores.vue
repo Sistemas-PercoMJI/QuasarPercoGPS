@@ -376,7 +376,24 @@
                   @update:model-value="asignarUnidadAConductor"
                 />
               </q-card-section>
+
+              <!-- 🎯 NUEVO BOTÓN PARA NAVEGAR A LA UNIDAD -->
+              <q-card-section v-if="unidadAsignadaData">
+                <q-btn
+                  color="primary"
+                  icon="my_location"
+                  label="Ver ubicación de la unidad"
+                  class="full-width"
+                  @click="navegarAUnidad"
+                  size="md"
+                  outline
+                >
+                  <q-tooltip>Centrar mapa en la ubicación de la unidad GPS</q-tooltip>
+                </q-btn>
+              </q-card-section>
+
               <q-separator v-if="unidadAsignadaData" />
+
               <q-card-section v-if="unidadAsignadaData">
                 <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
                 <div class="row q-gutter-md">
@@ -1759,6 +1776,179 @@ onUnmounted(() => {
   if (unsubscribeConductores) unsubscribeConductores()
   if (unsubscribeGrupos) unsubscribeGrupos()
 })
+
+function navegarAUnidad() {
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'No hay unidad asignada',
+      icon: 'warning',
+    })
+    return
+  }
+
+  console.log('🔍 === NAVEGACIÓN A UNIDAD ===')
+  console.log('Buscando:', unidadAsignadaData.value.Unidad)
+
+  // Acceder al mapa y sus marcadores
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error: Mapa no disponible',
+      icon: 'error',
+    })
+    return
+  }
+
+  // 🎯 NUEVA ESTRATEGIA: Obtener marcadores directamente del mapa
+  const mapaAPI = mapPage._mapaAPI
+
+  console.log('📍 Verificando marcadores en el mapa...')
+
+  // Los marcadores están en mapaAPI (revisa useMapboxGL.js)
+  // La función centrarEnUnidad ya existe y funciona
+
+  if (!mapaAPI.map) {
+    Notify.create({
+      type: 'negative',
+      message: 'Mapa no inicializado',
+      icon: 'error',
+    })
+    return
+  }
+
+  // Buscar en window._unidadesTrackeadas primero
+  let unidadesDisponibles = window._unidadesTrackeadas || []
+
+  console.log(`📊 Unidades en window: ${unidadesDisponibles.length}`)
+
+  // Si no hay en window, buscar directamente en los marcadores del mapa
+  if (unidadesDisponibles.length === 0) {
+    console.log('⚠️ No hay unidades en window, intentando obtener del tracking...')
+
+    // Verificar si el tracking está activo mirando Firebase
+    const unidadesRef = window.firebase_unidades_activas
+    if (unidadesRef) {
+      console.log('✅ Encontradas unidades en Firebase cache')
+      unidadesDisponibles = Object.values(unidadesRef)
+    }
+  }
+
+  console.log(`📋 Total unidades disponibles: ${unidadesDisponibles.length}`)
+
+  if (unidadesDisponibles.length === 0) {
+    console.error('❌ No hay unidades en el sistema')
+
+    Notify.create({
+      type: 'warning',
+      message: 'No hay unidades activas en el sistema GPS',
+      caption: 'Verifica que el simulador esté encendido o que haya vehículos con GPS activo',
+      icon: 'gps_off',
+      timeout: 4000,
+      actions: [
+        {
+          label: 'Recargar',
+          color: 'white',
+          handler: () => {
+            window.location.reload()
+          },
+        },
+      ],
+    })
+    return
+  }
+
+  // Buscar la unidad por nombre (case insensitive y flexible)
+  const nombreBuscado = unidadAsignadaData.value.Unidad?.toLowerCase().trim()
+
+  console.log(`🔍 Buscando unidad: "${nombreBuscado}"`)
+  console.log(
+    '📋 Unidades disponibles:',
+    unidadesDisponibles.map((u) => ({
+      nombre: u.unidadNombre,
+      id: u.id,
+    })),
+  )
+
+  const unidadActiva = unidadesDisponibles.find((u) => {
+    const nombreUnidad = u.unidadNombre?.toLowerCase().trim()
+
+    // Comparaciones flexibles
+    const matchExacto = nombreUnidad === nombreBuscado
+    const matchContiene = nombreUnidad?.includes(nombreBuscado)
+    const matchInverso = nombreBuscado?.includes(nombreUnidad)
+
+    const match = matchExacto || matchContiene || matchInverso
+
+    if (match) {
+      console.log(`✅ Match: "${u.unidadNombre}" ≈ "${unidadAsignadaData.value.Unidad}"`)
+    }
+
+    return match
+  })
+
+  if (!unidadActiva) {
+    console.error('❌ Unidad no encontrada')
+
+    Notify.create({
+      type: 'negative',
+      message: `No se encontró "${unidadAsignadaData.value.Unidad}"`,
+      caption: 'La unidad podría no tener GPS activo',
+      icon: 'search_off',
+      timeout: 3000,
+    })
+    return
+  }
+
+  console.log('✅ Unidad encontrada:', unidadActiva.unidadNombre)
+
+  // Verificar ubicación
+  if (!unidadActiva.ubicacion || !unidadActiva.ubicacion.lat || !unidadActiva.ubicacion.lng) {
+    Notify.create({
+      type: 'negative',
+      message: 'La unidad no tiene ubicación GPS',
+      icon: 'gps_not_fixed',
+      timeout: 3000,
+    })
+    return
+  }
+
+  const { lat, lng } = unidadActiva.ubicacion
+
+  console.log(`🎯 Navegando a: ${lat}, ${lng}`)
+
+  // Centrar mapa con animación suave
+  mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  // Abrir popup del marcador
+  setTimeout(() => {
+    if (mapaAPI.centrarEnUnidad) {
+      mapaAPI.centrarEnUnidad(unidadActiva.id)
+    }
+  }, 1600)
+
+  // Cerrar drawer
+  dialogDetallesConductor.value = false
+  emit('close')
+
+  // Notificación de éxito
+  Notify.create({
+    type: 'positive',
+    message: `📍 ${unidadAsignadaData.value.Unidad}`,
+    caption: `Conductor: ${conductorEditando.value.Nombre}`,
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
+
+  console.log('✅ Navegación completada')
+}
 </script>
 
 <style scoped>

@@ -11,7 +11,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
-  updateDoc
+  updateDoc,
 } from 'firebase/firestore'
 
 export function useEventoDiario() {
@@ -36,7 +36,7 @@ export function useEventoDiario() {
 
     try {
       const idEvento = generarIdEvento()
-      
+
       // Referencia al documento del evento dentro de RutaDiaria
       const eventoRef = doc(
         db,
@@ -45,7 +45,7 @@ export function useEventoDiario() {
         'RutaDiaria',
         idRutaDiaria,
         'EventoDiario',
-        idEvento
+        idEvento,
       )
 
       // Determinar el nombre según el tipo de ubicación
@@ -66,22 +66,21 @@ export function useEventoDiario() {
         Timestamp: serverTimestamp(),
         Coordenadas: {
           lat: eventoData.lat || 0,
-          lng: eventoData.lng || 0
+          lng: eventoData.lng || 0,
         },
         Direccion: eventoData.Direccion || `${eventoData.lat}, ${eventoData.lng}`,
         // Agregar el campo condicional
-        ...(eventoData.tipoUbicacion === 'POI' 
+        ...(eventoData.tipoUbicacion === 'POI'
           ? { PoiNombre: nombreUbicacion }
-          : { GeozonaNombre: nombreUbicacion }
-        ),
+          : { GeozonaNombre: nombreUbicacion }),
         DuracionDentro: null, // Se actualiza cuando sale
         FinEvento: null, // Se actualiza cuando sale
         tipoUbicacion: eventoData.tipoUbicacion || 'POI',
-        ubicacionId: eventoData.ubicacionId || ''
+        ubicacionId: eventoData.ubicacionId || '',
       }
 
       await setDoc(eventoRef, nuevoEvento)
-      
+
       console.log(`✅ Evento diario registrado: ${idEvento} - ${nuevoEvento.NombreEvento}`)
       return { id: idEvento, ...nuevoEvento }
     } catch (err) {
@@ -108,17 +107,17 @@ export function useEventoDiario() {
         'RutaDiaria',
         idRutaDiaria,
         'EventoDiario',
-        idEvento
+        idEvento,
       )
 
       const ahora = Timestamp.now()
-      
+
       await updateDoc(eventoRef, {
         FinEvento: ahora,
         CoordenadasSalida: {
           lat: coordenadasSalida.lat || 0,
-          lng: coordenadasSalida.lng || 0
-        }
+          lng: coordenadasSalida.lng || 0,
+        },
       })
 
       console.log(`✅ Evento finalizado: ${idEvento}`)
@@ -139,6 +138,13 @@ export function useEventoDiario() {
     error.value = null
 
     try {
+      console.log('🔍 actualizarDuracionEvento llamado con:', {
+        unidadId,
+        idRutaDiaria,
+        idEvento,
+        duracionMinutos,
+        tipo: typeof duracionMinutos,
+      })
       const eventoRef = doc(
         db,
         'Unidades',
@@ -146,17 +152,23 @@ export function useEventoDiario() {
         'RutaDiaria',
         idRutaDiaria,
         'EventoDiario',
-        idEvento
+        idEvento,
       )
+      console.log('🔍 Path del documento:', eventoRef.path)
 
       await updateDoc(eventoRef, {
-        DuracionDentro: duracionMinutos
+        DuracionDentro: duracionMinutos,
       })
 
       console.log(`✅ Duración actualizada para evento: ${idEvento} - ${duracionMinutos} min`)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al actualizar duración:', err)
+      console.error('❌ Detalles del error:', {
+        code: err.code,
+        message: err.message,
+        stack: err.stack,
+      })
       throw err
     } finally {
       loading.value = false
@@ -177,15 +189,15 @@ export function useEventoDiario() {
         unidadId,
         'RutaDiaria',
         idRutaDiaria,
-        'EventoDiario'
+        'EventoDiario',
       )
-      
+
       const q = query(eventosRef, orderBy('Timestamp', 'desc'))
       const snapshot = await getDocs(q)
 
-      const eventos = snapshot.docs.map(doc => ({
+      const eventos = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
 
       console.log(`✅ Eventos diarios cargados: ${eventos.length}`)
@@ -213,20 +225,20 @@ export function useEventoDiario() {
         unidadId,
         'RutaDiaria',
         idRutaDiaria,
-        'EventoDiario'
+        'EventoDiario',
       )
-      
+
       const q = query(
         eventosRef,
         where('TipoEvento', '==', tipoEvento),
-        orderBy('Timestamp', 'desc')
+        orderBy('Timestamp', 'desc'),
       )
-      
+
       const snapshot = await getDocs(q)
 
-      const eventos = snapshot.docs.map(doc => ({
+      const eventos = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
 
       console.log(`✅ Eventos de tipo "${tipoEvento}" cargados: ${eventos.length}`)
@@ -248,6 +260,6 @@ export function useEventoDiario() {
     actualizarDuracionEvento,
     obtenerEventosDiarios,
     obtenerEventosPorTipo,
-    generarIdEvento
+    generarIdEvento,
   }
 }

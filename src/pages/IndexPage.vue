@@ -119,20 +119,31 @@ let mapaAPI = null
 let intervaloEvaluacionEventos = null
 let popupGlobalActivo = null
 
+let ultimoHashUnidades = ''
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
-    if (!mapaAPI || !mapaListo.value) {
+    if (!mapaAPI || !mapaListo.value) return
+
+    if (!nuevasUnidades || nuevasUnidades.length === 0) {
+      limpiarMarcadoresUnidades()
       return
     }
 
-    if (nuevasUnidades && nuevasUnidades.length > 0) {
+    // ⚡ Crear hash solo con datos relevantes (id + lat + lng + estado)
+    const nuevoHash = nuevasUnidades
+      .map((u) => `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}`)
+      .join('|')
+
+    // ⚡ Solo actualizar si realmente cambió algo importante
+    if (nuevoHash !== ultimoHashUnidades) {
+      console.log('📍 Posiciones actualizadas, redibujando mapa')
       actualizarMarcadoresUnidades(nuevasUnidades)
-    } else {
-      limpiarMarcadoresUnidades()
+      ultimoHashUnidades = nuevoHash
     }
   },
-  { deep: true, immediate: false },
+  { deep: false, immediate: false }, // ⚡ Cambiar a false
 )
 
 function iniciarEvaluacionContinuaEventos() {
@@ -150,7 +161,7 @@ function iniciarEvaluacionContinuaEventos() {
     }
   }, 10000)
 
-  console.log('✅ Evaluación continua de eventos iniciada cada 10 segundos')
+  console.log('🔄 Evaluando eventos...', new Date().toLocaleTimeString())
 }
 
 function detenerEvaluacionEventos() {
@@ -197,7 +208,7 @@ const iniciarSimuladorAutomatico = async () => {
       type: 'positive',
       message: `🎯 Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
       position: 'top',
-      timeout: 3000,
+      timeout: 500,
       icon: 'explore',
     })
 
@@ -1149,7 +1160,7 @@ onMounted(async () => {
 
   // Event listener para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    console.log('🔄 Redibujando mapa...')
+    //console.log('🔄 Redibujando mapa...')
     limpiarCapasDelMapa()
     await dibujarTodosEnMapa()
     resetear()
@@ -1163,7 +1174,7 @@ onMounted(async () => {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
 
-    console.log('✅ Mapa redibujado completamente')
+    //console.log('✅ Mapa redibujado completamente')
   })
 
   console.log('🚀 Iniciando tracking GPS...')
