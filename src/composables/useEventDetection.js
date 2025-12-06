@@ -139,11 +139,27 @@ export function useEventDetection() {
     if (geozona.puntos && Array.isArray(geozona.puntos) && geozona.puntos.length > 0) {
       const dentro = puntoEnPoligono({ lat, lng }, geozona.puntos)
 
+      // 🔥 SI YA ESTÁ DENTRO, retornar true inmediatamente
       if (dentro) {
         console.log(`🔷 Unidad dentro de Geozona poligonal "${geozona.nombre}"`)
+        return true
       }
 
-      return dentro
+      // 🔥 SI NO ESTÁ DENTRO, verificar si está CERCA del borde (margen de tolerancia)
+      const MARGEN_METROS = 15 // 15 metros de tolerancia
+      const estaCercaDelBorde = geozona.puntos.some((punto) => {
+        const distancia = calcularDistancia(lat, lng, punto.lat, punto.lng)
+        return distancia <= MARGEN_METROS
+      })
+
+      if (estaCercaDelBorde) {
+        console.log(
+          `🔶 Unidad CERCA del borde de Geozona "${geozona.nombre}" (margen: ${MARGEN_METROS}m)`,
+        )
+        return true
+      }
+
+      return false
     }
 
     console.warn(`⚠️ Geozona sin puntos válidos: ${geozona.nombre}`, geozona)
@@ -326,6 +342,13 @@ export function useEventDetection() {
         const eventoRegistrado = await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
 
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
+
+        console.log('🔍 ===== GUARDANDO ENTRADA =====')
+        console.log('   unidadId:', unidad.id)
+        console.log('   ubicacionId:', condicion.ubicacionId)
+        console.log('   claveEntrada:', claveEntrada)
+        console.log('   eventoId:', eventoRegistrado.id)
+
         eventosEnCurso.value.set(claveEntrada, {
           idEvento: eventoRegistrado.id,
           idRutaDiaria: idRutaDiaria,
@@ -333,14 +356,62 @@ export function useEventDetection() {
           ubicacionNombre: ubicacionNombre,
           ubicacionId: condicion.ubicacionId,
         })
+        console.log('✅ ENTRADA GUARDADA EN eventosEnCurso')
+        console.log('   Total eventos en curso:', eventosEnCurso.value.size)
+        console.log('   Claves guardadas:', Array.from(eventosEnCurso.value.keys()))
+        console.log('🔍 =============================')
 
+        console.log(`📍 Evento de ENTRADA registrado: ${eventoRegistrado.id}`)
         console.log(`📍 Evento de ENTRADA registrado: ${eventoRegistrado.id}`)
       } else if (condicion.activacion === 'Salida') {
         const claveEntrada = `${unidad.id}-${condicion.ubicacionId}`
         const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
 
+        console.log('🔍 DEBUG SALIDA:', {
+          claveEntrada,
+          tieneEntrada: !!eventoEntrada,
+          eventoEntrada: eventoEntrada,
+        })
+
         if (eventoEntrada) {
           const duracionMinutos = Math.floor((Date.now() - eventoEntrada.timestampEntrada) / 60000)
+
+          console.log('🔍 Calculando duración:', {
+            duracionMinutos,
+            timestampEntrada: new Date(eventoEntrada.timestampEntrada),
+            timestampSalida: new Date(),
+            diferenciaMilisegundos: Date.now() - eventoEntrada.timestampEntrada,
+            eventoId: eventoEntrada.idEvento,
+            rutaId: eventoEntrada.idRutaDiaria,
+            unidadId: unidad.id,
+          })
+
+          try {
+            console.log('⏳ Ejecutando finalizarEventoDiario...')
+            await finalizarEventoDiario(
+              unidad.id,
+              eventoEntrada.idRutaDiaria,
+              eventoEntrada.idEvento,
+              { lat: unidad.lat, lng: unidad.lng },
+            )
+            console.log('✅ finalizarEventoDiario completado')
+          } catch (errFinalizar) {
+            console.error('❌ Error en finalizarEventoDiario:', errFinalizar)
+          }
+
+          // 🔥 IMPORTANTE: Agregar try/catch individual
+          try {
+            console.log('⏳ Ejecutando actualizarDuracionEvento con duracion:', duracionMinutos)
+            await actualizarDuracionEvento(
+              unidad.id,
+              eventoEntrada.idRutaDiaria,
+              eventoEntrada.idEvento,
+              duracionMinutos,
+            )
+            console.log('✅ actualizarDuracionEvento completado')
+          } catch (errDuracion) {
+            console.error('❌ Error en actualizarDuracionEvento:', errDuracion)
+          }
 
           await finalizarEventoDiario(
             unidad.id,
