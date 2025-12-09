@@ -819,7 +819,7 @@ const { crearGeozona, obtenerGeozonas, actualizarGeozona, eliminarGeozona } = us
 )
 
 // 🆕 NUEVO: Cargar eventos para mostrar badges
-const { obtenerEventos } = useEventos(userId.value)
+const { obtenerEventos, eliminarEventosPorUbicacion } = useEventos(userId.value)
 const eventosActivos = ref([])
 
 // 🆕 NUEVO: Variable para controlar la selección desde el mapa
@@ -1525,24 +1525,42 @@ function editarItem() {
 const eliminarItem = async () => {
   if (!itemMenu.value) return
 
+  const ubicacionId = itemMenu.value.id
+  const ubicacionNombre = itemMenu.value.nombre
+  const tipo = itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona'
+
   try {
-    // ✅ USAR CONFIRM NATIVO - SIEMPRE FUNCIONA
-    const confirmacion = window.confirm(`¿Estás seguro de eliminar "${itemMenu.value.nombre}"?`)
+    // 🔍 PASO 1: Buscar eventos asociados
+    console.log('🔍 Buscando eventos asociados...')
+    const { cantidad: eventosEncontrados } = await eliminarEventosPorUbicacion(ubicacionId, tipo)
+
+    console.log(`📊 Eventos encontrados: ${eventosEncontrados}`)
+
+    // 💬 PASO 2: Crear mensaje para window.confirm
+    let mensaje = `¿Estás seguro de eliminar "${ubicacionNombre}"?`
+
+    if (eventosEncontrados > 0) {
+      mensaje = `⚠️ ATENCIÓN ⚠️
+
+Esta ubicación tiene ${eventosEncontrados} evento(s) asociado(s).
+
+Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
+
+¿Deseas continuar?`
+    }
+
+    // 💬 PASO 3: Mostrar confirmación nativa
+    const confirmacion = window.confirm(mensaje)
 
     if (!confirmacion) {
-      console.log('Eliminación cancelada por el usuario')
+      console.log('❌ Usuario canceló la eliminación')
       return
     }
 
-    console.log('✅ Confirmación recibida, eliminando elemento...')
+    console.log('✅ Usuario confirmó eliminación')
 
-    // Mostrar loading (si está disponible)
-    if ($q && $q.loading) {
-      $q.loading.show({ message: 'Eliminando elemento...' })
-    }
-
+    // 🗑️ PASO 4: Eliminar ubicación
     if (itemMenu.value.tipo === 'poi') {
-      // Eliminar POI de Firebase
       await eliminarPOI(itemMenu.value.id)
       console.log('✅ POI eliminado de Firebase')
 
@@ -1554,7 +1572,6 @@ const eliminarItem = async () => {
             itemMenu.value.coordenadas.lat,
             itemMenu.value.coordenadas.lng,
           )
-          console.log('✅ Marcador eliminado del mapa')
         }
       }
     } else if (itemMenu.value.tipo === 'geozona') {
@@ -1563,57 +1580,35 @@ const eliminarItem = async () => {
 
       const mapPage = document.querySelector('#map-page')
       if (mapPage && mapPage._mapaAPI) {
-        // ✅ CAMBIAR: usar tipoGeozona
         if (itemMenu.value.tipoGeozona === 'circular') {
           mapPage._mapaAPI.eliminarCirculo(itemMenu.value.id)
         } else if (itemMenu.value.tipoGeozona === 'poligono') {
           mapPage._mapaAPI.eliminarPoligono(itemMenu.value.id)
         }
-        console.log('✅ Geozona eliminada del mapa')
       }
     }
+
     // Eliminar del array local
     const index = items.value.findIndex((i) => i.id === itemMenu.value.id)
     if (index > -1) {
       items.value.splice(index, 1)
-      console.log('✅ Elemento eliminado del array local')
     }
 
-    // Mostrar notificación de éxito
-    if ($q && $q.notify) {
-      $q.notify({
-        type: 'positive',
-        message: 'Elemento eliminado correctamente',
-        icon: 'delete',
-        timeout: 2000,
-      })
-    } else {
-      console.log('✅ Elemento eliminado correctamente')
-    }
+    // 📢 PASO 5: Alerta de éxito
+    const mensajeExito =
+      eventosEncontrados > 0
+        ? `✅ ${tipo} y ${eventosEncontrados} evento(s) eliminados correctamente`
+        : `✅ ${tipo} eliminado correctamente`
+
+    window.alert(mensajeExito)
 
     redibujarMapa()
-    // Cerrar menú contextual
     menuContextualVisible.value = false
-  } catch (err) {
-    console.error('❌ Error al eliminar elemento:', err)
 
-    // Mostrar notificación de error
-    if ($q && $q.notify) {
-      $q.notify({
-        type: 'negative',
-        message: 'Error al eliminar el elemento',
-        caption: err.message,
-        icon: 'error',
-        timeout: 3000,
-      })
-    } else {
-      alert(`Error al eliminar: ${err.message}`)
-    }
-  } finally {
-    // Ocultar loading si existe
-    if ($q && $q.loading) {
-      $q.loading.hide()
-    }
+    console.log('✅ Eliminación completada')
+  } catch (err) {
+    console.error('❌ Error al eliminar:', err)
+    window.alert(`❌ Error al eliminar: ${err.message}`)
   }
 }
 

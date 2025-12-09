@@ -926,20 +926,40 @@ const limpiarCapasDelMapa = () => {
 
   const layers = mapaAPI.map.getStyle().layers
 
+  // 🔥 PASO 1: Primero eliminar TODOS los layers
   layers.forEach((layer) => {
     if (
       layer.id.startsWith('poi-circle-') ||
       layer.id.startsWith('geozona-circle-') ||
       layer.id.startsWith('geozona-polygon-')
     ) {
-      mapaAPI.map.removeLayer(layer.id)
-      if (mapaAPI.map.getSource(layer.source)) {
-        mapaAPI.map.removeSource(layer.source)
+      try {
+        mapaAPI.map.removeLayer(layer.id)
+      } catch (e) {
+        console.warn(`⚠️ Error al eliminar layer ${layer.id}:`, e.message)
       }
     }
   })
 
-  console.log('🧹 Capas del mapa limpiadas')
+  // 🔥 PASO 2: Después eliminar los sources
+  const sources = Object.keys(mapaAPI.map.getStyle().sources)
+  sources.forEach((sourceId) => {
+    if (
+      sourceId.startsWith('poi-circle-') ||
+      sourceId.startsWith('geozona-circle-') ||
+      sourceId.startsWith('geozona-polygon-')
+    ) {
+      try {
+        if (mapaAPI.map.getSource(sourceId)) {
+          mapaAPI.map.removeSource(sourceId)
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error al eliminar source ${sourceId}:`, e.message)
+      }
+    }
+  })
+
+  console.log('✅ Capas del mapa limpiadas correctamente')
 }
 
 onMounted(async () => {

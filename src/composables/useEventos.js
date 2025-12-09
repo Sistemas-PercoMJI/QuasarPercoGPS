@@ -21,34 +21,34 @@ export function useEventos(userId) {
   // Referencia a la subcolección Eventos
   const eventosRef = collection(db, 'Usuarios', userId, 'Eventos')
 
-// Crear nuevo evento
-const crearEvento = async (eventoData) => {
-  loading.value = true
-  error.value = null
+  // Crear nuevo evento
+  const crearEvento = async (eventoData) => {
+    loading.value = true
+    error.value = null
 
-  try {
-    // Primero creamos el documento sin el ID
-    const docRef = await addDoc(eventosRef, {
-      ...eventoData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
+    try {
+      // Primero creamos el documento sin el ID
+      const docRef = await addDoc(eventosRef, {
+        ...eventoData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
 
-    // 🆕 NUEVO: Actualizamos el documento para agregar el ID como campo
-    await updateDoc(docRef, {
-      id: docRef.id
-    })
+      // 🆕 NUEVO: Actualizamos el documento para agregar el ID como campo
+      await updateDoc(docRef, {
+        id: docRef.id,
+      })
 
-    console.log('✅ Evento guardado con ID:', docRef.id)
-    return docRef.id
-  } catch (err) {
-    error.value = err.message
-    console.error('❌ Error al guardar evento:', err)
-    throw err
-  } finally {
-    loading.value = false
+      console.log('✅ Evento guardado con ID:', docRef.id)
+      return docRef.id
+    } catch (err) {
+      error.value = err.message
+      console.error('❌ Error al guardar evento:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
-}
 
   // Obtener todos los eventos
   const obtenerEventos = async () => {
@@ -141,39 +141,92 @@ const crearEvento = async (eventoData) => {
     }
   }
 
- // Duplicar evento
-const duplicarEvento = async (eventoData) => {
-  loading.value = true
-  error.value = null
+  // Duplicar evento
+  const duplicarEvento = async (eventoData) => {
+    loading.value = true
+    error.value = null
 
-  try {
-    // Crear una copia del evento sin el ID, createdAt y updatedAt
-    // eslint-disable-next-line no-unused-vars
-    const { id, createdAt, updatedAt, ...dataSinId } = eventoData
-    
-    // 🆕 Generar referencia con ID automático
-    const nuevoDocRef = doc(collection(db, 'Usuarios', userId, 'Eventos'))
-    
-    // Guardar con el ID incluido
-    await setDoc(nuevoDocRef, {
-      id: nuevoDocRef.id, // 🆕 El ID como campo
-      ...dataSinId,
-      nombre: `${dataSinId.nombre} (Copia)`,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
+    try {
+      // Crear una copia del evento sin el ID, createdAt y updatedAt
+      // eslint-disable-next-line no-unused-vars
+      const { id, createdAt, updatedAt, ...dataSinId } = eventoData
 
-    console.log('✅ Evento duplicado con ID:', nuevoDocRef.id)
-    return nuevoDocRef.id
-  } catch (err) {
-    error.value = err.message
-    console.error('❌ Error al duplicar evento:', err)
-    throw err
-  } finally {
-    loading.value = false
+      // 🆕 Generar referencia con ID automático
+      const nuevoDocRef = doc(collection(db, 'Usuarios', userId, 'Eventos'))
+
+      // Guardar con el ID incluido
+      await setDoc(nuevoDocRef, {
+        id: nuevoDocRef.id, // 🆕 El ID como campo
+        ...dataSinId,
+        nombre: `${dataSinId.nombre} (Copia)`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+
+      console.log('✅ Evento duplicado con ID:', nuevoDocRef.id)
+      return nuevoDocRef.id
+    } catch (err) {
+      error.value = err.message
+      console.error('❌ Error al duplicar evento:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
   }
-}
 
+  const eliminarEventosPorUbicacion = async (ubicacionId, tipo) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      console.log(`🔍 Buscando eventos que usan ${tipo}: ${ubicacionId}`)
+
+      const eventosSnapshot = await getDocs(eventosRef)
+      const eventosAEliminar = []
+
+      eventosSnapshot.forEach((doc) => {
+        const evento = doc.data()
+
+        if (evento.condiciones && Array.isArray(evento.condiciones)) {
+          const tieneUbicacion = evento.condiciones.some(
+            (condicion) => condicion.ubicacionId === ubicacionId && condicion.tipo === tipo,
+          )
+
+          if (tieneUbicacion) {
+            eventosAEliminar.push({
+              id: doc.id,
+              nombre: evento.nombre,
+            })
+          }
+        }
+      })
+
+      console.log(`📋 Eventos encontrados: ${eventosAEliminar.length}`)
+
+      // Eliminar todos los eventos encontrados
+      const promesas = eventosAEliminar.map((evento) => {
+        const eventoDoc = doc(db, 'Usuarios', userId, 'Eventos', evento.id)
+        return deleteDoc(eventoDoc)
+      })
+
+      await Promise.all(promesas)
+
+      console.log(`✅ ${eventosAEliminar.length} eventos eliminados`)
+
+      return {
+        cantidad: eventosAEliminar.length,
+        nombres: eventosAEliminar.map((e) => e.nombre),
+      }
+    } catch (err) {
+      error.value = err.message
+      console.error('❌ Error al eliminar eventos:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 🔧 MODIFICAR el return para incluir la nueva función:
   return {
     loading,
     error,
@@ -183,5 +236,6 @@ const duplicarEvento = async (eventoData) => {
     eliminarEvento,
     toggleEvento,
     duplicarEvento,
+    eliminarEventosPorUbicacion, // 🆕 AGREGAR ESTA LÍNEA
   }
 }
