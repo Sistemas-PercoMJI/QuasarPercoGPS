@@ -64,38 +64,54 @@
               />
             </div>
 
-            <!-- Selector dinámico (SIEMPRE visible) -->
+            <!-- 🔥 MEJORADO: Selector dinámico con búsqueda -->
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
               <q-select
                 v-model="elementosSeleccionados"
-                :options="opcionesSelector"
+                :options="opcionesSelectorFiltradas"
                 outlined
                 dense
                 use-input
                 use-chips
                 multiple
-                input-debounce="0"
-                :placeholder="`Seleccionar ${reportarPor.toLowerCase()}...`"
+                input-debounce="300"
+                :placeholder="`Buscar ${reportarPor.toLowerCase()}...`"
                 :loading="loadingOpciones"
-              />
+                @filter="filtrarOpcionesSelector"
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey">
+                      No se encontraron resultados
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
 
-            <!-- 🔥 Eventos (solo para Informe de Eventos) -->
+            <!-- 🔥 MEJORADO: Eventos con búsqueda -->
             <div v-if="tieneOpcion('seleccionarEventos')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Eventos</div>
               <q-select
                 v-model="eventos"
-                :options="listaEventosDisponibles"
+                :options="eventosDisponiblesFiltrados"
                 outlined
                 dense
                 use-input
                 use-chips
                 multiple
-                input-debounce="0"
-                placeholder="Seleccionar eventos..."
+                input-debounce="300"
+                placeholder="Buscar eventos..."
                 :loading="loadingEventos"
-              />
+                @filter="filtrarEventos"
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey"> No se encontraron eventos </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
 
             <!-- 🔥 Método de agrupación (solo para Informe de Eventos) -->
@@ -279,7 +295,6 @@
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
 
               <!-- Buscador de columnas -->
-              <!-- Buscador de columnas -->
               <q-select
                 v-model="columnasSeleccionadas"
                 :options="columnasDisponiblesFiltradas"
@@ -443,7 +458,6 @@ const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
 const remarcarHorasExtra = ref(true)
-//const mostrarResumen = ref(false)
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -467,29 +481,14 @@ const instanciaColumnas = useColumnasReportes()
 setInstanciaColumnas(instanciaColumnas)
 const {
   columnasSeleccionadas,
-
-  mostrarResumen, // 🔥 AGREGAR
+  mostrarResumen,
   columnasDisponiblesFiltradas,
-  //agregarColumna: agregarColumnaOriginal,
   removerColumna,
   filtrarColumnas,
   obtenerConfiguracionColumnas,
-  procesarNotificacionesParaReporte, // 🔥 AGREGAR
-  generarResumen, // 🔥 AGREGAR
+  procesarNotificacionesParaReporte,
+  generarResumen,
 } = instanciaColumnas
-
-/*const agregarColumna = (columna) => {
-  // Llamar a la función original del composable
-  agregarColumnaOriginal(columna)
-
-  // Mantener el menú abierto con un pequeño delay
-  setTimeout(() => {
-    if (selectorColumnas.value) {
-      selectorColumnas.value.showPopup()
-      selectorColumnas.value.focus()
-    }
-  }, 50) // 50ms para evitar conflicto con el cierre automático
-}*/
 
 const { generarExcelEventos } = useReporteExcel()
 
@@ -520,6 +519,10 @@ const eventos = ref([])
 const opcionesReportar = ['Unidades', 'Conductores']
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
+
+// 🔥 NUEVOS REFS PARA OPCIONES FILTRADAS
+const opcionesSelectorFiltradas = ref([])
+const eventosDisponiblesFiltrados = ref([])
 
 // Fechas
 const rangoFecha = ref(null)
@@ -556,6 +559,33 @@ const etiquetaSelector = computed(() => {
   return labels[reportarPor.value] || 'Seleccionar'
 })
 
+// 🔥 NUEVAS FUNCIONES DE FILTRADO
+const filtrarOpcionesSelector = (val, update) => {
+  update(() => {
+    if (val === '') {
+      opcionesSelectorFiltradas.value = opcionesSelector.value
+    } else {
+      const needle = val.toLowerCase()
+      opcionesSelectorFiltradas.value = opcionesSelector.value.filter(
+        (v) => v.toLowerCase().indexOf(needle) > -1,
+      )
+    }
+  })
+}
+
+const filtrarEventos = (val, update) => {
+  update(() => {
+    if (val === '') {
+      eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
+    } else {
+      const needle = val.toLowerCase()
+      eventosDisponiblesFiltrados.value = listaEventosDisponibles.value.filter(
+        (v) => v.toLowerCase().indexOf(needle) > -1,
+      )
+    }
+  })
+}
+
 // Métodos
 const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
@@ -579,9 +609,9 @@ const cancelarReporte = () => {
   mostrarPlacaMapa.value = true
   mostrarMapaZona.value = false
   columnasSeleccionadas.value = []
-  //columnaAgregar.value = null
   mostrarResumen.value = false
   opcionesSelector.value = []
+  opcionesSelectorFiltradas.value = []
 
   $q.notify({
     message: 'Formulario reiniciado',
@@ -615,6 +645,7 @@ const cargarOpcionesSelector = async () => {
           window.unidadesMap[nombre] = u.id
         })
         opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
+        opcionesSelectorFiltradas.value = opcionesSelector.value
         console.log('📦 Mapeo de unidades:', window.unidadesMap)
         break
       }
@@ -634,23 +665,27 @@ const cargarOpcionesSelector = async () => {
         )
 
         opcionesSelector.value = conductoresDelUsuario.map((c) => c.Nombre || c.id)
+        opcionesSelectorFiltradas.value = opcionesSelector.value
         break
       }
 
       case 'Grupos': {
         const grupos = await obtenerGruposConductores(userId.value)
         opcionesSelector.value = grupos.map((g) => g.nombre || g.id)
+        opcionesSelectorFiltradas.value = opcionesSelector.value
         break
       }
 
       case 'Geozonas': {
         const geozonas = await obtenerGeozonas(userId.value)
         opcionesSelector.value = geozonas.map((g) => g.nombre || g.id)
+        opcionesSelectorFiltradas.value = opcionesSelector.value
         break
       }
 
       default:
         opcionesSelector.value = []
+        opcionesSelectorFiltradas.value = []
     }
   } catch (error) {
     console.error('Error al cargar opciones:', error)
@@ -685,14 +720,8 @@ const cargarEventosDisponibles = async () => {
     console.log('📋 Eventos:', eventosDelUsuario)
 
     // Extraer solo los nombres de los eventos para el selector
-    // Filtrar solo eventos activos (opcional)
-    listaEventosDisponibles.value = eventosDelUsuario
-      .filter((evento) => evento.activo) // 🔹 Opcional: solo eventos activos
-      .map((evento) => evento.nombre)
-      .filter(Boolean) // Eliminar nombres vacíos o undefined
-
-    // 🔹 Si quieres mostrar TODOS los eventos (activos e inactivos):
     listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
+    eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
 
     console.log('✅ Eventos disponibles para selector:', listaEventosDisponibles.value)
 
@@ -702,6 +731,7 @@ const cargarEventosDisponibles = async () => {
   } catch (error) {
     console.error('❌ Error al cargar eventos desde Firebase:', error)
     listaEventosDisponibles.value = []
+    eventosDisponiblesFiltrados.value = []
 
     $q.notify({
       type: 'negative',
@@ -858,7 +888,6 @@ const obtenerDatosReporte = async () => {
   let datosAgrupados = {}
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
-  // 🔥 OBTENER DATOS SEGÚN TIPO
   if (tipoInforme === 'eventos') {
     console.log('📊 Obteniendo eventos reales...')
     const { obtenerEventosReales } = useReportesEventos()
@@ -917,7 +946,7 @@ const obtenerDatosReporte = async () => {
 
     // 🔥 LLAMAR CON LOS IDs CORRECTOS
     datosInforme = await obtenerEventosReales(
-      idsParaBuscar, // 🔥 Pasar IDs de unidades, no nombres de conductores
+      idsParaBuscar,
       fechaInicio,
       fechaFin,
       eventos.value || [],
@@ -932,11 +961,9 @@ const obtenerDatosReporte = async () => {
     if (reportarPor.value === 'Conductores') {
       console.log('🚗 Reportar por conductores, obteniendo unidades asignadas...')
 
-      // Obtener todos los conductores de Firebase
       const todosConductores = await obtenerConductores()
       console.log('👥 Total conductores:', todosConductores.length)
 
-      // Para cada conductor seleccionado, obtener su UnidadAsignada
       for (const nombreConductor of unidadesIds) {
         console.log(`🔍 Buscando: "${nombreConductor}"`)
 
@@ -962,7 +989,6 @@ const obtenerDatosReporte = async () => {
 
       console.log('📍 Unidades finales a buscar:', unidadesParaBuscar)
     } else if (reportarPor.value === 'Unidades') {
-      // Si seleccionó unidades directamente, convertir nombres a IDs
       console.log('🚙 Reportar por unidades directamente')
       console.log('📝 Nombres seleccionados:', unidadesIds)
 
@@ -974,11 +1000,9 @@ const obtenerDatosReporte = async () => {
 
       console.log('📍 IDs de unidades:', unidadesParaBuscar)
     } else {
-      // Grupos o Geozonas (implementar si es necesario)
       unidadesParaBuscar = unidadesIds
     }
 
-    // Llamar a obtenerTrayectos con los IDs correctos
     datosInforme = await obtenerTrayectos(unidadesParaBuscar, fechaInicio, fechaFin)
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
 
@@ -1048,7 +1072,6 @@ const obtenerDatosReporte = async () => {
   }
 
   // Agrupar datos
-
   if (tipoInforme === 'eventos') {
     // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
     criterioPrincipal = ''
@@ -1062,7 +1085,7 @@ const obtenerDatosReporte = async () => {
     } else if (reportarPor.value === 'Geozonas') {
       criterioPrincipal = 'geozona'
     } else {
-      criterioPrincipal = 'unidad' // Fallback
+      criterioPrincipal = 'unidad'
     }
 
     console.log('📊 Agrupación PRINCIPAL por:', criterioPrincipal)
@@ -1097,14 +1120,14 @@ const obtenerDatosReporte = async () => {
 
   console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
   console.log('🔍 Claves de grupos:', Object.keys(datosAgrupados))
+
   // Elementos sin datos
   let elementosConDatos = []
 
-  // 🔍 DEBUG: Ver qué campos tienen los datos
   console.log('🔍 Primer dato de ejemplo:', datosFiltrados[0])
   console.log('🔍 Campos disponibles:', Object.keys(datosFiltrados[0] || {}))
+
   if (reportarPor.value === 'Conductores') {
-    // Para conductores, extraer los conductores que SÍ tienen datos
     elementosConDatos = [
       ...new Set(
         datosFiltrados
@@ -1114,20 +1137,14 @@ const obtenerDatosReporte = async () => {
     ]
     console.log('👥 Conductores con datos encontrados:', elementosConDatos)
   } else if (reportarPor.value === 'Unidades') {
-    // Para unidades, usar las claves de datosAgrupados
     elementosConDatos = Object.keys(datosAgrupados)
   } else {
-    // Otros casos
     elementosConDatos = Object.keys(datosAgrupados)
   }
 
   const elementosSinDatos = elementosSeleccionados.value.filter(
     (elem) => !elementosConDatos.includes(elem),
   )
-
-  if (elementosSinDatos.length > 0) {
-    console.log('⚠️ Elementos sin datos:', elementosSinDatos)
-  }
 
   if (elementosSinDatos.length > 0) {
     console.log('⚠️ Elementos sin datos:', elementosSinDatos)
@@ -1155,6 +1172,7 @@ const obtenerDatosReporte = async () => {
   Object.entries(datosAgrupados).forEach(([nombre, registros]) => {
     resumenPorGrupo[nombre] = registros.length
   })
+
   const configuracion = obtenerConfiguracionColumnas()
   console.log('🔍 Columnas seleccionadas:', columnasSeleccionadas.value)
   console.log('🔍 Configuración obtenida:', configuracion)
@@ -1162,15 +1180,16 @@ const obtenerDatosReporte = async () => {
     '🔍 Labels en configuración:',
     configuracion.map((c) => c.label),
   )
+
   if (tipoInforme === 'horas_trabajo') {
     return {
-      registros: datosFiltrados, // Array de registros por día
+      registros: datosFiltrados,
       totalRegistros: datosFiltrados.length,
       resumen: resumenMejorado,
       stats: stats,
       elementosSinDatos: elementosSinDatos,
       tipoInforme: 'horas_trabajo',
-    } // Array de registros por día
+    }
   }
 
   return {
@@ -1197,6 +1216,7 @@ const generarReporte = async () => {
     const segundos = Math.round(((totalHoras - horas) * 60 - minutos) * 60)
     return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
   }
+
   try {
     const datosReales = await obtenerDatosReporte()
 
@@ -1244,7 +1264,6 @@ const generarReporte = async () => {
     } else if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       console.log('⏰ Generando PDF de horas de trabajo...')
 
-      // 🔥 EXTRAER EL ARRAY DE DATOS:
       const horasArray = Array.isArray(datosReales)
         ? datosReales
         : datosReales.registros || datosReales.datosColumnas || []
@@ -1257,7 +1276,6 @@ const generarReporte = async () => {
       // Preparar resumen general
       const resumenGeneral = {}
       horasArray.forEach((registro) => {
-        // ← Cambiar de datosReales.registros a horasArray
         const nombre = registro.unidadNombre
         if (!resumenGeneral[nombre]) {
           resumenGeneral[nombre] = {
@@ -1288,19 +1306,19 @@ const generarReporte = async () => {
       // Formatear para tabla
       const resumenGeneralArray = Object.values(resumenGeneral).map((item) => ({
         nombre: item.nombre,
-        duracionFuera: formatearDuracionHoras(item.duracionFuera), // 🔥 CAMBIO
-        duracionTotal: formatearDuracionHoras(item.duracionTotal), // 🔥 CAMBIO
-        duracionDentro: formatearDuracionHoras(item.duracionDentro), // 🔥 CAMBIO
+        duracionFuera: formatearDuracionHoras(item.duracionFuera),
+        duracionTotal: formatearDuracionHoras(item.duracionTotal),
+        duracionDentro: formatearDuracionHoras(item.duracionDentro),
       }))
 
       const totalesFormateados = {
-        duracionFuera: formatearDuracionHoras(totales.duracionFuera), // 🔥 CAMBIO
-        duracionTotal: formatearDuracionHoras(totales.duracionTotal), // 🔥 CAMBIO
-        duracionDentro: formatearDuracionHoras(totales.duracionDentro), // 🔥 CAMBIO
+        duracionFuera: formatearDuracionHoras(totales.duracionFuera),
+        duracionTotal: formatearDuracionHoras(totales.duracionTotal),
+        duracionDentro: formatearDuracionHoras(totales.duracionDentro),
       }
 
       const datosParaPDF = {
-        registros: horasArray, // ← Cambiar aquí también
+        registros: horasArray,
         resumenGeneral: resumenGeneralArray,
         totales: totalesFormateados,
       }
@@ -1324,7 +1342,7 @@ const generarReporte = async () => {
       throw new Error('No se pudo generar el archivo PDF')
     }
 
-    // ✅ GUARDAR Y DESCARGAR (FUERA DE LOS IFs)
+    // ✅ GUARDAR Y DESCARGAR
     const metadata = {
       nombre: `Reporte ${reportarPor.value}`,
       tipo: 'pdf',
@@ -1404,7 +1422,6 @@ const generarExcel = async () => {
       columnasSeleccionadas: columnasSeleccionadas.value,
       mostrarResumen: mostrarResumen.value,
       nombreUsuario: auth.currentUser?.displayName || auth.currentUser?.email,
-      // 🔥 AGREGAR CAMPOS PARA HORAS DE TRABAJO
       tipoDetalle: tipoDetalle.value,
       tipoInformeComercial: tipoInformeComercial.value,
       horarioInicio: horarioInicio.value,
@@ -1421,6 +1438,7 @@ const generarExcel = async () => {
       console.log('🗺️ Primer trayecto en datosColumnas:', datosReales.datosColumnas[0])
       console.log('🗺️ Campos disponibles:', Object.keys(datosReales.datosColumnas[0] || {}))
     }
+
     // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       console.log('📊 Generando Excel de Horas de Trabajo...')
