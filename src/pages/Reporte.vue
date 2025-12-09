@@ -68,6 +68,7 @@
             <div class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
               <q-select
+                ref="selectorElementos"
                 v-model="elementosSeleccionados"
                 :options="opcionesSelectorFiltradas"
                 outlined
@@ -94,6 +95,7 @@
             <div v-if="tieneOpcion('seleccionarEventos')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Eventos</div>
               <q-select
+                ref="selectorEventos"
                 v-model="eventos"
                 :options="eventosDisponiblesFiltrados"
                 outlined
@@ -524,6 +526,9 @@ const listaEventosDisponibles = ref([])
 const opcionesSelectorFiltradas = ref([])
 const eventosDisponiblesFiltrados = ref([])
 
+const selectorElementos = ref(null)
+const selectorEventos = ref(null)
+
 // Fechas
 const rangoFecha = ref(null)
 const rangoFechaTemporal = ref(null)
@@ -585,7 +590,6 @@ const filtrarEventos = (val, update) => {
     }
   })
 }
-
 // Métodos
 const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
@@ -1565,6 +1569,19 @@ onMounted(() => {
 watch(reportarPor, (nuevoValor, valorAnterior) => {
   if (nuevoValor !== valorAnterior) {
     elementosSeleccionados.value = []
+  }
+})
+
+watch(elementosSeleccionados, () => {
+  if (selectorElementos.value) {
+    selectorElementos.value.updateInputValue('')
+  }
+})
+
+// 🔥 NUEVO: Limpiar input de eventos cuando se selecciona algo
+watch(eventos, () => {
+  if (selectorEventos.value) {
+    selectorEventos.value.updateInputValue('')
   }
 })
 </script>
