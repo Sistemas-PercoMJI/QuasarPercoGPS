@@ -17,6 +17,7 @@ const ubicacionesTrackeadas = ref(new Map())
 
 // Mapa para rastrear eventos de ENTRADA activos (para calcular duración)
 const eventosEnCurso = ref(new Map())
+const salidasEnCurso = ref(new Map())
 
 // Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
@@ -80,6 +81,7 @@ export function useEventDetection() {
     eventosDisparados.value.clear()
     estadoUbicaciones.value.clear()
     eventosEnCurso.value.clear()
+    salidasEnCurso.value.clear()
 
     console.log('✅ Sistema de detección inicializado')
     console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
@@ -192,23 +194,21 @@ export function useEventDetection() {
     if (estaDentro && estadoAnterior !== 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
 
-      console.log(
-        `✅ ENTRADA: ${unidad.conductorNombre || unidad.nombre} → ${tipo} ${ubicacion.nombre}`,
-      )
+      const nombreConductor = (() => {
+        let nombre = unidad.conductorNombre || unidad.nombre || 'Sin nombre'
+        nombre = nombre.replace(/\s*undefined\s*/gi, '').trim()
+        nombre = nombre.replace(/\s+/g, ' ').trim()
+        return nombre || 'Sin nombre'
+      })()
 
-      // 🔥 REGISTRAR EN FIREBASE (tracking automático)
+      console.log(`✅ ENTRADA: ${nombreConductor} → ${tipo} ${ubicacion.nombre}`)
+
       try {
         const idRutaDiaria = obtenerIdRutaDiaria()
 
-        // Actualizar ruta diaria
         await iniciarOActualizarRutaDiaria(unidad.id, {
           conductor_id: unidad.conductorId || '',
-          conductor_nombre: (() => {
-            let nombre = unidad.conductorNombre || unidad.nombre || 'Sin nombre'
-            nombre = nombre.replace(/\s*undefined\s*/gi, '').trim()
-            nombre = nombre.replace(/\s+/g, ' ').trim()
-            return nombre || 'Sin nombre'
-          })(),
+          conductor_nombre: nombreConductor,
           velocidad_actual: String(unidad.velocidad || 0),
           nuevaCoordenada: {
             lat: unidad.lat,
@@ -217,16 +217,65 @@ export function useEventDetection() {
           },
         })
 
-        // Preparar datos del evento
+        // 🔥 PASO 1: Verificar si hay una SALIDA previa de esta ubicación
+        const claveSalida = `${unidad.id}-${ubicacion.id}`
+        const salidaPrevia = salidasEnCurso.value.get(claveSalida)
+
+        if (salidaPrevia) {
+          // Calcular duración FUERA
+          const duracionFueraMilisegundos = Date.now() - salidaPrevia.timestampSalida
+          const duracionFueraSegundos = Math.floor(duracionFueraMilisegundos / 1000)
+          const duracionFueraFinal = Math.max(0, duracionFueraSegundos)
+
+          const formatearDuracion = (segundos) => {
+            const horas = Math.floor(segundos / 3600)
+            const minutos = Math.floor((segundos % 3600) / 60)
+            const segs = segundos % 60
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
+          }
+
+          console.log(`🕐 Calculando duración FUERA: ${formatearDuracion(duracionFueraFinal)}`)
+
+          try {
+            // Actualizar el evento de SALIDA con duración fuera
+            await actualizarDuracionEvento(
+              unidad.id,
+              salidaPrevia.idRutaDiaria,
+              salidaPrevia.idEvento,
+              duracionFueraSegundos,
+            )
+
+            console.log(`✅ Duración FUERA actualizada: ${formatearDuracion(duracionFueraFinal)}`)
+          } catch (err) {
+            console.error('❌ Error actualizando duración fuera:', err)
+          }
+
+          // Limpiar salida de memoria
+          salidasEnCurso.value.delete(claveSalida)
+        }
+
+        // 🔥 PASO 2: Registrar nueva ENTRADA
+        const primerEventoId = tracking.eventos[0] || ''
+        const eventosIdsString = tracking.eventos.join(',') || ''
+
+        let nombreEvento = `Entrada a ${ubicacion.nombre}`
+        if (primerEventoId) {
+          const eventoConfig = eventosActivos.value.find((e) => e.id === primerEventoId)
+          if (eventoConfig) {
+            nombreEvento = eventoConfig.nombre
+          }
+        }
+
         const eventoData = {
-          IdEvento: '', // No necesariamente tiene evento configurado
-          NombreEvento: `Entrada a ${ubicacion.nombre}`,
+          IdEvento: primerEventoId,
+          NombreEvento: nombreEvento,
           TipoEvento: 'Entrada',
           lat: unidad.lat,
           lng: unidad.lng,
           Direccion: `${unidad.lat}, ${unidad.lng}`,
           tipoUbicacion: tipo,
           ubicacionId: ubicacion.id,
+          eventosRelacionados: eventosIdsString,
         }
 
         if (tipo === 'POI') {
@@ -235,10 +284,9 @@ export function useEventDetection() {
           eventoData.GeozonaNombre = ubicacion.nombre
         }
 
-        // Registrar evento de entrada
         const eventoRegistrado = await registrarEventoDiario(unidad.id, idRutaDiaria, eventoData)
 
-        // Guardar en memoria para calcular duración después
+        // Guardar en memoria para calcular duración DENTRO después
         const claveEntrada = `${unidad.id}-${ubicacion.id}`
         eventosEnCurso.value.set(claveEntrada, {
           idEvento: eventoRegistrado.id,
@@ -248,12 +296,11 @@ export function useEventDetection() {
           ubicacionId: ubicacion.id,
         })
 
-        console.log(`💾 Entrada registrada automáticamente: ${eventoRegistrado.id}`)
+        console.log(`💾 ENTRADA registrada: ${eventoRegistrado.id}`)
       } catch (err) {
         console.error('❌ Error en tracking de entrada:', err)
       }
 
-      // 🔔 Revisar si hay eventos configurados para notificar
       if (tracking.tieneEventoEntrada) {
         notificarEventos(unidad, ubicacion, tipo, 'Entrada', tracking.eventos)
       }
@@ -265,50 +312,122 @@ export function useEventDetection() {
     else if (!estaDentro && estadoAnterior === 'dentro') {
       estadoUbicaciones.value.set(claveUbicacion, 'fuera')
 
-      console.log(
-        `🚪 SALIDA: ${unidad.conductorNombre || unidad.nombre} ← ${tipo} ${ubicacion.nombre}`,
-      )
+      const nombreConductor = (() => {
+        let nombre = unidad.conductorNombre || unidad.nombre || 'Sin nombre'
+        nombre = nombre.replace(/\s*undefined\s*/gi, '').trim()
+        nombre = nombre.replace(/\s+/g, ' ').trim()
+        return nombre || 'Sin nombre'
+      })()
 
-      // 🔥 CALCULAR Y ACTUALIZAR DURACIÓN
+      console.log(`🚪 SALIDA: ${nombreConductor} ← ${tipo} ${ubicacion.nombre}`)
+
       const claveEntrada = `${unidad.id}-${ubicacion.id}`
       const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
 
       if (eventoEntrada) {
-        const duracionMinutos = Math.floor((Date.now() - eventoEntrada.timestampEntrada) / 60000)
+        // 🔥 PASO 1: Calcular duración DENTRO
+        const duracionDentroMilisegundos = Date.now() - eventoEntrada.timestampEntrada
+        const duracionDentroSegundos = Math.floor(duracionDentroMilisegundos / 1000)
+        const duracionDentroFinal = Math.max(0, duracionDentroSegundos)
 
-        console.log(`🕐 Calculando duración: ${duracionMinutos} min`)
+        const formatearDuracion = (segundos) => {
+          const horas = Math.floor(segundos / 3600)
+          const minutos = Math.floor((segundos % 3600) / 60)
+          const segs = segundos % 60
+          return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
+        }
+
+        console.log(`🕐 Calculando duración DENTRO: ${formatearDuracion(duracionDentroFinal)}`)
 
         try {
-          // Finalizar evento (agregar timestamp de salida)
-          await finalizarEventoDiario(
-            unidad.id,
-            eventoEntrada.idRutaDiaria,
-            eventoEntrada.idEvento,
-            { lat: unidad.lat, lng: unidad.lng },
-          )
+          const idRutaDiaria = eventoEntrada.idRutaDiaria
 
-          // Actualizar duración
+          // Actualizar evento de ENTRADA con duración dentro
+          await finalizarEventoDiario(unidad.id, idRutaDiaria, eventoEntrada.idEvento, {
+            lat: unidad.lat,
+            lng: unidad.lng,
+          })
+
           await actualizarDuracionEvento(
             unidad.id,
-            eventoEntrada.idRutaDiaria,
+            idRutaDiaria,
             eventoEntrada.idEvento,
-            duracionMinutos,
+            duracionDentroFinal,
           )
 
-          // Limpiar de memoria
+          console.log(`✅ Duración DENTRO actualizada: ${formatearDuracion(duracionDentroFinal)}`)
+
+          // 🔥 PASO 2: Registrar evento de SALIDA
+          await iniciarOActualizarRutaDiaria(unidad.id, {
+            conductor_id: unidad.conductorId || '',
+            conductor_nombre: nombreConductor,
+            velocidad_actual: String(unidad.velocidad || 0),
+            nuevaCoordenada: {
+              lat: unidad.lat,
+              lng: unidad.lng,
+              timestamp: new Date().toISOString(),
+            },
+          })
+
+          const primerEventoId = tracking.eventos[0] || ''
+          const eventosIdsString = tracking.eventos.join(',') || ''
+
+          let nombreEvento = `Salida de ${ubicacion.nombre}`
+          if (primerEventoId) {
+            const eventoConfig = eventosActivos.value.find((e) => e.id === primerEventoId)
+            if (eventoConfig) {
+              nombreEvento = eventoConfig.nombre
+            }
+          }
+
+          const eventoSalidaData = {
+            IdEvento: primerEventoId,
+            NombreEvento: nombreEvento,
+            TipoEvento: 'Salida',
+            lat: unidad.lat,
+            lng: unidad.lng,
+            Direccion: `${unidad.lat}, ${unidad.lng}`,
+            tipoUbicacion: tipo,
+            ubicacionId: ubicacion.id,
+            eventosRelacionados: eventosIdsString,
+            EventoEntradaId: eventoEntrada.idEvento,
+          }
+
+          if (tipo === 'POI') {
+            eventoSalidaData.PoiNombre = ubicacion.nombre
+          } else if (tipo === 'Geozona') {
+            eventoSalidaData.GeozonaNombre = ubicacion.nombre
+          }
+
+          const eventoSalidaRegistrado = await registrarEventoDiario(
+            unidad.id,
+            idRutaDiaria,
+            eventoSalidaData,
+          )
+
+          // 🔥 PASO 3: Guardar SALIDA en memoria para calcular duración FUERA
+          const claveSalida = `${unidad.id}-${ubicacion.id}`
+          salidasEnCurso.value.set(claveSalida, {
+            idEvento: eventoSalidaRegistrado.id,
+            idRutaDiaria: idRutaDiaria,
+            timestampSalida: Date.now(),
+            ubicacionNombre: ubicacion.nombre,
+            ubicacionId: ubicacion.id,
+          })
+
+          // Limpiar entrada de memoria
           eventosEnCurso.value.delete(claveEntrada)
 
           console.log(
-            `💾 Duración actualizada: ${duracionMinutos} min en ${eventoEntrada.ubicacionNombre}`,
+            `💾 SALIDA registrada: ${eventoSalidaRegistrado.id} (duración fuera pendiente)`,
           )
         } catch (err) {
-          console.error('❌ Error actualizando duración:', err)
+          console.error('❌ Error en tracking de salida:', err)
         }
       } else {
         console.warn(`⚠️ Salida sin entrada previa: ${ubicacion.nombre}`)
       }
 
-      // 🔔 Revisar si hay eventos configurados para notificar
       if (tracking.tieneEventoSalida) {
         notificarEventos(unidad, ubicacion, tipo, 'Salida', tracking.eventos)
       }

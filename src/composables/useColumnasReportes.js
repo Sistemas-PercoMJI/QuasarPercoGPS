@@ -147,42 +147,21 @@ const COLUMNAS_EVENTOS = {
     key: 'duracion',
     label: 'Duración',
     obtenerValor: (notificacion) => {
-      // 🔥 OPCIÓN 1: Si ya viene formateada como "HH:MM:SS" desde useReportesEventos
-      if (notificacion.duracion && typeof notificacion.duracion === 'string') {
-        return notificacion.duracion
-      }
+      // 🔥 Buscar duración en segundos
+      const segundos = notificacion.duracionSegundos ?? notificacion.DuracionDentro ?? null
 
-      // 🔥 OPCIÓN 2: Si viene en minutos como número
-      if (notificacion.duracionMinutos !== null && notificacion.duracionMinutos !== undefined) {
-        const minutos = notificacion.duracionMinutos
-        const horas = Math.floor(minutos / 60)
-        const mins = Math.floor(minutos % 60)
-        const segs = Math.floor((minutos % 1) * 60)
-        return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
-      }
+      if (segundos !== null && segundos !== undefined && segundos > 0) {
+        const horas = Math.floor(segundos / 3600)
+        const minutos = Math.floor((segundos % 3600) / 60)
+        const segs = segundos % 60
 
-      // 🔥 OPCIÓN 3: DuracionDentro directamente de Firebase
-      if (notificacion.DuracionDentro !== null && notificacion.DuracionDentro !== undefined) {
-        const minutos = notificacion.DuracionDentro
-        const horas = Math.floor(minutos / 60)
-        const mins = Math.floor(minutos % 60)
-        const segs = Math.floor((minutos % 1) * 60)
-        return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
-      }
-
-      // 🔥 OPCIÓN 4: Si tiene timestamps de inicio y fin
-      if (notificacion.timestampInicio && notificacion.timestampFin) {
-        const duracionMs = notificacion.timestampFin - notificacion.timestampInicio
-        const horas = Math.floor(duracionMs / 3600000)
-        const minutos = Math.floor((duracionMs % 3600000) / 60000)
-        const segundos = Math.floor((duracionMs % 60000) / 1000)
-        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
+        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
       }
 
       return 'N/A'
     },
-    ancho: 120,
-    formato: 'texto',
+    align: 'center',
+    sortable: true,
   },
 
   'Condición de evento': {
