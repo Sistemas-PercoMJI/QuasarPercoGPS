@@ -151,17 +151,11 @@
 
         <q-space />
 
-        <!-- BOTÓN DE INFORMACIÓN CON CLASE ESPECÍFICA -->
+        <!-- BOTÓN DE INFORMACIÓN - CORREGIDO -->
         <q-btn flat dense round icon="info" class="info-btn q-mr-sm" size="md">
           <q-tooltip>Información</q-tooltip>
 
-          <q-menu
-            anchor="bottom right"
-            self="top left"
-            :offset="[-16, 8]"
-            transition-show="jump-down"
-            transition-hide="jump-up"
-          >
+          <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
             <q-card style="width: 300px">
               <q-card-section
                 style="background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%)"
@@ -199,22 +193,14 @@
           </q-menu>
         </q-btn>
 
-        <!-- BOTÓN DE NOTIFICACIONES CON CLASE ESPECÍFICA -->
-        <q-btn
-          flat
-          dense
-          round
-          icon="notifications"
-          class="notif-btn q-mr-sm"
-          ref="notifBtn"
-          size="md"
-        >
+        <!-- BOTÓN DE NOTIFICACIONES - CORREGIDO -->
+        <q-btn flat dense round icon="notifications" class="notif-btn q-mr-sm" size="md">
           <q-badge color="red" floating v-if="notificacionesCount > 0">
             {{ notificacionesCount }}
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
 
-          <q-menu anchor="bottom right" self="top right" :offset="[-16, 8]">
+          <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
             <NotificacionesPanel />
           </q-menu>
         </q-btn>
@@ -1186,7 +1172,8 @@ const eventosDrawerOpen = ref(false)
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
-    console.log('🎯 MainLayout: Watch activado')
+    console.log('👀 Conductores.vue: Watch activado')
+    console.log('📦 newValue completo:', newValue)
 
     if (newValue && newValue.conductor) {
       console.log('📦 Datos recibidos en MainLayout:', newValue.conductor)
@@ -1272,17 +1259,10 @@ function handleLinkClick(link) {
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
 
-    // SOLUCIÓN: Solo navegar si NO estamos en la ruta principal
-    const rutaActual = router.currentRoute.value.path
-    if (rutaActual !== '/' && rutaActual !== '/dashboard') {
-      router.push('/').then(() => {
-        nextTick(() => {
-          conductoresDrawerOpen.value = true
-        })
-      })
-    } else {
+    // 🔥 SOLUCIÓN: Usar nextTick en lugar de setTimeout
+    nextTick(() => {
       conductoresDrawerOpen.value = true
-    }
+    })
   } else if (link.action === 'open-geozonas') {
     cerrarTodosLosDialogs()
     geozonaDrawerOpen.value = true

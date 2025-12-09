@@ -730,13 +730,7 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu
-      v-model="menuGrupoVisible"
-      :target="menuGrupoTarget"
-      anchor="bottom right"
-      self="top right"
-      :offset="[0, 5]"
-    >
+    <q-menu v-model="menuGrupoVisible" v-if="menuGrupoTarget" touch-position context-menu>
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="editarGrupo">
           <q-item-section avatar>
@@ -754,13 +748,7 @@
     </q-menu>
 
     <!-- Menú contextual para conductores -->
-    <q-menu
-      v-model="menuConductorVisible"
-      :target="menuConductorTarget"
-      anchor="bottom right"
-      self="top right"
-      :offset="[0, 5]"
-    >
+    <q-menu v-model="menuConductorVisible" v-if="menuConductorTarget" touch-position context-menu>
       <q-list dense style="min-width: 150px">
         <q-item clickable v-close-popup @click="verDetalles">
           <q-item-section avatar>
@@ -1552,16 +1540,18 @@ async function guardarGrupo() {
 }
 
 function mostrarMenuGrupo(event, grupo) {
+  event.preventDefault()
   event.stopPropagation()
-  menuGrupoTarget.value = event.currentTarget
   grupoMenu.value = grupo
+  menuGrupoTarget.value = true // ✅ Solo un flag booleano
   menuGrupoVisible.value = true
 }
 
 function mostrarMenuConductor(event, conductor) {
+  event.preventDefault()
   event.stopPropagation()
-  menuConductorTarget.value = event.currentTarget
   conductorMenu.value = conductor
+  menuConductorTarget.value = true // ✅ Solo un flag booleano
   menuConductorVisible.value = true
 }
 
