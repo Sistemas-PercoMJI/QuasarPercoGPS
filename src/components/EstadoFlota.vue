@@ -434,7 +434,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 
 // Composable de tracking
@@ -442,7 +442,6 @@ const {
   unidadesActivas,
   //loading,
   iniciarTracking,
-  detenerTracking,
   contarPorEstado,
 } = useTrackingUnidades()
 
@@ -672,11 +671,6 @@ function getEstadoTexto(estado) {
 onMounted(() => {
   iniciarTracking()
   console.log('✅ Tracking iniciado en EstadoFlota')
-})
-
-onBeforeUnmount(() => {
-  detenerTracking()
-  console.log('🛑 Tracking detenido en EstadoFlota')
 })
 </script>
 
