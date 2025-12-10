@@ -1,6 +1,6 @@
 <template>
   <q-card
-    style="width: 380px; height: 500px; max-height: 90vh"
+    style="width: 340px; height: 400px; max-height: 80vh"
     class="column no-wrap notification-panel"
   >
     <!-- Header con gradiente -->
