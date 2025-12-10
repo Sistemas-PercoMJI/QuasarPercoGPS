@@ -195,8 +195,8 @@
 
         <!-- BOTÓN DE NOTIFICACIONES - CORREGIDO -->
         <q-btn flat dense round icon="notifications" class="notif-btn q-mr-sm" size="md">
-          <q-badge color="red" floating v-if="notificacionesCount > 0">
-            {{ notificacionesCount }}
+          <q-badge color="red" floating v-if="totalNoLeidas > 0">
+            {{ totalNoLeidas }}
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
 
@@ -476,8 +476,8 @@ if (!estadoCompartido.value) {
 }
 
 // NOTIFICACIONES
-const { notifications } = useNotifications()
-const notificacionesCount = computed(() => notifications.value.length)
+const { totalNoLeidas } = useNotifications()
+//const notificacionesCount = computed(() => notifications.value.length)
 
 // Control de dialogs abiertos
 const dialogAbierto = ref(false)
