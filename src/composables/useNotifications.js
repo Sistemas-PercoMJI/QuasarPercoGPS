@@ -86,11 +86,20 @@ export function useNotifications() {
    * Elimina notificaciones leídas antiguas (más de 1 hora)
    */
   function limpiarHistorial() {
-    const hace1Hora = Date.now() - 60 * 60 * 1000
-    const antiguas = notifications.value.filter((n) => n.leida && n.timestamp < hace1Hora)
+    const antes = notifications.value.length
+    const notificacionesLeidas = notifications.value.filter((n) => n.leida).length
 
-    antiguas.forEach((notif) => removeNotification(notif.id))
-    console.log(`✅ ${antiguas.length} notificaciones antiguas eliminadas`)
+    console.log('🧹 Limpiando historial...')
+    console.log('📊 Notificaciones leídas a eliminar:', notificacionesLeidas)
+
+    // 🔥 Filtrar y mantener solo las NO leídas
+    notifications.value = notifications.value.filter((n) => !n.leida)
+
+    const eliminadas = antes - notifications.value.length
+
+    console.log(`✅ ${eliminadas} notificaciones leídas eliminadas`)
+    console.log('📊 Total después de limpiar:', notifications.value.length)
+    console.log('📊 Notificaciones restantes:', notifications.value.length)
   }
 
   // Computed properties para filtrar notificaciones
