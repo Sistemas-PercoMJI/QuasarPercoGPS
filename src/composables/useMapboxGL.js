@@ -947,15 +947,19 @@ export function useMapboxGL() {
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 50,
+        maxTileCacheSize: 100, // ✅ Aumentado de 50 a 100
         minZoom: 5,
         maxZoom: 18,
         // ⚡ OPTIMIZACIONES ADICIONALES v2
-        fadeDuration: 0, // ✅ Sin animación de fade en tiles
-        crossSourceCollisions: false, // ✅ Mejor rendimiento en colisiones
-        trackResize: false, // ✅ No escuchar resize automático
-        pitchWithRotate: false, // ✅ Deshabilitar pitch
-        touchPitch: false, // ✅ Deshabilitar touch pitch
+        fadeDuration: 0, // Ya lo tienes ✅
+        crossSourceCollisions: false,
+        trackResize: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        // 🆕 NUEVAS OPTIMIZACIONES CRÍTICAS
+        renderWorldCopies: false, // ✅ Evita copias del mundo
+        antialias: false, // ✅ Desactiva antialiasing para mejor performance
+        optimizeForTerrain: false, // ✅ Sin optimización 3D innecesaria
       })
 
       // Agregar controles de navegación en bottom-right
@@ -1032,6 +1036,27 @@ export function useMapboxGL() {
         )
 
         console.log('🚦 Capa de tráfico agregada (desactivada por defecto)')
+      })
+
+      map.value.on('movestart', () => {
+        // Pausar actualizaciones de marcadores durante movimiento
+        pendingUpdate = false
+      })
+
+      map.value.on('moveend', () => {
+        // Forzar repaint después del movimiento
+        if (map.value) {
+          map.value.triggerRepaint()
+        }
+      })
+      let zoomTimeout
+      map.value.on('zoom', () => {
+        clearTimeout(zoomTimeout)
+        zoomTimeout = setTimeout(() => {
+          if (map.value) {
+            map.value.triggerRepaint()
+          }
+        }, 100)
       })
 
       // Manejo de errores

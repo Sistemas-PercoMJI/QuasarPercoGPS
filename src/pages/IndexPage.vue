@@ -1763,7 +1763,23 @@ const manejarToggleTrafico = () => {
   width: 100%;
   height: 100%;
 }
+/* ⚡ HARDWARE ACCELERATION PARA MAPBOX - AGREGAR AQUÍ */
+:deep(.mapboxgl-map) {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
 
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+:deep(.custom-marker-unidad) {
+  will-change: transform;
+  transform: translateZ(0);
+}
 .floating-confirm-btn {
   position: fixed !important;
   bottom: 100px;
