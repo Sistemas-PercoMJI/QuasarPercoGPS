@@ -295,8 +295,8 @@ function iniciarSeguimientoGPS() {
 
   const opciones = {
     enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 0,
+    timeout: 15000, // ✅ Aumentado a 30 segundos
+    maximumAge: 5000, // ✅ Acepta posiciones de hasta 5 segundos de antigüedad
   }
 
   watchId = navigator.geolocation.watchPosition(
@@ -304,10 +304,25 @@ function iniciarSeguimientoGPS() {
       const { latitude, longitude } = position.coords
       ubicacionActiva.value = true
       actualizarMarcadorUsuario(latitude, longitude)
+      console.log('✅ GPS actualizado:', latitude, longitude)
     },
     (error) => {
-      console.error('❌ Error de geolocalización:', error.message)
-      ubicacionActiva.value = false
+      // ✅ Manejo mejorado de errores
+      switch (error.code) {
+        case error.TIMEOUT:
+          console.warn('⏱️ GPS timeout - reintentando...')
+          // No marcar como inactivo, solo avisar
+          break
+        case error.PERMISSION_DENIED:
+          console.error('❌ Permiso de GPS denegado')
+          ubicacionActiva.value = false
+          break
+        case error.POSITION_UNAVAILABLE:
+          console.warn('⚠️ Posición GPS no disponible')
+          break
+        default:
+          console.error('❌ Error de geolocalización:', error.message)
+      }
     },
     opciones,
   )
@@ -926,20 +941,40 @@ const limpiarCapasDelMapa = () => {
 
   const layers = mapaAPI.map.getStyle().layers
 
+  // 🔥 PASO 1: Primero eliminar TODOS los layers
   layers.forEach((layer) => {
     if (
       layer.id.startsWith('poi-circle-') ||
       layer.id.startsWith('geozona-circle-') ||
       layer.id.startsWith('geozona-polygon-')
     ) {
-      mapaAPI.map.removeLayer(layer.id)
-      if (mapaAPI.map.getSource(layer.source)) {
-        mapaAPI.map.removeSource(layer.source)
+      try {
+        mapaAPI.map.removeLayer(layer.id)
+      } catch (e) {
+        console.warn(`⚠️ Error al eliminar layer ${layer.id}:`, e.message)
       }
     }
   })
 
-  console.log('🧹 Capas del mapa limpiadas')
+  // 🔥 PASO 2: Después eliminar los sources
+  const sources = Object.keys(mapaAPI.map.getStyle().sources)
+  sources.forEach((sourceId) => {
+    if (
+      sourceId.startsWith('poi-circle-') ||
+      sourceId.startsWith('geozona-circle-') ||
+      sourceId.startsWith('geozona-polygon-')
+    ) {
+      try {
+        if (mapaAPI.map.getSource(sourceId)) {
+          mapaAPI.map.removeSource(sourceId)
+        }
+      } catch (e) {
+        console.warn(`⚠️ Error al eliminar source ${sourceId}:`, e.message)
+      }
+    }
+  })
+
+  console.log('✅ Capas del mapa limpiadas correctamente')
 }
 
 onMounted(async () => {

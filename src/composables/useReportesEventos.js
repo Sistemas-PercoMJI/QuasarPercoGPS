@@ -226,14 +226,18 @@ export function useReportesEventos() {
                 const data = doc.data()
 
                 // 🔥 CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
-                const duracionMinutos = data.DuracionDentro || null
+                const duracionSegundos = data.DuracionDentro || null
 
                 // Formatear duración como HH:MM:SS si existe
                 let duracionFormateada = null
-                if (duracionMinutos !== null && duracionMinutos !== undefined) {
-                  const horas = Math.floor(duracionMinutos / 60)
-                  const minutos = Math.floor(duracionMinutos % 60)
-                  const segundos = Math.floor((duracionMinutos % 1) * 60)
+                if (
+                  duracionSegundos !== null &&
+                  duracionSegundos !== undefined &&
+                  duracionSegundos > 0
+                ) {
+                  const horas = Math.floor(duracionSegundos / 3600)
+                  const minutos = Math.floor((duracionSegundos % 3600) / 60)
+                  const segundos = duracionSegundos % 60
                   duracionFormateada = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`
                 }
 
@@ -262,7 +266,7 @@ export function useReportesEventos() {
                   velocidad: data.Velocidad || data.velocidad || 0,
                   // 🔥 CORRECCIÓN 1: Usar el campo correcto y formateado
                   duracion: duracionFormateada,
-                  duracionMinutos: duracionMinutos, // Mantener el valor numérico también
+                  duracionSegundos: duracionSegundos, // Mantener el valor numérico también
                   mensaje: data.Mensaje || data.mensaje || data.NombreEvento || 'Sin mensaje',
                   detalles: data.Detalles || data.detalles || '',
                   // 🆕 Campos adicionales útiles
