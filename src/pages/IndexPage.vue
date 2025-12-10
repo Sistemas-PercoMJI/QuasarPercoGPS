@@ -339,7 +339,7 @@ function detenerSeguimientoGPS() {
   }
 }
 
-async function obtenerDireccionPunto(lat, lng) {
+/*async function obtenerDireccionPunto(lat, lng) {
   try {
     const MAPBOX_TOKEN =
       'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
@@ -360,17 +360,17 @@ async function obtenerDireccionPunto(lat, lng) {
       if (parts.length > 0) {
         const streetPart = parts[0].trim()
         // Remover número si existe (patrón común en direcciones)
-        const streetOnly = streetPart.replace(/^\d+\s*/, '').replace(/\s*\d+$/, '')
-        return streetOnly || 'Calle desconocida'
-      }
-    }
+        //const streetOnly = streetPart.replace(/^\d+\s*/ //, '').replace(/\s*\d+$/, '')
+// return streetOnly || 'Calle desconocida'
+//}
+//}
 
-    return 'Dirección no disponible'
+/*  return 'Dirección no disponible'
   } catch (error) {
     console.error('❌ Error obteniendo dirección del punto:', error)
     return 'Error al obtener dirección'
   }
-}
+}*/
 
 async function inicializarSistemaDeteccion() {
   try {
@@ -661,31 +661,22 @@ const dibujarTodosEnMapa = async () => {
       const tieneEventos = cantidadEventos > 0
 
       // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
+      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
       let direccionesPuntos = []
 
       if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
-        // Obtener direcciones para todos los puntos del polígono
-        const promesasDirecciones = geozona.puntos.map(async (punto, index) => {
-          try {
-            const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
-            return {
-              index: index,
-              direccion: direccion,
-              lat: punto.lat,
-              lng: punto.lng,
-            }
-          } catch (error) {
-            console.warn(`⚠️ Error obteniendo dirección para punto ${index + 1}:`, error)
-            return {
-              index: index,
-              direccion: 'Dirección no disponible',
-              lat: punto.lat,
-              lng: punto.lng,
-            }
-          }
-        })
+        // ✅ USAR DIRECCIONES DE FIREBASE (ya están guardadas)
+        direccionesPuntos = geozona.puntos.map((punto, index) => ({
+          index: index,
+          direccion: punto.direccion || 'Dirección no disponible',
+          lat: punto.lat,
+          lng: punto.lng,
+        }))
 
-        direccionesPuntos = await Promise.all(promesasDirecciones)
+        console.log(
+          `✅ Direcciones cargadas de Firebase para ${geozona.nombre}:`,
+          direccionesPuntos.length,
+        )
       }
 
       const popupContent = `
