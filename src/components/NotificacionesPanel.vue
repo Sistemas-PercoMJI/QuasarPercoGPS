@@ -192,8 +192,8 @@ const notificacionesFiltradas = computed(() => {
 .modern-tabs {
   display: flex;
   background: #f5f5f5;
-  padding: 4px;
-  gap: 4px;
+  padding: 8px 12px;
+  gap: 8px;
 }
 
 .tab-item {
