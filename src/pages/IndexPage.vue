@@ -131,21 +131,25 @@ watch(
       return
     }
 
-    // ⚡ Crear hash solo con datos relevantes (id + lat + lng + estado)
+    // ⚡ NO actualizar si está haciendo zoom
+    const mapElement = document.querySelector('.mapboxgl-map')
+    if (mapElement && mapElement.classList.contains('mapboxgl-touch-zoom-rotate')) {
+      console.log('⏸️ Zoom en progreso, pausando actualización de marcadores')
+      return
+    }
+
     const nuevoHash = nuevasUnidades
       .map((u) => `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}`)
       .join('|')
 
-    // ⚡ Solo actualizar si realmente cambió algo importante
     if (nuevoHash !== ultimoHashUnidades) {
       console.log('📍 Posiciones actualizadas, redibujando mapa')
       actualizarMarcadoresUnidades(nuevasUnidades)
       ultimoHashUnidades = nuevoHash
     }
   },
-  { deep: false, immediate: false }, // ⚡ Cambiar a false
+  { deep: false, immediate: false },
 )
-
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -2008,5 +2012,17 @@ const manejarToggleTrafico = () => {
 :deep(.icono-poi-hover:hover > div > div:last-child),
 :deep(.icono-geozona-hover:hover > div > div:last-child) {
   transform: scale(0.91) !important;
+}
+
+:deep(.mapboxgl-canvas-container) {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 </style>

@@ -17,6 +17,8 @@ const poligonoTemporal = ref(null)
 const circuloTemporalPOI = ref(null)
 let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
+let isZooming = false
+let lastZoomLevel = 0
 
 // 🆕 SISTEMA DE POPUP GLOBAL UNIFICADO
 let popupGlobalActivo = null
@@ -26,7 +28,7 @@ const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 // ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
-const THROTTLE_MS = 250 // ✅ 250ms = 4 actualizaciones/segundo (antes era 1000ms)
+const THROTTLE_MS = 300 // ✅ 250ms = 4 actualizaciones/segundo (antes era 1000ms)
 
 // 🔄 Sistema de batch updates con requestAnimationFrame
 let pendingUpdate = false
@@ -312,11 +314,15 @@ export function useMapboxGL() {
       return
     }
 
+    // ⚡ Si el mapa se está moviendo o haciendo zoom, postponer actualización
+    if ((map.value.isMoving && map.value.isMoving()) || isZooming) {
+      pendingUnidades = unidades
+      return
+    }
+
     const ahora = Date.now()
 
-    // ✅ Throttle más agresivo
     if (ahora - ultimaActualizacion < THROTTLE_MS) {
-      // Guardar para próxima actualización
       pendingUnidades = unidades
       return
     }
@@ -324,7 +330,6 @@ export function useMapboxGL() {
     ultimaActualizacion = ahora
     pendingUnidades = unidades
 
-    // ✅ Usar requestAnimationFrame para sincronizar con el browser
     if (!pendingUpdate) {
       pendingUpdate = true
       requestAnimationFrame(() => {
@@ -333,7 +338,6 @@ export function useMapboxGL() {
       })
     }
   }
-
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
 
@@ -960,6 +964,19 @@ export function useMapboxGL() {
         renderWorldCopies: false, // ✅ Evita copias del mundo
         antialias: false, // ✅ Desactiva antialiasing para mejor performance
         optimizeForTerrain: false, // ✅ Sin optimización 3D innecesaria
+        easing: (t) => {
+          // Curva de easing personalizada (ease-out-cubic)
+          return 1 - Math.pow(1 - t, 3)
+        },
+        transformRequest: (url, resourceType) => {
+          // Cachear tiles agresivamente
+          if (resourceType === 'Tile') {
+            return {
+              url: url,
+              headers: { 'Cache-Control': 'max-age=3600' },
+            }
+          }
+        },
       })
 
       // Agregar controles de navegación en bottom-right
@@ -968,6 +985,8 @@ export function useMapboxGL() {
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {
         console.log('✅ Mapa Mapbox GL cargado correctamente')
+        map.value.scrollZoom.setWheelZoomRate(1 / 150) // Más lento = más suave (default es 1/450)
+        map.value.scrollZoom.setZoomRate(1 / 100) // Para touch/trackpad
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
           const canvas = document.createElement('canvas')
@@ -1039,7 +1058,6 @@ export function useMapboxGL() {
       })
 
       map.value.on('movestart', () => {
-        // Pausar actualizaciones de marcadores durante movimiento
         pendingUpdate = false
       })
 
@@ -1049,14 +1067,39 @@ export function useMapboxGL() {
           map.value.triggerRepaint()
         }
       })
+
       let zoomTimeout
+
+      map.value.on('zoomstart', () => {
+        isZooming = true
+        pendingUpdate = false // Pausar actualizaciones de marcadores
+      })
+
       map.value.on('zoom', () => {
+        clearTimeout(zoomTimeout)
+        const currentZoom = map.value.getZoom()
+        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
+
+        if (zoomDiff > 0.5) {
+          // Actualizar cada medio nivel de zoom
+          lastZoomLevel = currentZoom
+          if (map.value) {
+            map.value.triggerRepaint()
+          }
+        }
+      })
+      map.value.on('zoomend', () => {
+        isZooming = false
         clearTimeout(zoomTimeout)
         zoomTimeout = setTimeout(() => {
           if (map.value) {
             map.value.triggerRepaint()
+            // Forzar actualización de marcadores después del zoom
+            if (pendingUnidades) {
+              procesarActualizacionMarcadores(pendingUnidades)
+            }
           }
-        }, 100)
+        }, 150)
       })
 
       // Manejo de errores
