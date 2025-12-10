@@ -1,6 +1,6 @@
 <template>
   <q-card
-    :class="['notification-card', `bg-${type}`, { 'leida': leida }]"
+    :class="['notification-card', `bg-${type}`, { leida: leida }]"
     class="q-mb-sm q-pa-md shadow-2 rounded-borders"
   >
     <div class="row items-start">
@@ -13,15 +13,7 @@
           {{ tiempoTranscurrido }}
         </div>
       </div>
-      <q-btn
-        flat
-        round
-        dense
-        icon="close"
-        size="sm"
-        @click.stop="handleClose"
-        class="close-btn"
-      />
+      <q-btn flat round dense icon="close" size="sm" @click.stop="handleClose" class="close-btn" />
     </div>
   </q-card>
 </template>
@@ -34,7 +26,7 @@ const props = defineProps({
   title: { type: String, default: '' },
   message: { type: String, default: '' },
   timestamp: { type: Number, default: Date.now },
-  leida: { type: Boolean, default: false }
+  leida: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close'])
@@ -43,7 +35,7 @@ const iconMap = {
   info: 'info',
   positive: 'check_circle',
   negative: 'error',
-  warning: 'warning'
+  warning: 'warning',
 }
 
 const icon = computed(() => iconMap[props.type] || 'info')
@@ -56,7 +48,7 @@ function actualizarTiempo() {
   const ahora = Date.now()
   const diferencia = ahora - props.timestamp
   const minutos = Math.floor(diferencia / 60000)
-  
+
   if (minutos < 1) {
     tiempoTranscurrido.value = 'Justo ahora'
   } else if (minutos === 1) {
@@ -93,11 +85,66 @@ function handleClose() {
   opacity: 1;
 }
 
-.notification-card.leida {
-  opacity: 0.6;
-  background: #f5f5f5 !important;
+/* 🎨 COLORES PERSONALIZADOS SUTILES - CON !important */
+.notification-card.bg-positive {
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%) !important;
+  border-left-color: #66bb6a !important;
+  color: #2e7d32 !important;
 }
 
+.notification-card.bg-positive .notification-icon {
+  color: #4caf50 !important;
+}
+
+.notification-card.bg-warning {
+  background: linear-gradient(135deg, #fff3e0 0%, #fef8f1 100%) !important;
+  border-left-color: #ffa726 !important;
+  color: #e65100 !important;
+}
+
+.notification-card.bg-warning .notification-icon {
+  color: #ff9800 !important;
+}
+
+.notification-card.bg-negative {
+  background: linear-gradient(135deg, #ffebee 0%, #fef5f5 100%) !important;
+  border-left-color: #ef5350 !important;
+  color: #c62828 !important;
+}
+
+.notification-card.bg-negative .notification-icon {
+  color: #f44336 !important;
+}
+
+.notification-card.bg-info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f1f7fc 100%) !important;
+  border-left-color: #42a5f5 !important;
+  color: #1565c0 !important;
+}
+
+.notification-card.bg-info .notification-icon {
+  color: #2196f3 !important;
+}
+
+/* Notificación leída - más tenue */
+.notification-card.leida {
+  opacity: 0.5;
+  background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%) !important;
+  border-left-color: #bdbdbd !important;
+}
+
+.notification-card.leida .notification-icon {
+  color: #9e9e9e !important;
+}
+
+/* Asegurar que el texto sea visible */
+.notification-card :deep(.text-subtitle2),
+.notification-card :deep(.text-body2),
+.notification-card :deep(.text-caption) {
+  color: inherit !important;
+}
+
+/* Hover effect */
 .notification-card:hover {
   transform: translateX(4px) scale(1.02);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
@@ -114,7 +161,7 @@ function handleClose() {
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.7;
   }
 }
 
