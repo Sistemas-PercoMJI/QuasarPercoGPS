@@ -85,7 +85,7 @@ const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
 const marcadorUsuario = ref(null)
-const { unidadesActivas, iniciarTracking, detenerTracking } = useTrackingUnidades()
+const { unidadesActivas, iniciarTracking } = useTrackingUnidades()
 const userId = ref(auth.currentUser?.uid || '')
 
 const { obtenerPOIs } = usePOIs(userId.value)
@@ -1268,8 +1268,6 @@ onUnmounted(() => {
   detenerSeguimientoGPS()
 
   detenerEvaluacionEventos()
-
-  detenerTracking()
   limpiarMarcadoresUnidades()
   resetear()
 
