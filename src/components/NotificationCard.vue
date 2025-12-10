@@ -1,7 +1,7 @@
 <template>
   <q-card
     :class="['notification-card', `bg-${type}`, { leida: leida }]"
-    class="q-mb-sm q-pa-md shadow-2 rounded-borders"
+    class="q-mb-sm q-pa-sm shadow-2 rounded-borders"
   >
     <div class="row items-start">
       <q-icon :name="icon" size="md" class="q-mr-sm notification-icon" />
@@ -78,13 +78,6 @@ function handleClose() {
 </script>
 
 <style scoped>
-.notification-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  border-left: 4px solid rgba(0, 0, 0, 0.2);
-  opacity: 1;
-}
-
 /* 🎨 COLORES PERSONALIZADOS SUTILES - CON !important */
 .notification-card.bg-positive {
   background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%) !important;
@@ -179,5 +172,29 @@ function handleClose() {
   opacity: 1;
   transform: rotate(90deg) scale(1.1);
   background: rgba(0, 0, 0, 0.1);
+}
+
+.notification-card {
+  padding: 8px 10px !important;
+}
+
+.notification-card :deep(.text-subtitle2) {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.notification-card :deep(.text-body2) {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+}
+
+.notification-card :deep(.text-caption) {
+  font-size: 10px !important;
+}
+
+.notification-icon {
+  font-size: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
 }
 </style>

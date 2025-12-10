@@ -938,7 +938,7 @@ export function useMapboxGL() {
       })
 
       // Agregar controles de navegación
-      map.value.addControl(new mapboxgl.NavigationControl(), 'top-right')
+      map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {

@@ -1,38 +1,45 @@
-// src/composables/useTrackingUnidades.js - CON EVALUACIÓN DE EVENTOS
-import { ref, onUnmounted, watch } from 'vue'
+// src/composables/useTrackingUnidades.js - SIN DETENCIÓN AUTOMÁTICA
+import { ref, watch } from 'vue'
 import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 
-export function useTrackingUnidades() {
-  const unidadesActivas = ref([])
-  const loading = ref(false)
-  const error = ref(null)
-  let unsubscribe = null
+// 🆕 Variables globales para mantener el tracking siempre activo
+let unsubscribeGlobal = null
+const unidadesActivasGlobal = ref([])
+const loadingGlobal = ref(false)
+const errorGlobal = ref(null)
+let trackingIniciado = false
 
+export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
 
   /**
    * Inicia el tracking en tiempo real de todas las unidades activas
    */
   const iniciarTracking = () => {
-    loading.value = true
-    error.value = null
+    // Si ya está iniciado, no hacer nada
+    if (trackingIniciado) {
+      console.log('✅ Tracking ya está activo')
+      return
+    }
+
+    loadingGlobal.value = true
+    errorGlobal.value = null
 
     try {
       const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
 
       // Escuchar cambios en tiempo real
-      unsubscribe = onValue(
+      unsubscribeGlobal = onValue(
         unidadesRef,
         (snapshot) => {
           const data = snapshot.val()
 
           if (data) {
-            // 🔧 FIX: Filtrar solo unidades válidas con ubicación completa
+            // Filtrar solo unidades válidas con ubicación completa
             const unidadesValidas = Object.entries(data)
               .filter(([, value]) => {
-                // Validar que tenga estructura completa
                 const esValida =
                   value &&
                   value.ubicacion &&
@@ -46,83 +53,80 @@ export function useTrackingUnidades() {
                 return esValida
               })
               .map(([key, value]) => ({
-                // 🔧 FIX: Usar el ID correcto del objeto
                 id: value.unidadId || value.id || key,
                 ...value,
-                // 🆕 Normalizar estructura para evaluación de eventos
                 lat: value.ubicacion.lat,
                 lng: value.ubicacion.lng,
                 nombre: value.conductorNombre,
               }))
 
-            unidadesActivas.value = unidadesValidas
-
-            // 🔧 NUEVO: Guardar globalmente para evaluación de eventos
+            unidadesActivasGlobal.value = unidadesValidas
             window._unidadesTrackeadas = unidadesValidas
           } else {
-            unidadesActivas.value = []
+            unidadesActivasGlobal.value = []
             console.log('📡 No hay unidades activas')
           }
 
-          loading.value = false
+          loadingGlobal.value = false
         },
         (err) => {
           console.error('❌ Error en tracking:', err)
-          error.value = err.message
-          loading.value = false
+          errorGlobal.value = err.message
+          loadingGlobal.value = false
         },
       )
 
-      console.log('✅ Tracking GPS iniciado con evaluación de eventos')
+      trackingIniciado = true
+      console.log('✅ Tracking GPS iniciado (permanente)')
     } catch (err) {
       console.error('❌ Error al iniciar tracking:', err)
-      error.value = err.message
-      loading.value = false
+      errorGlobal.value = err.message
+      loadingGlobal.value = false
     }
   }
 
   /**
-   * 🆕 Evaluar eventos para todas las unidades trackeadas
-   * (Alternativa al método en el simulador, para tracking real)
+   * 🔧 Método para detener manualmente (solo en casos excepcionales)
+   * NO se llama automáticamente
+   */
+  const detenerTrackingManual = () => {
+    if (unsubscribeGlobal) {
+      const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
+      off(unidadesRef)
+      unsubscribeGlobal = null
+      trackingIniciado = false
+      console.log('🛑 Tracking detenido manualmente')
+    }
+  }
+
+  /**
+   * Evaluar eventos para todas las unidades trackeadas
    */
   const evaluarEventosParaTodasLasUnidades = async () => {
-    if (unidadesActivas.value.length > 0) {
+    if (unidadesActivasGlobal.value.length > 0) {
       try {
-        await evaluarEventosParaUnidadesSimulacion(unidadesActivas.value)
+        await evaluarEventosParaUnidadesSimulacion(unidadesActivasGlobal.value)
       } catch (err) {
         console.error('❌ Error evaluando eventos:', err)
       }
     }
   }
 
-  // 🆕 Watch para evaluar eventos cuando cambien las unidades
-  // (solo si NO estás usando el simulador)
+  // Watch para evaluar eventos cuando cambien las unidades
   watch(
-    unidadesActivas,
+    unidadesActivasGlobal,
     () => {
-      // Descomenta esto si quieres evaluación automática sin simulador
+      // Descomenta si necesitas evaluación automática
       // evaluarEventosParaTodasLasUnidades()
     },
     { deep: true },
   )
 
   /**
-   * Detiene el tracking
-   */
-  const detenerTracking = () => {
-    if (unsubscribe) {
-      const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
-      off(unidadesRef)
-      unsubscribe = null
-      console.log('🛑 Tracking detenido')
-    }
-  }
-
-  /**
    * Obtiene una unidad específica por ID
    */
   const obtenerUnidad = (unidadId) => {
-    return unidadesActivas.value.find((u) => u.id === unidadId || u.unidadId === unidadId)
+    return unidadesActivasGlobal.value.find((u) => u.id === unidadId || u.unidadId === unidadId)
   }
 
   /**
@@ -130,9 +134,9 @@ export function useTrackingUnidades() {
    */
   const unidadesPorEstado = (estado) => {
     if (estado === 'todos') {
-      return unidadesActivas.value
+      return unidadesActivasGlobal.value
     }
-    return unidadesActivas.value.filter((u) => u.estado === estado)
+    return unidadesActivasGlobal.value.filter((u) => u.estado === estado)
   }
 
   /**
@@ -140,13 +144,13 @@ export function useTrackingUnidades() {
    */
   const contarPorEstado = () => {
     const conteo = {
-      todos: unidadesActivas.value.length,
+      todos: unidadesActivasGlobal.value.length,
       movimiento: 0,
       detenido: 0,
       inactivo: 0,
     }
 
-    unidadesActivas.value.forEach((unidad) => {
+    unidadesActivasGlobal.value.forEach((unidad) => {
       if (conteo[unidad.estado] !== undefined) {
         conteo[unidad.estado]++
       }
@@ -159,13 +163,15 @@ export function useTrackingUnidades() {
    * Obtiene estadísticas generales
    */
   const estadisticas = () => {
-    const total = unidadesActivas.value.length
-    const enMovimiento = unidadesActivas.value.filter((u) => u.estado === 'movimiento').length
-    const detenidas = unidadesActivas.value.filter((u) => u.estado === 'detenido').length
-    const inactivas = unidadesActivas.value.filter((u) => u.estado === 'inactivo').length
+    const total = unidadesActivasGlobal.value.length
+    const enMovimiento = unidadesActivasGlobal.value.filter((u) => u.estado === 'movimiento').length
+    const detenidas = unidadesActivasGlobal.value.filter((u) => u.estado === 'detenido').length
+    const inactivas = unidadesActivasGlobal.value.filter((u) => u.estado === 'inactivo').length
 
     const velocidadPromedio =
-      total > 0 ? unidadesActivas.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total : 0
+      total > 0
+        ? unidadesActivasGlobal.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total
+        : 0
 
     return {
       total,
@@ -177,21 +183,18 @@ export function useTrackingUnidades() {
     }
   }
 
-  // Limpiar al desmontar componente
-  onUnmounted(() => {
-    detenerTracking()
-  })
+  // 🔧 YA NO hay onUnmounted - el tracking se mantiene activo
 
   return {
-    unidadesActivas,
-    loading,
-    error,
+    unidadesActivas: unidadesActivasGlobal,
+    loading: loadingGlobal,
+    error: errorGlobal,
     iniciarTracking,
-    detenerTracking,
+    detenerTrackingManual, // 🆕 Solo para casos especiales
     obtenerUnidad,
     unidadesPorEstado,
     contarPorEstado,
     estadisticas,
-    evaluarEventosParaTodasLasUnidades, // 🆕 Exponer método
+    evaluarEventosParaTodasLasUnidades,
   }
 }
