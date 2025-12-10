@@ -27,17 +27,7 @@
           {{ notificacionesActivas.length }}
         </q-badge>
       </div>
-      <div
-        class="tab-item"
-        :class="{ active: vistaActual === 'importantes' }"
-        @click="vistaActual = 'importantes'"
-      >
-        <q-icon name="priority_high" size="18px" />
-        <span>Importantes</span>
-        <q-badge v-if="notificacionesImportantes.length > 0" color="orange" class="q-ml-xs">
-          {{ notificacionesImportantes.length }}
-        </q-badge>
-      </div>
+
       <div
         class="tab-item"
         :class="{ active: vistaActual === 'leidas' }"
@@ -120,12 +110,12 @@ import NotificationCard from './NotificationCard.vue'
 const {
   notificacionesActivas,
   notificacionesLeidas,
-  notificacionesImportantes,
+  // notificacionesImportantes,
   totalNoLeidas,
   marcarComoLeida,
   removeNotification,
   clearAll,
-  limpiarHistorial
+  limpiarHistorial,
 } = useNotifications()
 
 // Estado del tab activo
@@ -135,8 +125,6 @@ const vistaActual = ref('todas')
 const notificacionesFiltradas = computed(() => {
   if (vistaActual.value === 'todas') {
     return notificacionesActivas.value
-  } else if (vistaActual.value === 'importantes') {
-    return notificacionesImportantes.value
   } else if (vistaActual.value === 'leidas') {
     return notificacionesLeidas.value
   }
