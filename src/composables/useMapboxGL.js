@@ -25,9 +25,13 @@ let popupGlobalActivo = null
 const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
-// ⚡ OPTIMIZACIÓN: Throttle para actualizaciones
+// ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
+const THROTTLE_MS = 250 // ✅ 250ms = 4 actualizaciones/segundo (antes era 1000ms)
+
+// 🔄 Sistema de batch updates con requestAnimationFrame
+let pendingUpdate = false
+let pendingUnidades = null
 let ultimaActualizacion = 0
-const THROTTLE_MS = 1000 // Actualizar máximo cada 300ms
 
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
@@ -109,6 +113,7 @@ export function useMapboxGL() {
     return el
   }
 
+  // ✅ POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
     const estadoTexto = {
       movimiento: 'En movimiento',
@@ -177,28 +182,13 @@ export function useMapboxGL() {
     return popupContent
   }
 
-  // ⚡ OPTIMIZADO: Con detección de cambio de estado para iconos
-  const actualizarMarcadoresUnidades = (unidades) => {
-    if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+  // ⚡ OPTIMIZADO: Procesamiento real de marcadores
+  const procesarActualizacionMarcadores = (unidades) => {
+    if (!map.value || !unidades) {
       return
     }
-
-    const ahora = Date.now()
-    if (ahora - ultimaActualizacion < THROTTLE_MS) {
-      return
-    }
-    ultimaActualizacion = ahora
 
     const idsActuales = new Set()
-
-    /*console.log('🔄 Actualizando marcadores:', {
-      total: unidades.length,
-      estados: unidades.reduce((acc, u) => {
-        acc[u.estado] = (acc[u.estado] || 0) + 1
-        return acc
-      }, {}),
-    })*/
 
     unidades.forEach((unidad) => {
       if (
@@ -229,11 +219,9 @@ export function useMapboxGL() {
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
           if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-            //console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
-
+            // Cambió el estado - recrear marcador
             marcadoresUnidades.value[unidadId].remove()
 
-            // 🆕 CREAR POPUP CON SISTEMA UNIFICADO
             const popup = new mapboxgl.Popup({
               offset: 25,
               closeButton: true,
@@ -241,7 +229,6 @@ export function useMapboxGL() {
               maxWidth: '300px',
             }).setHTML(crearPopupUnidad(unidad))
 
-            // 🆕 REGISTRAR POPUP AL ABRIRSE
             popup.on('open', () => {
               registrarPopupActivo(popup)
             })
@@ -257,10 +244,12 @@ export function useMapboxGL() {
             marcadoresUnidades.value[unidadId] = marker
             ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
           } else {
+            // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
+            // ✅ OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
-            if (popup) {
+            if (popup && popup.isOpen()) {
               const popupContent = popup.getElement()
               const oldContainer = popupContent
                 ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
@@ -281,7 +270,7 @@ export function useMapboxGL() {
           }
         }
       } else {
-        // 🆕 CREAR NUEVO MARCADOR CON SISTEMA UNIFICADO
+        // Crear nuevo marcador
         const popup = new mapboxgl.Popup({
           offset: 25,
           closeButton: true,
@@ -289,7 +278,6 @@ export function useMapboxGL() {
           maxWidth: '300px',
         }).setHTML(crearPopupUnidad(unidad))
 
-        // 🆕 REGISTRAR POPUP AL ABRIRSE
         popup.on('open', () => {
           registrarPopupActivo(popup)
         })
@@ -317,6 +305,35 @@ export function useMapboxGL() {
     })
   }
 
+  // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  const actualizarMarcadoresUnidades = (unidades) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
+
+    const ahora = Date.now()
+
+    // ✅ Throttle más agresivo
+    if (ahora - ultimaActualizacion < THROTTLE_MS) {
+      // Guardar para próxima actualización
+      pendingUnidades = unidades
+      return
+    }
+
+    ultimaActualizacion = ahora
+    pendingUnidades = unidades
+
+    // ✅ Usar requestAnimationFrame para sincronizar con el browser
+    if (!pendingUpdate) {
+      pendingUpdate = true
+      requestAnimationFrame(() => {
+        procesarActualizacionMarcadores(pendingUnidades)
+        pendingUpdate = false
+      })
+    }
+  }
+
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
 
@@ -326,6 +343,8 @@ export function useMapboxGL() {
 
     marcadoresUnidades.value = {}
     ultimasPosiciones.clear()
+    pendingUnidades = null
+    pendingUpdate = false
     console.log('🧹 Marcadores GPS limpiados')
   }
 
@@ -341,7 +360,6 @@ export function useMapboxGL() {
         duration: 1000,
       })
 
-      // 🆕 CERRAR POPUP ANTERIOR Y ABRIR ESTE
       cerrarPopupGlobal()
       marcador.togglePopup()
     }
@@ -909,7 +927,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🗺️ INICIALIZAR MAPA - OPTIMIZADO
+  // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
       if (map.value) {
@@ -918,7 +936,7 @@ export function useMapboxGL() {
 
       mapboxgl.accessToken = MAPBOX_TOKEN
 
-      console.log('🗺️ Inicializando mapa Mapbox GL optimizado...')
+      console.log('🗺️ Inicializando mapa Mapbox GL OPTIMIZADO v2...')
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -929,15 +947,18 @@ export function useMapboxGL() {
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 50, // ✅ Reducido de 100 a 50
+        maxTileCacheSize: 50,
         minZoom: 5,
         maxZoom: 18,
-        // ⚡ Nuevas optimizaciones
-        fadeDuration: 0, // Sin animación de fade en tiles
-        crossSourceCollisions: false, // Mejor rendimiento en colisiones
+        // ⚡ OPTIMIZACIONES ADICIONALES v2
+        fadeDuration: 0, // ✅ Sin animación de fade en tiles
+        crossSourceCollisions: false, // ✅ Mejor rendimiento en colisiones
+        trackResize: false, // ✅ No escuchar resize automático
+        pitchWithRotate: false, // ✅ Deshabilitar pitch
+        touchPitch: false, // ✅ Deshabilitar touch pitch
       })
 
-      // Agregar controles de navegación
+      // Agregar controles de navegación en bottom-right
       map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
@@ -1095,7 +1116,8 @@ export function useMapboxGL() {
         console.log('✅ _mapaAPI expuesto en map-page')
       }
 
-      console.log('✅ Mapa Mapbox GL inicializado correctamente con optimizaciones')
+      console.log('✅ Mapa Mapbox GL inicializado con OPTIMIZACIONES v2')
+      console.log('⚡ Throttle: 250ms | requestAnimationFrame: ✅ | Popups optimizados: ✅')
       return map.value
     } catch (error) {
       console.error('❌ Error crítico inicializando mapa:', error)
@@ -1157,6 +1179,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
     puntosPoligono.value = []
     poligonoFinalizado.value = false
+    pendingUnidades = null
+    pendingUpdate = false
     console.log('🧹 Mapa limpiado completamente')
   }
 
