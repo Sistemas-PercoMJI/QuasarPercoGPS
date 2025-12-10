@@ -11,7 +11,7 @@ export function useNotifications() {
   function agregarNotificacion(notificacionData) {
     const id = ++notificationIdCounter
     const ahora = Date.now()
-    const expiraEn = ahora + (5 * 60 * 1000) // 5 minutos
+    const expiraEn = ahora + 5 * 60 * 1000 // 5 minutos
 
     const nuevaNotificacion = {
       id,
@@ -25,16 +25,19 @@ export function useNotifications() {
       accion: notificacionData.accion || '',
       timestamp: ahora,
       expiraEn,
-      leida: false
+      leida: false,
     }
 
     notifications.value.unshift(nuevaNotificacion)
     console.log('✅ Notificación creada:', nuevaNotificacion.title)
 
     // Auto-expirar después de 5 minutos
-    setTimeout(() => {
-      marcarComoLeida(id)
-    }, 5 * 60 * 1000)
+    setTimeout(
+      () => {
+        marcarComoLeida(id)
+      },
+      5 * 60 * 1000,
+    )
 
     return id
   }
@@ -43,7 +46,7 @@ export function useNotifications() {
    * Marca una notificación como leída (pasa al historial)
    */
   function marcarComoLeida(notificationId) {
-    const notif = notifications.value.find(n => n.id === notificationId)
+    const notif = notifications.value.find((n) => n.id === notificationId)
     if (notif && !notif.leida) {
       notif.leida = true
       console.log('✅ Notificación marcada como leída:', notificationId)
@@ -54,7 +57,7 @@ export function useNotifications() {
    * Elimina una notificación completamente
    */
   function removeNotification(notificationId) {
-    const index = notifications.value.findIndex(n => n.id === notificationId)
+    const index = notifications.value.findIndex((n) => n.id === notificationId)
     if (index > -1) {
       notifications.value.splice(index, 1)
       console.log('✅ Notificación eliminada:', notificationId)
@@ -65,40 +68,47 @@ export function useNotifications() {
    * Limpia todas las notificaciones activas (las marca como leídas)
    */
   function clearAll() {
-    notifications.value.forEach(notif => {
-      if (!notif.leida) {
-        notif.leida = true
-      }
+    const noLeidas = notifications.value.filter((n) => !n.leida)
+
+    noLeidas.forEach((notif) => {
+      notif.leida = true
     })
+
+    // 🔥 Forzar re-render creando una nueva referencia del array
+    notifications.value = [...notifications.value]
+
     console.log('✅ Todas las notificaciones limpiadas')
+    console.log('📊 Notificaciones marcadas:', noLeidas.length)
+    console.log('📊 Total no leídas después:', totalNoLeidas.value)
   }
 
   /**
    * Elimina notificaciones leídas antiguas (más de 1 hora)
    */
   function limpiarHistorial() {
-    const hace1Hora = Date.now() - (60 * 60 * 1000)
-    const antiguas = notifications.value.filter(
-      n => n.leida && n.timestamp < hace1Hora
-    )
-    
-    antiguas.forEach(notif => removeNotification(notif.id))
-    console.log(`✅ ${antiguas.length} notificaciones antiguas eliminadas`)
+    const antes = notifications.value.length
+    const notificacionesLeidas = notifications.value.filter((n) => n.leida).length
+
+    console.log('🧹 Limpiando historial...')
+    console.log('📊 Notificaciones leídas a eliminar:', notificacionesLeidas)
+
+    // 🔥 Filtrar y mantener solo las NO leídas
+    notifications.value = notifications.value.filter((n) => !n.leida)
+
+    const eliminadas = antes - notifications.value.length
+
+    console.log(`✅ ${eliminadas} notificaciones leídas eliminadas`)
+    console.log('📊 Total después de limpiar:', notifications.value.length)
+    console.log('📊 Notificaciones restantes:', notifications.value.length)
   }
 
   // Computed properties para filtrar notificaciones
-  const notificacionesActivas = computed(() =>
-    notifications.value.filter(n => !n.leida)
-  )
+  const notificacionesActivas = computed(() => notifications.value.filter((n) => !n.leida))
 
-  const notificacionesLeidas = computed(() =>
-    notifications.value.filter(n => n.leida)
-  )
+  const notificacionesLeidas = computed(() => notifications.value.filter((n) => n.leida))
 
   const notificacionesImportantes = computed(() =>
-    notifications.value.filter(
-      n => !n.leida && (n.type === 'warning' || n.type === 'negative')
-    )
+    notifications.value.filter((n) => !n.leida && (n.type === 'warning' || n.type === 'negative')),
   )
 
   const totalNoLeidas = computed(() => notificacionesActivas.value.length)
@@ -113,6 +123,6 @@ export function useNotifications() {
     marcarComoLeida,
     removeNotification,
     clearAll,
-    limpiarHistorial
+    limpiarHistorial,
   }
 }
