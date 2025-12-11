@@ -134,7 +134,7 @@ export function useConductoresFirebase() {
   const obtenerFotosLicencia = async (conductorId) => {
     try {
       console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
-      
+
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -148,7 +148,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `licencia_${index + 1}`,
           url: url,
@@ -168,7 +168,7 @@ export function useConductoresFirebase() {
   const obtenerFotosSeguroUnidad = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
-      
+
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -182,7 +182,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `seguro_${index + 1}`,
           url: url,
@@ -202,7 +202,7 @@ export function useConductoresFirebase() {
   const obtenerFotosTargetaCirculacion = async (unidadId) => {
     try {
       console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
-      
+
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -216,7 +216,7 @@ export function useConductoresFirebase() {
 
       // Convertir el array de URLs a objetos con más información
       const fotos = fotosArray
-        .filter(url => url && url.trim() !== '') // Filtrar URLs vacías
+        .filter((url) => url && url.trim() !== '') // Filtrar URLs vacías
         .map((url, index) => ({
           name: `tarjeta_${index + 1}`,
           url: url,
@@ -258,11 +258,11 @@ export function useConductoresFirebase() {
     error.value = null
     try {
       console.log('📤 Subiendo foto de licencia...')
-      
+
       // Importar dinámicamente storage
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
-      
+
       const timestamp = Date.now()
       const fileName = `LicenciaConducirFotos/${conductorId}/${timestamp}_${file.name}`
       const fileRef = storageRef(storage, fileName)
@@ -311,10 +311,10 @@ export function useConductoresFirebase() {
     error.value = null
     try {
       console.log('📤 Subiendo foto de seguro...')
-      
+
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
-      
+
       const timestamp = Date.now()
       const fileName = `SeguroUnidadFotos/${unidadId}/${timestamp}_${file.name}`
       const fileRef = storageRef(storage, fileName)
@@ -357,10 +357,10 @@ export function useConductoresFirebase() {
     error.value = null
     try {
       console.log('📤 Subiendo foto de tarjeta...')
-      
+
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
-      
+
       const timestamp = Date.now()
       const fileName = `TargetaCirculacionFotos/${unidadId}/${timestamp}_${file.name}`
       const fileRef = storageRef(storage, fileName)
@@ -430,7 +430,7 @@ export function useConductoresFirebase() {
 
       const conductorData = conductorSnap.data()
       const fotosActuales = conductorData.LicenciaConducirFotos || []
-      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+      const nuevasFotos = fotosActuales.filter((url) => url !== fotoUrl)
 
       await updateDoc(conductorDocRef, {
         LicenciaConducirFotos: nuevasFotos,
@@ -440,14 +440,14 @@ export function useConductoresFirebase() {
       // Eliminar del Storage
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, deleteObject } = await import('firebase/storage')
-      
+
       // Extraer la ruta del archivo de la URL
       // Formato esperado de la URL: https://firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/RUTA_ARCHIVO?alt=media&token=TOKEN
       try {
         const urlObj = new URL(fotoUrl)
         const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
         const fotoRef = storageRef(storage, filePath)
-        
+
         await deleteObject(fotoRef)
         console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
@@ -499,7 +499,7 @@ export function useConductoresFirebase() {
 
       const unidadData = unidadSnap.data()
       const fotosActuales = unidadData.SeguroUnidadFotos || []
-      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+      const nuevasFotos = fotosActuales.filter((url) => url !== fotoUrl)
 
       await updateDoc(unidadDocRef, {
         SeguroUnidadFotos: nuevasFotos,
@@ -508,12 +508,12 @@ export function useConductoresFirebase() {
 
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, deleteObject } = await import('firebase/storage')
-      
+
       try {
         const urlObj = new URL(fotoUrl)
         const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
         const fotoRef = storageRef(storage, filePath)
-        
+
         await deleteObject(fotoRef)
         console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
@@ -565,7 +565,7 @@ export function useConductoresFirebase() {
 
       const unidadData = unidadSnap.data()
       const fotosActuales = unidadData.TargetaCirculacionFotos || []
-      const nuevasFotos = fotosActuales.filter(url => url !== fotoUrl)
+      const nuevasFotos = fotosActuales.filter((url) => url !== fotoUrl)
 
       await updateDoc(unidadDocRef, {
         TargetaCirculacionFotos: nuevasFotos,
@@ -574,12 +574,12 @@ export function useConductoresFirebase() {
 
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, deleteObject } = await import('firebase/storage')
-      
+
       try {
         const urlObj = new URL(fotoUrl)
         const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
         const fotoRef = storageRef(storage, filePath)
-        
+
         await deleteObject(fotoRef)
         console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
@@ -784,6 +784,40 @@ export function useConductoresFirebase() {
     return unidades.value.find((u) => u.id === conductor.UnidadAsignada)
   }
 
+  const puedeEditarCampo = (fechaVencimiento) => {
+    if (!fechaVencimiento) {
+      // Si no hay fecha de vencimiento, no se puede editar
+      return false
+    }
+
+    let fechaVenc
+    if (fechaVencimiento.toDate) {
+      fechaVenc = fechaVencimiento.toDate()
+    } else if (fechaVencimiento.seconds) {
+      fechaVenc = new Date(fechaVencimiento.seconds * 1000)
+    } else {
+      fechaVenc = new Date(fechaVencimiento)
+    }
+
+    const hoy = new Date()
+    // Solo se puede editar si está expirado
+    return fechaVenc <= hoy
+  }
+
+  // Validar campos específicos de conductor
+  const puedeEditarLicenciaConducir = (conductor) => {
+    return puedeEditarCampo(conductor?.LicenciaConducirFecha)
+  }
+
+  // Validar campos específicos de unidad
+  const puedeEditarSeguroUnidad = (unidad) => {
+    return puedeEditarCampo(unidad?.SeguroUnidadFecha)
+  }
+
+  const puedeEditarTargetaCirculacion = (unidad) => {
+    return puedeEditarCampo(unidad?.TargetaCirculacionFecha)
+  }
+
   return {
     // Estado
     conductores,
@@ -813,6 +847,12 @@ export function useConductoresFirebase() {
     eliminarFotoLicencia,
     eliminarFotoSeguroUnidad,
     eliminarFotoTargetaCirculacion,
+
+    // **NUEVAS FUNCIONES DE VALIDACIÓN**
+    puedeEditarCampo,
+    puedeEditarLicenciaConducir,
+    puedeEditarSeguroUnidad,
+    puedeEditarTargetaCirculacion,
 
     // Métodos de unidades
     obtenerUnidades,

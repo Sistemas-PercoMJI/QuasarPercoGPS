@@ -145,7 +145,6 @@
             </div>
           </q-card-section>
         </q-card>
-
         <!-- Mensaje si no hay conductores -->
         <div
           v-if="conductoresFiltrados.length === 0 && !loading"
@@ -237,19 +236,25 @@
               <q-card-section>
                 <div class="row q-gutter-md">
                   <div class="col-12 col-md-6">
-                    <div class="detalle-label">Código de licencia</div>
+                    <div class="detalle-label">Nùmero de licencia</div>
                     <q-input
-                      v-model="conductorEditando.LicenciaConducirCodigo"
+                      v-model="conductorEditando.LicenciaConducir"
                       outlined
                       dense
                       placeholder="Ej: A1234567"
+                      :disable="licenciaDeshabilitada"
                       @blur="
-                        actualizarCampo(
-                          'LicenciaConducirCodigo',
-                          conductorEditando.LicenciaConducirCodigo,
-                        )
+                        actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
                       "
-                    />
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="conductorEditando?.LicenciaConducirFecha"
+                          :color="esLicenciaVigente ? 'positive' : 'negative'"
+                          :label="esLicenciaVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
                   <div class="col-12 col-md-6">
                     <div class="detalle-label">Fecha de vencimiento</div>
@@ -377,8 +382,7 @@
                 />
               </q-card-section>
 
-              <!-- 🎯 NUEVO BOTÓN PARA NAVEGAR A LA UNIDAD -->
-              <q-card-section v-if="unidadAsignadaData">
+              <q-card-section v-if="unidadAsociada">
                 <q-btn
                   color="primary"
                   icon="my_location"
@@ -392,20 +396,30 @@
                 </q-btn>
               </q-card-section>
 
-              <q-separator v-if="unidadAsignadaData" />
-
-              <q-card-section v-if="unidadAsignadaData">
+              <q-separator v-if="unidadAsociada" />
+              <q-card-section v-if="unidadAsociada">
                 <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
                 <div class="row q-gutter-md">
                   <div class="col-12">
-                    <div class="detalle-label">Código de seguro</div>
+                    <div class="detalle-label">Número de seguro</div>
                     <q-input
-                      :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
+                      v-model="unidadAsociada.SeguroUnidad"
                       outlined
                       dense
-                      readonly
-                    />
+                      placeholder="Ingrese código de seguro"
+                      :disable="seguroDeshabilitado"
+                      @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="unidadAsociada?.SeguroUnidadFecha"
+                          :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                          :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
+
                   <div class="col-12">
                     <div class="detalle-label">Vencimiento del seguro</div>
                     <q-input
@@ -414,24 +428,56 @@
                       dense
                       readonly
                     >
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="seguroUnidadFechaFormato"
+                              mask="DD/MM/YYYY"
+                              @update:model-value="actualizarFechaSeguro"
+                            >
+                              <div class="row items-center justify-end">
+                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
                       <template v-slot:after>
                         <q-badge
-                          v-if="unidadAsignadaData.SeguroUnidadFecha"
+                          v-if="unidadAsociada?.SeguroUnidadFecha"
                           :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
                           :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
                         />
                       </template>
                     </q-input>
                   </div>
+
                   <div class="col-12">
-                    <div class="detalle-label">Código de tarjeta de circulación</div>
+                    <div class="detalle-label">Número de tarjeta de circulación</div>
                     <q-input
-                      :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
+                      v-model="unidadAsociada.TargetaCirculacion"
                       outlined
                       dense
-                      readonly
-                    />
+                      placeholder="Ingrese código de tarjeta"
+                      :disable="tarjetaDeshabilitada"
+                      @blur="
+                        actualizarCampoUnidad(
+                          'TargetaCirculacion',
+                          unidadAsociada.TargetaCirculacion,
+                        )
+                      "
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="unidadAsociada?.TargetaCirculacionFecha"
+                          :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                          :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
+
                   <div class="col-12">
                     <div class="detalle-label">Vencimiento de tarjeta</div>
                     <q-input
@@ -440,9 +486,24 @@
                       dense
                       readonly
                     >
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="tarjetaCirculacionFechaFormato"
+                              mask="DD/MM/YYYY"
+                              @update:model-value="actualizarFechaTarjeta"
+                            >
+                              <div class="row items-center justify-end">
+                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
                       <template v-slot:after>
                         <q-badge
-                          v-if="unidadAsignadaData.TargetaCirculacionFecha"
+                          v-if="unidadAsociada?.TargetaCirculacionFecha"
                           :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
                           :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
                         />
@@ -862,6 +923,9 @@ const {
   conductoresPorGrupo,
   asignarUnidad,
   obtenerUnidadDeConductor,
+  puedeEditarLicenciaConducir,
+  puedeEditarSeguroUnidad,
+  puedeEditarTargetaCirculacion,
 } = composable
 
 // Funciones de fotos
@@ -983,6 +1047,26 @@ const fechaVencimientoFormato = computed(() => {
   }
 
   return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const unidadAsociada = computed(() => {
+  if (!conductorEditando.value?.UnidadAsignada) return null
+  return obtenerUnidadDeConductor(conductorEditando.value.id)
+})
+// Computed para deshabilitar campos
+const licenciaDeshabilitada = computed(() => {
+  if (!conductorEditando.value) return true
+  return !puedeEditarLicenciaConducir(conductorEditando.value)
+})
+
+const seguroDeshabilitado = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarSeguroUnidad(unidadAsociada.value)
+})
+
+const tarjetaDeshabilitada = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarTargetaCirculacion(unidadAsociada.value)
 })
 
 const esLicenciaVigente = computed(() => {
@@ -1136,6 +1220,116 @@ async function actualizarCampo(campo, valor) {
     Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+// ✅ AGREGAR ESTA NUEVA FUNCIÓN
+async function actualizarCampoUnidad(campo, valor) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    // Importar updateDoc y doc si no están importados
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      [campo]: valor,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar el estado local
+    unidadAsociada.value[campo] = valor
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Código actualizado correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaSeguro(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      SeguroUnidadFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.SeguroUnidadFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de seguro actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaTarjeta(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      TargetaCirculacionFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.TargetaCirculacionFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de tarjeta actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
       icon: 'error',
     })
   }
