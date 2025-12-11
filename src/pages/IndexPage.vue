@@ -131,11 +131,17 @@ watch(
       return
     }
 
-    // ⚡ NO actualizar si está haciendo zoom
+    // ⚡ NO actualizar si está haciendo zoom O pan  // 🆕 MODIFICAR ESTA SECCIÓN
     const mapElement = document.querySelector('.mapboxgl-map')
-    if (mapElement && mapElement.classList.contains('mapboxgl-touch-zoom-rotate')) {
-      console.log('⏸️ Zoom en progreso, pausando actualización de marcadores')
-      return
+    if (mapElement) {
+      const isZooming = mapElement.classList.contains('mapboxgl-touch-zoom-rotate')
+      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan') // 🆕
+
+      if (isZooming || isPanning) {
+        // 🆕 AGREGAR isPanning
+        console.log('⏸️ Zoom/Pan en progreso, pausando actualización')
+        return
+      }
     }
 
     const nuevoHash = nuevasUnidades

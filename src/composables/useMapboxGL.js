@@ -19,6 +19,8 @@ let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 let isZooming = false
 let lastZoomLevel = 0
+let PanTimeout = null
+let isPanning = false
 
 // 🆕 SISTEMA DE POPUP GLOBAL UNIFICADO
 let popupGlobalActivo = null
@@ -308,14 +310,16 @@ export function useMapboxGL() {
   }
 
   // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  // Línea ~239
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
       console.warn('⚠️ Mapa no disponible')
       return
     }
 
-    // ⚡ Si el mapa se está moviendo o haciendo zoom, postponer actualización
-    if ((map.value.isMoving && map.value.isMoving()) || isZooming) {
+    // ⚡ Si el mapa se está moviendo O haciendo zoom, postponer
+    if (isZooming || isPanning) {
+      // 🆕 AGREGAR isPanning
       pendingUnidades = unidades
       return
     }
@@ -964,6 +968,8 @@ export function useMapboxGL() {
         renderWorldCopies: false, // ✅ Evita copias del mundo
         antialias: false, // ✅ Desactiva antialiasing para mejor performance
         optimizeForTerrain: false, // ✅ Sin optimización 3D innecesaria
+        dragRotate: false, // Desactiva rotación al arrastrar
+        touchZoomRotate: false,
         easing: (t) => {
           // Curva de easing personalizada (ease-out-cubic)
           return 1 - Math.pow(1 - t, 3)
@@ -987,6 +993,13 @@ export function useMapboxGL() {
         console.log('✅ Mapa Mapbox GL cargado correctamente')
         map.value.scrollZoom.setWheelZoomRate(1 / 150) // Más lento = más suave (default es 1/450)
         map.value.scrollZoom.setZoomRate(1 / 100) // Para touch/trackpad
+
+        map.value.dragPan.enable({
+          linearity: 0.3, // Más bajo = más suave (default: 0)
+          easing: (t) => t * (2 - t), // Ease-out cuadrático
+          maxSpeed: 1400, // Velocidad máxima de pan
+          deceleration: 2500, // Desaceleración suave
+        })
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
           const canvas = document.createElement('canvas')
@@ -1058,14 +1071,53 @@ export function useMapboxGL() {
       })
 
       map.value.on('movestart', () => {
+        isPanning = true // 🆕 Marcar que está en pan
         pendingUpdate = false
+
+        if (map.value.getCanvas()) {
+          map.value.getCanvas().style.imageRendering = 'auto'
+        }
+
+        // 🆕 Desactivar transiciones suaves durante el pan
+        Object.values(marcadoresUnidades.value).forEach((marker) => {
+          const el = marker.getElement()
+          if (el) {
+            el.style.transition = 'none'
+          }
+        })
+
+        console.log('🤚 Pan iniciado')
       })
 
       map.value.on('moveend', () => {
-        // Forzar repaint después del movimiento
-        if (map.value) {
-          map.value.triggerRepaint()
-        }
+        clearTimeout(PanTimeout)
+
+        // 🆕 Esperar 100ms después de que termine el pan
+        PanTimeout = setTimeout(() => {
+          isPanning = false
+          if (map.value.getCanvas()) {
+            map.value.getCanvas().style.imageRendering = 'crisp-edges'
+          }
+          // 🆕 Reactivar transiciones suaves
+          Object.values(marcadoresUnidades.value).forEach((marker) => {
+            const el = marker.getElement()
+            if (el) {
+              el.style.transition = 'transform 0.3s ease-out'
+            }
+          })
+
+          // 🆕 Forzar actualización de marcadores
+          if (pendingUnidades) {
+            console.log('🔄 Actualizando marcadores después del pan')
+            procesarActualizacionMarcadores(pendingUnidades)
+          }
+          if (map.value) {
+            requestAnimationFrame(() => {
+              map.value.triggerRepaint()
+            })
+          }
+          console.log('✅ Pan completado')
+        }, 150)
       })
 
       let zoomTimeout
