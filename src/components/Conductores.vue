@@ -397,22 +397,6 @@
               </q-card-section>
 
               <q-separator v-if="unidadAsociada" />
-
-              <!-- 🎯 NUEVO BOTÓN PARA NAVEGAR A LA UNIDAD -->
-              <q-card-section v-if="unidadAsignada">
-                <q-btn
-                  color="primary"
-                  icon="my_location"
-                  label="Ver ubicación de la unidad"
-                  class="full-width"
-                  @click="navegarAUnidad"
-                  size="md"
-                  outline
-                >
-                  <q-tooltip>Centrar mapa en la ubicación de la unidad GPS</q-tooltip>
-                </q-btn>
-              </q-card-section>
-              <q-separator v-if="unidadAsignada" />
               <q-card-section v-if="unidadAsociada">
                 <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
                 <div class="row q-gutter-md">
