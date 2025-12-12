@@ -954,6 +954,11 @@ export function useMapboxGL() {
       const center = map.value.getCenter()
       const zoom = map.value.getZoom()
 
+      // 🆕 GUARDAR ESTADO DEL TRÁFICO
+      const traficoEstabaActivo = map.value.getLayer('traffic')
+        ? map.value.getLayoutProperty('traffic', 'visibility') === 'visible'
+        : false
+
       // Cambiar estilo
       const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
       estiloActual.value = nuevoEstilo
@@ -1026,7 +1031,8 @@ export function useMapboxGL() {
                 ],
               },
               layout: {
-                visibility: 'none',
+                // 🆕 RESTAURAR VISIBILIDAD SEGÚN ESTADO ANTERIOR
+                visibility: traficoEstabaActivo ? 'visible' : 'none',
               },
             },
             labelLayerId,
@@ -1037,6 +1043,8 @@ export function useMapboxGL() {
         window.dispatchEvent(new CustomEvent('redibujarMapa'))
 
         console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
+        // 🆕 RETORNAR EL ESTADO DEL TRÁFICO
+        console.log(`🚦 Tráfico restaurado: ${traficoEstabaActivo ? 'visible' : 'oculto'}`)
       })
 
       return nuevoEstilo === 'streets'
