@@ -794,28 +794,31 @@
     <!-- Menú contextual para grupos -->
     <q-menu
       v-model="menuGrupoVisible"
-      v-if="menuGrupoTarget"
-      anchor="bottom right"
-      self="top right"
-      :offset="[0, 8]"
-      transition-show="jump-down"
-      transition-hide="jump-up"
+      anchor="top right"
+      self="top left"
+      :offset="[8, 0]"
+      transition-show="scale"
+      transition-hide="scale"
     >
-      <q-list dense style="min-width: 180px" class="rounded-borders">
+      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
         <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
           <q-item-section avatar>
             <q-icon name="edit" size="sm" color="primary" />
           </q-item-section>
-          <q-item-section>Editar grupo</q-item-section>
+          <q-item-section>
+            <q-item-label>Editar grupo</q-item-label>
+          </q-item-section>
         </q-item>
 
-        <q-separator spaced />
+        <q-separator spaced inset />
 
         <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
           <q-item-section avatar>
             <q-icon name="delete" size="sm" color="negative" />
           </q-item-section>
-          <q-item-section class="text-negative">Eliminar grupo</q-item-section>
+          <q-item-section>
+            <q-item-label class="text-negative">Eliminar grupo</q-item-label>
+          </q-item-section>
         </q-item>
       </q-list>
     </q-menu>
@@ -823,22 +826,21 @@
     <!-- Menú contextual para conductores -->
     <q-menu
       v-model="menuConductorVisible"
-      v-if="menuConductorTarget"
-      anchor="bottom right"
-      self="top right"
-      :offset="[0, 8]"
+      context-menu
       transition-show="jump-down"
       transition-hide="jump-up"
     >
-      <q-list dense style="min-width: 180px" class="rounded-borders">
+      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
         <q-item clickable v-close-popup @click="verDetalles" class="menu-item">
           <q-item-section avatar>
             <q-icon name="info" size="sm" color="primary" />
           </q-item-section>
-          <q-item-section>Ver detalles</q-item-section>
+          <q-item-section>
+            <q-item-label>Ver detalles</q-item-label>
+          </q-item-section>
         </q-item>
 
-        <q-separator spaced v-if="grupoSeleccionado !== 'todos'" />
+        <q-separator spaced inset v-if="grupoSeleccionado !== 'todos'" />
 
         <q-item
           clickable
@@ -850,7 +852,9 @@
           <q-item-section avatar>
             <q-icon name="remove_circle" size="sm" color="negative" />
           </q-item-section>
-          <q-item-section class="text-negative">Quitar del grupo</q-item-section>
+          <q-item-section>
+            <q-item-label class="text-negative">Quitar del grupo</q-item-label>
+          </q-item-section>
         </q-item>
       </q-list>
     </q-menu>
@@ -981,8 +985,8 @@ const dialogDetallesConductor = ref(false)
 const dialogVerFoto = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
-const menuGrupoTarget = ref(null)
-const menuConductorTarget = ref(null)
+//const menuGrupoTarget = ref(null)
+//const menuConductorTarget = ref(null)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
@@ -1766,7 +1770,6 @@ function mostrarMenuGrupo(event, grupo) {
   event.preventDefault()
   event.stopPropagation()
   grupoMenu.value = grupo
-  menuGrupoTarget.value = true // ✅ Solo un flag booleano
   menuGrupoVisible.value = true
 }
 
@@ -2435,13 +2438,35 @@ function navegarAUnidad() {
 }
 
 /* Estilos para los menús contextuales */
+
+.menu-contextual {
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  background: white;
+}
+
 .menu-item {
-  padding: 10px 16px;
+  padding: 12px 16px;
   transition: all 0.2s ease;
+  min-height: 44px;
 }
 
 .menu-item:hover {
-  background-color: #f5f5f5;
+  background: linear-gradient(90deg, #f5f5f5 0%, #fafafa 100%);
+}
+
+.menu-item .q-item__section--avatar {
+  min-width: 32px;
+}
+
+.menu-item .q-icon {
+  font-size: 18px;
+}
+
+/* Mejorar el separador */
+.q-separator--inset {
+  margin-left: 48px;
 }
 
 .rounded-borders {
