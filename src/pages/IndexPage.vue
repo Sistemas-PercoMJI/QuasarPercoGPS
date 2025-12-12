@@ -2,6 +2,19 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
+    <!-- 🗺️ BOTÓN PARA CAMBIAR ESTILO DE MAPA (NUEVO) -->
+    <q-btn
+      fab
+      :color="estiloMapa === 'streets' ? 'primary' : 'dark'"
+      :icon="estiloMapa === 'streets' ? 'map' : 'satellite'"
+      class="map-style-toggle-btn"
+      @click="manejarCambioEstilo"
+      size="md"
+    >
+      <q-tooltip>{{ estiloMapa === 'streets' ? 'Vista Satelital' : 'Vista Calles' }}</q-tooltip>
+    </q-btn>
+
+    <!-- BOTÓN DE TRÁFICO -->
     <q-btn
       fab
       :color="traficoActivo ? 'positive' : 'red'"
@@ -38,17 +51,6 @@
         </q-btn>
       </div>
     </transition>
-
-    <div v-if="ubicacionActiva" class="user-location-indicator">
-      <q-icon name="gps_fixed" size="24px" color="positive" />
-      <span class="text-caption">GPS Activo</span>
-    </div>
-
-    <!-- 🎯 Indicador de simulador activo (opcional) -->
-    <div v-if="simuladorActivo" class="simulador-indicator">
-      <q-icon name="explore" size="16px" color="white" class="pulse-icon" />
-      <span class="text-caption">Simulador activo</span>
-    </div>
   </q-page>
 </template>
 
@@ -66,13 +68,13 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
-//import { useRouter } from 'vue-router'
 
 const {
   initMap,
   addMarker,
   cleanup,
   toggleTrafico,
+  cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
@@ -92,10 +94,10 @@ const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
 const { obtenerEventos } = useEventos(userId.value)
 const traficoActivo = ref(false)
+const estiloMapa = ref('satellite') // ✅ NUEVO ESTADO
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
-//const router = useRouter()
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
@@ -131,14 +133,12 @@ watch(
       return
     }
 
-    // ⚡ NO actualizar si está haciendo zoom O pan  // 🆕 MODIFICAR ESTA SECCIÓN
     const mapElement = document.querySelector('.mapboxgl-map')
     if (mapElement) {
       const isZooming = mapElement.classList.contains('mapboxgl-touch-zoom-rotate')
-      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan') // 🆕
+      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan')
 
       if (isZooming || isPanning) {
-        // 🆕 AGREGAR isPanning
         console.log('⏸️ Zoom/Pan en progreso, pausando actualización')
         return
       }
@@ -156,6 +156,7 @@ watch(
   },
   { deep: false, immediate: false },
 )
+
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -305,8 +306,8 @@ function iniciarSeguimientoGPS() {
 
   const opciones = {
     enableHighAccuracy: true,
-    timeout: 15000, // ✅ Aumentado a 30 segundos
-    maximumAge: 5000, // ✅ Acepta posiciones de hasta 5 segundos de antigüedad
+    timeout: 15000,
+    maximumAge: 5000,
   }
 
   watchId = navigator.geolocation.watchPosition(
@@ -317,11 +318,9 @@ function iniciarSeguimientoGPS() {
       console.log('✅ GPS actualizado:', latitude, longitude)
     },
     (error) => {
-      // ✅ Manejo mejorado de errores
       switch (error.code) {
         case error.TIMEOUT:
           console.warn('⏱️ GPS timeout - reintentando...')
-          // No marcar como inactivo, solo avisar
           break
         case error.PERMISSION_DENIED:
           console.error('❌ Permiso de GPS denegado')
@@ -348,39 +347,6 @@ function detenerSeguimientoGPS() {
     console.log('🛑 Seguimiento GPS detenido')
   }
 }
-
-/*async function obtenerDireccionPunto(lat, lng) {
-  try {
-    const MAPBOX_TOKEN =
-      'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
-
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&language=es&limit=1&access_token=${MAPBOX_TOKEN}`,
-    )
-
-    const data = await response.json()
-
-    if (data.features && data.features.length > 0) {
-      const address = data.features[0]
-      // Extraer solo el nombre de la calle sin el número y ciudad
-      const placeName = address.place_name || ''
-      const parts = placeName.split(',')
-
-      // Intentar obtener solo el nombre de la calle
-      if (parts.length > 0) {
-        const streetPart = parts[0].trim()
-        // Remover número si existe (patrón común en direcciones)
-        //const streetOnly = streetPart.replace(/^\d+\s*/ //, '').replace(/\s*\d+$/, '')
-// return streetOnly || 'Calle desconocida'
-//}
-//}
-
-/*  return 'Dirección no disponible'
-  } catch (error) {
-    console.error('❌ Error obteniendo dirección del punto:', error)
-    return 'Error al obtener dirección'
-  }
-}*/
 
 async function inicializarSistemaDeteccion() {
   try {
@@ -435,13 +401,9 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-// ============================================
-// 🎨 FUNCIÓN: Crear icono POI elegante
-// ============================================
 function crearIconoPOI(tieneEventos = false) {
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
-      <!-- Icono SVG principal con color blanco -->
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
         <path fill="white" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       </svg>
@@ -449,7 +411,6 @@ function crearIconoPOI(tieneEventos = false) {
       ${
         tieneEventos
           ? `
-        <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
           top: -4px;
@@ -481,13 +442,9 @@ function crearIconoPOI(tieneEventos = false) {
   return markerEl
 }
 
-// ============================================
-// 🎨 FUNCIÓN: Crear icono Geozona elegante
-// ============================================
 function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null) {
   const colorFinal = color || '#FFFFFF'
 
-  // Diferentes SVGs según el tipo de geozona
   let iconoSVG = ''
 
   if (tipo === 'circular') {
@@ -497,7 +454,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
       </svg>
     `
   } else {
-    // Poligonal
     iconoSVG = `
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
         <polygon points="12,2 22,12 12,22 2,12" fill="${colorFinal}" stroke="white" stroke-width="2"/>
@@ -512,7 +468,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
       ${
         tieneEventos
           ? `
-        <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
           top: -2px;
@@ -543,10 +498,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
 
   return markerEl
 }
-
-/*function getHueRotation(_hexColor) {
-  return '0deg'
-}*/
 
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
@@ -607,10 +558,8 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // 🆕 POPUP CON ESTILO SIMILAR A GEOZONA PERO SIN BOTÓN DE EXPANDIR
         const popupContent = `
           <div class="poi-popup-container">
-            <!-- Cabecera -->
             <div class="poi-popup-header">
               <div class="header-info">
                 <div class="header-title">📍 ${poi.nombre}</div>
@@ -618,7 +567,6 @@ const dibujarTodosEnMapa = async () => {
               </div>
             </div>
 
-            <!-- Cuerpo (siempre visible) -->
             <div class="poi-popup-body">
               <div class="address-info">
                 <div class="address-icon">📍</div>
@@ -635,7 +583,6 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
-        // ✅ USAR NUEVO ICONO ELEGANTE
         const markerEl = crearIconoPOI(tieneEventos)
 
         const popup = new mapboxgl.Popup({
@@ -661,8 +608,6 @@ const dibujarTodosEnMapa = async () => {
       }
     })
 
-    //  DIBUJAR GEOZONAS CON ICONOS ELEGANTES
-
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
@@ -670,12 +615,9 @@ const dibujarTodosEnMapa = async () => {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
 
-      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
-      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
       let direccionesPuntos = []
 
       if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
-        // ✅ USAR DIRECCIONES DE FIREBASE (ya están guardadas)
         direccionesPuntos = geozona.puntos.map((punto, index) => ({
           index: index,
           direccion: punto.direccion || 'Dirección no disponible',
@@ -691,13 +633,11 @@ const dibujarTodosEnMapa = async () => {
 
       const popupContent = `
         <div class="geozona-popup-container">
-          <!-- Cabecera (siempre visible) -->
           <div class="geozona-popup-header">
             <div class="header-info">
               <div class="header-title">🔷 ${geozona.nombre}</div>
               <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
             </div>
-            <!-- El botón de expandir ahora está aquí -->
             <button
               id="toggle-btn-geo-${geozona.id}"
               class="toggle-geozona-btn"
@@ -709,7 +649,6 @@ const dibujarTodosEnMapa = async () => {
             </button>
           </div>
 
-          <!-- Cuerpo (oculto por defecto con max-height) -->
           <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
             <div class="points-list-container">
               ${direccionesPuntos
@@ -745,7 +684,7 @@ const dibujarTodosEnMapa = async () => {
           </div>
         </div>
       `
-      // 🔵 GEOZONA CIRCULAR
+
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
         const fillColor = geozona.color || '#4ECDC4'
@@ -810,7 +749,6 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
         const markerEl = crearIconoGeozona('circular', tieneEventos, fillColor)
 
         const popup = new mapboxgl.Popup({
@@ -831,10 +769,7 @@ const dibujarTodosEnMapa = async () => {
           }
           popupGlobalActivo = popup
         })
-      }
-
-      // 🔷 GEOZONA POLIGONAL
-      else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+      } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
 
@@ -905,7 +840,6 @@ const dibujarTodosEnMapa = async () => {
         const centroLat = lats.reduce((a, b) => a + b) / lats.length
         const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
         const markerEl = crearIconoGeozona('poligonal', tieneEventos, fillColor)
 
         const popup = new mapboxgl.Popup({
@@ -937,12 +871,12 @@ const dibujarTodosEnMapa = async () => {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
+
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
   const layers = mapaAPI.map.getStyle().layers
 
-  // 🔥 PASO 1: Primero eliminar TODOS los layers
   layers.forEach((layer) => {
     if (
       layer.id.startsWith('poi-circle-') ||
@@ -957,7 +891,6 @@ const limpiarCapasDelMapa = () => {
     }
   })
 
-  // 🔥 PASO 2: Después eliminar los sources
   const sources = Object.keys(mapaAPI.map.getStyle().sources)
   sources.forEach((sourceId) => {
     if (
@@ -993,9 +926,6 @@ onMounted(async () => {
         mapaListo.value = true
         console.log('✅ Mapa completamente listo')
 
-        // ========================================
-        // FUNCIONES GLOBALES PARA ABRIR DETALLES
-        // ========================================
         window.abrirDetallesUbicacion = (ubicacionData) => {
           try {
             if (ubicacionData.tipo === 'poi') {
@@ -1026,9 +956,6 @@ onMounted(async () => {
           window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
         }
 
-        // ========================================
-        // CARGAR DATOS Y SISTEMAS
-        // ========================================
         await dibujarTodosEnMapa()
         await inicializarSistemaDeteccion()
         iniciarEvaluacionContinuaEventos()
@@ -1039,21 +966,14 @@ onMounted(async () => {
           await iniciarSimuladorAutomatico()
         }, 2000)
 
-        // ========================================
-        // 🆕 EVENT LISTENER DEL MAPA
-        // ========================================
         const mapPage = document.getElementById('map-page')
         if (mapPage) {
           mapPage.addEventListener('click', (event) => {
-            // ✅ VALIDACIÓN CRÍTICA
             if (!event || !event.target) {
               console.warn('⚠️ Evento sin target válido')
               return
             }
 
-            // ========================================
-            // MANEJO DE BOTONES DE POI/GEOZONA
-            // ========================================
             const actionButton = event.target.closest('[data-action]')
             if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
               const action = actionButton.dataset.action
@@ -1067,9 +987,6 @@ onMounted(async () => {
               return
             }
 
-            // ========================================
-            // TOGGLE DEL POPUP DE UNIDADES
-            // ========================================
             const toggleBtn = event.target.closest('.toggle-popup-btn')
             if (toggleBtn) {
               const unidadId = toggleBtn.dataset.unidadId
@@ -1082,9 +999,6 @@ onMounted(async () => {
               return
             }
 
-            // ========================================
-            // 🆕 VER DETALLES DEL CONDUCTOR
-            // ========================================
             const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
             if (detailsBtn) {
               const conductorId = detailsBtn.dataset.conductorId
@@ -1093,7 +1007,6 @@ onMounted(async () => {
               if (conductorId) {
                 console.log(`🚀 Navegando a: ${conductorNombre} (ID: ${conductorId})`)
 
-                // Buscar conductor y grupo
                 obtenerConductores().then(() => {
                   const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
 
@@ -1106,13 +1019,10 @@ onMounted(async () => {
                       if (grupoDelConductor) {
                         console.log(`✅ Grupo encontrado: ${grupoDelConductor.Nombre}`)
 
-                        // Cerrar dialogs
                         const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
                         window.dispatchEvent(cerrarDialogs)
 
-                        // Delay para sincronización
                         setTimeout(() => {
-                          // Actualizar estado compartido
                           estadoCompartido.value.abrirConductoresConConductor = {
                             conductor: {
                               id: conductorId,
@@ -1163,9 +1073,6 @@ onMounted(async () => {
     console.error('❌ Error inicializando mapa:', error)
   }
 
-  // ========================================
-  // OTROS EVENT LISTENERS
-  // ========================================
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -1180,7 +1087,6 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
-  // Función global para toggle de geozonas
   window.toggleGeozonaPopup = (geozonaId) => {
     const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
     const button = document.getElementById(`toggle-btn-geo-${geozonaId}`)
@@ -1194,9 +1100,7 @@ onMounted(async () => {
     }
   }
 
-  // Event listener para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    //console.log('🔄 Redibujando mapa...')
     limpiarCapasDelMapa()
     await dibujarTodosEnMapa()
     resetear()
@@ -1209,8 +1113,6 @@ onMounted(async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
-
-    //console.log('✅ Mapa redibujado completamente')
   })
 
   console.log('🚀 Iniciando tracking GPS...')
@@ -1299,17 +1201,28 @@ const manejarToggleTrafico = () => {
   const nuevoEstado = toggleTrafico()
   traficoActivo.value = nuevoEstado
 }
+
+// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO
+const manejarCambioEstilo = () => {
+  const nuevoEstilo = cambiarEstiloMapa()
+  if (nuevoEstilo !== null) {
+    estiloMapa.value = nuevoEstilo ? 'streets' : 'satellite'
+
+    $q.notify({
+      type: 'info',
+      message:
+        estiloMapa.value === 'streets'
+          ? '🗺️ Vista de calles activada'
+          : '🛰️ Vista satelital activada',
+      position: 'top',
+      timeout: 1500,
+      icon: estiloMapa.value === 'streets' ? 'map' : 'satellite',
+    })
+  }
+}
 </script>
 
 <style>
-/* ============================================
-  ⚙️ ESTILOS GLOBALES (para el Popup de Mapbox)
-  ============================================
-  Estos estilos no son 'scoped' porque el popup de Mapbox
-  se inyecta en el body, fuera del componente Vue.
-============================================ */
-
-/* Contenedor principal del popup de Mapbox */
 .mapboxgl-popup-content {
   padding: 0 !important;
   border-radius: 12px !important;
@@ -1317,12 +1230,10 @@ const manejarToggleTrafico = () => {
   background-color: #ffffff !important;
 }
 
-/* La pequeña flecha del popup */
 .mapboxgl-popup-tip {
   border-top-color: #ffffff !important;
 }
 
-/* MODIFICADO: Botón de cerrar (X) más pequeño y mejor posicionado */
 .mapboxgl-popup-close-button {
   width: 28px !important;
   height: 28px !important;
@@ -1330,12 +1241,12 @@ const manejarToggleTrafico = () => {
   background-color: #f3f4f6 !important;
   color: #6b7280 !important;
   border-radius: 50% !important;
-  font-size: 18px !important; /* <-- ¡CAMBIO CLAVE! Fuente más pequeña */
+  font-size: 18px !important;
   font-weight: bold !important;
   border: 1px solid #e5e7eb !important;
   transition: all 0.2s ease !important;
-  top: 6px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
-  right: 16px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  top: 6px !important;
+  right: 16px !important;
 }
 
 .mapboxgl-popup-close-button:hover {
@@ -1343,7 +1254,6 @@ const manejarToggleTrafico = () => {
   color: #374151 !important;
 }
 
-/* Contenedor personalizado para el popup de Geozona */
 .geozona-popup-container {
   min-width: 260px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -1355,7 +1265,7 @@ const manejarToggleTrafico = () => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: column; /* <-- ¡CAMBIO CLAVE! */
+  flex-direction: column;
   padding: 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -1364,7 +1274,7 @@ const manejarToggleTrafico = () => {
 .header-info {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px; /* Espacio entre el título y el botón de expandir */
+  margin-bottom: 8px;
 }
 
 .header-title {
@@ -1385,13 +1295,13 @@ const manejarToggleTrafico = () => {
   border: 1px solid #d1d5db;
   border-radius: 50%;
   cursor: pointer;
-  width: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
-  height: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease-in-out;
-  align-self: flex-end; /* <-- ¡CAMBIO CLAVE! Alinea a la derecha */
+  align-self: flex-end;
 }
 
 .toggle-geozona-btn:hover {
@@ -1408,7 +1318,6 @@ const manejarToggleTrafico = () => {
   transform: rotate(180deg);
 }
 
-/* Cuerpo del popup (la parte que se expande y contrae) */
 .geozona-popup-body {
   max-height: 0;
   overflow: hidden;
@@ -1418,19 +1327,16 @@ const manejarToggleTrafico = () => {
   padding: 0 16px;
 }
 
-/* Estilos del cuerpo cuando está expandido */
 .toggle-geozona-btn.expanded ~ .geozona-popup-body {
   padding: 16px;
 }
 
-/* Contenedor de la lista de puntos con scroll */
 .points-list-container {
   max-height: 220px;
   overflow-y: auto;
   margin-bottom: 16px;
 }
 
-/* Tarjeta para cada punto */
 .point-card {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -1485,8 +1391,8 @@ const manejarToggleTrafico = () => {
 
 .details-btn {
   width: 100%;
-  padding: 18px 12px; /* <-- ¡CAMBIO CLAVE! Más padding */
-  margin-bottom: 16px; /* <-- ¡CAMBIO CLAVE! Espacio abajo del botón */
+  padding: 18px 12px;
+  margin-bottom: 16px;
   background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
   color: white;
   border: none;
@@ -1503,7 +1409,6 @@ const manejarToggleTrafico = () => {
   box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
 }
 
-/* Scrollbar personalizado para la lista de puntos */
 .points-list-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -1539,56 +1444,8 @@ const manejarToggleTrafico = () => {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.header-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1.2;
-}
-
-.header-subtitle {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
 .poi-popup-body {
   padding: 16px;
-}
-
-.event-indicator {
-  display: flex;
-  align-items: center;
-  background-color: #fef2f2;
-  padding: 8px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.event-icon {
-  font-size: 24px;
-  margin-right: 8px;
-}
-
-.event-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.event-count {
-  font-size: 16px;
-  font-weight: bold;
-  color: #dc2626;
-}
-
-.event-label {
-  font-size: 11px;
-  color: #7f1d1d;
 }
 
 .address-info {
@@ -1609,26 +1466,6 @@ const manejarToggleTrafico = () => {
   flex: 1;
 }
 
-.details-btn {
-  width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
-}
-
-.details-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
-}
-
-/* Animación de entrada del popup */
 .popup-animated .mapboxgl-popup-content {
   animation: popupFade 0.2s ease-out;
 }
@@ -1675,7 +1512,6 @@ const manejarToggleTrafico = () => {
   background-color: #ffffff;
 }
 
-/* ✅ NUEVO: Estilo para la dirección en el estado contraído */
 .unidad-direccion {
   font-size: 12px;
   color: #374151;
@@ -1684,7 +1520,7 @@ const manejarToggleTrafico = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px; /* Ajusta según sea necesario */
+  max-width: 200px;
 }
 
 .unidad-popup-header {
@@ -1749,7 +1585,7 @@ const manejarToggleTrafico = () => {
 }
 
 .unidad-popup-container.expanded .unidad-popup-body {
-  max-height: 400px; /* Un valor lo suficientemente grande */
+  max-height: 400px;
   padding: 16px;
 }
 
@@ -1773,7 +1609,7 @@ const manejarToggleTrafico = () => {
   width: 100%;
   height: 100%;
 }
-/* ⚡ HARDWARE ACCELERATION PARA MAPBOX - AGREGAR AQUÍ */
+
 :deep(.mapboxgl-map) {
   will-change: transform;
   transform: translateZ(0);
@@ -1790,6 +1626,7 @@ const manejarToggleTrafico = () => {
   will-change: transform;
   transform: translateZ(0);
 }
+
 .floating-confirm-btn {
   position: fixed !important;
   bottom: 100px;
@@ -1899,18 +1736,6 @@ const manejarToggleTrafico = () => {
   }
 }
 
-@keyframes pulse-badge-geozona {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-  }
-  50% {
-    transform: scale(1.15);
-    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.8);
-  }
-}
-
 @keyframes pulse-location {
   0% {
     transform: translate(-50%, -50%) scale(1);
@@ -1953,6 +1778,21 @@ const manejarToggleTrafico = () => {
 .floating-confirm-btn-main:hover {
   transform: scale(1.05);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ✅ NUEVO: Botón de cambio de estilo de mapa */
+.map-style-toggle-btn {
+  position: fixed !important;
+  top: 80px;
+  right: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.map-style-toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .traffic-toggle-btn {
@@ -2013,11 +1853,6 @@ const manejarToggleTrafico = () => {
 :deep(.icono-geozona-hover:hover) {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
-}
-
-:deep(.icono-poi-hover:hover > div > div:last-child),
-:deep(.icono-geozona-hover:hover > div > div:last-child) {
-  transform: scale(0.91) !important;
 }
 
 :deep(.mapboxgl-canvas-container) {

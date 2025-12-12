@@ -22,6 +22,13 @@ let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
 
+// 🗺️ SISTEMA DE ESTILOS DE MAPA
+const estiloActual = ref('satellite') // 'satellite' o 'streets'
+const ESTILOS_MAPA = {
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  streets: 'mapbox://styles/mapbox/streets-v12',
+}
+
 // 🆕 SISTEMA DE POPUP GLOBAL UNIFICADO
 let popupGlobalActivo = null
 
@@ -935,6 +942,110 @@ export function useMapboxGL() {
     }
   }
 
+  // 🗺️ CAMBIAR ESTILO DEL MAPA (NUEVO)
+  const cambiarEstiloMapa = () => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return false
+    }
+
+    try {
+      // Guardar el centro y zoom actual
+      const center = map.value.getCenter()
+      const zoom = map.value.getZoom()
+
+      // Cambiar estilo
+      const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
+      estiloActual.value = nuevoEstilo
+
+      console.log(`🗺️ Cambiando estilo a: ${nuevoEstilo}`)
+
+      // Aplicar nuevo estilo
+      map.value.setStyle(ESTILOS_MAPA[nuevoEstilo])
+
+      // Esperar a que el estilo se cargue
+      map.value.once('style.load', () => {
+        console.log('✅ Nuevo estilo cargado')
+
+        // Restaurar centro y zoom
+        map.value.jumpTo({ center, zoom })
+
+        // 🔄 RE-AGREGAR CAPA DE TRÁFICO
+        if (!map.value.getSource('mapbox-traffic')) {
+          map.value.addSource('mapbox-traffic', {
+            type: 'vector',
+            url: 'mapbox://mapbox.mapbox-traffic-v1',
+          })
+        }
+
+        // Buscar la primera capa de etiquetas
+        const layers = map.value.getStyle().layers
+        let labelLayerId
+        for (let i = 0; i < layers.length; i++) {
+          if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+            labelLayerId = layers[i].id
+            break
+          }
+        }
+
+        // Insertar tráfico antes de las etiquetas
+        if (!map.value.getLayer('traffic')) {
+          map.value.addLayer(
+            {
+              id: 'traffic',
+              type: 'line',
+              source: 'mapbox-traffic',
+              'source-layer': 'traffic',
+              paint: {
+                'line-width': [
+                  'interpolate',
+                  ['exponential', 1.5],
+                  ['zoom'],
+                  10,
+                  1,
+                  13,
+                  2,
+                  15,
+                  3,
+                  18,
+                  6,
+                  20,
+                  10,
+                ],
+                'line-color': [
+                  'case',
+                  ['==', ['get', 'congestion'], 'low'],
+                  '#4CAF50',
+                  ['==', ['get', 'congestion'], 'moderate'],
+                  '#FF9800',
+                  ['==', ['get', 'congestion'], 'heavy'],
+                  '#F44336',
+                  ['==', ['get', 'congestion'], 'severe'],
+                  '#9C27B0',
+                  '#888888',
+                ],
+              },
+              layout: {
+                visibility: 'none',
+              },
+            },
+            labelLayerId,
+          )
+        }
+
+        // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
+        window.dispatchEvent(new CustomEvent('redibujarMapa'))
+
+        console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
+      })
+
+      return nuevoEstilo === 'streets'
+    } catch (error) {
+      console.error('❌ Error al cambiar estilo:', error)
+      return null
+    }
+  }
+
   // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
@@ -948,27 +1059,27 @@ export function useMapboxGL() {
 
       map.value = new mapboxgl.Map({
         container: containerId,
-        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        style: ESTILOS_MAPA[estiloActual.value], // ✅ Usar estilo del estado
         center: [center[1], center[0]],
         zoom: zoom,
         // ⚡ OPTIMIZACIONES DE RENDIMIENTO
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 100, // ✅ Aumentado de 50 a 100
+        maxTileCacheSize: 100,
         minZoom: 5,
         maxZoom: 18,
         // ⚡ OPTIMIZACIONES ADICIONALES v2
-        fadeDuration: 0, // Ya lo tienes ✅
+        fadeDuration: 0,
         crossSourceCollisions: false,
         trackResize: false,
         pitchWithRotate: false,
         touchPitch: false,
         // 🆕 NUEVAS OPTIMIZACIONES CRÍTICAS
-        renderWorldCopies: false, // ✅ Evita copias del mundo
-        antialias: false, // ✅ Desactiva antialiasing para mejor performance
-        optimizeForTerrain: false, // ✅ Sin optimización 3D innecesaria
-        dragRotate: false, // Desactiva rotación al arrastrar
+        renderWorldCopies: false,
+        antialias: false,
+        optimizeForTerrain: false,
+        dragRotate: false,
         touchZoomRotate: false,
         easing: (t) => {
           // Curva de easing personalizada (ease-out-cubic)
@@ -991,14 +1102,14 @@ export function useMapboxGL() {
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {
         console.log('✅ Mapa Mapbox GL cargado correctamente')
-        map.value.scrollZoom.setWheelZoomRate(1 / 150) // Más lento = más suave (default es 1/450)
-        map.value.scrollZoom.setZoomRate(1 / 100) // Para touch/trackpad
+        map.value.scrollZoom.setWheelZoomRate(1 / 150)
+        map.value.scrollZoom.setZoomRate(1 / 100)
 
         map.value.dragPan.enable({
-          linearity: 0.3, // Más bajo = más suave (default: 0)
-          easing: (t) => t * (2 - t), // Ease-out cuadrático
-          maxSpeed: 1400, // Velocidad máxima de pan
-          deceleration: 2500, // Desaceleración suave
+          linearity: 0.3,
+          easing: (t) => t * (2 - t),
+          maxSpeed: 1400,
+          deceleration: 2500,
         })
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
@@ -1071,14 +1182,13 @@ export function useMapboxGL() {
       })
 
       map.value.on('movestart', () => {
-        isPanning = true // 🆕 Marcar que está en pan
+        isPanning = true
         pendingUpdate = false
 
         if (map.value.getCanvas()) {
           map.value.getCanvas().style.imageRendering = 'auto'
         }
 
-        // 🆕 Desactivar transiciones suaves durante el pan
         Object.values(marcadoresUnidades.value).forEach((marker) => {
           const el = marker.getElement()
           if (el) {
@@ -1092,13 +1202,11 @@ export function useMapboxGL() {
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
-        // 🆕 Esperar 100ms después de que termine el pan
         PanTimeout = setTimeout(() => {
           isPanning = false
           if (map.value.getCanvas()) {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
-          // 🆕 Reactivar transiciones suaves
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
             if (el) {
@@ -1106,7 +1214,6 @@ export function useMapboxGL() {
             }
           })
 
-          // 🆕 Forzar actualización de marcadores
           if (pendingUnidades) {
             console.log('🔄 Actualizando marcadores después del pan')
             procesarActualizacionMarcadores(pendingUnidades)
@@ -1124,7 +1231,7 @@ export function useMapboxGL() {
 
       map.value.on('zoomstart', () => {
         isZooming = true
-        pendingUpdate = false // Pausar actualizaciones de marcadores
+        pendingUpdate = false
       })
 
       map.value.on('zoom', () => {
@@ -1133,7 +1240,6 @@ export function useMapboxGL() {
         const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
 
         if (zoomDiff > 0.5) {
-          // Actualizar cada medio nivel de zoom
           lastZoomLevel = currentZoom
           if (map.value) {
             map.value.triggerRepaint()
@@ -1146,7 +1252,6 @@ export function useMapboxGL() {
         zoomTimeout = setTimeout(() => {
           if (map.value) {
             map.value.triggerRepaint()
-            // Forzar actualización de marcadores después del zoom
             if (pendingUnidades) {
               procesarActualizacionMarcadores(pendingUnidades)
             }
@@ -1154,7 +1259,6 @@ export function useMapboxGL() {
         }, 150)
       })
 
-      // Manejo de errores
       map.value.on('error', (e) => {
         console.error('❌ Error en Mapbox GL:', e)
       })
@@ -1223,6 +1327,8 @@ export function useMapboxGL() {
             return true
           }
         },
+        cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
+        getEstiloActual: () => estiloActual.value, // ✅ GETTER
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
@@ -1406,6 +1512,8 @@ export function useMapboxGL() {
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
     toggleTrafico,
+    cambiarEstiloMapa, // ✅ EXPORTAR NUEVA FUNCIÓN
+    getEstiloActual: () => estiloActual.value, // ✅ EXPORTAR GETTER
     actualizarMarcadoresUnidades,
     limpiarMarcadoresUnidades,
     centrarEnUnidad,
