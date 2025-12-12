@@ -53,7 +53,7 @@
                         <stop offset="100%" style="stop-color: #0d2a3d; stop-opacity: 1" />
                       </linearGradient>
                     </defs>
-                    <rect width="150" height="100" fill="url(#earthGradient)" />
+                    <rect width="150" height="100" fill="url(#earthGradient)" rx="12" ry="12" />
                     <path
                       d="M 0 60 Q 40 55, 80 60 T 150 55 L 150 100 L 0 100 Z"
                       fill="url(#waterGradient)"
@@ -124,7 +124,7 @@
                         <stop offset="100%" style="stop-color: #e8e8e0; stop-opacity: 1" />
                       </linearGradient>
                     </defs>
-                    <rect width="150" height="100" fill="url(#bgGradient)" />
+                    <rect width="150" height="100" fill="url(#bgGradient)" rx="12" ry="12" />
                     <rect x="5" y="10" width="35" height="30" fill="#c8e6c9" opacity="0.8" />
                     <rect x="110" y="55" width="30" height="35" fill="#c8e6c9" opacity="0.8" />
                     <rect x="0" y="45" width="150" height="6" fill="#d0d0d0" />
@@ -2066,25 +2066,25 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 /* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
 .layers-menu-btn.q-btn {
   border-radius: 12px !important;
-  border: 3px solid #ddf4e7 !important;
+  border: 3px solid #ffffff !important;
 }
 
 .layers-menu-btn :deep(.q-btn__wrapper) {
   border-radius: 12px !important;
   padding: 12px !important;
-  border: 3px solid #ddf4e7 !important;
+  border: 3px solid #ffffff !important;
 }
 
 .layers-menu-btn :deep(.q-btn__content) {
   border-radius: 12px !important;
-  border-color: #ddf4e7;
+  border-color: #ffffff;
 }
 
 /* Asegurar que el ripple effect también sea redondeado */
 .layers-menu-btn :deep(.q-focus-helper),
 .layers-menu-btn :deep(.q-ripple) {
   border-radius: 12px !important;
-  border-color: #000000;
+  border-color: #ffffff;
 }
 
 .layers-menu-btn:hover {
@@ -2198,6 +2198,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   height: 100%;
   display: block;
   border-radius: 12px; /* ✅ Agrega esto para redondear el SVG también */
+  clip-path: inset(0 round 12px);
 }
 
 /* Badge de activo (checkmark) */
