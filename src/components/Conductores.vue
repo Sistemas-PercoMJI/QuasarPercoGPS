@@ -79,12 +79,19 @@
           class="group-item"
         >
           <q-item-section avatar>
-            <q-icon name="folder" :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue'" />
+            <q-avatar
+              :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
+              text-color="white"
+              size="36px"
+            >
+              <q-icon name="folder" size="20px" />
+            </q-avatar>
           </q-item-section>
 
           <q-item-section>
-            <q-item-label>{{ grupo.Nombre }}</q-item-label>
-            <q-item-label caption>
+            <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
+            <q-item-label caption class="text-grey-7">
+              <q-icon name="person" size="14px" class="q-mr-xs" />
               {{ contarConductoresPorGrupo(grupo.id) }} conductores
             </q-item-label>
           </q-item-section>
@@ -96,8 +103,11 @@
               round
               icon="more_vert"
               size="sm"
+              color="grey-7"
               @click.stop="mostrarMenuGrupo($event, grupo)"
-            />
+            >
+              <q-tooltip>Opciones del grupo</q-tooltip>
+            </q-btn>
           </q-item-section>
         </q-item>
       </q-list>
@@ -123,15 +133,6 @@
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">{{ conductor.Telefono }}</div>
             </div>
-            <q-btn
-              flat
-              dense
-              round
-              icon="more_vert"
-              size="sm"
-              @click.stop="mostrarMenuConductor($event, conductor)"
-              class="card-menu"
-            />
           </q-card-section>
 
           <q-card-section class="card-body">
@@ -791,35 +792,63 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu v-model="menuGrupoVisible" v-if="menuGrupoTarget" touch-position context-menu>
-      <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="editarGrupo">
+    <q-menu
+      v-model="menuGrupoVisible"
+      v-if="menuGrupoTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 8]"
+      transition-show="jump-down"
+      transition-hide="jump-up"
+    >
+      <q-list dense style="min-width: 180px" class="rounded-borders">
+        <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="edit" size="xs" />
+            <q-icon name="edit" size="sm" color="primary" />
           </q-item-section>
-          <q-item-section>Editar</q-item-section>
+          <q-item-section>Editar grupo</q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="confirmarEliminarGrupo">
+
+        <q-separator spaced />
+
+        <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="delete" size="xs" color="negative" />
+            <q-icon name="delete" size="sm" color="negative" />
           </q-item-section>
-          <q-item-section class="text-negative">Eliminar</q-item-section>
+          <q-item-section class="text-negative">Eliminar grupo</q-item-section>
         </q-item>
       </q-list>
     </q-menu>
 
     <!-- Menú contextual para conductores -->
-    <q-menu v-model="menuConductorVisible" v-if="menuConductorTarget" touch-position context-menu>
-      <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="verDetalles">
+    <q-menu
+      v-model="menuConductorVisible"
+      v-if="menuConductorTarget"
+      anchor="bottom right"
+      self="top right"
+      :offset="[0, 8]"
+      transition-show="jump-down"
+      transition-hide="jump-up"
+    >
+      <q-list dense style="min-width: 180px" class="rounded-borders">
+        <q-item clickable v-close-popup @click="verDetalles" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="info" size="xs" />
+            <q-icon name="info" size="sm" color="primary" />
           </q-item-section>
           <q-item-section>Ver detalles</q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="quitarDeGrupo" v-if="grupoSeleccionado !== 'todos'">
+
+        <q-separator spaced v-if="grupoSeleccionado !== 'todos'" />
+
+        <q-item
+          clickable
+          v-close-popup
+          @click="quitarDeGrupo"
+          v-if="grupoSeleccionado !== 'todos'"
+          class="menu-item"
+        >
           <q-item-section avatar>
-            <q-icon name="remove_circle" size="xs" color="negative" />
+            <q-icon name="remove_circle" size="sm" color="negative" />
           </q-item-section>
           <q-item-section class="text-negative">Quitar del grupo</q-item-section>
         </q-item>
@@ -1741,14 +1770,6 @@ function mostrarMenuGrupo(event, grupo) {
   menuGrupoVisible.value = true
 }
 
-function mostrarMenuConductor(event, conductor) {
-  event.preventDefault()
-  event.stopPropagation()
-  conductorMenu.value = conductor
-  menuConductorTarget.value = true // ✅ Solo un flag booleano
-  menuConductorVisible.value = true
-}
-
 function editarGrupo() {
   modoEdicion.value = true
   nuevoGrupo.value = { Nombre: grupoMenu.value.Nombre }
@@ -2411,5 +2432,39 @@ function navegarAUnidad() {
 .expansion-item .q-item {
   font-weight: 500;
   color: #424242;
+}
+
+/* Estilos para los menús contextuales */
+.menu-item {
+  padding: 10px 16px;
+  transition: all 0.2s ease;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.rounded-borders {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* Mejorar el diseño de la lista de grupos */
+.grupos-lista .q-item {
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.grupos-lista .q-item:hover {
+  background-color: #e3f2fd;
+  transform: translateX(4px);
+}
+
+.grupos-lista .q-item.q-item--active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 </style>
