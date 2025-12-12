@@ -32,6 +32,7 @@
                     height="100"
                     viewBox="0 0 150 100"
                     xmlns="http://www.w3.org/2000/svg"
+                    border-radius="20px"
                   >
                     <defs>
                       <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -107,6 +108,7 @@
                     height="100"
                     viewBox="0 0 150 100"
                     xmlns="http://www.w3.org/2000/svg"
+                    border-radius="20px"
                   >
                     <defs>
                       <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -2150,7 +2152,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 .map-style-card {
   flex: 1;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 12px; /* ✅ Cambié de 8px a 12px */
   overflow: hidden;
   transition: all 0.2s ease;
   border: 2px solid #e0e0e0;
@@ -2175,12 +2177,14 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   height: 80px;
   overflow: hidden;
   background: #f5f5f5;
+  padding: 4px; /* ✅ Agrega esto */
 }
 
 .style-preview svg {
   width: 100%;
   height: 100%;
   display: block;
+  border-radius: 12px; /* ✅ Agrega esto para redondear el SVG también */
 }
 
 /* Badge de activo (checkmark) */
