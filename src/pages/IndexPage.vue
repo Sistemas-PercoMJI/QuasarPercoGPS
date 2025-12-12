@@ -3,7 +3,15 @@
     <div id="map" class="full-map"></div>
 
     <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
-    <q-btn unelevated color="primary" icon="layers" class="layers-menu-btn" size="lg" padding="sm">
+    <q-btn
+      unelevated
+      color="primary"
+      icon="layers"
+      class="layers-menu-btn"
+      size="lg"
+      padding="sm"
+      border-color="#000000"
+    >
       <q-tooltip>Capas del Mapa</q-tooltip>
 
       <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
@@ -2052,26 +2060,31 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   border-radius: 12px !important;
+  border: 2px solid #ddf4e7 !important;
 }
 
 /* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
 .layers-menu-btn.q-btn {
   border-radius: 12px !important;
+  border: 3px solid #ddf4e7 !important;
 }
 
 .layers-menu-btn :deep(.q-btn__wrapper) {
   border-radius: 12px !important;
   padding: 12px !important;
+  border: 3px solid #ddf4e7 !important;
 }
 
 .layers-menu-btn :deep(.q-btn__content) {
   border-radius: 12px !important;
+  border-color: #ddf4e7;
 }
 
 /* Asegurar que el ripple effect también sea redondeado */
 .layers-menu-btn :deep(.q-focus-helper),
 .layers-menu-btn :deep(.q-ripple) {
   border-radius: 12px !important;
+  border-color: #000000;
 }
 
 .layers-menu-btn:hover {
