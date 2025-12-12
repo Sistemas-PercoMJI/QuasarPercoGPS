@@ -8,7 +8,6 @@
       color="primary"
       icon="layers"
       class="layers-menu-btn"
-      size="lg"
       padding="sm"
       border-color="#000000"
     >
@@ -2061,6 +2060,9 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   transition: all 0.3s ease;
   border-radius: 12px !important;
   border: 2px solid #ddf4e7 !important;
+
+  width: 45px !important;
+  height: 45px !important;
 }
 
 /* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
