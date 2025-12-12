@@ -97,6 +97,7 @@
           </q-item-section>
 
           <q-item-section side>
+            <!-- ✅ IMPORTANTE: Debe tener @click.stop -->
             <q-btn
               flat
               dense
@@ -799,6 +800,7 @@
       :offset="[8, 0]"
       transition-show="scale"
       transition-hide="scale"
+      no-parent-event
     >
       <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
         <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
