@@ -37,7 +37,7 @@ const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 // ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
-const THROTTLE_MS = 300 // ✅ 250ms = 4 actualizaciones/segundo (antes era 1000ms)
+const THROTTLE_MS = 200 // ✅ 200ms = 5 actualizaciones/segundo (antes era 300ms)
 
 // 🔄 Sistema de batch updates con requestAnimationFrame
 let pendingUpdate = false
@@ -954,11 +954,6 @@ export function useMapboxGL() {
       const center = map.value.getCenter()
       const zoom = map.value.getZoom()
 
-      // 🆕 GUARDAR ESTADO DEL TRÁFICO
-      const traficoEstabaActivo = map.value.getLayer('traffic')
-        ? map.value.getLayoutProperty('traffic', 'visibility') === 'visible'
-        : false
-
       // Cambiar estilo
       const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
       estiloActual.value = nuevoEstilo
@@ -1031,8 +1026,7 @@ export function useMapboxGL() {
                 ],
               },
               layout: {
-                // 🆕 RESTAURAR VISIBILIDAD SEGÚN ESTADO ANTERIOR
-                visibility: traficoEstabaActivo ? 'visible' : 'none',
+                visibility: 'none',
               },
             },
             labelLayerId,
@@ -1043,8 +1037,6 @@ export function useMapboxGL() {
         window.dispatchEvent(new CustomEvent('redibujarMapa'))
 
         console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
-        // 🆕 RETORNAR EL ESTADO DEL TRÁFICO
-        console.log(`🚦 Tráfico restaurado: ${traficoEstabaActivo ? 'visible' : 'oculto'}`)
       })
 
       return nuevoEstilo === 'streets'
@@ -1210,6 +1202,7 @@ export function useMapboxGL() {
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
+        // 🆕 REDUCIDO DE 150ms A 50ms
         PanTimeout = setTimeout(() => {
           isPanning = false
           if (map.value.getCanvas()) {
@@ -1232,7 +1225,7 @@ export function useMapboxGL() {
             })
           }
           console.log('✅ Pan completado')
-        }, 150)
+        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
       })
 
       let zoomTimeout
@@ -1257,6 +1250,7 @@ export function useMapboxGL() {
       map.value.on('zoomend', () => {
         isZooming = false
         clearTimeout(zoomTimeout)
+        // 🆕 REDUCIDO DE 150ms A 50ms
         zoomTimeout = setTimeout(() => {
           if (map.value) {
             map.value.triggerRepaint()
@@ -1264,7 +1258,7 @@ export function useMapboxGL() {
               procesarActualizacionMarcadores(pendingUnidades)
             }
           }
-        }, 150)
+        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
       })
 
       map.value.on('error', (e) => {
