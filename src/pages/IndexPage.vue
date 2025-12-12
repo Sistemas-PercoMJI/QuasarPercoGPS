@@ -2,28 +2,275 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
-    <!-- 🗺️ BOTÓN PARA CAMBIAR ESTILO DE MAPA (NUEVO) -->
-    <q-btn
-      fab
-      :color="estiloMapa === 'streets' ? 'primary' : 'dark'"
-      :icon="estiloMapa === 'streets' ? 'map' : 'satellite'"
-      class="map-style-toggle-btn"
-      @click="manejarCambioEstilo"
-      size="md"
-    >
-      <q-tooltip>{{ estiloMapa === 'streets' ? 'Vista Satelital' : 'Vista Calles' }}</q-tooltip>
-    </q-btn>
+    <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
+    <q-btn unelevated color="primary" icon="layers" class="layers-menu-btn" size="md" padding="sm">
+      <q-tooltip>Capas del Mapa</q-tooltip>
 
-    <!-- BOTÓN DE TRÁFICO -->
-    <q-btn
-      fab
-      :color="traficoActivo ? 'positive' : 'red'"
-      :icon="traficoActivo ? 'traffic' : 'block'"
-      class="traffic-toggle-btn"
-      @click="manejarToggleTrafico"
-      size="md"
-    >
-      <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
+      <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
+        <q-list style="min-width: 280px">
+          <!-- SECCIÓN: ESTILO DE MAPA -->
+          <q-item-label header class="text-weight-bold text-grey-8"> ESTILO DE MAPA </q-item-label>
+
+          <div class="map-styles-container">
+            <!-- OPCIÓN: VISTA SATELITAL -->
+            <div
+              class="map-style-card"
+              :class="{ active: estiloMapa === 'satellite' }"
+              @click="cambiarEstiloDesdeMenu('satellite')"
+            >
+              <div class="style-preview">
+                <!-- SVG Inline Vista Satelital -->
+                <svg
+                  width="150"
+                  height="100"
+                  viewBox="0 0 150 100"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color: #1a3a1a; stop-opacity: 1" />
+                      <stop offset="50%" style="stop-color: #2d5a2d; stop-opacity: 1" />
+                      <stop offset="100%" style="stop-color: #1a3a1a; stop-opacity: 1" />
+                    </linearGradient>
+                    <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color: #1a4d6d; stop-opacity: 1" />
+                      <stop offset="100%" style="stop-color: #0d2a3d; stop-opacity: 1" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="150" height="100" fill="url(#earthGradient)" />
+                  <path
+                    d="M 0 60 Q 40 55, 80 60 T 150 55 L 150 100 L 0 100 Z"
+                    fill="url(#waterGradient)"
+                    opacity="0.8"
+                  />
+                  <ellipse cx="30" cy="35" rx="25" ry="20" fill="#0d2a1a" opacity="0.6" />
+                  <ellipse cx="90" cy="25" rx="35" ry="25" fill="#0d2a1a" opacity="0.5" />
+                  <ellipse cx="120" cy="45" rx="20" ry="18" fill="#0d2a1a" opacity="0.7" />
+                  <rect x="10" y="70" width="30" height="20" fill="#3d4a2d" opacity="0.5" />
+                  <rect x="60" y="65" width="40" height="25" fill="#3d4a2d" opacity="0.4" />
+                  <line
+                    x1="0"
+                    y1="50"
+                    x2="150"
+                    y2="48"
+                    stroke="#555555"
+                    stroke-width="1.5"
+                    opacity="0.8"
+                  />
+                  <line
+                    x1="45"
+                    y1="0"
+                    x2="48"
+                    y2="100"
+                    stroke="#555555"
+                    stroke-width="1"
+                    opacity="0.6"
+                  />
+                  <line
+                    x1="100"
+                    y1="0"
+                    x2="95"
+                    y2="100"
+                    stroke="#555555"
+                    stroke-width="1"
+                    opacity="0.6"
+                  />
+                  <rect x="42" y="45" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
+                  <rect x="47" y="47" width="3" height="3" fill="#8a8a8a" opacity="0.9" />
+                  <rect x="96" y="72" width="5" height="5" fill="#8a8a8a" opacity="0.9" />
+                  <rect x="102" y="70" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
+                </svg>
+                <div v-if="estiloMapa === 'satellite'" class="active-badge">
+                  <q-icon name="check_circle" size="20px" color="positive" />
+                </div>
+              </div>
+              <div class="style-label">Satélite</div>
+            </div>
+
+            <!-- OPCIÓN: VISTA CALLES -->
+            <div
+              class="map-style-card"
+              :class="{ active: estiloMapa === 'streets' }"
+              @click="cambiarEstiloDesdeMenu('streets')"
+            >
+              <div class="style-preview">
+                <!-- SVG Inline Vista Calles -->
+                <svg
+                  width="150"
+                  height="100"
+                  viewBox="0 0 150 100"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <defs>
+                    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color: #f5f5f0; stop-opacity: 1" />
+                      <stop offset="100%" style="stop-color: #e8e8e0; stop-opacity: 1" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="150" height="100" fill="url(#bgGradient)" />
+                  <rect x="5" y="10" width="35" height="30" fill="#c8e6c9" opacity="0.8" />
+                  <rect x="110" y="55" width="30" height="35" fill="#c8e6c9" opacity="0.8" />
+                  <rect x="0" y="45" width="150" height="6" fill="#d0d0d0" />
+                  <rect x="55" y="0" width="6" height="100" fill="#d0d0d0" />
+                  <rect x="0" y="75" width="150" height="4" fill="#d0d0d0" />
+                  <rect x="95" y="0" width="4" height="100" fill="#d0d0d0" />
+                  <rect x="25" y="0" width="2" height="100" fill="#e5e5e5" />
+                  <rect x="80" y="0" width="2" height="100" fill="#e5e5e5" />
+                  <rect x="120" y="0" width="2" height="100" fill="#e5e5e5" />
+                  <rect x="0" y="20" width="150" height="2" fill="#e5e5e5" />
+                  <rect x="0" y="65" width="150" height="2" fill="#e5e5e5" />
+                  <rect x="0" y="90" width="150" height="2" fill="#e5e5e5" />
+                  <rect
+                    x="8"
+                    y="52"
+                    width="15"
+                    height="12"
+                    fill="#f5f5f5"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="28"
+                    y="52"
+                    width="20"
+                    height="12"
+                    fill="#ffffff"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="62"
+                    y="12"
+                    width="18"
+                    height="18"
+                    fill="#fafafa"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="85"
+                    y="15"
+                    width="12"
+                    height="15"
+                    fill="#f5f5f5"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="62"
+                    y="52"
+                    width="25"
+                    height="20"
+                    fill="#ffffff"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="100"
+                    y="20"
+                    width="15"
+                    height="22"
+                    fill="#fafafa"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="8"
+                    y="80"
+                    width="20"
+                    height="15"
+                    fill="#f5f5f5"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="35"
+                    y="80"
+                    width="15"
+                    height="15"
+                    fill="#ffffff"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="62"
+                    y="80"
+                    width="18"
+                    height="15"
+                    fill="#fafafa"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <rect
+                    x="100"
+                    y="80"
+                    width="12"
+                    height="15"
+                    fill="#f5f5f5"
+                    stroke="#c0c0c0"
+                    stroke-width="0.5"
+                  />
+                  <line
+                    x1="0"
+                    y1="48"
+                    x2="150"
+                    y2="48"
+                    stroke="white"
+                    stroke-width="0.5"
+                    stroke-dasharray="3,3"
+                    opacity="0.6"
+                  />
+                  <line
+                    x1="58"
+                    y1="0"
+                    x2="58"
+                    y2="100"
+                    stroke="white"
+                    stroke-width="0.5"
+                    stroke-dasharray="3,3"
+                    opacity="0.6"
+                  />
+                  <circle cx="15" cy="20" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="25" cy="18" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="20" cy="28" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="32" cy="25" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="120" cy="65" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="128" cy="70" r="3" fill="#66bb6a" opacity="0.8" />
+                  <circle cx="122" cy="80" r="3" fill="#66bb6a" opacity="0.8" />
+                </svg>
+                <div v-if="estiloMapa === 'streets'" class="active-badge">
+                  <q-icon name="check_circle" size="20px" color="positive" />
+                </div>
+              </div>
+              <div class="style-label">Calles</div>
+            </div>
+          </div>
+
+          <q-separator class="q-my-sm" />
+
+          <!-- SECCIÓN: CAPAS ADICIONALES -->
+          <q-item-label header class="text-weight-bold text-grey-8">
+            CAPAS ADICIONALES
+          </q-item-label>
+
+          <q-item clickable @click="manejarToggleTrafico" class="traffic-toggle-item">
+            <q-item-section avatar>
+              <q-checkbox
+                :model-value="traficoActivo"
+                color="positive"
+                @update:model-value="manejarToggleTrafico"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Mostrar Tráfico</q-item-label>
+              <q-item-label caption> Visualiza el tráfico en tiempo real </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="traffic" :color="traficoActivo ? 'positive' : 'grey-5'" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-menu>
     </q-btn>
 
     <transition name="fade-scale">
@@ -51,6 +298,11 @@
         </q-btn>
       </div>
     </transition>
+
+    <div v-if="ubicacionActiva" class="user-location-indicator">
+      <q-icon name="gps_fixed" size="24px" color="positive" />
+      <span class="text-caption">GPS Activo</span>
+    </div>
   </q-page>
 </template>
 
@@ -1202,21 +1454,23 @@ const manejarToggleTrafico = () => {
   traficoActivo.value = nuevoEstado
 }
 
-// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO
-const manejarCambioEstilo = () => {
-  const nuevoEstilo = cambiarEstiloMapa()
-  if (nuevoEstilo !== null) {
-    estiloMapa.value = nuevoEstilo ? 'streets' : 'satellite'
+// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
+const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
+  if (estiloMapa.value === nuevoEstilo) {
+    return // Ya está en ese estilo
+  }
+
+  const resultado = cambiarEstiloMapa()
+  if (resultado !== null) {
+    estiloMapa.value = nuevoEstilo
 
     $q.notify({
       type: 'info',
       message:
-        estiloMapa.value === 'streets'
-          ? '🗺️ Vista de calles activada'
-          : '🛰️ Vista satelital activada',
+        nuevoEstilo === 'streets' ? '🗺️ Vista de calles activada' : '🛰️ Vista satelital activada',
       position: 'top',
       timeout: 1500,
-      icon: estiloMapa.value === 'streets' ? 'map' : 'satellite',
+      icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
     })
   }
 }
@@ -1780,19 +2034,130 @@ const manejarCambioEstilo = () => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* ✅ NUEVO: Botón de cambio de estilo de mapa */
-.map-style-toggle-btn {
+/* ✅ NUEVO: Botón principal de capas */
+.layers-menu-btn {
   position: fixed !important;
   top: 80px;
   right: 20px;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  border-radius: 12px !important;
 }
 
-.map-style-toggle-btn:hover {
+/* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
+.layers-menu-btn.q-btn {
+  border-radius: 12px !important;
+}
+
+.layers-menu-btn :deep(.q-btn__wrapper) {
+  border-radius: 12px !important;
+  padding: 12px !important;
+}
+
+.layers-menu-btn :deep(.q-btn__content) {
+  border-radius: 12px !important;
+}
+
+/* Asegurar que el ripple effect también sea redondeado */
+.layers-menu-btn :deep(.q-focus-helper),
+.layers-menu-btn :deep(.q-ripple) {
+  border-radius: 12px !important;
+}
+
+.layers-menu-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Estilos del menú desplegable */
+:deep(.layers-menu) {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Container de las tarjetas de estilo */
+.map-styles-container {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  justify-content: center;
+}
+
+/* Tarjeta individual de estilo */
+.map-style-card {
+  flex: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  border: 2px solid #e0e0e0;
+  background: white;
+}
+
+.map-style-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #bdbdbd;
+}
+
+.map-style-card.active {
+  border-color: #4caf50;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Preview de la imagen */
+.style-preview {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.style-preview svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Badge de activo (checkmark) */
+.active-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Label del estilo */
+.style-label {
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #424242;
+  background: #f5f5f5;
+}
+
+.map-style-card.active .style-label {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Item del toggle de tráfico */
+.traffic-toggle-item {
+  padding: 12px 16px;
+}
+
+.traffic-toggle-item:hover {
+  background-color: #f5f5f5;
 }
 
 .traffic-toggle-btn {
