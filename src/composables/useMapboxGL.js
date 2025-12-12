@@ -1106,10 +1106,10 @@ export function useMapboxGL() {
         map.value.scrollZoom.setZoomRate(1 / 100)
 
         map.value.dragPan.enable({
-          linearity: 0.3,
+          linearity: 0.4,
           easing: (t) => t * (2 - t),
-          maxSpeed: 1400,
-          deceleration: 2500,
+          maxSpeed: 1800,
+          deceleration: 2200,
         })
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
