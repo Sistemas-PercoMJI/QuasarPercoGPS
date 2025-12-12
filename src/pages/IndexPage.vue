@@ -3,7 +3,7 @@
     <div id="map" class="full-map"></div>
 
     <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
-    <q-btn unelevated color="primary" icon="layers" class="layers-menu-btn" size="md" padding="sm">
+    <q-btn unelevated color="primary" icon="layers" class="layers-menu-btn" size="lg" padding="sm">
       <q-tooltip>Capas del Mapa</q-tooltip>
 
       <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
