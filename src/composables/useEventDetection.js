@@ -479,6 +479,12 @@ export function useEventDetection() {
         unidadId: unidad.id,
         unidadNombre: unidad.unidadNombre || unidad.nombre || 'Sin nombre',
         conductorNombre: unidad.conductorNombre || 'Sin nombre',
+        ubicacion: {
+          lat: 32.1234,
+          lng: -116.5678,
+          nombre: 'PERCO Insurgentes',
+          tipo: 'Geozona', // o "POI"
+        },
       })
 
       console.log(`🔔 Notificación enviada: ${evento.nombre} - ${accionTexto} ${ubicacion.nombre}`)

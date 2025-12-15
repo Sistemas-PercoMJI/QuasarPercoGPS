@@ -222,7 +222,7 @@
                   emit-value
                   map-options
                 />
-                
+
                 <!-- 🆕 SELECTOR MEJORADO CON BÚSQUEDA E ICONOS -->
                 <q-select
                   v-model="condicion.ubicacionId"
@@ -241,13 +241,13 @@
                   <template v-slot:prepend>
                     <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
                   </template>
-                  
+
                   <template v-slot:option="scope">
                     <q-item v-bind="scope.itemProps">
                       <q-item-section avatar>
-                        <q-icon 
-                          :name="scope.opt.icono" 
-                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                        <q-icon
+                          :name="scope.opt.icono"
+                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
                           size="20px"
                         />
                       </q-item-section>
@@ -257,27 +257,26 @@
                       </q-item-section>
                     </q-item>
                   </template>
-                  
+
                   <template v-slot:selected-item="scope">
                     <div class="row items-center no-wrap q-gutter-xs">
-                      <q-icon 
-                        :name="scope.opt.icono" 
-                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                      <q-icon
+                        :name="scope.opt.icono"
+                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
                         size="18px"
                       />
                       <span>{{ scope.opt.label }}</span>
                     </div>
                   </template>
-                  
+
                   <template v-slot:no-option>
                     <q-item>
-                      <q-item-section class="text-grey">
-                        No se encontraron ubicaciones
-                      </q-item-section>
+                      <q-item-section class="text-grey"> </q-item-section>No se encontraron
+                      ubicaciones
                     </q-item>
                   </template>
                 </q-select>
-                
+
                 <q-btn
                   v-if="nuevoEvento.condiciones.length > 1"
                   flat
@@ -578,21 +577,20 @@ watch(
   () => nuevoEvento.value.condiciones.length,
   (newLength) => {
     if (opcionesFiltradas.value.length !== newLength) {
-      opcionesFiltradas.value = Array(newLength).fill(null).map(() => opcionesUbicaciones.value)
+      opcionesFiltradas.value = Array(newLength)
+        .fill(null)
+        .map(() => opcionesUbicaciones.value)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 🆕 WATCH para actualizar opciones filtradas cuando cambien POIs/Geozonas
-watch(
-  [pois, geozonas],
-  () => {
-    if (opcionesFiltradas.value.length > 0) {
-      opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
-    }
+watch([pois, geozonas], () => {
+  if (opcionesFiltradas.value.length > 0) {
+    opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
   }
-)
+})
 
 const esFormularioValido = computed(() => {
   if (!nuevoEvento.value.nombre) return false
@@ -619,7 +617,7 @@ function filtrarUbicaciones(val, update, index) {
     } else {
       const needle = val.toLowerCase()
       opcionesFiltradas.value[index] = opcionesUbicaciones.value.filter(
-        (v) => v.label.toLowerCase().indexOf(needle) > -1
+        (v) => v.label.toLowerCase().indexOf(needle) > -1,
       )
     }
   })
@@ -698,22 +696,22 @@ async function toggleEventoEstado(evento) {
 function agregarCondicion() {
   // Obtener la última condición para copiar sus valores
   const ultimaCondicion = nuevoEvento.value.condiciones[nuevoEvento.value.condiciones.length - 1]
-  
+
   // Alternar la activación: si es "Entrada" -> "Salida", si es "Salida" -> "Entrada"
   const nuevaActivacion = ultimaCondicion.activacion === 'Entrada' ? 'Salida' : 'Entrada'
-  
+
   // Agregar nueva condición con los mismos valores pero activación alternada
   nuevoEvento.value.condiciones.push({
     tipo: ultimaCondicion.tipo, // Mismo tipo (POI o Geozona)
     activacion: nuevaActivacion, // Activación alternada
     ubicacionId: ultimaCondicion.ubicacionId, // Misma ubicación
   })
-  
+
   nuevoEvento.value.operadoresLogicos.push('AND')
-  
+
   // Agregar opciones filtradas para la nueva condición
   opcionesFiltradas.value.push(opcionesUbicaciones.value)
-  
+
   // Notificar al usuario
   if ($q && $q.notify) {
     $q.notify({
@@ -722,7 +720,7 @@ function agregarCondicion() {
       caption: `Misma ubicación, activación alternada`,
       icon: 'add_circle',
       position: 'top',
-      timeout: 2000
+      timeout: 2000,
     })
   }
 }
@@ -766,7 +764,7 @@ function resetearFormulario() {
     horaInicio: '',
     horaFin: '',
   }
-  
+
   // Resetear opciones filtradas
   opcionesFiltradas.value = [opcionesUbicaciones.value]
 }
@@ -857,10 +855,10 @@ function editarEvento() {
     horaInicio: eventoMenu.value.horaInicio || '',
     horaFin: eventoMenu.value.horaFin || '',
   }
-  
+
   // Inicializar opciones filtradas con las condiciones existentes
   opcionesFiltradas.value = nuevoEvento.value.condiciones.map(() => opcionesUbicaciones.value)
-  
+
   dialogNuevoEvento.value = true
 }
 
@@ -922,21 +920,21 @@ async function eliminarEventoSeleccionado() {
 // Cargar datos al montar el componente
 onMounted(async () => {
   console.log('🔟 Eventos: Componente montado')
-  
+
   await cargarDatos()
-  
+
   console.log('1️⃣1️⃣ Eventos: Verificando window._ubicacionParaEvento')
   console.log('📦 Valor:', window._ubicacionParaEvento)
-  
+
   if (window._ubicacionParaEvento) {
     const data = window._ubicacionParaEvento
     console.log('1️⃣2️⃣ Eventos: ¡Ubicación preseleccionada detectada!')
     console.log('📍 Ubicación:', data.ubicacion.nombre)
     console.log('🏷️ Tipo:', data.tipo)
-    
+
     delete window._ubicacionParaEvento
     console.log('1️⃣3️⃣ Eventos: window._ubicacionParaEvento limpiado')
-    
+
     setTimeout(() => {
       console.log('1️⃣4️⃣ Eventos: Ejecutando crearEventoConUbicacionPreseleccionada')
       crearEventoConUbicacionPreseleccionada(data)
@@ -949,14 +947,14 @@ onMounted(async () => {
 function crearEventoConUbicacionPreseleccionada(data) {
   console.log('1️⃣5️⃣ Eventos: Configurando evento con ubicación')
   console.log('📦 Data:', data)
-  
+
   modoEdicion.value = false
-  
+
   const nombreUbicacion = data.ubicacion.nombre
   const tipoUbicacion = data.tipo
-  
+
   console.log('1️⃣6️⃣ Eventos: Preparando nuevoEvento.value')
-  
+
   nuevoEvento.value = {
     nombre: `Evento en ${nombreUbicacion}`,
     descripcion: `Evento automático para ${tipoUbicacion === 'POI' ? 'punto de interés' : 'geozona'} "${nombreUbicacion}"`,
@@ -966,24 +964,24 @@ function crearEventoConUbicacionPreseleccionada(data) {
       {
         tipo: tipoUbicacion,
         activacion: 'Entrada',
-        ubicacionId: data.ubicacion.id
-      }
+        ubicacionId: data.ubicacion.id,
+      },
     ],
     operadoresLogicos: [],
     activacionAlerta: 'Cada vez',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
-    horaFin: ''
+    horaFin: '',
   }
-  
+
   console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado:', nuevoEvento.value)
   console.log('1️⃣8️⃣ Eventos: Abriendo dialogNuevoEvento')
-  
+
   dialogNuevoEvento.value = true
-  
+
   console.log('1️⃣9️⃣ Eventos: dialogNuevoEvento.value =', dialogNuevoEvento.value)
-  
+
   if ($q && $q.notify) {
     $q.notify({
       type: 'positive',
@@ -991,10 +989,10 @@ function crearEventoConUbicacionPreseleccionada(data) {
       caption: `Ubicación: ${nombreUbicacion} (${tipoUbicacion})`,
       icon: 'check_circle',
       position: 'top',
-      timeout: 3000
+      timeout: 3000,
     })
   }
-  
+
   console.log('2️⃣0️⃣ Eventos: Proceso completado')
 }
 
