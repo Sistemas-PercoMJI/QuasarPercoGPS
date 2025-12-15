@@ -34,14 +34,14 @@
       ✅ {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
     </div>
 
-    <!-- Stats compactas -->
+    <!-- Stats compactas con animación -->
     <div class="stats-grid q-px-md q-pt-sm q-pb-md">
-      <div class="stat-item">
+      <div class="stat-item stat-item-animated">
         <q-icon name="notifications_active" size="18px" color="positive" />
         <span class="stat-number">{{ totalEventos }}</span>
         <span class="stat-label">Activos</span>
       </div>
-      <div class="stat-item">
+      <div class="stat-item stat-item-animated">
         <q-icon name="notifications_off" size="18px" color="grey" />
         <span class="stat-number">{{ eventosInactivos }}</span>
         <span class="stat-label">Inactivos</span>
@@ -56,7 +56,7 @@
         icon="add"
         label="Nuevo"
         dense
-        class="btn-nuevo"
+        class="btn-nuevo btn-hover-effect"
         @click="abrirDialogoNuevo"
       />
       <q-input v-model="busqueda" outlined dense placeholder="Buscar..." class="search-compact">
@@ -79,7 +79,7 @@
       />
     </div>
 
-    <!-- Lista compacta de eventos -->
+    <!-- Lista compacta de eventos con animaciones -->
     <q-scroll-area class="lista-scroll-compact">
       <div class="q-pa-sm">
         <!-- Loading -->
@@ -88,18 +88,23 @@
           <div class="text-grey-6 q-mt-sm">Cargando...</div>
         </div>
 
-        <!-- Eventos -->
+        <!-- Eventos con animación mejorada -->
         <q-item
           v-for="evento in eventosFiltrados"
           :key="evento.id"
           clickable
           v-ripple
-          class="evento-item"
+          class="evento-item evento-item-hover"
           :class="{ 'evento-selected': eventoSeleccionado?.id === evento.id }"
           @click="seleccionarEvento(evento)"
         >
           <q-item-section avatar>
-            <q-avatar size="36px" :color="getColorTipoEvento(evento)" text-color="white">
+            <q-avatar
+              size="36px"
+              :color="getColorTipoEvento(evento)"
+              text-color="white"
+              class="avatar-bounce"
+            >
               <q-icon :name="getIconoTipoEvento(evento)" size="18px" />
             </q-avatar>
           </q-item-section>
@@ -123,17 +128,30 @@
                 dense
                 @click.stop
               />
-              <q-btn flat dense round icon="more_vert" size="sm" @click.stop="eventoMenu = evento">
+              <q-btn
+                flat
+                dense
+                round
+                icon="more_vert"
+                size="sm"
+                class="btn-menu-hover"
+                @click.stop="eventoMenu = evento"
+              >
                 <q-menu anchor="bottom right" self="top right" :offset="[0, 5]">
                   <q-list dense style="min-width: 150px">
-                    <q-item clickable v-close-popup @click="editarEvento">
+                    <q-item clickable v-close-popup @click="editarEvento" class="menu-item-hover">
                       <q-item-section avatar>
                         <q-icon name="edit" />
                       </q-item-section>
                       <q-item-section>Editar</q-item-section>
                     </q-item>
 
-                    <q-item clickable v-close-popup @click="duplicarEventoSeleccionado">
+                    <q-item
+                      clickable
+                      v-close-popup
+                      @click="duplicarEventoSeleccionado"
+                      class="menu-item-hover"
+                    >
                       <q-item-section avatar>
                         <q-icon name="content_copy" />
                       </q-item-section>
@@ -142,7 +160,12 @@
 
                     <q-separator />
 
-                    <q-item clickable v-close-popup @click="eliminarEventoSeleccionado">
+                    <q-item
+                      clickable
+                      v-close-popup
+                      @click="eliminarEventoSeleccionado"
+                      class="menu-item-hover"
+                    >
                       <q-item-section avatar>
                         <q-icon name="delete" color="negative" />
                       </q-item-section>
@@ -200,7 +223,11 @@
             <!-- Condiciones de Activación -->
             <q-separator />
             <div class="text-subtitle2 q-mt-sm">Condiciones de Activación</div>
-            <div v-for="(condicion, index) in nuevoEvento.condiciones" :key="index" class="q-mb-md">
+            <div
+              v-for="(condicion, index) in nuevoEvento.condiciones"
+              :key="index"
+              class="q-mb-md condicion-card"
+            >
               <div class="row q-gutter-sm items-center">
                 <q-select
                   v-model="condicion.tipo"
@@ -222,7 +249,7 @@
                   emit-value
                   map-options
                 />
-                
+
                 <!-- 🆕 SELECTOR MEJORADO CON BÚSQUEDA E ICONOS -->
                 <q-select
                   v-model="condicion.ubicacionId"
@@ -241,13 +268,13 @@
                   <template v-slot:prepend>
                     <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
                   </template>
-                  
+
                   <template v-slot:option="scope">
                     <q-item v-bind="scope.itemProps">
                       <q-item-section avatar>
-                        <q-icon 
-                          :name="scope.opt.icono" 
-                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                        <q-icon
+                          :name="scope.opt.icono"
+                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
                           size="20px"
                         />
                       </q-item-section>
@@ -257,18 +284,18 @@
                       </q-item-section>
                     </q-item>
                   </template>
-                  
+
                   <template v-slot:selected-item="scope">
                     <div class="row items-center no-wrap q-gutter-xs">
-                      <q-icon 
-                        :name="scope.opt.icono" 
-                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'" 
+                      <q-icon
+                        :name="scope.opt.icono"
+                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
                         size="18px"
                       />
                       <span>{{ scope.opt.label }}</span>
                     </div>
                   </template>
-                  
+
                   <template v-slot:no-option>
                     <q-item>
                       <q-item-section class="text-grey">
@@ -277,7 +304,7 @@
                     </q-item>
                   </template>
                 </q-select>
-                
+
                 <q-btn
                   v-if="nuevoEvento.condiciones.length > 1"
                   flat
@@ -286,7 +313,7 @@
                   icon="delete"
                   color="negative"
                   @click="eliminarCondicion(index)"
-                  class="q-ml-sm"
+                  class="q-ml-sm btn-delete-hover"
                 />
               </div>
               <!-- Operador Lógico entre condiciones -->
@@ -311,6 +338,7 @@
               label="Agregar otra condición"
               color="primary"
               @click="agregarCondicion"
+              class="btn-hover-effect"
             />
 
             <!-- Opciones de Alerta y Aplicación -->
@@ -578,21 +606,20 @@ watch(
   () => nuevoEvento.value.condiciones.length,
   (newLength) => {
     if (opcionesFiltradas.value.length !== newLength) {
-      opcionesFiltradas.value = Array(newLength).fill(null).map(() => opcionesUbicaciones.value)
+      opcionesFiltradas.value = Array(newLength)
+        .fill(null)
+        .map(() => opcionesUbicaciones.value)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 🆕 WATCH para actualizar opciones filtradas cuando cambien POIs/Geozonas
-watch(
-  [pois, geozonas],
-  () => {
-    if (opcionesFiltradas.value.length > 0) {
-      opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
-    }
+watch([pois, geozonas], () => {
+  if (opcionesFiltradas.value.length > 0) {
+    opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
   }
-)
+})
 
 const esFormularioValido = computed(() => {
   if (!nuevoEvento.value.nombre) return false
@@ -619,7 +646,7 @@ function filtrarUbicaciones(val, update, index) {
     } else {
       const needle = val.toLowerCase()
       opcionesFiltradas.value[index] = opcionesUbicaciones.value.filter(
-        (v) => v.label.toLowerCase().indexOf(needle) > -1
+        (v) => v.label.toLowerCase().indexOf(needle) > -1,
       )
     }
   })
@@ -698,22 +725,22 @@ async function toggleEventoEstado(evento) {
 function agregarCondicion() {
   // Obtener la última condición para copiar sus valores
   const ultimaCondicion = nuevoEvento.value.condiciones[nuevoEvento.value.condiciones.length - 1]
-  
+
   // Alternar la activación: si es "Entrada" -> "Salida", si es "Salida" -> "Entrada"
   const nuevaActivacion = ultimaCondicion.activacion === 'Entrada' ? 'Salida' : 'Entrada'
-  
+
   // Agregar nueva condición con los mismos valores pero activación alternada
   nuevoEvento.value.condiciones.push({
     tipo: ultimaCondicion.tipo, // Mismo tipo (POI o Geozona)
     activacion: nuevaActivacion, // Activación alternada
     ubicacionId: ultimaCondicion.ubicacionId, // Misma ubicación
   })
-  
+
   nuevoEvento.value.operadoresLogicos.push('AND')
-  
+
   // Agregar opciones filtradas para la nueva condición
   opcionesFiltradas.value.push(opcionesUbicaciones.value)
-  
+
   // Notificar al usuario
   if ($q && $q.notify) {
     $q.notify({
@@ -722,7 +749,7 @@ function agregarCondicion() {
       caption: `Misma ubicación, activación alternada`,
       icon: 'add_circle',
       position: 'top',
-      timeout: 2000
+      timeout: 2000,
     })
   }
 }
@@ -766,7 +793,7 @@ function resetearFormulario() {
     horaInicio: '',
     horaFin: '',
   }
-  
+
   // Resetear opciones filtradas
   opcionesFiltradas.value = [opcionesUbicaciones.value]
 }
@@ -857,10 +884,10 @@ function editarEvento() {
     horaInicio: eventoMenu.value.horaInicio || '',
     horaFin: eventoMenu.value.horaFin || '',
   }
-  
+
   // Inicializar opciones filtradas con las condiciones existentes
   opcionesFiltradas.value = nuevoEvento.value.condiciones.map(() => opcionesUbicaciones.value)
-  
+
   dialogNuevoEvento.value = true
 }
 
@@ -922,21 +949,21 @@ async function eliminarEventoSeleccionado() {
 // Cargar datos al montar el componente
 onMounted(async () => {
   console.log('🔟 Eventos: Componente montado')
-  
+
   await cargarDatos()
-  
+
   console.log('1️⃣1️⃣ Eventos: Verificando window._ubicacionParaEvento')
   console.log('📦 Valor:', window._ubicacionParaEvento)
-  
+
   if (window._ubicacionParaEvento) {
     const data = window._ubicacionParaEvento
     console.log('1️⃣2️⃣ Eventos: ¡Ubicación preseleccionada detectada!')
     console.log('📍 Ubicación:', data.ubicacion.nombre)
     console.log('🏷️ Tipo:', data.tipo)
-    
+
     delete window._ubicacionParaEvento
     console.log('1️⃣3️⃣ Eventos: window._ubicacionParaEvento limpiado')
-    
+
     setTimeout(() => {
       console.log('1️⃣4️⃣ Eventos: Ejecutando crearEventoConUbicacionPreseleccionada')
       crearEventoConUbicacionPreseleccionada(data)
@@ -946,17 +973,19 @@ onMounted(async () => {
   }
 })
 
+// 🆕 MODIFICADO: Crear evento con ENTRADA y SALIDA automáticamente
 function crearEventoConUbicacionPreseleccionada(data) {
   console.log('1️⃣5️⃣ Eventos: Configurando evento con ubicación')
   console.log('📦 Data:', data)
-  
+
   modoEdicion.value = false
-  
+
   const nombreUbicacion = data.ubicacion.nombre
   const tipoUbicacion = data.tipo
-  
+
   console.log('1️⃣6️⃣ Eventos: Preparando nuevoEvento.value')
-  
+
+  // 🆕 AUTO-CREAR ENTRADA Y SALIDA
   nuevoEvento.value = {
     nombre: `Evento en ${nombreUbicacion}`,
     descripcion: `Evento automático para ${tipoUbicacion === 'POI' ? 'punto de interés' : 'geozona'} "${nombreUbicacion}"`,
@@ -966,35 +995,43 @@ function crearEventoConUbicacionPreseleccionada(data) {
       {
         tipo: tipoUbicacion,
         activacion: 'Entrada',
-        ubicacionId: data.ubicacion.id
-      }
+        ubicacionId: data.ubicacion.id,
+      },
+      {
+        tipo: tipoUbicacion,
+        activacion: 'Salida',
+        ubicacionId: data.ubicacion.id,
+      },
     ],
-    operadoresLogicos: [],
+    operadoresLogicos: ['AND'], // Operador entre las dos condiciones
     activacionAlerta: 'Cada vez',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
-    horaFin: ''
+    horaFin: '',
   }
-  
-  console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado:', nuevoEvento.value)
+
+  // 🆕 Inicializar opciones filtradas para ambas condiciones
+  opcionesFiltradas.value = [opcionesUbicaciones.value, opcionesUbicaciones.value]
+
+  console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado con ENTRADA y SALIDA:', nuevoEvento.value)
   console.log('1️⃣8️⃣ Eventos: Abriendo dialogNuevoEvento')
-  
+
   dialogNuevoEvento.value = true
-  
+
   console.log('1️⃣9️⃣ Eventos: dialogNuevoEvento.value =', dialogNuevoEvento.value)
-  
+
   if ($q && $q.notify) {
     $q.notify({
       type: 'positive',
-      message: `✅ Evento configurado`,
+      message: `✅ Evento configurado con Entrada y Salida`,
       caption: `Ubicación: ${nombreUbicacion} (${tipoUbicacion})`,
       icon: 'check_circle',
       position: 'top',
-      timeout: 3000
+      timeout: 3000,
     })
   }
-  
+
   console.log('2️⃣0️⃣ Eventos: Proceso completado')
 }
 
@@ -1075,6 +1112,7 @@ async function cargarDatos() {
   font-weight: 500;
 }
 
+/* 🆕 ANIMACIONES PARA STATS */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1089,6 +1127,13 @@ async function cargarDatos() {
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.stat-item-animated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e8eaed 100%);
 }
 
 .stat-number {
@@ -1102,6 +1147,7 @@ async function cargarDatos() {
   color: #7f8c8d;
 }
 
+/* 🆕 ANIMACIÓN PARA BOTONES */
 .acciones-row {
   display: flex;
   gap: 8px;
@@ -1111,6 +1157,19 @@ async function cargarDatos() {
 .btn-nuevo {
   min-width: 80px;
   font-size: 12px;
+}
+
+.btn-hover-effect {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.btn-hover-effect:active {
+  transform: translateY(0);
 }
 
 .search-compact {
@@ -1131,23 +1190,55 @@ async function cargarDatos() {
   height: 100%;
 }
 
+/* 🆕 ANIMACIONES PARA ITEMS DE EVENTOS */
 .evento-item {
   border-bottom: 1px solid #f0f0f0;
   padding: 8px 12px;
   min-height: 60px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.evento-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.evento-item-hover:hover {
+  transform: translateY(-3px);
+  background-color: #f5f8fc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  margin: 2px 4px;
+  padding: 8px 12px;
+}
+
+.evento-item-hover:hover::before {
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
 }
 
 .evento-item.q-item--active {
   background-color: #e3f2fd;
 }
 
-.evento-item:hover {
-  background-color: #f5f5f5;
-}
-
 .evento-selected {
   background-color: #e3f2fd;
   border-left: 3px solid #1976d2;
+}
+
+/* 🆕 ANIMACIÓN PARA AVATAR */
+.avatar-bounce {
+  transition: transform 0.3s ease;
+}
+
+.evento-item-hover:hover .avatar-bounce {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .evento-nombre {
@@ -1166,6 +1257,26 @@ async function cargarDatos() {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 🆕 ANIMACIÓN PARA BOTÓN DE MENÚ */
+.btn-menu-hover {
+  transition: all 0.3s ease;
+}
+
+.btn-menu-hover:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: rotate(90deg);
+}
+
+/* 🆕 ANIMACIÓN PARA ITEMS DEL MENÚ */
+.menu-item-hover {
+  transition: all 0.2s ease;
+}
+
+.menu-item-hover:hover {
+  background-color: #f5f5f5;
+  padding-left: 16px;
 }
 
 .loading-compact {
@@ -1203,6 +1314,30 @@ async function cargarDatos() {
   border-top: 1px solid #eee;
 }
 
+/* 🆕 ANIMACIÓN PARA TARJETAS DE CONDICIÓN */
+.condicion-card {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.condicion-card:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 🆕 ANIMACIÓN PARA BOTÓN DELETE */
+.btn-delete-hover {
+  transition: all 0.3s ease;
+}
+
+.btn-delete-hover:hover {
+  transform: scale(1.1) rotate(10deg);
+  background-color: rgba(244, 67, 54, 0.1);
+}
+
 /* 🆕 ESTILOS PARA EL SELECTOR MEJORADO */
 .q-select :deep(.q-field__prepend) {
   padding-right: 8px;
@@ -1228,9 +1363,32 @@ async function cargarDatos() {
 /* Mejorar el dropdown */
 .q-menu .q-item {
   padding: 8px 12px;
+  transition: all 0.2s ease;
 }
 
 .q-menu .q-item:hover {
   background-color: #f5f5f5;
+  transform: translateX(4px);
+}
+
+/* 🆕 ANIMACIONES DE ENTRADA */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.evento-item {
+  animation: fadeInUp 0.3s ease;
+}
+
+/* 🆕 RIPPLE EFFECT MEJORADO */
+.evento-item:active {
+  transform: scale(0.98);
 }
 </style>
