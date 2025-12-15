@@ -364,12 +364,20 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
 /**
  * Descarga la imagen del mapa y la convierte a Base64
+ * Usa Firebase Function como proxy para evitar problemas de CORS
  */
 async function descargarImagenMapaBase64(url) {
   try {
     console.log('📥 Descargando imagen del mapa...')
 
-    const response = await fetch(url)
+    // 🔥 USAR TU FIREBASE FUNCTION COMO PROXY
+    const proxyUrl = `https://us-central1-gpsmjindust.cloudfunctions.net/getMapboxImage?url=${encodeURIComponent(url)}`
+
+    console.log('🔄 Usando Firebase Function proxy...')
+
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+    })
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -379,13 +387,18 @@ async function descargarImagenMapaBase64(url) {
 
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
+      reader.onloadend = () => {
+        console.log('✅ Imagen convertida a base64')
+        resolve(reader.result)
+      }
       reader.onerror = reject
       reader.readAsDataURL(blob)
     })
   } catch (error) {
-    console.error('Error descargando imagen del mapa:', error)
-    throw error
+    console.error('❌ Error descargando imagen del mapa:', error)
+
+    // Si falla, devolver null (no mostrar mapa)
+    return null
   }
 }
 

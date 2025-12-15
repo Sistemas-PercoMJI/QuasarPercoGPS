@@ -11,7 +11,13 @@
 
         <!-- 🆕 MAPA ESTÁTICO SI EXISTE -->
         <div v-if="mapImage" class="map-preview q-mt-sm" @click="abrirMapaCompleto">
-          <img :src="mapImage" alt="Mapa del evento" class="map-image" />
+          <img
+            :src="mapImage"
+            alt="Mapa del evento"
+            class="map-image"
+            crossorigin="anonymous"
+            @error="handleImageError"
+          />
           <div class="map-overlay">
             <q-icon name="place" size="16px" />
             <span class="text-caption">Ver ubicación</span>
@@ -77,6 +83,15 @@ function actualizarTiempo() {
 function abrirMapaCompleto() {
   if (props.mapUrl) {
     window.open(props.mapUrl, '_blank')
+  }
+}
+
+// 🆕 FUNCIÓN PARA MANEJAR ERRORES DE CARGA DE IMAGEN
+function handleImageError(event) {
+  console.warn('⚠️ Error cargando imagen del mapa, intentando URL directa')
+  // Si falla, intentar con la URL directa con timestamp
+  if (props.mapUrl && event.target.src !== props.mapUrl) {
+    event.target.src = `${props.mapUrl}&t=${Date.now()}`
   }
 }
 
