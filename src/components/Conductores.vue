@@ -1840,18 +1840,10 @@ async function quitarDeGrupo() {
 // Lifecycle
 onMounted(async () => {
   try {
-    console.log('🔄 Iniciando carga de datos de Firebase...')
-
     await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
     unsubscribeConductores = escucharConductores()
     unsubscribeGrupos = escucharGrupos()
-
-    console.log('✅ Conectado a Firebase:', {
-      conductores: conductores.value.length,
-      unidades: unidades.value.length,
-      grupos: gruposConductores.value.length,
-    })
   } catch (error) {
     console.error('❌ Error al conectar con Firebase:', error)
 
@@ -1867,23 +1859,13 @@ onMounted(async () => {
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
-    console.log('👀 Conductores.vue: Watch activado')
-    console.log('📦 newValue completo:', JSON.stringify(newValue, null, 2))
-
     if (newValue && newValue.conductor) {
       const { id, grupoId, grupoNombre } = newValue.conductor
-
-      console.log('✅ Datos recibidos:', { id, grupoId, grupoNombre })
-      console.log('📂 Grupos disponibles:', gruposConductores.value.length)
-      console.log('👥 Conductores disponibles:', conductores.value.length)
-
       const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
-      console.log('🔍 ¿Grupo existe?', grupoExiste ? 'SÍ' : 'NO')
 
       if (!grupoExiste) {
         console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
         setTimeout(() => {
-          console.log('🔄 Re-intentando después de espera...')
           procesarSeleccionConductor(id, grupoId, grupoNombre)
         }, 500)
       } else {
@@ -1897,32 +1879,18 @@ watch(
 )
 
 function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
-  console.log('🎯 Procesando selección de conductor...')
-  console.log('   - ID:', conductorId)
-  console.log('   - Grupo ID:', grupoId)
-  console.log('   - Grupo Nombre:', grupoNombre)
-
   if (grupoId && grupoId !== grupoSeleccionado.value) {
-    console.log(`📂 Cambiando a grupo: ${grupoNombre} (${grupoId})`)
     grupoSeleccionado.value = grupoId
     tab.value = 'grupos'
   }
 
   nextTick(() => {
-    console.log('🔄 NextTick ejecutado')
-    console.log('📊 Conductores filtrados disponibles:', conductoresFiltrados.value.length)
-
     const conductorEncontrado = conductoresFiltrados.value.find((c) => c.id === conductorId)
-
     if (conductorEncontrado) {
-      console.log(`✅ Conductor encontrado: ${conductorEncontrado.Nombre}`)
-
       seleccionarConductor(conductorEncontrado)
-
       setTimeout(() => {
         const elemento = document.querySelector(`[data-conductor-id="${conductorId}"]`)
         if (elemento) {
-          console.log('📍 Haciendo scroll al elemento')
           elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
           elemento.classList.add('flash-highlight')
@@ -1942,14 +1910,10 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
       })
     } else {
       console.warn('⚠️ Conductor no encontrado en lista filtrada')
-      console.log('🔍 Buscando en todos los conductores...')
 
       const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
 
       if (conductorEnTodos) {
-        console.log('✅ Encontrado en lista general')
-        console.log('   Conductor:', conductorEnTodos.Nombre)
-
         if (grupoId) {
           grupoSeleccionado.value = grupoId
           tab.value = 'grupos'
@@ -1962,13 +1926,6 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
         }
       } else {
         console.error('❌ Conductor no existe en la base de datos')
-        console.log(
-          '📋 Conductores disponibles:',
-          conductores.value.map((c) => ({
-            id: c.id,
-            nombre: c.Nombre,
-          })),
-        )
 
         Notify.create({
           type: 'negative',
@@ -1997,9 +1954,6 @@ function navegarAUnidad() {
     return
   }
 
-  console.log('🔍 === NAVEGACIÓN A UNIDAD ===')
-  console.log('Buscando:', unidadAsignadaData.value.Unidad)
-
   // Acceder al mapa y sus marcadores
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -2013,8 +1967,6 @@ function navegarAUnidad() {
 
   // 🎯 NUEVA ESTRATEGIA: Obtener marcadores directamente del mapa
   const mapaAPI = mapPage._mapaAPI
-
-  console.log('📍 Verificando marcadores en el mapa...')
 
   // Los marcadores están en mapaAPI (revisa useMapboxGL.js)
   // La función centrarEnUnidad ya existe y funciona
@@ -2031,21 +1983,14 @@ function navegarAUnidad() {
   // Buscar en window._unidadesTrackeadas primero
   let unidadesDisponibles = window._unidadesTrackeadas || []
 
-  console.log(`📊 Unidades en window: ${unidadesDisponibles.length}`)
-
   // Si no hay en window, buscar directamente en los marcadores del mapa
   if (unidadesDisponibles.length === 0) {
-    console.log('⚠️ No hay unidades en window, intentando obtener del tracking...')
-
     // Verificar si el tracking está activo mirando Firebase
     const unidadesRef = window.firebase_unidades_activas
     if (unidadesRef) {
-      console.log('✅ Encontradas unidades en Firebase cache')
       unidadesDisponibles = Object.values(unidadesRef)
     }
   }
-
-  console.log(`📋 Total unidades disponibles: ${unidadesDisponibles.length}`)
 
   if (unidadesDisponibles.length === 0) {
     console.error('❌ No hay unidades en el sistema')
@@ -2072,15 +2017,6 @@ function navegarAUnidad() {
   // Buscar la unidad por nombre (case insensitive y flexible)
   const nombreBuscado = unidadAsignadaData.value.Unidad?.toLowerCase().trim()
 
-  console.log(`🔍 Buscando unidad: "${nombreBuscado}"`)
-  console.log(
-    '📋 Unidades disponibles:',
-    unidadesDisponibles.map((u) => ({
-      nombre: u.unidadNombre,
-      id: u.id,
-    })),
-  )
-
   const unidadActiva = unidadesDisponibles.find((u) => {
     const nombreUnidad = u.unidadNombre?.toLowerCase().trim()
 
@@ -2090,10 +2026,6 @@ function navegarAUnidad() {
     const matchInverso = nombreBuscado?.includes(nombreUnidad)
 
     const match = matchExacto || matchContiene || matchInverso
-
-    if (match) {
-      console.log(`✅ Match: "${u.unidadNombre}" ≈ "${unidadAsignadaData.value.Unidad}"`)
-    }
 
     return match
   })
@@ -2111,8 +2043,6 @@ function navegarAUnidad() {
     return
   }
 
-  console.log('✅ Unidad encontrada:', unidadActiva.unidadNombre)
-
   // Verificar ubicación
   if (!unidadActiva.ubicacion || !unidadActiva.ubicacion.lat || !unidadActiva.ubicacion.lng) {
     Notify.create({
@@ -2125,8 +2055,6 @@ function navegarAUnidad() {
   }
 
   const { lat, lng } = unidadActiva.ubicacion
-
-  console.log(`🎯 Navegando a: ${lat}, ${lng}`)
 
   // Centrar mapa con animación suave
   mapaAPI.map.flyTo({
@@ -2156,8 +2084,6 @@ function navegarAUnidad() {
     position: 'top',
     timeout: 2500,
   })
-
-  console.log('✅ Navegación completada')
 }
 </script>
 
