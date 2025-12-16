@@ -6,14 +6,8 @@
       <div class="header-content">
         <div class="text-h6 text-weight-medium">Conductores</div>
         <div class="header-stats">
-          <div class="stat-item">
-            <span class="stat-number">{{ conductores.length }}</span>
-            <span class="stat-label">Total</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number">{{ gruposConductores.length }}</span>
-            <span class="stat-label">Grupos</span>
-          </div>
+          <div class="stat-item"></div>
+          <div class="stat-item"></div>
         </div>
       </div>
       <div class="header-actions">
@@ -23,23 +17,6 @@
         <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
       </div>
     </div>
-
-    <!-- Tabs de navegación (Grupos primero) -->
-    <div class="tabs-container">
-      <q-tabs
-        v-model="tab"
-        dense
-        class="text-grey"
-        active-color="primary"
-        indicator-color="primary"
-        align="justify"
-        narrow-indicator
-      >
-        <q-tab name="grupos" label="Grupos" />
-        <q-tab name="todos" label="Todos" />
-      </q-tabs>
-    </div>
-
     <!-- Botones de acción -->
     <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
       <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
@@ -153,15 +130,13 @@
           class="no-data q-pa-md text-center"
         >
           <q-icon name="person_off" size="48px" color="grey-5" />
-          <div class="text-grey-6 q-mt-sm">No hay conductores en este grupo</div>
-          <q-btn
-            flat
-            color="primary"
-            label="Ver todos"
-            icon="folder_open"
-            class="q-mt-md"
-            @click="verTodosConductores"
-          />
+          <div class="text-grey-6 q-mt-sm">
+            {{
+              grupoSeleccionado
+                ? 'No hay conductores en este grupo'
+                : 'Selecciona un grupo para ver sus conductores'
+            }}
+          </div>
         </div>
       </div>
     </q-scroll-area>
@@ -981,7 +956,7 @@ const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
 const conductorEditando = ref({})
-const grupoSeleccionado = ref('todos')
+const grupoSeleccionado = ref(null)
 const dialogNuevoGrupo = ref(false)
 const dialogDetallesConductor = ref(false)
 const dialogVerFoto = ref(false)
@@ -1018,13 +993,11 @@ const nuevoGrupo = ref({
 })
 
 const conductoresFiltrados = computed(() => {
-  let resultado = []
-
-  if (grupoSeleccionado.value === 'todos') {
-    resultado = conductores.value
-  } else {
-    resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  if (!grupoSeleccionado.value) {
+    return []
   }
+
+  let resultado = conductoresPorGrupo(grupoSeleccionado.value)
 
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
@@ -1192,11 +1165,6 @@ function obtenerIniciales(nombre) {
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
-}
-
-function verTodosConductores() {
-  grupoSeleccionado.value = 'todos'
-  tab.value = 'todos'
 }
 
 async function seleccionarConductor(conductor) {
@@ -1788,7 +1756,7 @@ async function confirmarEliminarGrupo() {
     await eliminarGrupo(grupoMenu.value.id)
 
     if (grupoSeleccionado.value === grupoMenu.value.id) {
-      grupoSeleccionado.value = 'todos'
+      grupoSeleccionado.value = null
     }
 
     Notify.create({
@@ -1811,7 +1779,7 @@ function verDetalles() {
 }
 
 async function quitarDeGrupo() {
-  if (grupoSeleccionado.value === 'todos') {
+  if (!grupoSeleccionado.value) {
     Notify.create({
       type: 'warning',
       message: 'Selecciona un grupo primero',
@@ -2207,7 +2175,6 @@ function navegarAUnidad() {
 /* Lista de conductores con diseño de tarjetas */
 .conductores-list {
   flex: 1;
-  overflow-y: auto;
   padding: 16px;
 }
 
@@ -2422,5 +2389,24 @@ function navegarAUnidad() {
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
   padding-bottom: 8px;
+}
+
+.conductores-list :deep(.q-scrollarea__thumb) {
+  width: 5px !important;
+  background-color: #9e9e9e !important;
+  border-radius: 2.5px !important;
+  opacity: 0.6 !important;
+  right: 2px !important;
+}
+
+.conductores-list :deep(.q-scrollarea__bar) {
+  width: 8px !important;
+  right: 0px !important;
+  background: transparent !important;
+}
+
+.conductores-list:hover :deep(.q-scrollarea__thumb) {
+  opacity: 0.8 !important;
+  background-color: #757575 !important;
 }
 </style>
