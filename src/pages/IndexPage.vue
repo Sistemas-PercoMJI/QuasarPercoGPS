@@ -407,7 +407,6 @@ watch(
       const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan')
 
       if (isZooming || isPanning) {
-        console.log('⏸️ Zoom/Pan en progreso, pausando actualización')
         return
       }
     }
@@ -417,7 +416,6 @@ watch(
       .join('|')
 
     if (nuevoHash !== ultimoHashUnidades) {
-      console.log('📍 Posiciones actualizadas, redibujando mapa')
       actualizarMarcadoresUnidades(nuevasUnidades)
       ultimoHashUnidades = nuevoHash
     }
@@ -430,8 +428,6 @@ function iniciarEvaluacionContinuaEventos() {
     clearInterval(intervaloEvaluacionEventos)
   }
 
-  console.log('🔄 Iniciando evaluación continua de eventos (cada 10 segundos)...')
-
   intervaloEvaluacionEventos = setInterval(() => {
     const unidadesParaEvaluar = window._unidadesTrackeadas || unidadesActivas.value
 
@@ -439,27 +435,21 @@ function iniciarEvaluacionContinuaEventos() {
       evaluarEventosParaUnidadesSimulacion(unidadesParaEvaluar)
     }
   }, 10000)
-
-  console.log('🔄 Evaluando eventos...', new Date().toLocaleTimeString())
 }
 
 function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
     intervaloEvaluacionEventos = null
-    console.log('🛑 Evaluación de eventos detenida')
   }
 }
 
 const iniciarSimuladorAutomatico = async () => {
   if (simuladorYaIniciado || simulacionActiva.value) {
-    console.log('⚠️ Simulador ya iniciado, saltando...')
     return
   }
 
   try {
-    console.log('🔄 Cargando datos para simulador automático...')
-
     await Promise.all([obtenerConductores(), obtenerUnidades()])
 
     const conductoresConUnidad = conductores.value.filter((c) => c.UnidadAsignada)
@@ -475,8 +465,6 @@ const iniciarSimuladorAutomatico = async () => {
       return
     }
 
-    console.log(`🚀 Iniciando simulador automático con ${conductoresConUnidad.length} unidades...`)
-
     simuladorYaIniciado = true
 
     await iniciarSimulacion(conductores.value, unidades.value)
@@ -490,8 +478,6 @@ const iniciarSimuladorAutomatico = async () => {
       timeout: 500,
       icon: 'explore',
     })
-
-    console.log(`✅ Simulador automático activo con ${conductoresConUnidad.length} unidades`)
   } catch (error) {
     console.error('❌ Error al iniciar simulador automático:', error)
     simuladorYaIniciado = false
@@ -583,7 +569,6 @@ function iniciarSeguimientoGPS() {
       const { latitude, longitude } = position.coords
       ubicacionActiva.value = true
       actualizarMarcadorUsuario(latitude, longitude)
-      console.log('✅ GPS actualizado:', latitude, longitude)
     },
     (error) => {
       switch (error.code) {
@@ -603,8 +588,6 @@ function iniciarSeguimientoGPS() {
     },
     opciones,
   )
-
-  console.log('🎯 Seguimiento GPS iniciado')
 }
 
 function detenerSeguimientoGPS() {
@@ -612,14 +595,11 @@ function detenerSeguimientoGPS() {
     navigator.geolocation.clearWatch(watchId)
     watchId = null
     ubicacionActiva.value = false
-    console.log('🛑 Seguimiento GPS detenido')
   }
 }
 
 async function inicializarSistemaDeteccion() {
   try {
-    console.log('🚀 Inicializando sistema de detección de eventos...')
-
     const [eventos, pois, geozonas] = await Promise.all([
       obtenerEventos(),
       obtenerPOIs(),
@@ -630,13 +610,7 @@ async function inicializarSistemaDeteccion() {
 
     inicializar(eventosActivos, pois, geozonas)
 
-    console.log('✅ Sistema de detección inicializado')
-    console.log('  📊 Eventos activos:', eventosActivos.length)
-    console.log('  📍 POIs:', pois.length)
-    console.log('  🗺️ Geozonas:', geozonas.length)
-
     if (eventosActivos.length > 0) {
-      console.log('📋 Eventos configurados:')
       eventosActivos.forEach((evento) => {
         console.log(`  - ${evento.nombre}:`, evento.condiciones)
       })
@@ -892,11 +866,6 @@ const dibujarTodosEnMapa = async () => {
           lat: punto.lat,
           lng: punto.lng,
         }))
-
-        console.log(
-          `✅ Direcciones cargadas de Firebase para ${geozona.nombre}:`,
-          direccionesPuntos.length,
-        )
       }
 
       const popupContent = `
@@ -1175,14 +1144,10 @@ const limpiarCapasDelMapa = () => {
       }
     }
   })
-
-  console.log('✅ Capas del mapa limpiadas correctamente')
 }
 
 onMounted(async () => {
   try {
-    console.log('🗺️ Iniciando mapa Mapbox satelital...')
-
     requestAnimationFrame(async () => {
       await initMap('map', [32.504421823945805, -116.9514484543167], 13)
 
@@ -1192,7 +1157,6 @@ onMounted(async () => {
         })
 
         mapaListo.value = true
-        console.log('✅ Mapa completamente listo')
 
         window.abrirDetallesUbicacion = (ubicacionData) => {
           try {
@@ -1229,7 +1193,6 @@ onMounted(async () => {
         iniciarEvaluacionContinuaEventos()
         iniciarSeguimientoGPS()
 
-        console.log('🎯 Esperando 2 segundos antes de iniciar simulador...')
         setTimeout(async () => {
           await iniciarSimuladorAutomatico()
         }, 2000)
@@ -1273,8 +1236,6 @@ onMounted(async () => {
               const conductorNombre = detailsBtn.dataset.conductorNombre
 
               if (conductorId) {
-                console.log(`🚀 Navegando a: ${conductorNombre} (ID: ${conductorId})`)
-
                 obtenerConductores().then(() => {
                   const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
 
@@ -1285,8 +1246,6 @@ onMounted(async () => {
                       )
 
                       if (grupoDelConductor) {
-                        console.log(`✅ Grupo encontrado: ${grupoDelConductor.Nombre}`)
-
                         const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
                         window.dispatchEvent(cerrarDialogs)
 
@@ -1383,7 +1342,6 @@ onMounted(async () => {
     }
   })
 
-  console.log('🚀 Iniciando tracking GPS...')
   iniciarTracking()
 })
 
@@ -1461,8 +1419,6 @@ onUnmounted(() => {
   }
 
   cleanup()
-
-  console.log('🧹 IndexPage desmontado, mapa y detección limpiados')
 })
 
 const manejarToggleTrafico = () => {
