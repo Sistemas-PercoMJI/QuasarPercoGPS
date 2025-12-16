@@ -188,15 +188,6 @@
                   </q-chip>
                 </div>
 
-                <div class="detalle-row">
-                  <span class="detalle-label">Bloquear vehículo</span>
-                  <q-toggle
-                    v-model="vehiculoSeleccionado.bloqueado"
-                    color="primary"
-                    @update:model-value="toggleBloqueo"
-                  />
-                </div>
-
                 <q-separator class="separator" />
 
                 <div class="detalle-row">
@@ -608,8 +599,6 @@ function seleccionarVehiculoParaMapa(vehiculo) {
     if (mapPage._mapaAPI.centrarEnUnidad) {
       mapPage._mapaAPI.centrarEnUnidad(unidadId)
     }
-
-    console.log(`📍 Mapa centrado en: ${vehiculo.nombre} (${lat}, ${lng})`)
   }
 }
 
@@ -620,10 +609,6 @@ function volverALista() {
 
 function cerrarDrawer() {
   emit('close')
-}
-
-function toggleBloqueo(valor) {
-  console.log('Toggle bloqueo:', valor)
 }
 
 function getColorEstado(estado) {
@@ -670,7 +655,6 @@ function getEstadoTexto(estado) {
 // Lifecycle
 onMounted(() => {
   iniciarTracking()
-  console.log('✅ Tracking iniciado en EstadoFlota')
 })
 </script>
 
