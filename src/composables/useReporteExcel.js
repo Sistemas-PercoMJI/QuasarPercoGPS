@@ -655,9 +655,6 @@ export function useReporteExcel() {
       (col) => !columnasAgregadas.includes(col),
     )
 
-    console.log('📊 Columnas para tabla:', columnasParaTabla)
-    console.log('🚫 Columnas excluidas:', columnasAgregadas)
-
     // ========================================
     // HOJA 2: Todos los registros (sin agrupar)
     // ========================================
@@ -690,11 +687,7 @@ export function useReporteExcel() {
     let hayDatos = false
 
     if (datosReales.registros && datosReales.registros.length > 0) {
-      console.log('📊 Total de registros:', datosReales.registros.length)
-
       datosReales.registros.forEach((registro) => {
-        console.log('📝 Registro:', registro.fecha, 'Viajes:', registro.detallesViajes?.length || 0)
-
         if (registro.detallesViajes && registro.detallesViajes.length > 0) {
           registro.detallesViajes.forEach((viaje) => {
             // Aplicar filtro comercial
@@ -714,7 +707,7 @@ export function useReporteExcel() {
             }
 
             if (!incluirViaje) {
-              console.log('⏭️ Viaje excluido por filtro:', config.tipoInformeComercial)
+              console.log('Viaje excluido por filtro:', config.tipoInformeComercial)
               return
             }
 

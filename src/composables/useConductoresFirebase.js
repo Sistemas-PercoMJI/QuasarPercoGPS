@@ -117,7 +117,6 @@ export function useConductoresFirebase() {
       await deleteDoc(conductorDocRef)
       conductores.value = conductores.value.filter((c) => c.id !== conductorId)
 
-      console.log('Conductor eliminado correctamente.')
       return true
     } catch (err) {
       console.error('Error al eliminar conductor:', err)
@@ -133,8 +132,6 @@ export function useConductoresFirebase() {
   // Obtener fotos de licencia de conductor desde Firestore
   const obtenerFotosLicencia = async (conductorId) => {
     try {
-      console.log('📸 Obteniendo fotos de licencia para conductor:', conductorId)
-
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -156,7 +153,6 @@ export function useConductoresFirebase() {
           index: index,
         }))
 
-      console.log('✅ Fotos de licencia obtenidas:', fotos.length)
       return fotos
     } catch (err) {
       console.error('❌ Error al obtener fotos de licencia:', err)
@@ -167,8 +163,6 @@ export function useConductoresFirebase() {
   // Obtener fotos de seguro de unidad desde Firestore
   const obtenerFotosSeguroUnidad = async (unidadId) => {
     try {
-      console.log('📸 Obteniendo fotos de seguro para unidad:', unidadId)
-
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -190,7 +184,6 @@ export function useConductoresFirebase() {
           index: index,
         }))
 
-      console.log('✅ Fotos de seguro obtenidas:', fotos.length)
       return fotos
     } catch (err) {
       console.error('❌ Error al obtener fotos de seguro:', err)
@@ -201,8 +194,6 @@ export function useConductoresFirebase() {
   // Obtener fotos de tarjeta de circulación desde Firestore
   const obtenerFotosTargetaCirculacion = async (unidadId) => {
     try {
-      console.log('📸 Obteniendo fotos de tarjeta para unidad:', unidadId)
-
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -224,7 +215,6 @@ export function useConductoresFirebase() {
           index: index,
         }))
 
-      console.log('✅ Fotos de tarjeta obtenidas:', fotos.length)
       return fotos
     } catch (err) {
       console.error('❌ Error al obtener fotos de tarjeta:', err)
@@ -235,7 +225,6 @@ export function useConductoresFirebase() {
   // Descargar foto
   const descargarFoto = async (url, nombreArchivo) => {
     try {
-      console.log('⬇️ Descargando foto:', nombreArchivo)
       const response = await fetch(url)
       const blob = await response.blob()
       const link = document.createElement('a')
@@ -243,7 +232,6 @@ export function useConductoresFirebase() {
       link.download = nombreArchivo
       link.click()
       window.URL.revokeObjectURL(link.href)
-      console.log('✅ Foto descargada correctamente')
     } catch (err) {
       console.error('❌ Error al descargar foto:', err)
       throw err
@@ -257,8 +245,6 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      console.log('📤 Subiendo foto de licencia...')
-
       // Importar dinámicamente storage
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
@@ -294,7 +280,6 @@ export function useConductoresFirebase() {
       // Actualizar estado local
       await obtenerConductores()
 
-      console.log('✅ Foto de licencia subida correctamente')
       return downloadURL
     } catch (err) {
       console.error('❌ Error al subir foto de licencia:', err)
@@ -310,8 +295,6 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      console.log('📤 Subiendo foto de seguro...')
-
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
 
@@ -340,7 +323,6 @@ export function useConductoresFirebase() {
 
       await obtenerUnidades()
 
-      console.log('✅ Foto de seguro subida correctamente')
       return downloadURL
     } catch (err) {
       console.error('❌ Error al subir foto de seguro:', err)
@@ -356,8 +338,6 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      console.log('📤 Subiendo foto de tarjeta...')
-
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
 
@@ -386,7 +366,6 @@ export function useConductoresFirebase() {
 
       await obtenerUnidades()
 
-      console.log('✅ Foto de tarjeta subida correctamente')
       return downloadURL
     } catch (err) {
       console.error('❌ Error al subir foto de tarjeta:', err)
@@ -419,8 +398,6 @@ export function useConductoresFirebase() {
         throw new Error('No se puede eliminar: La licencia aún está vigente')
       }
 
-      console.log('🗑️ Eliminando foto de licencia expirada...')
-
       const conductorDocRef = doc(conductoresRef, conductorId)
       const conductorSnap = await getDoc(conductorDocRef)
 
@@ -449,14 +426,12 @@ export function useConductoresFirebase() {
         const fotoRef = storageRef(storage, filePath)
 
         await deleteObject(fotoRef)
-        console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
         console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
       }
 
       await obtenerConductores()
 
-      console.log('✅ Foto de licencia eliminada correctamente')
       return true
     } catch (err) {
       console.error('❌ Error al eliminar foto de licencia:', err)
@@ -488,8 +463,6 @@ export function useConductoresFirebase() {
         throw new Error('No se puede eliminar: El seguro aún está vigente')
       }
 
-      console.log('🗑️ Eliminando foto de seguro expirado...')
-
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -515,14 +488,12 @@ export function useConductoresFirebase() {
         const fotoRef = storageRef(storage, filePath)
 
         await deleteObject(fotoRef)
-        console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
         console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
       }
 
       await obtenerUnidades()
 
-      console.log('✅ Foto de seguro eliminada correctamente')
       return true
     } catch (err) {
       console.error('❌ Error al eliminar foto de seguro:', err)
@@ -554,8 +525,6 @@ export function useConductoresFirebase() {
         throw new Error('No se puede eliminar: La tarjeta aún está vigente')
       }
 
-      console.log('🗑️ Eliminando foto de tarjeta expirada...')
-
       const unidadDocRef = doc(unidadesRef, unidadId)
       const unidadSnap = await getDoc(unidadDocRef)
 
@@ -581,14 +550,12 @@ export function useConductoresFirebase() {
         const fotoRef = storageRef(storage, filePath)
 
         await deleteObject(fotoRef)
-        console.log('✅ Foto eliminada del Storage')
       } catch (deleteErr) {
         console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
       }
 
       await obtenerUnidades()
 
-      console.log('✅ Foto de tarjeta eliminada correctamente')
       return true
     } catch (err) {
       console.error('❌ Error al eliminar foto de tarjeta:', err)

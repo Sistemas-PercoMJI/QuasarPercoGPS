@@ -59,7 +59,6 @@ const cerrarPopupGlobal = () => {
     try {
       popupGlobalActivo.remove()
       popupGlobalActivo = null
-      console.log('🔒 Popup global cerrado')
     } catch (error) {
       console.warn('⚠️ Error al cerrar popup:', error)
       popupGlobalActivo = null
@@ -360,7 +359,6 @@ export function useMapboxGL() {
     ultimasPosiciones.clear()
     pendingUnidades = null
     pendingUpdate = false
-    console.log('🧹 Marcadores GPS limpiados')
   }
 
   const centrarEnUnidad = (unidadId) => {
@@ -431,8 +429,6 @@ export function useMapboxGL() {
         },
       })
     }
-
-    console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
   }
 
   function metersToPixelsAtMaxZoom(meters, latitude) {
@@ -442,7 +438,6 @@ export function useMapboxGL() {
   function actualizarRadioCirculoTemporal(lat, lng, nuevoRadio) {
     if (!map.value) return
     crearCirculoTemporalPOI(lat, lng, nuevoRadio)
-    console.log(`🔄 Radio actualizado: ${nuevoRadio}m`)
   }
 
   function limpiarCirculoTemporalPOI() {
@@ -450,7 +445,6 @@ export function useMapboxGL() {
       map.value.removeLayer('poi-circle-temp')
       map.value.removeSource('poi-circle-temp')
       circuloTemporalPOI.value = null
-      console.log('🧹 Círculo temporal POI limpiado')
     }
   }
 
@@ -551,11 +545,8 @@ export function useMapboxGL() {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
       }
-
-      console.log('📍 Ubicación seleccionada:', ubicacionSeleccionada.value)
     })
 
-    console.log('✅ Modo selección activado')
     return true
   }
 
@@ -565,7 +556,6 @@ export function useMapboxGL() {
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
     map.value.getCanvas().style.cursor = ''
-    console.log('❌ Todos los modos de selección desactivados')
   }
 
   // 🔵 MODO SELECCIÓN GEOZONA CIRCULAR
@@ -628,11 +618,8 @@ export function useMapboxGL() {
         direccion: direccionObtenida,
         radio: radioInicial,
       }
-
-      console.log('🔵 Geozona circular seleccionada:', ubicacionSeleccionada.value)
     })
 
-    console.log('✅ Modo selección geozona circular activado')
     return true
   }
 
@@ -666,7 +653,6 @@ export function useMapboxGL() {
     colorGeozonaActual.value = color
 
     if (puntosExistentes && puntosExistentes.length > 0) {
-      console.log('🔄 Restaurando puntos existentes:', puntosExistentes.length)
       setPuntosSeleccionados(puntosExistentes)
     } else {
       puntosPoligono.value = []
@@ -700,10 +686,7 @@ export function useMapboxGL() {
         actualizarPoligonoTemporal(puntosPoligono.value)
       }
 
-      console.log(`📍 Punto ${puntosPoligono.value.length} agregado con color: ${color}`)
-
       if (puntosPoligono.value.length >= 3) {
-        console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
         window.dispatchEvent(
           new CustomEvent('mostrarBotonConfirmarGeozona', {
             detail: { mostrar: true },
@@ -714,7 +697,6 @@ export function useMapboxGL() {
 
     map.value.on('click', clickHandler)
 
-    console.log('✅ Modo selección geozona poligonal activado con color:', color)
     return true
   }
 
@@ -774,8 +756,6 @@ export function useMapboxGL() {
         },
       })
     }
-
-    console.log('✅ Polígono temporal actualizado con', puntos.length, 'puntos y color', color)
   }
 
   const finalizarPoligonoTemporal = () => {
@@ -784,7 +764,7 @@ export function useMapboxGL() {
       return false
     }
     poligonoFinalizado.value = true
-    console.log('✅ Polígono finalizado con', puntosPoligono.value.length, 'puntos')
+
     return true
   }
 
@@ -818,16 +798,14 @@ export function useMapboxGL() {
 
       puntosPoligono.value = []
       poligonoFinalizado.value = false
-
-      console.log('✅ Polígono temporal limpiado completamente')
     } catch (error) {
-      console.error('❌ Error limpiando polígono temporal:', error)
+      console.error('Error limpiando polígono temporal:', error)
     }
   }
 
   const confirmarPoligonoTemporal = (nombre) => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
-      console.log(`✅ Polígono confirmado: ${nombre}`, puntosPoligono.value)
+      console.log(`Polígono confirmado: ${nombre}`, puntosPoligono.value)
       limpiarPoligonoTemporal()
     }
   }
@@ -874,8 +852,6 @@ export function useMapboxGL() {
         'circle-stroke-color': borderColor,
       },
     })
-
-    console.log(`✅ Círculo actualizado con color: ${color}`)
   }
 
   const actualizarPoligono = (id, puntos, nombre, color = '#4ECDC4') => {
@@ -924,8 +900,6 @@ export function useMapboxGL() {
         'line-width': 3,
       },
     })
-
-    console.log(`✅ Polígono actualizado con color: ${color}`)
   }
 
   // 🌐 OBTENER DIRECCIÓN
@@ -958,15 +932,11 @@ export function useMapboxGL() {
       const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
       estiloActual.value = nuevoEstilo
 
-      console.log(`🗺️ Cambiando estilo a: ${nuevoEstilo}`)
-
       // Aplicar nuevo estilo
       map.value.setStyle(ESTILOS_MAPA[nuevoEstilo])
 
       // Esperar a que el estilo se cargue
       map.value.once('style.load', () => {
-        console.log('✅ Nuevo estilo cargado')
-
         // Restaurar centro y zoom
         map.value.jumpTo({ center, zoom })
 
@@ -1035,8 +1005,6 @@ export function useMapboxGL() {
 
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
         window.dispatchEvent(new CustomEvent('redibujarMapa'))
-
-        console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
       })
 
       return nuevoEstilo === 'streets'
@@ -1054,8 +1022,6 @@ export function useMapboxGL() {
       }
 
       mapboxgl.accessToken = MAPBOX_TOKEN
-
-      console.log('🗺️ Inicializando mapa Mapbox GL OPTIMIZADO v2...')
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1101,7 +1067,6 @@ export function useMapboxGL() {
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {
-        console.log('✅ Mapa Mapbox GL cargado correctamente')
         map.value.scrollZoom.setWheelZoomRate(1 / 150)
         map.value.scrollZoom.setZoomRate(1 / 100)
 
@@ -1177,8 +1142,6 @@ export function useMapboxGL() {
           },
           labelLayerId,
         )
-
-        console.log('🚦 Capa de tráfico agregada (desactivada por defecto)')
       })
 
       map.value.on('movestart', () => {
@@ -1195,8 +1158,6 @@ export function useMapboxGL() {
             el.style.transition = 'none'
           }
         })
-
-        console.log('🤚 Pan iniciado')
       })
 
       map.value.on('moveend', () => {
@@ -1216,7 +1177,6 @@ export function useMapboxGL() {
           })
 
           if (pendingUnidades) {
-            console.log('🔄 Actualizando marcadores después del pan')
             procesarActualizacionMarcadores(pendingUnidades)
           }
           if (map.value) {
@@ -1224,7 +1184,6 @@ export function useMapboxGL() {
               map.value.triggerRepaint()
             })
           }
-          console.log('✅ Pan completado')
         }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
       })
 
@@ -1271,7 +1230,6 @@ export function useMapboxGL() {
         resize: () => {
           if (map.value && map.value.resize) {
             map.value.resize()
-            console.log('🔄 Mapa redimensionado')
           }
         },
         setPuntosSeleccionados,
@@ -1286,17 +1244,17 @@ export function useMapboxGL() {
           }
         },
         actualizarMarcador: (_lat, _lng, nombre) => {
-          console.log(`🔄 Actualizando marcador: ${nombre}`)
+          console.log(`Actualizando marcador: ${nombre}`)
         },
         eliminarMarcadorPorCoordenadas: (lat, lng) => {
-          console.log(`🗑️ Eliminando marcador en: ${lat}, ${lng}`)
+          console.log(`Eliminando marcador en: ${lat}, ${lng}`)
         },
         activarModoSeleccionGeozonaCircular,
         limpiarCirculoTemporal,
         confirmarCirculoTemporal,
         actualizarCirculo,
         eliminarCirculo: (id) => {
-          console.log(`🗑️ Eliminando círculo con ID: ${id}`)
+          console.log(`Eliminando círculo con ID: ${id}`)
         },
         activarModoSeleccionGeozonaPoligonal,
         getPuntosSeleccionados: () => puntosPoligono.value,
@@ -1307,7 +1265,7 @@ export function useMapboxGL() {
         actualizarPoligono,
         actualizarPoligonoTemporal,
         eliminarPoligono: (id) => {
-          console.log(`🗑️ Eliminando polígono con ID: ${id}`)
+          console.log(`Eliminando polígono con ID: ${id}`)
         },
         crearCirculoTemporalPOI,
         actualizarRadioCirculoTemporal,
@@ -1321,16 +1279,16 @@ export function useMapboxGL() {
 
           if (visibility === 'visible') {
             map.value.setLayoutProperty('traffic', 'visibility', 'none')
-            console.log('🚫 Tráfico desactivado')
+
             return false
           } else {
             map.value.setLayoutProperty('traffic', 'visibility', 'visible')
-            console.log('✅ Tráfico activado')
+
             return true
           }
         },
-        cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
-        getEstiloActual: () => estiloActual.value, // ✅ GETTER
+        cambiarEstiloMapa,
+        getEstiloActual: () => estiloActual.value,
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
@@ -1341,11 +1299,8 @@ export function useMapboxGL() {
       const mapPage = document.getElementById('map-page')
       if (mapPage) {
         mapPage._mapaAPI = mapaAPI
-        console.log('✅ _mapaAPI expuesto en map-page')
       }
 
-      console.log('✅ Mapa Mapbox GL inicializado con OPTIMIZACIONES v2')
-      console.log('⚡ Throttle: 250ms | requestAnimationFrame: ✅ | Popups optimizados: ✅')
       return map.value
     } catch (error) {
       console.error('❌ Error crítico inicializando mapa:', error)
@@ -1385,8 +1340,6 @@ export function useMapboxGL() {
     if (puntos.length >= 2) {
       actualizarPoligonoTemporal(puntos)
     }
-
-    console.log(`✅ ${puntos.length} puntos restaurados`)
   }
 
   const cleanup = () => {
@@ -1409,7 +1362,6 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     pendingUnidades = null
     pendingUpdate = false
-    console.log('🧹 Mapa limpiado completamente')
   }
 
   const toggleTrafico = () => {
@@ -1428,11 +1380,11 @@ export function useMapboxGL() {
 
       if (visibility === 'visible') {
         map.value.setLayoutProperty('traffic', 'visibility', 'none')
-        console.log('🚫 Tráfico desactivado')
+
         return false
       } else {
         map.value.setLayoutProperty('traffic', 'visibility', 'visible')
-        console.log('✅ Tráfico activado')
+
         return true
       }
     } catch (error) {
@@ -1480,22 +1432,22 @@ export function useMapboxGL() {
     limpiarMarcadorTemporal,
     confirmarMarcadorTemporal: (nombre) => {
       if (ubicacionSeleccionada.value) {
-        console.log(`✅ Marcador confirmado: ${nombre}`)
+        console.log(`Marcador confirmado: ${nombre}`)
         limpiarMarcadorTemporal()
       }
     },
     actualizarMarcador: (_lat, _lng, nombre) => {
-      console.log(`🔄 Actualizando marcador: ${nombre}`)
+      console.log(`Actualizando marcador: ${nombre}`)
     },
     eliminarMarcadorPorCoordenadas: (lat, lng) => {
-      console.log(`🗑️ Eliminando marcador en: ${lat}, ${lng}`)
+      console.log(`Eliminando marcador en: ${lat}, ${lng}`)
     },
     activarModoSeleccionGeozonaCircular,
     limpiarCirculoTemporal,
     confirmarCirculoTemporal,
     actualizarCirculo,
     eliminarCirculo: (id) => {
-      console.log(`🗑️ Eliminando círculo con ID: ${id}`)
+      console.log(`Eliminando círculo con ID: ${id}`)
     },
     activarModoSeleccionGeozonaPoligonal,
     getPuntosSeleccionados: () => puntosPoligono.value,
@@ -1506,7 +1458,7 @@ export function useMapboxGL() {
     actualizarPoligono,
     actualizarPoligonoTemporal,
     eliminarPoligono: (id) => {
-      console.log(`🗑️ Eliminando polígono con ID: ${id}`)
+      console.log(`Eliminando polígono con ID: ${id}`)
     },
     crearCirculoTemporalPOI,
     actualizarRadioCirculoTemporal,
@@ -1514,8 +1466,8 @@ export function useMapboxGL() {
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
     toggleTrafico,
-    cambiarEstiloMapa, // ✅ EXPORTAR NUEVA FUNCIÓN
-    getEstiloActual: () => estiloActual.value, // ✅ EXPORTAR GETTER
+    cambiarEstiloMapa,
+    getEstiloActual: () => estiloActual.value,
     actualizarMarcadoresUnidades,
     limpiarMarcadoresUnidades,
     centrarEnUnidad,
