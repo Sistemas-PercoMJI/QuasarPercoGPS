@@ -48,9 +48,8 @@ export function useRutasStorage() {
     try {
       // Forzar refresco del token si está cerca de expirar
       await user.getIdToken(true) // true = forzar refresco
-      console.log('🔑 Token de autenticación refrescado')
     } catch (err) {
-      console.error('❌ Error refrescando token:', err)
+      console.error('Error refrescando token:', err)
       throw err
     }
   }
@@ -72,7 +71,7 @@ export function useRutasStorage() {
 
       // Validar que sea array
       if (!Array.isArray(coordenadas)) {
-        console.error('❌ coordenadas NO es un array:', typeof coordenadas)
+        console.error('coordenadas NO es un array:', typeof coordenadas)
         throw new Error('Las coordenadas deben ser un array')
       }
 
@@ -82,8 +81,6 @@ export function useRutasStorage() {
         lng: coord.lng || 0,
         timestamp: coord.timestamp || new Date().toISOString(),
       }))
-
-      console.log(`📤 Guardando ${coordenadasLimpias.length} coordenadas SIMPLES...`)
 
       // Convertir a JSON
       const jsonString = JSON.stringify(coordenadasLimpias, null, 2)
@@ -97,8 +94,6 @@ export function useRutasStorage() {
         },
       })
 
-      console.log(`✅ Archivo guardado: ${rutaArchivo}`)
-
       // 🆕 Guardar en cache LOCAL inmediatamente
       dataCache.set(cacheKey, {
         data: coordenadasLimpias,
@@ -111,7 +106,7 @@ export function useRutasStorage() {
       return rutaArchivo
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error guardando en Storage:', err)
+      console.error('Error guardando en Storage:', err)
       throw err
     } finally {
       loading.value = false
@@ -127,13 +122,11 @@ export function useRutasStorage() {
     // 🆕 1. VERIFICAR CACHE PRIMERO
     const cached = dataCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('📦 Usando coordenadas desde cache local')
       return cached.data
     }
 
     // 🆕 2. PREVENIR REQUESTS DUPLICADOS
     if (requestInProgress.get(cacheKey)) {
-      console.log('⏳ Request en progreso, esperando...')
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       // Verificar cache de nuevo después de esperar
@@ -155,16 +148,12 @@ export function useRutasStorage() {
       const rutaArchivo = generarRutaStorage(unidadId, fecha)
       const archivoRef = storageRef(storage, rutaArchivo)
 
-      console.log(`📥 Descargando: ${rutaArchivo}`)
-
       // 🆕 4. VERIFICAR SI EL ARCHIVO EXISTE (evita 404 innecesarios)
       let existe = true
       try {
         await getMetadata(archivoRef)
-        console.log('✅ Archivo existe en Storage')
       } catch (err) {
         if (err.code === 'storage/object-not-found') {
-          console.log('ℹ️ Archivo no existe aún (normal en primera ejecución)')
           existe = false
         } else {
           throw err // Otros errores sí se propagan
@@ -181,9 +170,8 @@ export function useRutasStorage() {
         const blob = await getBlob(archivoRef)
         const text = await blob.text()
         data = JSON.parse(text)
-        console.log('✅ Descarga exitosa con getBlob()')
       } catch (blobError) {
-        console.warn('⚠️ getBlob() falló, intentando con getDownloadURL()...', blobError.message)
+        console.warn('getBlob() falló, intentando con getDownloadURL()...', blobError.message)
 
         // 🆕 FALLBACK: Si getBlob falla, usar getDownloadURL
         const url = await getDownloadURL(archivoRef)
@@ -194,7 +182,6 @@ export function useRutasStorage() {
         }
 
         data = await response.json()
-        console.log('✅ Descarga exitosa con getDownloadURL()')
       }
 
       // 🆕 6. PROCESAR DATOS
@@ -206,31 +193,23 @@ export function useRutasStorage() {
         timestamp: Date.now(),
       })
 
-      console.log(`✅ ${coordenadas.length} coordenadas obtenidas y cacheadas`)
-
       return coordenadas
     } catch (err) {
       // 🆕 MANEJO ESPECÍFICO DE ERRORES
       if (err.code === 'storage/unauthorized' || err.message?.includes('403')) {
-        console.error('🚫 Error de permisos (403)')
-        console.error('   Causa posible: Token expirado o permisos incorrectos')
-        console.error('   Solución: Refrescando token...')
-
         // Intentar refrescar token y reintentar UNA vez
         try {
           await asegurarTokenValido()
-          console.log('🔄 Reintentando después de refrescar token...')
-
           // Limpiar flag y reintentar
           requestInProgress.delete(cacheKey)
           return await obtenerCoordenadasDesdeStorage(unidadId, fecha)
         } catch (retryErr) {
-          console.error('❌ Falló incluso después de refrescar token:', retryErr)
+          console.error('Falló incluso después de refrescar token:', retryErr)
         }
       } else if (err.code === 'storage/object-not-found') {
-        console.log('ℹ️ Archivo no existe')
+        console.warn('Archivo no existe')
       } else {
-        console.error('❌ Error descargando coordenadas:', err)
+        console.error('Error descargando coordenadas:', err)
       }
 
       error.value = err.message
@@ -245,14 +224,10 @@ export function useRutasStorage() {
    * 🆕 Procesar diferentes formatos de datos
    */
   const procesarDatos = (data) => {
-    console.log('📄 Tipo de dato recibido:', typeof data)
-    console.log('📄 Es array?', Array.isArray(data))
-
     let coordenadas = []
 
     // CASO 1: Formato SIMPLE (array directo)
     if (Array.isArray(data)) {
-      console.log('✅ Formato SIMPLE detectado')
       coordenadas = data.map((coord) => ({
         lat: coord.lat || 0,
         lng: coord.lng || 0,
@@ -261,8 +236,6 @@ export function useRutasStorage() {
     }
     // CASO 2: Formato VIEJO (batching)
     else if (data.coordenadas && Array.isArray(data.coordenadas)) {
-      console.log('⚠️ Formato VIEJO detectado, migrando...')
-
       coordenadas = data.coordenadas
         .map((item) => {
           const coord = item.nuevaCoordenada || item.coordenada || item
@@ -279,12 +252,9 @@ export function useRutasStorage() {
           }
         })
         .filter((coord) => coord !== null)
-
-      console.log(`✅ ${coordenadas.length} coordenadas migradas`)
     }
     // CASO 3: Objeto simple (una sola coordenada)
     else if (data.lat && data.lng) {
-      console.log('✅ Coordenada única detectada')
       coordenadas = [
         {
           lat: data.lat,
@@ -295,8 +265,8 @@ export function useRutasStorage() {
     }
     // CASO 4: Formato desconocido
     else {
-      console.warn('⚠️ Formato DESCONOCIDO')
-      console.warn('   Keys:', Object.keys(data))
+      console.warn('Formato DESCONOCIDO')
+      console.warn('Keys:', Object.keys(data))
     }
 
     return coordenadas
@@ -327,10 +297,9 @@ export function useRutasStorage() {
    * 🆕 Limpiar cache manualmente
    */
   const limpiarCache = () => {
-    const size = dataCache.size
+    //const size = dataCache.size
     dataCache.clear()
     requestInProgress.clear()
-    console.log(`🧹 Cache limpiado (${size} entradas eliminadas)`)
   }
 
   /**
@@ -340,7 +309,7 @@ export function useRutasStorage() {
     const cacheKey = `${unidadId}-${fecha}`
     const deleted = dataCache.delete(cacheKey)
     if (deleted) {
-      console.log(`🧹 Cache eliminado para: ${cacheKey}`)
+      console.log(`Cache eliminado para: ${cacheKey}`)
     }
   }
 

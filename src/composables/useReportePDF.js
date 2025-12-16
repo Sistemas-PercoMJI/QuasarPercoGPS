@@ -12,9 +12,6 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   // 🔥 Usar la agrupación REAL que se aplicó, no la del selector
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
-  console.log('🔍 generarHeaderGrupo - agruparPor:', agruparPor)
-  console.log('🔍 nombreGrupo:', nombreGrupo)
-
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
     // 🔥 CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
@@ -463,16 +460,6 @@ export function useReportePDF() {
    */
 
   const generarPDFEventos = (config, datosReales) => {
-    console.log('🔍 CONFIG COMPLETO:', config)
-    console.log('🔍 columnasVisibles en config:', config.columnasVisibles)
-    //  console.log('🔍 config.reportarPor:', config.reportarPor)
-    // console.log('🔍 config.agruparPor:', config.agruparPor)
-    //console.log('🔍 Claves de eventosAgrupados:', Object.keys(datosReales.eventosAgrupados || {}))
-
-    //console.log('📊 datosReales en PDF Eventos:', datosReales)
-    //console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
-    //console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
-    //console.log('📊 datosColumnas[0]:', datosReales.datosColumnas?.[0])
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
 
@@ -720,14 +707,8 @@ export function useReportePDF() {
         // ========================================
         const subGrupos = subAgruparEventos(eventos, config, datosReales)
 
-        console.log('🔍 Sub-grupos creados:', Object.keys(subGrupos))
-        console.log('🔍 Primer evento del primer sub-grupo:', Object.values(subGrupos)[0]?.[0])
-
         const pageHeight = doc.internal.pageSize.getHeight()
         Object.entries(subGrupos).forEach(([nombreSubGrupo, eventosSubGrupo], indexSubGrupo) => {
-          console.log(`🔍 Sub-grupo "${nombreSubGrupo}":`, eventosSubGrupo.length, 'eventos')
-          console.log('🔍 Primer evento:', eventosSubGrupo[0])
-
           if (!eventosSubGrupo || eventosSubGrupo.length === 0) return
 
           // Header del sub-grupo
@@ -765,8 +746,6 @@ export function useReportePDF() {
               yPosition += 8
             }
           }
-          console.log('🔍 Columnas visibles:', config.columnasVisibles)
-          console.log('🔍 Número de columnas:', config.columnasVisibles?.length)
 
           // ========================================
           // TABLA DE EVENTOS DEL SUB-GRUPO
@@ -861,14 +840,6 @@ export function useReportePDF() {
             return nombres[col] || col
           })
 
-          console.log('📋 DEBUG configuracionColumnas completa:')
-          console.log('   - Existe?:', !!datosReales.configuracionColumnas)
-          console.log('   - Total columnas:', datosReales.configuracionColumnas?.length)
-          console.log(
-            '   - Labels disponibles:',
-            datosReales.configuracionColumnas?.map((c) => c.label),
-          )
-          console.log('   - Headers buscados:', headers)
           // 🔥 SIMPLIFICADO: Usar configuracionColumnas directamente
           const tableData = eventosSubGrupo.map((evento) => {
             return columnasVisibles.map((col) => {
@@ -878,32 +849,10 @@ export function useReportePDF() {
                 (c) => c.label === nombreHeader,
               )
 
-              // 🔥 DEBUG PARA CONDICIÓN DE EVENTO
-              if (nombreHeader === 'Condición de evento') {
-                console.log('🔍 DEBUG Condición de evento en PDF:')
-                console.log('   - nombreHeader:', nombreHeader)
-                console.log('   - columnaConfig encontrada?:', !!columnaConfig)
-                console.log('   - columnaConfig.label:', columnaConfig?.label)
-                console.log(
-                  '   - columnaConfig.obtenerValor existe?:',
-                  !!columnaConfig?.obtenerValor,
-                )
-                console.log('   - evento completo:', evento)
-                console.log(
-                  '   - configuracionColumnas disponibles:',
-                  datosReales.configuracionColumnas?.map((c) => c.label),
-                )
-              }
-
               // Si la columna tiene obtenerValor, usarlo
               if (columnaConfig && columnaConfig.obtenerValor) {
                 try {
                   const valor = columnaConfig.obtenerValor(evento)
-
-                  // 🔥 DEBUG RESULTADO
-                  if (nombreHeader === 'Condición de evento') {
-                    console.log('   ✅ Valor obtenido:', valor)
-                  }
 
                   return valor !== null && valor !== undefined ? String(valor) : 'N/A'
                 } catch (error) {
@@ -916,9 +865,6 @@ export function useReportePDF() {
               const valor = evento[col]
 
               // 🔥 DEBUG FALLBACK
-              if (nombreHeader === 'Condición de evento') {
-                console.log('   ⚠️ Usando fallback - valor:', valor)
-              }
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'
             })
@@ -1552,10 +1498,6 @@ export function useReportePDF() {
       }
       registrosPorEntidad[clave].push(registro)
     })
-
-    console.log('📊 Registros agrupados por:', config.reportarPor)
-    console.log('📊 Grupos creados:', Object.keys(registrosPorEntidad))
-
     // ========================================
     // MAPEO DE COLUMNAS (español → propiedades)
     // ========================================
@@ -1582,15 +1524,12 @@ export function useReportePDF() {
       .filter(Boolean) // Eliminar undefined
       .filter((prop) => !columnasAgregadas.includes(prop))
 
-    console.log('🔍 Columnas para viajes:', columnasVisiblesViajes)
-
     // Preparar headers en español
     const headersViajes = config.columnasSeleccionadas.filter((col) => {
       const prop = nombreColumnaAPropiedad[col]
       return prop && !columnasAgregadas.includes(prop)
     })
 
-    console.log('🔍 Headers para tabla:', headersViajes)
     // Convertir columnas seleccionadas de español a propiedades
     const columnasVisibles = config.columnasSeleccionadas.map((nombreEspanol) => {
       return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
@@ -1659,8 +1598,6 @@ export function useReportePDF() {
         // ==========================================
         // OPCIÓN 1: DÍAS DETALLADOS (resumen + viajes)
         // ==========================================
-        console.log('📅 Generando días detallados...')
-
         // Agrupar por fecha
         const registrosPorFecha = {}
         registros.forEach((registro) => {
@@ -1861,8 +1798,6 @@ export function useReportePDF() {
         // ==========================================
         // OPCIÓN 3: DÍAS RESUMIDOS (solo resumen, sin tabla de viajes)
         // ==========================================
-        console.log('📊 Generando días resumidos...')
-
         // Agrupar por fecha
         const registrosPorFecha = {}
         registros.forEach((registro) => {

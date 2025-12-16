@@ -10,7 +10,7 @@ export function useRutaDiaria() {
   const verificarAutenticacion = () => {
     const user = auth.currentUser
     if (!user) {
-      console.error('❌ Usuario no autenticado')
+      console.error('Usuario no autenticado')
       throw new Error('Usuario no autenticado')
     }
     return user
@@ -54,18 +54,17 @@ export function useRutaDiaria() {
 
           if (ahora - ultimoTimestamp < MIN_INTERVALO_MS) {
             const segundosTranscurridos = Math.round((ahora - ultimoTimestamp) / 1000)
-            console.log(`⏰ Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`)
+            console.log(`Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`)
             debeAgregar = false
           }
         }
         // eslint-disable-next-line no-unused-vars
       } catch (err) {
         // Si falla (ej: archivo no existe), continuar normalmente
-        console.log('ℹ️ Archivo de rutas no existe aún, creando primera coordenada...')
+        console.warn('Archivo de rutas no existe aún, creando primera coordenada...')
       }
 
       if (!debeAgregar) {
-        console.log('⏭️ Coordenada omitida por intervalo corto')
         loading.value = false
         return false
       }
@@ -82,8 +81,6 @@ export function useRutaDiaria() {
 
       // Agregar al array existente
       const todasLasCoordenadas = [...coordenadasExistentes, nuevaCoordenadaSimple]
-
-      console.log(`📤 Guardando ${todasLasCoordenadas.length} coordenadas en Storage...`)
 
       // Subir TODO el array a Storage (SOBRESCRIBIR archivo)
       const { guardarCoordenadasEnStorage } = useRutasStorage()
@@ -135,14 +132,11 @@ export function useRutaDiaria() {
             odometro_fin: '0',
           })
         }
-
-        console.log(`✅ Firestore actualizado (${todasLasCoordenadas.length} coords)`)
       }
 
-      console.log(`✅ Coordenada agregada. Total: ${todasLasCoordenadas.length}`)
       return true
     } catch (err) {
-      console.error('❌ Error agregando coordenada:', err)
+      console.error('Error agregando coordenada:', err)
       error.value = err.message
       return false
     } finally {
@@ -179,7 +173,6 @@ export function useRutaDiaria() {
           rutas_archivo: null,
           total_coordenadas: 0,
         })
-        console.log('✅ Documento de ruta diaria creado')
       }
 
       // Si hay coordenada inicial, agregarla
@@ -189,7 +182,7 @@ export function useRutaDiaria() {
 
       return true
     } catch (err) {
-      console.error('❌ Error en ruta diaria:', err)
+      console.error('Error en ruta diaria:', err)
       throw err
     }
   }
@@ -205,10 +198,9 @@ export function useRutaDiaria() {
       const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
       const coordenadas = await obtenerCoordenadasDesdeStorage(unidadId, fechaBuscar)
 
-      console.log(`✅ ${coordenadas.length} coordenadas obtenidas para ${fechaBuscar}`)
       return coordenadas
     } catch (err) {
-      console.error('❌ Error obteniendo coordenadas:', err)
+      console.error('Error obteniendo coordenadas:', err)
       return []
     }
   }
@@ -227,7 +219,7 @@ export function useRutaDiaria() {
       }
       return null
     } catch (err) {
-      console.error('❌ Error obteniendo estadísticas:', err)
+      console.error('Error obteniendo estadísticas:', err)
       return null
     }
   }
@@ -238,7 +230,6 @@ export function useRutaDiaria() {
   const limpiarCacheRutasAntiguas = () => {
     const { limpiarCache } = useRutasStorage()
     limpiarCache()
-    console.log('🧹 Cache de rutas limpiado')
   }
 
   return {

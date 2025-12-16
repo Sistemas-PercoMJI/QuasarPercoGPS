@@ -20,7 +20,6 @@ export function useTrackingUnidades() {
   const iniciarTracking = () => {
     // Si ya está iniciado, no hacer nada
     if (trackingIniciado) {
-      console.log('✅ Tracking ya está activo')
       return
     }
 
@@ -64,22 +63,20 @@ export function useTrackingUnidades() {
             window._unidadesTrackeadas = unidadesValidas
           } else {
             unidadesActivasGlobal.value = []
-            console.log('📡 No hay unidades activas')
           }
 
           loadingGlobal.value = false
         },
         (err) => {
-          console.error('❌ Error en tracking:', err)
+          console.error('Error en tracking:', err)
           errorGlobal.value = err.message
           loadingGlobal.value = false
         },
       )
 
       trackingIniciado = true
-      console.log('✅ Tracking GPS iniciado (permanente)')
     } catch (err) {
-      console.error('❌ Error al iniciar tracking:', err)
+      console.error('Error al iniciar tracking:', err)
       errorGlobal.value = err.message
       loadingGlobal.value = false
     }
@@ -95,7 +92,6 @@ export function useTrackingUnidades() {
       off(unidadesRef)
       unsubscribeGlobal = null
       trackingIniciado = false
-      console.log('🛑 Tracking detenido manualmente')
     }
   }
 
@@ -107,7 +103,7 @@ export function useTrackingUnidades() {
       try {
         await evaluarEventosParaUnidadesSimulacion(unidadesActivasGlobal.value)
       } catch (err) {
-        console.error('❌ Error evaluando eventos:', err)
+        console.error('Error evaluando eventos:', err)
       }
     }
   }

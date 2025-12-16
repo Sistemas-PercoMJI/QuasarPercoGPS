@@ -13,12 +13,11 @@ export function useReportesTrayectos() {
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) {
-      console.warn('⚠️ No hay URL de rutas')
+      console.warn('No hay URL de rutas')
       return []
     }
 
     try {
-      console.log('📥 Descargando coordenadas de Storage...')
       const response = await fetch(rutasUrl)
 
       if (!response.ok) {
@@ -57,10 +56,9 @@ export function useReportesTrayectos() {
           timestamp: coord.timestamp || coord.time || null,
         }))
 
-      console.log(`  ✅ Descargadas ${coordenadasNormalizadas.length} coordenadas del Storage`)
       return coordenadasNormalizadas
     } catch (err) {
-      console.error('  ❌ Error descargando coordenadas del Storage:', err)
+      console.error('Error descargando coordenadas del Storage:', err)
       return []
     }
   }
@@ -164,11 +162,6 @@ export function useReportesTrayectos() {
     error.value = null
 
     try {
-      console.log('🗺️ Obteniendo trayectos...')
-      console.log('📦 Unidades:', unidadesNombres)
-      console.log('📅 Desde:', fechaInicio.toLocaleDateString())
-      console.log('📅 Hasta:', fechaFin.toLocaleDateString())
-
       const todosTrayectos = []
       const fechas = generarRangoFechas(fechaInicio, fechaFin)
 
@@ -180,13 +173,9 @@ export function useReportesTrayectos() {
         return nombre
       })
 
-      console.log('📦 IDs de unidades a consultar:', unidadesIds)
-
       for (let i = 0; i < unidadesIds.length; i++) {
         const unidadId = unidadesIds[i]
         const unidadNombre = unidadesNombres[i]
-
-        console.log(`🚗 Procesando unidad: ${unidadId}`)
 
         for (const fecha of fechas) {
           try {
@@ -195,18 +184,15 @@ export function useReportesTrayectos() {
 
             if (rutaSnap.exists()) {
               const data = rutaSnap.data()
-              console.log(`  ✅ ${fecha}: Datos encontrados en Firebase`)
 
               // 🔥 DESCARGAR COORDENADAS DEL STORAGE
               let coordenadas = []
               if (data.rutas_url) {
-                console.log('  📥 Descargando desde:', data.rutas_url)
                 coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
               }
 
               // Si no hay coordenadas del storage, intentar con nuevaCoordenada
               if (coordenadas.length === 0 && data.nuevaCoordenada) {
-                console.log('  📍 Usando nuevaCoordenada como fallback')
                 coordenadas = [
                   {
                     lat: data.nuevaCoordenada.lat,
@@ -241,30 +227,18 @@ export function useReportesTrayectos() {
                 _simulado: false,
               }
 
-              if (trayecto.length === 0) {
-                // Solo el primero para no llenar consola
-                console.log('📊 Estructura de UN trayecto desde Firebase:', data)
-                console.log('📊 Tipo de coordinates:', typeof data.coordinates)
-                console.log('📊 Primer punto GPS:', data.coordinates?.[0])
-              }
-
-              console.log(`  ✅ Trayecto con ${coordenadas.length} coordenadas`)
               todosTrayectos.push(trayecto)
             } else {
-              console.log(`  ⚠️ ${fecha}: No hay datos en Firebase`)
+              console.warn(`${fecha}: No hay datos en Firebase`)
             }
           } catch (err) {
-            console.warn(`  ❌ Error en ${unidadId}/${fecha}:`, err.message)
+            console.warn(`Error en ${unidadId}/${fecha}:`, err.message)
           }
         }
       }
 
-      console.log(`✅ Total de trayectos reales obtenidos: ${todosTrayectos.length}`)
-
       // 🔥 SI NO HAY TRAYECTOS REALES, GENERAR SIMULADOS
       if (todosTrayectos.length === 0) {
-        console.log('⚠️ No se encontraron trayectos reales, generando datos simulados...')
-
         for (let i = 0; i < unidadesNombres.length; i++) {
           const trayectosSimulados = generarTrayectosSimulados(
             unidadesNombres[i],
@@ -273,26 +247,19 @@ export function useReportesTrayectos() {
             fechaFin,
           )
           todosTrayectos.push(...trayectosSimulados)
-          console.log(
-            `  ✅ Generados ${trayectosSimulados.length} trayectos simulados para ${unidadesNombres[i]}`,
-          )
         }
-
-        console.log(`✅ Total de trayectos simulados: ${todosTrayectos.length}`)
       }
 
       // 🔥 PROCESAR TRAYECTOS (ya sea reales o simulados)
-      console.log('🔄 Procesando trayectos (calculando km, velocidad, geocodificando)...')
       const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
       const trayectosProcesados = await procesarTrayectosParaPDF(todosTrayectos)
 
       return trayectosProcesados
     } catch (err) {
-      console.error('❌ Error al obtener trayectos:', err)
+      console.error('Error al obtener trayectos:', err)
       error.value = err.message
 
       // En caso de error, generar datos simulados como fallback
-      console.log('🔄 Generando datos simulados como fallback...')
       const trayectosFallback = []
       const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
 
@@ -319,7 +286,6 @@ export function useReportesTrayectos() {
     try {
       // Si ya tienen nombre de unidad (simulados), no hace falta enriquecer
       if (trayectos.length > 0 && trayectos[0]._simulado) {
-        console.log('📦 Trayectos simulados, no es necesario enriquecer')
         return trayectos
       }
 
