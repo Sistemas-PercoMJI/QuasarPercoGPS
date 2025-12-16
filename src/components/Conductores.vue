@@ -2214,7 +2214,8 @@ function navegarAUnidad() {
 .conductores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  gap: 0px;
+  padding-top: 5px;
 }
 
 .card-header {
@@ -2403,9 +2404,9 @@ function navegarAUnidad() {
   overflow: hidden;
 }
 
-/* Mejorar el diseño de la lista de grupos */
 .grupos-lista .q-item {
   border-radius: 8px;
+  padding-top: 10px;
   margin-bottom: 6px;
   transition: all 0.2s ease;
 }
@@ -2413,11 +2414,13 @@ function navegarAUnidad() {
 .grupos-lista .q-item:hover {
   background-color: #e3f2fd;
   transform: translateX(4px);
+  padding-bottom: 8px;
 }
 
 .grupos-lista .q-item.q-item--active {
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+  padding-bottom: 8px;
 }
 </style>
