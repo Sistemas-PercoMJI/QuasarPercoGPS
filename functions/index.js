@@ -1,32 +1,51 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const { setGlobalOptions } = require('firebase-functions/v2')
+const { onRequest } = require('firebase-functions/v2/https')
+const fetch = require('node-fetch')
 
-const { setGlobalOptions } = require('firebase-functions')
-////const {onRequest} = require("firebase-functions/https");
-//const logger = require("firebase-functions/logger");
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
+// Configuración global de límite de instancias
 setGlobalOptions({ maxInstances: 10 })
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+/**
+ * 🗺️ Proxy para descargar imágenes de Mapbox Static Images API
+ * Evita problemas de CORS al acceder directamente desde el navegador
+ *
+ * URL de ejemplo:
+ * https://us-central1-tu-proyecto.cloudfunctions.net/getMapboxImage?url=https://api.mapbox.com/...
+ */
+exports.getMapboxImage = onRequest(
+  {
+    cors: true, // Habilitar CORS automáticamente
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (req, res) => {
+    const mapUrl = req.query.url
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+    if (!mapUrl) {
+      return res.status(400).send('URL parameter is required')
+    }
+
+    try {
+      console.log('📥 Descargando mapa de Mapbox:', mapUrl.substring(0, 100) + '...')
+
+      const response = await fetch(mapUrl)
+
+      if (!response.ok) {
+        console.error('❌ Error de Mapbox:', response.status, response.statusText)
+        return res.status(response.status).send(`Mapbox error: ${response.statusText}`)
+      }
+
+      const buffer = await response.buffer()
+
+      // Headers para la imagen
+      res.set('Content-Type', 'image/png')
+      res.set('Cache-Control', 'public, max-age=300') // Cache por 5 minutos
+      res.send(buffer)
+
+      console.log('✅ Imagen enviada correctamente')
+    } catch (error) {
+      console.error('❌ Error fetching map:', error)
+      res.status(500).send('Error fetching map image')
+    }
+  },
+)

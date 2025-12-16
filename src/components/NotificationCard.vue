@@ -8,6 +8,22 @@
       <div class="col">
         <div class="text-subtitle2 text-weight-medium">{{ title }}</div>
         <div class="text-body2 q-mt-xs">{{ message }}</div>
+
+        <!-- 🆕 MAPA ESTÁTICO SI EXISTE -->
+        <div v-if="mapImage" class="map-preview q-mt-sm" @click="abrirMapaCompleto">
+          <img
+            :src="mapImage"
+            alt="Mapa del evento"
+            class="map-image"
+            crossorigin="anonymous"
+            @error="handleImageError"
+          />
+          <div class="map-overlay">
+            <q-icon name="place" size="16px" />
+            <span class="text-caption">Ver ubicación</span>
+          </div>
+        </div>
+
         <div class="text-caption text-grey-7 q-mt-sm">
           <q-icon name="access_time" size="14px" class="q-mr-xs" />
           {{ tiempoTranscurrido }}
@@ -27,6 +43,8 @@ const props = defineProps({
   message: { type: String, default: '' },
   timestamp: { type: Number, default: Date.now },
   leida: { type: Boolean, default: false },
+  mapImage: { type: String, default: null }, // 🆕 IMAGEN DEL MAPA EN BASE64
+  mapUrl: { type: String, default: null }, // 🆕 URL DEL MAPA COMPLETO
 })
 
 const emit = defineEmits(['close'])
@@ -58,6 +76,22 @@ function actualizarTiempo() {
   } else {
     const horas = Math.floor(minutos / 60)
     tiempoTranscurrido.value = horas === 1 ? 'Hace 1 hora' : `Hace ${horas} horas`
+  }
+}
+
+// 🆕 FUNCIÓN PARA ABRIR MAPA EN NUEVA PESTAÑA
+function abrirMapaCompleto() {
+  if (props.mapUrl) {
+    window.open(props.mapUrl, '_blank')
+  }
+}
+
+// 🆕 FUNCIÓN PARA MANEJAR ERRORES DE CARGA DE IMAGEN
+function handleImageError(event) {
+  console.warn('⚠️ Error cargando imagen del mapa, intentando URL directa')
+  // Si falla, intentar con la URL directa con timestamp
+  if (props.mapUrl && event.target.src !== props.mapUrl) {
+    event.target.src = `${props.mapUrl}&t=${Date.now()}`
   }
 }
 
@@ -196,5 +230,63 @@ function handleClose() {
   font-size: 24px !important;
   width: 24px !important;
   height: 24px !important;
+}
+
+/* 🆕 ESTILOS PARA EL MAPA ESTÁTICO */
+.map-preview {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-preview:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.map-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.map-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  color: white;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-weight: 600;
+}
+
+.map-preview:hover .map-overlay {
+  opacity: 1;
+}
+
+.map-overlay .q-icon {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 </style>

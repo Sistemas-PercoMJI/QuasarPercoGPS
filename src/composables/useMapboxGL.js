@@ -17,6 +17,17 @@ const poligonoTemporal = ref(null)
 const circuloTemporalPOI = ref(null)
 let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
+let isZooming = false
+let lastZoomLevel = 0
+let PanTimeout = null
+let isPanning = false
+
+// 🗺️ SISTEMA DE ESTILOS DE MAPA
+const estiloActual = ref('satellite') // 'satellite' o 'streets'
+const ESTILOS_MAPA = {
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  streets: 'mapbox://styles/mapbox/streets-v12',
+}
 
 // 🆕 SISTEMA DE POPUP GLOBAL UNIFICADO
 let popupGlobalActivo = null
@@ -25,9 +36,13 @@ let popupGlobalActivo = null
 const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
-// ⚡ OPTIMIZACIÓN: Throttle para actualizaciones
+// ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
+const THROTTLE_MS = 200 // ✅ 200ms = 5 actualizaciones/segundo (antes era 300ms)
+
+// 🔄 Sistema de batch updates con requestAnimationFrame
+let pendingUpdate = false
+let pendingUnidades = null
 let ultimaActualizacion = 0
-const THROTTLE_MS = 1000 // Actualizar máximo cada 300ms
 
 // 🧹 Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
@@ -109,6 +124,7 @@ export function useMapboxGL() {
     return el
   }
 
+  // ✅ POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
     const estadoTexto = {
       movimiento: 'En movimiento',
@@ -177,28 +193,13 @@ export function useMapboxGL() {
     return popupContent
   }
 
-  // ⚡ OPTIMIZADO: Con detección de cambio de estado para iconos
-  const actualizarMarcadoresUnidades = (unidades) => {
-    if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+  // ⚡ OPTIMIZADO: Procesamiento real de marcadores
+  const procesarActualizacionMarcadores = (unidades) => {
+    if (!map.value || !unidades) {
       return
     }
-
-    const ahora = Date.now()
-    if (ahora - ultimaActualizacion < THROTTLE_MS) {
-      return
-    }
-    ultimaActualizacion = ahora
 
     const idsActuales = new Set()
-
-    /*console.log('🔄 Actualizando marcadores:', {
-      total: unidades.length,
-      estados: unidades.reduce((acc, u) => {
-        acc[u.estado] = (acc[u.estado] || 0) + 1
-        return acc
-      }, {}),
-    })*/
 
     unidades.forEach((unidad) => {
       if (
@@ -229,11 +230,9 @@ export function useMapboxGL() {
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
           if (ultimaPos && ultimaPos.estado !== unidad.estado) {
-            //console.log(`🎨 ${unidad.unidadNombre}: ${ultimaPos.estado} → ${unidad.estado}`)
-
+            // Cambió el estado - recrear marcador
             marcadoresUnidades.value[unidadId].remove()
 
-            // 🆕 CREAR POPUP CON SISTEMA UNIFICADO
             const popup = new mapboxgl.Popup({
               offset: 25,
               closeButton: true,
@@ -241,7 +240,6 @@ export function useMapboxGL() {
               maxWidth: '300px',
             }).setHTML(crearPopupUnidad(unidad))
 
-            // 🆕 REGISTRAR POPUP AL ABRIRSE
             popup.on('open', () => {
               registrarPopupActivo(popup)
             })
@@ -257,10 +255,12 @@ export function useMapboxGL() {
             marcadoresUnidades.value[unidadId] = marker
             ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
           } else {
+            // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
+            // ✅ OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
-            if (popup) {
+            if (popup && popup.isOpen()) {
               const popupContent = popup.getElement()
               const oldContainer = popupContent
                 ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
@@ -281,7 +281,7 @@ export function useMapboxGL() {
           }
         }
       } else {
-        // 🆕 CREAR NUEVO MARCADOR CON SISTEMA UNIFICADO
+        // Crear nuevo marcador
         const popup = new mapboxgl.Popup({
           offset: 25,
           closeButton: true,
@@ -289,7 +289,6 @@ export function useMapboxGL() {
           maxWidth: '300px',
         }).setHTML(crearPopupUnidad(unidad))
 
-        // 🆕 REGISTRAR POPUP AL ABRIRSE
         popup.on('open', () => {
           registrarPopupActivo(popup)
         })
@@ -317,6 +316,39 @@ export function useMapboxGL() {
     })
   }
 
+  // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  // Línea ~239
+  const actualizarMarcadoresUnidades = (unidades) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
+
+    // ⚡ Si el mapa se está moviendo O haciendo zoom, postponer
+    if (isZooming || isPanning) {
+      // 🆕 AGREGAR isPanning
+      pendingUnidades = unidades
+      return
+    }
+
+    const ahora = Date.now()
+
+    if (ahora - ultimaActualizacion < THROTTLE_MS) {
+      pendingUnidades = unidades
+      return
+    }
+
+    ultimaActualizacion = ahora
+    pendingUnidades = unidades
+
+    if (!pendingUpdate) {
+      pendingUpdate = true
+      requestAnimationFrame(() => {
+        procesarActualizacionMarcadores(pendingUnidades)
+        pendingUpdate = false
+      })
+    }
+  }
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
 
@@ -326,6 +358,8 @@ export function useMapboxGL() {
 
     marcadoresUnidades.value = {}
     ultimasPosiciones.clear()
+    pendingUnidades = null
+    pendingUpdate = false
     console.log('🧹 Marcadores GPS limpiados')
   }
 
@@ -341,7 +375,6 @@ export function useMapboxGL() {
         duration: 1000,
       })
 
-      // 🆕 CERRAR POPUP ANTERIOR Y ABRIR ESTE
       cerrarPopupGlobal()
       marcador.togglePopup()
     }
@@ -909,7 +942,111 @@ export function useMapboxGL() {
     }
   }
 
-  // 🗺️ INICIALIZAR MAPA - OPTIMIZADO
+  // 🗺️ CAMBIAR ESTILO DEL MAPA (NUEVO)
+  const cambiarEstiloMapa = () => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return false
+    }
+
+    try {
+      // Guardar el centro y zoom actual
+      const center = map.value.getCenter()
+      const zoom = map.value.getZoom()
+
+      // Cambiar estilo
+      const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
+      estiloActual.value = nuevoEstilo
+
+      console.log(`🗺️ Cambiando estilo a: ${nuevoEstilo}`)
+
+      // Aplicar nuevo estilo
+      map.value.setStyle(ESTILOS_MAPA[nuevoEstilo])
+
+      // Esperar a que el estilo se cargue
+      map.value.once('style.load', () => {
+        console.log('✅ Nuevo estilo cargado')
+
+        // Restaurar centro y zoom
+        map.value.jumpTo({ center, zoom })
+
+        // 🔄 RE-AGREGAR CAPA DE TRÁFICO
+        if (!map.value.getSource('mapbox-traffic')) {
+          map.value.addSource('mapbox-traffic', {
+            type: 'vector',
+            url: 'mapbox://mapbox.mapbox-traffic-v1',
+          })
+        }
+
+        // Buscar la primera capa de etiquetas
+        const layers = map.value.getStyle().layers
+        let labelLayerId
+        for (let i = 0; i < layers.length; i++) {
+          if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+            labelLayerId = layers[i].id
+            break
+          }
+        }
+
+        // Insertar tráfico antes de las etiquetas
+        if (!map.value.getLayer('traffic')) {
+          map.value.addLayer(
+            {
+              id: 'traffic',
+              type: 'line',
+              source: 'mapbox-traffic',
+              'source-layer': 'traffic',
+              paint: {
+                'line-width': [
+                  'interpolate',
+                  ['exponential', 1.5],
+                  ['zoom'],
+                  10,
+                  1,
+                  13,
+                  2,
+                  15,
+                  3,
+                  18,
+                  6,
+                  20,
+                  10,
+                ],
+                'line-color': [
+                  'case',
+                  ['==', ['get', 'congestion'], 'low'],
+                  '#4CAF50',
+                  ['==', ['get', 'congestion'], 'moderate'],
+                  '#FF9800',
+                  ['==', ['get', 'congestion'], 'heavy'],
+                  '#F44336',
+                  ['==', ['get', 'congestion'], 'severe'],
+                  '#9C27B0',
+                  '#888888',
+                ],
+              },
+              layout: {
+                visibility: 'none',
+              },
+            },
+            labelLayerId,
+          )
+        }
+
+        // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
+        window.dispatchEvent(new CustomEvent('redibujarMapa'))
+
+        console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
+      })
+
+      return nuevoEstilo === 'streets'
+    } catch (error) {
+      console.error('❌ Error al cambiar estilo:', error)
+      return null
+    }
+  }
+
+  // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
       if (map.value) {
@@ -918,31 +1055,62 @@ export function useMapboxGL() {
 
       mapboxgl.accessToken = MAPBOX_TOKEN
 
-      console.log('🗺️ Inicializando mapa Mapbox GL optimizado...')
+      console.log('🗺️ Inicializando mapa Mapbox GL OPTIMIZADO v2...')
 
       map.value = new mapboxgl.Map({
         container: containerId,
-        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        style: ESTILOS_MAPA[estiloActual.value], // ✅ Usar estilo del estado
         center: [center[1], center[0]],
         zoom: zoom,
         // ⚡ OPTIMIZACIONES DE RENDIMIENTO
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 50, // ✅ Reducido de 100 a 50
+        maxTileCacheSize: 100,
         minZoom: 5,
         maxZoom: 18,
-        // ⚡ Nuevas optimizaciones
-        fadeDuration: 0, // Sin animación de fade en tiles
-        crossSourceCollisions: false, // Mejor rendimiento en colisiones
+        // ⚡ OPTIMIZACIONES ADICIONALES v2
+        fadeDuration: 0,
+        crossSourceCollisions: false,
+        trackResize: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        // 🆕 NUEVAS OPTIMIZACIONES CRÍTICAS
+        renderWorldCopies: false,
+        antialias: false,
+        optimizeForTerrain: false,
+        dragRotate: false,
+        touchZoomRotate: false,
+        easing: (t) => {
+          // Curva de easing personalizada (ease-out-cubic)
+          return 1 - Math.pow(1 - t, 3)
+        },
+        transformRequest: (url, resourceType) => {
+          // Cachear tiles agresivamente
+          if (resourceType === 'Tile') {
+            return {
+              url: url,
+              headers: { 'Cache-Control': 'max-age=3600' },
+            }
+          }
+        },
       })
 
-      // Agregar controles de navegación
+      // Agregar controles de navegación en bottom-right
       map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
       map.value.on('load', () => {
         console.log('✅ Mapa Mapbox GL cargado correctamente')
+        map.value.scrollZoom.setWheelZoomRate(1 / 150)
+        map.value.scrollZoom.setZoomRate(1 / 100)
+
+        map.value.dragPan.enable({
+          linearity: 0.4,
+          easing: (t) => t * (2 - t),
+          maxSpeed: 1800,
+          deceleration: 2200,
+        })
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
           const canvas = document.createElement('canvas')
@@ -1013,7 +1181,86 @@ export function useMapboxGL() {
         console.log('🚦 Capa de tráfico agregada (desactivada por defecto)')
       })
 
-      // Manejo de errores
+      map.value.on('movestart', () => {
+        isPanning = true
+        pendingUpdate = false
+
+        if (map.value.getCanvas()) {
+          map.value.getCanvas().style.imageRendering = 'auto'
+        }
+
+        Object.values(marcadoresUnidades.value).forEach((marker) => {
+          const el = marker.getElement()
+          if (el) {
+            el.style.transition = 'none'
+          }
+        })
+
+        console.log('🤚 Pan iniciado')
+      })
+
+      map.value.on('moveend', () => {
+        clearTimeout(PanTimeout)
+
+        // 🆕 REDUCIDO DE 150ms A 50ms
+        PanTimeout = setTimeout(() => {
+          isPanning = false
+          if (map.value.getCanvas()) {
+            map.value.getCanvas().style.imageRendering = 'crisp-edges'
+          }
+          Object.values(marcadoresUnidades.value).forEach((marker) => {
+            const el = marker.getElement()
+            if (el) {
+              el.style.transition = 'transform 0.3s ease-out'
+            }
+          })
+
+          if (pendingUnidades) {
+            console.log('🔄 Actualizando marcadores después del pan')
+            procesarActualizacionMarcadores(pendingUnidades)
+          }
+          if (map.value) {
+            requestAnimationFrame(() => {
+              map.value.triggerRepaint()
+            })
+          }
+          console.log('✅ Pan completado')
+        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+      })
+
+      let zoomTimeout
+
+      map.value.on('zoomstart', () => {
+        isZooming = true
+        pendingUpdate = false
+      })
+
+      map.value.on('zoom', () => {
+        clearTimeout(zoomTimeout)
+        const currentZoom = map.value.getZoom()
+        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
+
+        if (zoomDiff > 0.5) {
+          lastZoomLevel = currentZoom
+          if (map.value) {
+            map.value.triggerRepaint()
+          }
+        }
+      })
+      map.value.on('zoomend', () => {
+        isZooming = false
+        clearTimeout(zoomTimeout)
+        // 🆕 REDUCIDO DE 150ms A 50ms
+        zoomTimeout = setTimeout(() => {
+          if (map.value) {
+            map.value.triggerRepaint()
+            if (pendingUnidades) {
+              procesarActualizacionMarcadores(pendingUnidades)
+            }
+          }
+        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+      })
+
       map.value.on('error', (e) => {
         console.error('❌ Error en Mapbox GL:', e)
       })
@@ -1082,6 +1329,8 @@ export function useMapboxGL() {
             return true
           }
         },
+        cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
+        getEstiloActual: () => estiloActual.value, // ✅ GETTER
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
@@ -1095,7 +1344,8 @@ export function useMapboxGL() {
         console.log('✅ _mapaAPI expuesto en map-page')
       }
 
-      console.log('✅ Mapa Mapbox GL inicializado correctamente con optimizaciones')
+      console.log('✅ Mapa Mapbox GL inicializado con OPTIMIZACIONES v2')
+      console.log('⚡ Throttle: 250ms | requestAnimationFrame: ✅ | Popups optimizados: ✅')
       return map.value
     } catch (error) {
       console.error('❌ Error crítico inicializando mapa:', error)
@@ -1157,6 +1407,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
     puntosPoligono.value = []
     poligonoFinalizado.value = false
+    pendingUnidades = null
+    pendingUpdate = false
     console.log('🧹 Mapa limpiado completamente')
   }
 
@@ -1262,6 +1514,8 @@ export function useMapboxGL() {
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
     toggleTrafico,
+    cambiarEstiloMapa, // ✅ EXPORTAR NUEVA FUNCIÓN
+    getEstiloActual: () => estiloActual.value, // ✅ EXPORTAR GETTER
     actualizarMarcadoresUnidades,
     limpiarMarcadoresUnidades,
     centrarEnUnidad,

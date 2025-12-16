@@ -19,6 +19,10 @@ const ubicacionesTrackeadas = ref(new Map())
 const eventosEnCurso = ref(new Map())
 const salidasEnCurso = ref(new Map())
 
+// 🔥 NUEVO: Throttle para tracking (evita llamadas duplicadas rápidas)
+const ultimoTrackingPorUnidad = ref(new Map())
+const TRACKING_THROTTLE_MS = 2000 // 2 segundos
+
 // Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
 const { iniciarOActualizarRutaDiaria, obtenerIdRutaDiaria } = useRutaDiaria()
@@ -186,6 +190,18 @@ export function useEventDetection() {
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
+
+    // 🔥 THROTTLE: Evitar procesamiento duplicado rápido
+    const ahora = Date.now()
+    const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0
+
+    if (ahora - ultimaEjecucion < TRACKING_THROTTLE_MS) {
+      // console.log(`⏸️ Throttle activo para ${claveUbicacion}`)
+      return
+    }
+
+    ultimoTrackingPorUnidad.value.set(claveUbicacion, ahora)
+
     const estadoAnterior = estadoUbicaciones.value.get(claveUbicacion)
 
     // ========================================
@@ -302,7 +318,7 @@ export function useEventDetection() {
       }
 
       if (tracking.tieneEventoEntrada) {
-        notificarEventos(unidad, ubicacion, tipo, 'Entrada', tracking.eventos)
+        await notificarEventos(unidad, ubicacion, tipo, 'Entrada', tracking.eventos)
       }
     }
 
@@ -429,32 +445,36 @@ export function useEventDetection() {
       }
 
       if (tracking.tieneEventoSalida) {
-        notificarEventos(unidad, ubicacion, tipo, 'Salida', tracking.eventos)
+        await notificarEventos(unidad, ubicacion, tipo, 'Salida', tracking.eventos)
       }
     }
 
-    // Actualizar estado si cambió pero no cruzó umbra
+    // Actualizar estado si cambió pero no cruzó umbral
   }
 
   /**
    * 🆕 Envía notificaciones para eventos configurados
+   * 🔥 ACTUALIZADO: async + coordenadas reales de la ubicación
    */
-  function notificarEventos(unidad, ubicacion, tipo, accion, eventosIds) {
-    eventosIds.forEach((eventoId) => {
+  async function notificarEventos(unidad, ubicacion, tipo, accion, eventosIds) {
+    // 🔥 ELIMINAR DUPLICADOS de eventosIds
+    const eventosUnicos = [...new Set(eventosIds)]
+
+    for (const eventoId of eventosUnicos) {
       const evento = eventosActivos.value.find((e) => e.id === eventoId)
-      if (!evento) return
+      if (!evento) continue
 
       // Verificar que la condición coincida
       const tieneCondicion = evento.condiciones.some(
         (c) => c.ubicacionId === ubicacion.id && c.activacion === accion,
       )
 
-      if (!tieneCondicion) return
+      if (!tieneCondicion) continue
 
       // Evitar duplicados (debounce de 10 segundos)
       const claveEvento = `${evento.id}-${ubicacion.id}-${accion}-${unidad.id}`
       if (eventosDisparados.value.has(claveEvento)) {
-        return
+        continue
       }
 
       eventosDisparados.value.add(claveEvento)
@@ -466,7 +486,25 @@ export function useEventDetection() {
       const accionTexto = accion === 'Entrada' ? 'entró a' : 'salió de'
       const tipoNotificacion = accion === 'Entrada' ? 'positive' : 'warning'
 
-      agregarNotificacion({
+      // 🔥 OBTENER COORDENADAS REALES DE LA UBICACIÓN
+      let latUbicacion, lngUbicacion
+
+      if (tipo === 'POI' && ubicacion.coordenadas) {
+        latUbicacion = ubicacion.coordenadas.lat
+        lngUbicacion = ubicacion.coordenadas.lng
+      } else if (tipo === 'Geozona' && ubicacion.puntos && ubicacion.puntos.length > 0) {
+        // Para geozonas, usar el centro (promedio de puntos)
+        const sumLat = ubicacion.puntos.reduce((sum, p) => sum + p.lat, 0)
+        const sumLng = ubicacion.puntos.reduce((sum, p) => sum + p.lng, 0)
+        latUbicacion = sumLat / ubicacion.puntos.length
+        lngUbicacion = sumLng / ubicacion.puntos.length
+      } else {
+        // Fallback: usar ubicación de la unidad
+        latUbicacion = unidad.lat
+        lngUbicacion = unidad.lng
+      }
+
+      await agregarNotificacion({
         type: tipoNotificacion,
         title: evento.nombre,
         message: `${unidad.conductorNombre || unidad.nombre} ${accionTexto} ${tipo}: ${ubicacion.nombre}`,
@@ -479,10 +517,16 @@ export function useEventDetection() {
         unidadId: unidad.id,
         unidadNombre: unidad.unidadNombre || unidad.nombre || 'Sin nombre',
         conductorNombre: unidad.conductorNombre || 'Sin nombre',
+        ubicacion: {
+          lat: latUbicacion,
+          lng: lngUbicacion,
+          nombre: ubicacion.nombre,
+          tipo: tipo,
+        },
       })
 
       console.log(`🔔 Notificación enviada: ${evento.nombre} - ${accionTexto} ${ubicacion.nombre}`)
-    })
+    }
   }
 
   /**
@@ -547,6 +591,7 @@ export function useEventDetection() {
     estadoUbicaciones.value.clear()
     eventosEnCurso.value.clear()
     ubicacionesTrackeadas.value.clear()
+    ultimoTrackingPorUnidad.value.clear()
     console.log('🔄 Sistema de detección reseteado')
   }
 

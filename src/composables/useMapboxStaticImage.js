@@ -364,12 +364,20 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
 /**
  * Descarga la imagen del mapa y la convierte a Base64
+ * Usa Firebase Function como proxy para evitar problemas de CORS
  */
 async function descargarImagenMapaBase64(url) {
   try {
     console.log('📥 Descargando imagen del mapa...')
 
-    const response = await fetch(url)
+    // 🔥 USAR TU FIREBASE FUNCTION COMO PROXY
+    const proxyUrl = `https://us-central1-gpsmjindust.cloudfunctions.net/getMapboxImage?url=${encodeURIComponent(url)}`
+
+    console.log('🔄 Usando Firebase Function proxy...')
+
+    const response = await fetch(proxyUrl, {
+      method: 'GET',
+    })
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -379,13 +387,18 @@ async function descargarImagenMapaBase64(url) {
 
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
+      reader.onloadend = () => {
+        console.log('✅ Imagen convertida a base64')
+        resolve(reader.result)
+      }
       reader.onerror = reject
       reader.readAsDataURL(blob)
     })
   } catch (error) {
-    console.error('Error descargando imagen del mapa:', error)
-    throw error
+    console.error('❌ Error descargando imagen del mapa:', error)
+
+    // Si falla, devolver null (no mostrar mapa)
+    return null
   }
 }
 
@@ -434,6 +447,48 @@ export function useMapboxStaticImage() {
     }
   }
 
+  /**
+   * 🆕 Genera un mapa estático para un evento (punto único)
+   * @param {Object} ubicacion - Objeto con { lat, lng, nombre, tipo }
+   * @returns {Promise<Object>} - { imagenBase64, url }
+   */
+  const generarMapaEvento = async (ubicacion) => {
+    try {
+      console.log('🗺️ Generando mapa para evento:', ubicacion.nombre)
+
+      const { lat, lng, nombre, tipo } = ubicacion
+      const zoom = 15 // Zoom más cercano para eventos
+      const width = 400
+      const height = 250
+      const retina = '@2x'
+
+      // Pin según tipo
+      const pinColor = tipo === 'POI' ? 'f44' : '42a' // Rojo para POI, Azul para Geozona
+      const pinIcon = tipo === 'POI' ? 'circle' : 'square'
+
+      // Construir URL
+      const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
+      const pin = `pin-l-${pinIcon}+${pinColor}(${lng},${lat})`
+      const dimensions = `${width}x${height}${retina}`
+
+      const url = `${baseURL}/${pin}/${lng},${lat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
+
+      console.log('✅ URL generada para evento:', url.substring(0, 100) + '...')
+
+      // Descargar imagen
+      const imagenBase64 = await descargarImagenMapaBase64(url)
+
+      return {
+        imagenBase64,
+        url,
+        ubicacion: { lat, lng, nombre, tipo },
+      }
+    } catch (error) {
+      console.error('❌ Error generando mapa de evento:', error)
+      throw error
+    }
+  }
+
   const generarLeyendaMapa = (trayectos) => {
     const nombresColores = {
       f44336: 'Rojo',
@@ -457,6 +512,7 @@ export function useMapboxStaticImage() {
 
   return {
     generarMapaTrayectos,
+    generarMapaEvento, // 🆕 NUEVA FUNCIÓN
     prepararDatosTrayectos,
     generarURLMapaTrayectos,
     descargarImagenMapaBase64,

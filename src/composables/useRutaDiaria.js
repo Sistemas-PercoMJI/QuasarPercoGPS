@@ -35,51 +35,42 @@ export function useRutaDiaria() {
       verificarAutenticacion()
       const fecha = obtenerIdRutaDiaria()
 
-      // 🔥 FILTRO: Solo agregar si pasaron al menos 15 segundos
+      // 🔥 FILTRO: Solo agregar si pasaron al menos 8 segundos
       const MIN_INTERVALO_MS = 8000
-
-      // 1. Obtener la ruta actual de Firestore
-      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fecha)
-      const rutaSnapshot = await getDoc(rutaRef)
 
       let debeAgregar = true
       let coordenadasExistentes = []
 
-      // 2. Si existe, descargar coordenadas desde Storage
-      if (rutaSnapshot.exists()) {
-        const rutaData = rutaSnapshot.data()
+      // 🆕 Obtener coordenadas directamente desde Storage (sin Firestore)
+      try {
+        const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
+        coordenadasExistentes = await obtenerCoordenadasDesdeStorage(unidadId, fecha)
 
-        if (rutaData.rutas_url) {
-          try {
-            const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
-            coordenadasExistentes = await obtenerCoordenadasDesdeStorage(rutaData.rutas_url)
+        // Verificar intervalo con última coordenada
+        if (coordenadasExistentes.length > 0) {
+          const ultimaCoord = coordenadasExistentes[coordenadasExistentes.length - 1]
+          const ultimoTimestamp = new Date(ultimaCoord.timestamp).getTime()
+          const ahora = Date.now()
 
-            // Verificar intervalo con última coordenada
-            if (coordenadasExistentes.length > 0) {
-              const ultimaCoord = coordenadasExistentes[coordenadasExistentes.length - 1]
-              const ultimoTimestamp = new Date(ultimaCoord.timestamp).getTime()
-              const ahora = Date.now()
-
-              if (ahora - ultimoTimestamp < MIN_INTERVALO_MS) {
-                const segundosTranscurridos = Math.round((ahora - ultimoTimestamp) / 1000)
-                console.log(
-                  `⏰ Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`,
-                )
-                debeAgregar = false
-              }
-            }
-          } catch (err) {
-            console.warn('⚠️ Error verificando intervalo, continuando...', err)
+          if (ahora - ultimoTimestamp < MIN_INTERVALO_MS) {
+            const segundosTranscurridos = Math.round((ahora - ultimoTimestamp) / 1000)
+            console.log(`⏰ Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`)
+            debeAgregar = false
           }
         }
+        // eslint-disable-next-line no-unused-vars
+      } catch (err) {
+        // Si falla (ej: archivo no existe), continuar normalmente
+        console.log('ℹ️ Archivo de rutas no existe aún, creando primera coordenada...')
       }
 
       if (!debeAgregar) {
         console.log('⏭️ Coordenada omitida por intervalo corto')
+        loading.value = false
         return false
       }
 
-      // 3. Preparar nueva coordenada EN FORMATO SIMPLE
+      // Preparar nueva coordenada EN FORMATO SIMPLE
       const nuevaCoordenadaSimple = {
         lat: datosCoordenada.nuevaCoordenada?.lat || datosCoordenada.lat || 0,
         lng: datosCoordenada.nuevaCoordenada?.lng || datosCoordenada.lng || 0,
@@ -89,50 +80,63 @@ export function useRutaDiaria() {
           new Date().toISOString(),
       }
 
-      // 4. Agregar al array existente
+      // Agregar al array existente
       const todasLasCoordenadas = [...coordenadasExistentes, nuevaCoordenadaSimple]
 
       console.log(`📤 Guardando ${todasLasCoordenadas.length} coordenadas en Storage...`)
 
-      // 5. Subir TODO el array a Storage (SOBRESCRIBIR archivo)
+      // Subir TODO el array a Storage (SOBRESCRIBIR archivo)
       const { guardarCoordenadasEnStorage } = useRutasStorage()
-      const nuevaUrl = await guardarCoordenadasEnStorage(unidadId, fecha, todasLasCoordenadas)
+      const rutaArchivo = await guardarCoordenadasEnStorage(unidadId, fecha, todasLasCoordenadas)
 
-      // 6. Actualizar Firestore
-      const datosFirestore = {
-        rutas_url: nuevaUrl,
-        fecha_hora_fin: serverTimestamp(),
-        total_coordenadas: todasLasCoordenadas.length,
-      }
+      // 🆕 OPTIMIZACIÓN: Solo actualizar Firestore cada 5 coordenadas o si es la primera
+      const debeActualizarFirestore =
+        coordenadasExistentes.length === 0 || todasLasCoordenadas.length % 5 === 0
 
-      // Agregar info del conductor si es primera coordenada
-      if (!rutaSnapshot.exists() || !rutaSnapshot.data().conductor_id) {
-        if (datosCoordenada.conductor_id) {
-          datosFirestore.conductor_id = datosCoordenada.conductor_id
-          datosFirestore.conductor_nombre = limpiarNombreConductor(
-            datosCoordenada.conductor_nombre || '',
-          )
+      if (debeActualizarFirestore) {
+        // Actualizar Firestore
+        const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fecha)
+
+        const datosFirestore = {
+          rutas_archivo: rutaArchivo,
+          fecha_hora_fin: serverTimestamp(),
+          total_coordenadas: todasLasCoordenadas.length,
         }
-      }
 
-      // Crear o actualizar documento
-      if (rutaSnapshot.exists()) {
-        await updateDoc(rutaRef, datosFirestore)
-      } else {
-        await setDoc(rutaRef, {
-          id: fecha,
-          fecha_hora_inicio: serverTimestamp(),
-          ...datosFirestore,
-          duracion_total_minutos: 0,
-          paradas: [],
-          distancia_recorrida_km: '0',
-          conductor_id: datosCoordenada.conductor_id || '',
-          conductor_nombre: limpiarNombreConductor(datosCoordenada.conductor_nombre || ''),
-          velocidad_maxima: datosCoordenada.velocidad_actual || '0',
-          velocidad_promedio: datosCoordenada.velocidad_actual || '0',
-          odometro_inicio: '0',
-          odometro_fin: '0',
-        })
+        // Verificar si el documento existe
+        const rutaSnapshot = await getDoc(rutaRef)
+
+        // Agregar info del conductor si es primera coordenada
+        if (!rutaSnapshot.exists() || !rutaSnapshot.data().conductor_id) {
+          if (datosCoordenada.conductor_id) {
+            datosFirestore.conductor_id = datosCoordenada.conductor_id
+            datosFirestore.conductor_nombre = limpiarNombreConductor(
+              datosCoordenada.conductor_nombre || '',
+            )
+          }
+        }
+
+        // Crear o actualizar documento
+        if (rutaSnapshot.exists()) {
+          await updateDoc(rutaRef, datosFirestore)
+        } else {
+          await setDoc(rutaRef, {
+            id: fecha,
+            fecha_hora_inicio: serverTimestamp(),
+            ...datosFirestore,
+            duracion_total_minutos: 0,
+            paradas: [],
+            distancia_recorrida_km: '0',
+            conductor_id: datosCoordenada.conductor_id || '',
+            conductor_nombre: limpiarNombreConductor(datosCoordenada.conductor_nombre || ''),
+            velocidad_maxima: datosCoordenada.velocidad_actual || '0',
+            velocidad_promedio: datosCoordenada.velocidad_actual || '0',
+            odometro_inicio: '0',
+            odometro_fin: '0',
+          })
+        }
+
+        console.log(`✅ Firestore actualizado (${todasLasCoordenadas.length} coords)`)
       }
 
       console.log(`✅ Coordenada agregada. Total: ${todasLasCoordenadas.length}`)
@@ -172,7 +176,7 @@ export function useRutaDiaria() {
           velocidad_promedio: '0',
           odometro_inicio: '0',
           odometro_fin: '0',
-          rutas_url: null,
+          rutas_archivo: null,
           total_coordenadas: 0,
         })
         console.log('✅ Documento de ruta diaria creado')
@@ -191,24 +195,50 @@ export function useRutaDiaria() {
   }
 
   /**
-   * Obtiene coordenadas desde Storage
+   * Obtiene coordenadas directamente desde Storage
    */
-  const obtenerCoordenadas = async (unidadId) => {
+  const obtenerCoordenadas = async (unidadId, fecha = null) => {
     try {
-      const fecha = obtenerIdRutaDiaria()
-      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fecha)
-      const rutaSnapshot = await getDoc(rutaRef)
+      const fechaBuscar = fecha || obtenerIdRutaDiaria()
 
-      if (rutaSnapshot.exists() && rutaSnapshot.data().rutas_url) {
-        const url = rutaSnapshot.data().rutas_url
-        const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
-        return await obtenerCoordenadasDesdeStorage(url)
-      }
-      return []
+      // Obtener directamente desde Storage
+      const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
+      const coordenadas = await obtenerCoordenadasDesdeStorage(unidadId, fechaBuscar)
+
+      console.log(`✅ ${coordenadas.length} coordenadas obtenidas para ${fechaBuscar}`)
+      return coordenadas
     } catch (err) {
       console.error('❌ Error obteniendo coordenadas:', err)
       return []
     }
+  }
+
+  /**
+   * Obtiene estadísticas de la ruta desde Firestore
+   */
+  const obtenerEstadisticasRuta = async (unidadId, fecha = null) => {
+    try {
+      const fechaBuscar = fecha || obtenerIdRutaDiaria()
+      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fechaBuscar)
+      const rutaSnapshot = await getDoc(rutaRef)
+
+      if (rutaSnapshot.exists()) {
+        return rutaSnapshot.data()
+      }
+      return null
+    } catch (err) {
+      console.error('❌ Error obteniendo estadísticas:', err)
+      return null
+    }
+  }
+
+  /**
+   * Limpiar cache de rutas viejas
+   */
+  const limpiarCacheRutasAntiguas = () => {
+    const { limpiarCache } = useRutasStorage()
+    limpiarCache()
+    console.log('🧹 Cache de rutas limpiado')
   }
 
   return {
@@ -217,6 +247,8 @@ export function useRutaDiaria() {
     agregarCoordenadaSimple,
     iniciarOActualizarRutaDiaria,
     obtenerCoordenadas,
+    obtenerEstadisticasRuta,
+    limpiarCacheRutasAntiguas,
     obtenerIdRutaDiaria,
   }
 }

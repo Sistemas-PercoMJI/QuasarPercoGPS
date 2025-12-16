@@ -2,15 +2,296 @@
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
 
+    <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
     <q-btn
-      fab
-      :color="traficoActivo ? 'positive' : 'red'"
-      :icon="traficoActivo ? 'traffic' : 'block'"
-      class="traffic-toggle-btn"
-      @click="manejarToggleTrafico"
-      size="md"
+      unelevated
+      color="primary"
+      icon="layers"
+      class="layers-menu-btn"
+      padding="sm"
+      border-color="#000000"
     >
-      <q-tooltip>{{ traficoActivo ? 'Ocultar tráfico' : 'Mostrar tráfico' }}</q-tooltip>
+      <q-tooltip>Capas del Mapa</q-tooltip>
+
+      <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
+        <q-list
+          style="
+            min-width: 280px;
+            background: linear-gradient(135deg, #ffffff 0%, #ddf4e7 100%) !important;
+          "
+        >
+          <!-- SECCIÓN: ESTILO DE MAPA -->
+          <div class="map-styles-section">
+            <q-item-label header class="text-weight-bold text-black"> ESTILO DE MAPA </q-item-label>
+            <q-separator class="menu-separator" />
+
+            <div class="map-styles-container">
+              <!-- OPCIÓN: VISTA SATELITAL -->
+              <div
+                class="map-style-card"
+                :class="{ active: estiloMapa === 'satellite' }"
+                @click="cambiarEstiloDesdeMenu('satellite')"
+              >
+                <div class="style-preview">
+                  <!-- SVG Inline Vista Satelital -->
+                  <svg
+                    width="150"
+                    height="100"
+                    viewBox="0 0 150 100"
+                    xmlns="http://www.w3.org/2000/svg"
+                    border-radius="20px"
+                  >
+                    <defs>
+                      <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color: #1a3a1a; stop-opacity: 1" />
+                        <stop offset="50%" style="stop-color: #2d5a2d; stop-opacity: 1" />
+                        <stop offset="100%" style="stop-color: #1a3a1a; stop-opacity: 1" />
+                      </linearGradient>
+                      <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color: #1a4d6d; stop-opacity: 1" />
+                        <stop offset="100%" style="stop-color: #0d2a3d; stop-opacity: 1" />
+                      </linearGradient>
+                    </defs>
+                    <rect width="150" height="100" fill="url(#earthGradient)" rx="12" ry="12" />
+                    <path
+                      d="M 0 60 Q 40 55, 80 60 T 150 55 L 150 100 L 0 100 Z"
+                      fill="url(#waterGradient)"
+                      opacity="0.8"
+                    />
+                    <ellipse cx="30" cy="35" rx="25" ry="20" fill="#0d2a1a" opacity="0.6" />
+                    <ellipse cx="90" cy="25" rx="35" ry="25" fill="#0d2a1a" opacity="0.5" />
+                    <ellipse cx="120" cy="45" rx="20" ry="18" fill="#0d2a1a" opacity="0.7" />
+                    <rect x="10" y="70" width="30" height="20" fill="#3d4a2d" opacity="0.5" />
+                    <rect x="60" y="65" width="40" height="25" fill="#3d4a2d" opacity="0.4" />
+                    <line
+                      x1="0"
+                      y1="50"
+                      x2="150"
+                      y2="48"
+                      stroke="#555555"
+                      stroke-width="1.5"
+                      opacity="0.8"
+                    />
+                    <line
+                      x1="45"
+                      y1="0"
+                      x2="48"
+                      y2="100"
+                      stroke="#555555"
+                      stroke-width="1"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="100"
+                      y1="0"
+                      x2="95"
+                      y2="100"
+                      stroke="#555555"
+                      stroke-width="1"
+                      opacity="0.6"
+                    />
+                    <rect x="42" y="45" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
+                    <rect x="47" y="47" width="3" height="3" fill="#8a8a8a" opacity="0.9" />
+                    <rect x="96" y="72" width="5" height="5" fill="#8a8a8a" opacity="0.9" />
+                    <rect x="102" y="70" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
+                  </svg>
+                  <div v-if="estiloMapa === 'satellite'" class="active-badge">
+                    <q-icon name="check_circle" size="20px" color="positive" />
+                  </div>
+                </div>
+                <div class="style-label">Satélite</div>
+              </div>
+
+              <!-- OPCIÓN: VISTA CALLES -->
+              <div
+                class="map-style-card"
+                :class="{ active: estiloMapa === 'streets' }"
+                @click="cambiarEstiloDesdeMenu('streets')"
+              >
+                <div class="style-preview">
+                  <!-- SVG Inline Vista Calles -->
+                  <svg
+                    width="150"
+                    height="100"
+                    viewBox="0 0 150 100"
+                    xmlns="http://www.w3.org/2000/svg"
+                    border-radius="20px"
+                  >
+                    <defs>
+                      <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color: #f5f5f0; stop-opacity: 1" />
+                        <stop offset="100%" style="stop-color: #e8e8e0; stop-opacity: 1" />
+                      </linearGradient>
+                    </defs>
+                    <rect width="150" height="100" fill="url(#bgGradient)" rx="12" ry="12" />
+                    <rect x="5" y="10" width="35" height="30" fill="#c8e6c9" opacity="0.8" />
+                    <rect x="110" y="55" width="30" height="35" fill="#c8e6c9" opacity="0.8" />
+                    <rect x="0" y="45" width="150" height="6" fill="#d0d0d0" />
+                    <rect x="55" y="0" width="6" height="100" fill="#d0d0d0" />
+                    <rect x="0" y="75" width="150" height="4" fill="#d0d0d0" />
+                    <rect x="95" y="0" width="4" height="100" fill="#d0d0d0" />
+                    <rect x="25" y="0" width="2" height="100" fill="#e5e5e5" />
+                    <rect x="80" y="0" width="2" height="100" fill="#e5e5e5" />
+                    <rect x="120" y="0" width="2" height="100" fill="#e5e5e5" />
+                    <rect x="0" y="20" width="150" height="2" fill="#e5e5e5" />
+                    <rect x="0" y="65" width="150" height="2" fill="#e5e5e5" />
+                    <rect x="0" y="90" width="150" height="2" fill="#e5e5e5" />
+                    <rect
+                      x="8"
+                      y="52"
+                      width="15"
+                      height="12"
+                      fill="#f5f5f5"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="28"
+                      y="52"
+                      width="20"
+                      height="12"
+                      fill="#ffffff"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="62"
+                      y="12"
+                      width="18"
+                      height="18"
+                      fill="#fafafa"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="85"
+                      y="15"
+                      width="12"
+                      height="15"
+                      fill="#f5f5f5"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="62"
+                      y="52"
+                      width="25"
+                      height="20"
+                      fill="#ffffff"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="100"
+                      y="20"
+                      width="15"
+                      height="22"
+                      fill="#fafafa"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="8"
+                      y="80"
+                      width="20"
+                      height="15"
+                      fill="#f5f5f5"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="35"
+                      y="80"
+                      width="15"
+                      height="15"
+                      fill="#ffffff"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="62"
+                      y="80"
+                      width="18"
+                      height="15"
+                      fill="#fafafa"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <rect
+                      x="100"
+                      y="80"
+                      width="12"
+                      height="15"
+                      fill="#f5f5f5"
+                      stroke="#c0c0c0"
+                      stroke-width="0.5"
+                    />
+                    <line
+                      x1="0"
+                      y1="48"
+                      x2="150"
+                      y2="48"
+                      stroke="white"
+                      stroke-width="0.5"
+                      stroke-dasharray="3,3"
+                      opacity="0.6"
+                    />
+                    <line
+                      x1="58"
+                      y1="0"
+                      x2="58"
+                      y2="100"
+                      stroke="white"
+                      stroke-width="0.5"
+                      stroke-dasharray="3,3"
+                      opacity="0.6"
+                    />
+                    <circle cx="15" cy="20" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="25" cy="18" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="20" cy="28" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="32" cy="25" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="120" cy="65" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="128" cy="70" r="3" fill="#66bb6a" opacity="0.8" />
+                    <circle cx="122" cy="80" r="3" fill="#66bb6a" opacity="0.8" />
+                  </svg>
+                  <div v-if="estiloMapa === 'streets'" class="active-badge">
+                    <q-icon name="check_circle" size="20px" color="positive" />
+                  </div>
+                </div>
+                <div class="style-label">Calles</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LÍNEA DIVISORIA -->
+          <q-separator class="menu-separator" />
+
+          <!-- SECCIÓN: CAPAS ADICIONALES -->
+          <div class="traffic-section">
+            <q-item-label header class="text-weight-bold text-black">
+              CAPAS ADICIONALES
+            </q-item-label>
+            <q-separator class="menu-separator" />
+
+            <q-item clickable @click="manejarToggleTrafico" class="traffic-toggle-item">
+              <q-item-section avatar>
+                <q-checkbox
+                  :model-value="traficoActivo"
+                  color="positive"
+                  @update:model-value="manejarToggleTrafico"
+                />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>Mostrar Tráfico</q-item-label>
+                <q-item-label caption> Visualiza el tráfico en tiempo real </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon name="traffic" :color="traficoActivo ? 'positive' : 'grey-5'" />
+              </q-item-section>
+            </q-item>
+          </div>
+        </q-list>
+      </q-menu>
     </q-btn>
 
     <transition name="fade-scale">
@@ -38,17 +319,6 @@
         </q-btn>
       </div>
     </transition>
-
-    <div v-if="ubicacionActiva" class="user-location-indicator">
-      <q-icon name="gps_fixed" size="24px" color="positive" />
-      <span class="text-caption">GPS Activo</span>
-    </div>
-
-    <!-- 🎯 Indicador de simulador activo (opcional) -->
-    <div v-if="simuladorActivo" class="simulador-indicator">
-      <q-icon name="explore" size="16px" color="white" class="pulse-icon" />
-      <span class="text-caption">Simulador activo</span>
-    </div>
   </q-page>
 </template>
 
@@ -66,13 +336,13 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
-//import { useRouter } from 'vue-router'
 
 const {
   initMap,
   addMarker,
   cleanup,
   toggleTrafico,
+  cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
@@ -85,17 +355,17 @@ const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
 const marcadorUsuario = ref(null)
-const { unidadesActivas, iniciarTracking, detenerTracking } = useTrackingUnidades()
+const { unidadesActivas, iniciarTracking } = useTrackingUnidades()
 const userId = ref(auth.currentUser?.uid || '')
 
 const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
 const { obtenerEventos } = useEventos(userId.value)
 const traficoActivo = ref(false)
+const estiloMapa = ref('satellite') // ✅ NUEVO ESTADO
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
-//const router = useRouter()
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
@@ -131,19 +401,28 @@ watch(
       return
     }
 
-    // ⚡ Crear hash solo con datos relevantes (id + lat + lng + estado)
+    const mapElement = document.querySelector('.mapboxgl-map')
+    if (mapElement) {
+      const isZooming = mapElement.classList.contains('mapboxgl-touch-zoom-rotate')
+      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan')
+
+      if (isZooming || isPanning) {
+        console.log('⏸️ Zoom/Pan en progreso, pausando actualización')
+        return
+      }
+    }
+
     const nuevoHash = nuevasUnidades
       .map((u) => `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}`)
       .join('|')
 
-    // ⚡ Solo actualizar si realmente cambió algo importante
     if (nuevoHash !== ultimoHashUnidades) {
       console.log('📍 Posiciones actualizadas, redibujando mapa')
       actualizarMarcadoresUnidades(nuevasUnidades)
       ultimoHashUnidades = nuevoHash
     }
   },
-  { deep: false, immediate: false }, // ⚡ Cambiar a false
+  { deep: false, immediate: false },
 )
 
 function iniciarEvaluacionContinuaEventos() {
@@ -295,8 +574,8 @@ function iniciarSeguimientoGPS() {
 
   const opciones = {
     enableHighAccuracy: true,
-    timeout: 15000, // ✅ Aumentado a 30 segundos
-    maximumAge: 5000, // ✅ Acepta posiciones de hasta 5 segundos de antigüedad
+    timeout: 15000,
+    maximumAge: 5000,
   }
 
   watchId = navigator.geolocation.watchPosition(
@@ -307,11 +586,9 @@ function iniciarSeguimientoGPS() {
       console.log('✅ GPS actualizado:', latitude, longitude)
     },
     (error) => {
-      // ✅ Manejo mejorado de errores
       switch (error.code) {
         case error.TIMEOUT:
           console.warn('⏱️ GPS timeout - reintentando...')
-          // No marcar como inactivo, solo avisar
           break
         case error.PERMISSION_DENIED:
           console.error('❌ Permiso de GPS denegado')
@@ -336,39 +613,6 @@ function detenerSeguimientoGPS() {
     watchId = null
     ubicacionActiva.value = false
     console.log('🛑 Seguimiento GPS detenido')
-  }
-}
-
-async function obtenerDireccionPunto(lat, lng) {
-  try {
-    const MAPBOX_TOKEN =
-      'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
-
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&language=es&limit=1&access_token=${MAPBOX_TOKEN}`,
-    )
-
-    const data = await response.json()
-
-    if (data.features && data.features.length > 0) {
-      const address = data.features[0]
-      // Extraer solo el nombre de la calle sin el número y ciudad
-      const placeName = address.place_name || ''
-      const parts = placeName.split(',')
-
-      // Intentar obtener solo el nombre de la calle
-      if (parts.length > 0) {
-        const streetPart = parts[0].trim()
-        // Remover número si existe (patrón común en direcciones)
-        const streetOnly = streetPart.replace(/^\d+\s*/, '').replace(/\s*\d+$/, '')
-        return streetOnly || 'Calle desconocida'
-      }
-    }
-
-    return 'Dirección no disponible'
-  } catch (error) {
-    console.error('❌ Error obteniendo dirección del punto:', error)
-    return 'Error al obtener dirección'
   }
 }
 
@@ -425,13 +669,9 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-// ============================================
-// 🎨 FUNCIÓN: Crear icono POI elegante
-// ============================================
 function crearIconoPOI(tieneEventos = false) {
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
-      <!-- Icono SVG principal con color blanco -->
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
         <path fill="white" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       </svg>
@@ -439,7 +679,6 @@ function crearIconoPOI(tieneEventos = false) {
       ${
         tieneEventos
           ? `
-        <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
           top: -4px;
@@ -471,13 +710,9 @@ function crearIconoPOI(tieneEventos = false) {
   return markerEl
 }
 
-// ============================================
-// 🎨 FUNCIÓN: Crear icono Geozona elegante
-// ============================================
 function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null) {
   const colorFinal = color || '#FFFFFF'
 
-  // Diferentes SVGs según el tipo de geozona
   let iconoSVG = ''
 
   if (tipo === 'circular') {
@@ -487,7 +722,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
       </svg>
     `
   } else {
-    // Poligonal
     iconoSVG = `
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
         <polygon points="12,2 22,12 12,22 2,12" fill="${colorFinal}" stroke="white" stroke-width="2"/>
@@ -502,7 +736,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
       ${
         tieneEventos
           ? `
-        <!-- Badge de evento en esquina superior derecha -->
         <div style="
           position: absolute;
           top: -2px;
@@ -533,10 +766,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
 
   return markerEl
 }
-
-/*function getHueRotation(_hexColor) {
-  return '0deg'
-}*/
 
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
@@ -597,10 +826,8 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // 🆕 POPUP CON ESTILO SIMILAR A GEOZONA PERO SIN BOTÓN DE EXPANDIR
         const popupContent = `
           <div class="poi-popup-container">
-            <!-- Cabecera -->
             <div class="poi-popup-header">
               <div class="header-info">
                 <div class="header-title">📍 ${poi.nombre}</div>
@@ -608,7 +835,6 @@ const dibujarTodosEnMapa = async () => {
               </div>
             </div>
 
-            <!-- Cuerpo (siempre visible) -->
             <div class="poi-popup-body">
               <div class="address-info">
                 <div class="address-icon">📍</div>
@@ -625,7 +851,6 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
-        // ✅ USAR NUEVO ICONO ELEGANTE
         const markerEl = crearIconoPOI(tieneEventos)
 
         const popup = new mapboxgl.Popup({
@@ -651,8 +876,6 @@ const dibujarTodosEnMapa = async () => {
       }
     })
 
-    //  DIBUJAR GEOZONAS CON ICONOS ELEGANTES
-
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
@@ -660,43 +883,29 @@ const dibujarTodosEnMapa = async () => {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
 
-      // 🆕 OBTENER DIRECCIONES DE TODOS LOS PUNTOS
       let direccionesPuntos = []
 
       if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
-        // Obtener direcciones para todos los puntos del polígono
-        const promesasDirecciones = geozona.puntos.map(async (punto, index) => {
-          try {
-            const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
-            return {
-              index: index,
-              direccion: direccion,
-              lat: punto.lat,
-              lng: punto.lng,
-            }
-          } catch (error) {
-            console.warn(`⚠️ Error obteniendo dirección para punto ${index + 1}:`, error)
-            return {
-              index: index,
-              direccion: 'Dirección no disponible',
-              lat: punto.lat,
-              lng: punto.lng,
-            }
-          }
-        })
+        direccionesPuntos = geozona.puntos.map((punto, index) => ({
+          index: index,
+          direccion: punto.direccion || 'Dirección no disponible',
+          lat: punto.lat,
+          lng: punto.lng,
+        }))
 
-        direccionesPuntos = await Promise.all(promesasDirecciones)
+        console.log(
+          `✅ Direcciones cargadas de Firebase para ${geozona.nombre}:`,
+          direccionesPuntos.length,
+        )
       }
 
       const popupContent = `
         <div class="geozona-popup-container">
-          <!-- Cabecera (siempre visible) -->
           <div class="geozona-popup-header">
             <div class="header-info">
               <div class="header-title">🔷 ${geozona.nombre}</div>
               <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
             </div>
-            <!-- El botón de expandir ahora está aquí -->
             <button
               id="toggle-btn-geo-${geozona.id}"
               class="toggle-geozona-btn"
@@ -708,7 +917,6 @@ const dibujarTodosEnMapa = async () => {
             </button>
           </div>
 
-          <!-- Cuerpo (oculto por defecto con max-height) -->
           <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
             <div class="points-list-container">
               ${direccionesPuntos
@@ -744,7 +952,7 @@ const dibujarTodosEnMapa = async () => {
           </div>
         </div>
       `
-      // 🔵 GEOZONA CIRCULAR
+
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
         const { lat, lng } = geozona.centro
         const fillColor = geozona.color || '#4ECDC4'
@@ -809,7 +1017,6 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
         const markerEl = crearIconoGeozona('circular', tieneEventos, fillColor)
 
         const popup = new mapboxgl.Popup({
@@ -830,10 +1037,7 @@ const dibujarTodosEnMapa = async () => {
           }
           popupGlobalActivo = popup
         })
-      }
-
-      // 🔷 GEOZONA POLIGONAL
-      else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+      } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
 
@@ -904,7 +1108,6 @@ const dibujarTodosEnMapa = async () => {
         const centroLat = lats.reduce((a, b) => a + b) / lats.length
         const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-        // ✅ USAR NUEVO ICONO ELEGANTE PARA CENTRO
         const markerEl = crearIconoGeozona('poligonal', tieneEventos, fillColor)
 
         const popup = new mapboxgl.Popup({
@@ -936,12 +1139,12 @@ const dibujarTodosEnMapa = async () => {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
+
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
   const layers = mapaAPI.map.getStyle().layers
 
-  // 🔥 PASO 1: Primero eliminar TODOS los layers
   layers.forEach((layer) => {
     if (
       layer.id.startsWith('poi-circle-') ||
@@ -956,7 +1159,6 @@ const limpiarCapasDelMapa = () => {
     }
   })
 
-  // 🔥 PASO 2: Después eliminar los sources
   const sources = Object.keys(mapaAPI.map.getStyle().sources)
   sources.forEach((sourceId) => {
     if (
@@ -992,9 +1194,6 @@ onMounted(async () => {
         mapaListo.value = true
         console.log('✅ Mapa completamente listo')
 
-        // ========================================
-        // FUNCIONES GLOBALES PARA ABRIR DETALLES
-        // ========================================
         window.abrirDetallesUbicacion = (ubicacionData) => {
           try {
             if (ubicacionData.tipo === 'poi') {
@@ -1025,9 +1224,6 @@ onMounted(async () => {
           window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
         }
 
-        // ========================================
-        // CARGAR DATOS Y SISTEMAS
-        // ========================================
         await dibujarTodosEnMapa()
         await inicializarSistemaDeteccion()
         iniciarEvaluacionContinuaEventos()
@@ -1038,21 +1234,14 @@ onMounted(async () => {
           await iniciarSimuladorAutomatico()
         }, 2000)
 
-        // ========================================
-        // 🆕 EVENT LISTENER DEL MAPA
-        // ========================================
         const mapPage = document.getElementById('map-page')
         if (mapPage) {
           mapPage.addEventListener('click', (event) => {
-            // ✅ VALIDACIÓN CRÍTICA
             if (!event || !event.target) {
               console.warn('⚠️ Evento sin target válido')
               return
             }
 
-            // ========================================
-            // MANEJO DE BOTONES DE POI/GEOZONA
-            // ========================================
             const actionButton = event.target.closest('[data-action]')
             if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
               const action = actionButton.dataset.action
@@ -1066,9 +1255,6 @@ onMounted(async () => {
               return
             }
 
-            // ========================================
-            // TOGGLE DEL POPUP DE UNIDADES
-            // ========================================
             const toggleBtn = event.target.closest('.toggle-popup-btn')
             if (toggleBtn) {
               const unidadId = toggleBtn.dataset.unidadId
@@ -1081,9 +1267,6 @@ onMounted(async () => {
               return
             }
 
-            // ========================================
-            // 🆕 VER DETALLES DEL CONDUCTOR
-            // ========================================
             const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
             if (detailsBtn) {
               const conductorId = detailsBtn.dataset.conductorId
@@ -1092,7 +1275,6 @@ onMounted(async () => {
               if (conductorId) {
                 console.log(`🚀 Navegando a: ${conductorNombre} (ID: ${conductorId})`)
 
-                // Buscar conductor y grupo
                 obtenerConductores().then(() => {
                   const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
 
@@ -1105,13 +1287,10 @@ onMounted(async () => {
                       if (grupoDelConductor) {
                         console.log(`✅ Grupo encontrado: ${grupoDelConductor.Nombre}`)
 
-                        // Cerrar dialogs
                         const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
                         window.dispatchEvent(cerrarDialogs)
 
-                        // Delay para sincronización
                         setTimeout(() => {
-                          // Actualizar estado compartido
                           estadoCompartido.value.abrirConductoresConConductor = {
                             conductor: {
                               id: conductorId,
@@ -1162,9 +1341,6 @@ onMounted(async () => {
     console.error('❌ Error inicializando mapa:', error)
   }
 
-  // ========================================
-  // OTROS EVENT LISTENERS
-  // ========================================
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -1179,7 +1355,6 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
-  // Función global para toggle de geozonas
   window.toggleGeozonaPopup = (geozonaId) => {
     const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
     const button = document.getElementById(`toggle-btn-geo-${geozonaId}`)
@@ -1193,9 +1368,7 @@ onMounted(async () => {
     }
   }
 
-  // Event listener para redibujar mapa
   window.addEventListener('redibujarMapa', async () => {
-    //console.log('🔄 Redibujando mapa...')
     limpiarCapasDelMapa()
     await dibujarTodosEnMapa()
     resetear()
@@ -1208,8 +1381,6 @@ onMounted(async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
-
-    //console.log('✅ Mapa redibujado completamente')
   })
 
   console.log('🚀 Iniciando tracking GPS...')
@@ -1268,8 +1439,6 @@ onUnmounted(() => {
   detenerSeguimientoGPS()
 
   detenerEvaluacionEventos()
-
-  detenerTracking()
   limpiarMarcadoresUnidades()
   resetear()
 
@@ -1300,17 +1469,30 @@ const manejarToggleTrafico = () => {
   const nuevoEstado = toggleTrafico()
   traficoActivo.value = nuevoEstado
 }
+
+// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
+const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
+  if (estiloMapa.value === nuevoEstilo) {
+    return // Ya está en ese estilo
+  }
+
+  const resultado = cambiarEstiloMapa()
+  if (resultado !== null) {
+    estiloMapa.value = nuevoEstilo
+
+    $q.notify({
+      type: 'info',
+      message:
+        nuevoEstilo === 'streets' ? '🗺️ Vista de calles activada' : '🛰️ Vista satelital activada',
+      position: 'top',
+      timeout: 1500,
+      icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
+    })
+  }
+}
 </script>
 
 <style>
-/* ============================================
-  ⚙️ ESTILOS GLOBALES (para el Popup de Mapbox)
-  ============================================
-  Estos estilos no son 'scoped' porque el popup de Mapbox
-  se inyecta en el body, fuera del componente Vue.
-============================================ */
-
-/* Contenedor principal del popup de Mapbox */
 .mapboxgl-popup-content {
   padding: 0 !important;
   border-radius: 12px !important;
@@ -1318,12 +1500,10 @@ const manejarToggleTrafico = () => {
   background-color: #ffffff !important;
 }
 
-/* La pequeña flecha del popup */
 .mapboxgl-popup-tip {
   border-top-color: #ffffff !important;
 }
 
-/* MODIFICADO: Botón de cerrar (X) más pequeño y mejor posicionado */
 .mapboxgl-popup-close-button {
   width: 28px !important;
   height: 28px !important;
@@ -1331,12 +1511,12 @@ const manejarToggleTrafico = () => {
   background-color: #f3f4f6 !important;
   color: #6b7280 !important;
   border-radius: 50% !important;
-  font-size: 18px !important; /* <-- ¡CAMBIO CLAVE! Fuente más pequeña */
+  font-size: 18px !important;
   font-weight: bold !important;
   border: 1px solid #e5e7eb !important;
   transition: all 0.2s ease !important;
-  top: 6px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
-  right: 16px !important; /* <-- ¡CAMBIO CLAVE! Reposicionado */
+  top: 6px !important;
+  right: 16px !important;
 }
 
 .mapboxgl-popup-close-button:hover {
@@ -1344,7 +1524,6 @@ const manejarToggleTrafico = () => {
   color: #374151 !important;
 }
 
-/* Contenedor personalizado para el popup de Geozona */
 .geozona-popup-container {
   min-width: 260px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -1356,7 +1535,7 @@ const manejarToggleTrafico = () => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: column; /* <-- ¡CAMBIO CLAVE! */
+  flex-direction: column;
   padding: 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -1365,7 +1544,7 @@ const manejarToggleTrafico = () => {
 .header-info {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px; /* Espacio entre el título y el botón de expandir */
+  margin-bottom: 8px;
 }
 
 .header-title {
@@ -1386,13 +1565,13 @@ const manejarToggleTrafico = () => {
   border: 1px solid #d1d5db;
   border-radius: 50%;
   cursor: pointer;
-  width: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
-  height: 30px; /* <-- ¡CAMBIO CLAVE! Más pequeño */
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease-in-out;
-  align-self: flex-end; /* <-- ¡CAMBIO CLAVE! Alinea a la derecha */
+  align-self: flex-end;
 }
 
 .toggle-geozona-btn:hover {
@@ -1409,7 +1588,6 @@ const manejarToggleTrafico = () => {
   transform: rotate(180deg);
 }
 
-/* Cuerpo del popup (la parte que se expande y contrae) */
 .geozona-popup-body {
   max-height: 0;
   overflow: hidden;
@@ -1419,19 +1597,16 @@ const manejarToggleTrafico = () => {
   padding: 0 16px;
 }
 
-/* Estilos del cuerpo cuando está expandido */
 .toggle-geozona-btn.expanded ~ .geozona-popup-body {
   padding: 16px;
 }
 
-/* Contenedor de la lista de puntos con scroll */
 .points-list-container {
   max-height: 220px;
   overflow-y: auto;
   margin-bottom: 16px;
 }
 
-/* Tarjeta para cada punto */
 .point-card {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -1486,8 +1661,8 @@ const manejarToggleTrafico = () => {
 
 .details-btn {
   width: 100%;
-  padding: 18px 12px; /* <-- ¡CAMBIO CLAVE! Más padding */
-  margin-bottom: 16px; /* <-- ¡CAMBIO CLAVE! Espacio abajo del botón */
+  padding: 18px 12px;
+  margin-bottom: 16px;
   background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
   color: white;
   border: none;
@@ -1504,7 +1679,6 @@ const manejarToggleTrafico = () => {
   box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
 }
 
-/* Scrollbar personalizado para la lista de puntos */
 .points-list-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -1540,56 +1714,8 @@ const manejarToggleTrafico = () => {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.header-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1.2;
-}
-
-.header-subtitle {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
 .poi-popup-body {
   padding: 16px;
-}
-
-.event-indicator {
-  display: flex;
-  align-items: center;
-  background-color: #fef2f2;
-  padding: 8px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.event-icon {
-  font-size: 24px;
-  margin-right: 8px;
-}
-
-.event-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.event-count {
-  font-size: 16px;
-  font-weight: bold;
-  color: #dc2626;
-}
-
-.event-label {
-  font-size: 11px;
-  color: #7f1d1d;
 }
 
 .address-info {
@@ -1610,26 +1736,6 @@ const manejarToggleTrafico = () => {
   flex: 1;
 }
 
-.details-btn {
-  width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
-}
-
-.details-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
-}
-
-/* Animación de entrada del popup */
 .popup-animated .mapboxgl-popup-content {
   animation: popupFade 0.2s ease-out;
 }
@@ -1676,7 +1782,6 @@ const manejarToggleTrafico = () => {
   background-color: #ffffff;
 }
 
-/* ✅ NUEVO: Estilo para la dirección en el estado contraído */
 .unidad-direccion {
   font-size: 12px;
   color: #374151;
@@ -1685,7 +1790,7 @@ const manejarToggleTrafico = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px; /* Ajusta según sea necesario */
+  max-width: 200px;
 }
 
 .unidad-popup-header {
@@ -1750,7 +1855,7 @@ const manejarToggleTrafico = () => {
 }
 
 .unidad-popup-container.expanded .unidad-popup-body {
-  max-height: 400px; /* Un valor lo suficientemente grande */
+  max-height: 400px;
   padding: 16px;
 }
 
@@ -1773,6 +1878,23 @@ const manejarToggleTrafico = () => {
   bottom: 0;
   width: 100%;
   height: 100%;
+}
+
+:deep(.mapboxgl-map) {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+:deep(.custom-marker-unidad) {
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .floating-confirm-btn {
@@ -1884,18 +2006,6 @@ const manejarToggleTrafico = () => {
   }
 }
 
-@keyframes pulse-badge-geozona {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 3px 12px rgba(255, 87, 34, 0.6);
-  }
-  50% {
-    transform: scale(1.15);
-    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.8);
-  }
-}
-
 @keyframes pulse-location {
   0% {
     transform: translate(-50%, -50%) scale(1);
@@ -1938,6 +2048,198 @@ const manejarToggleTrafico = () => {
 .floating-confirm-btn-main:hover {
   transform: scale(1.05);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ✅ NUEVO: Botón principal de capas */
+.layers-menu-btn {
+  position: fixed !important;
+  top: 80px;
+  right: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  border-radius: 12px !important;
+  border: 2px solid #ddf4e7 !important;
+
+  width: 45px !important;
+  height: 45px !important;
+}
+
+/* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
+.layers-menu-btn.q-btn {
+  border-radius: 12px !important;
+  border: 3px solid #ffffff !important;
+}
+
+.layers-menu-btn :deep(.q-btn__wrapper) {
+  border-radius: 12px !important;
+  padding: 12px !important;
+  border: 3px solid #ffffff !important;
+}
+
+.layers-menu-btn :deep(.q-btn__content) {
+  border-radius: 12px !important;
+  border-color: #ffffff;
+}
+
+/* Asegurar que el ripple effect también sea redondeado */
+.layers-menu-btn :deep(.q-focus-helper),
+.layers-menu-btn :deep(.q-ripple) {
+  border-radius: 12px !important;
+  border-color: #ffffff;
+}
+
+.layers-menu-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Estilos del menú desplegable */
+:deep(.layers-menu) {
+  border-radius: 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden !important;
+}
+
+/* Aplicar degradado a TODOS los elementos posibles del menú */
+:deep(.layers-menu .q-menu) {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%) !important;
+  border-radius: 16px !important;
+}
+
+:deep(.layers-menu .q-list) {
+  background: transparent !important;
+  border-radius: 16px !important;
+}
+
+:deep(.layers-menu .q-menu__content) {
+  background: linear-gradient(135deg, #ffffff 0%, #cceeff 100%) !important;
+  border-radius: 16px !important;
+}
+
+:deep(.layers-menu .q-card) {
+  background: transparent !important;
+}
+
+:deep(.layers-menu .q-item) {
+  background: transparent !important;
+}
+
+/* ✅ SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
+.map-styles-section .q-item__label--header {
+  background: white;
+  padding: 12px 16px;
+  margin: 0;
+}
+
+/* Container de tarjetas SIN fondo blanco (muestra degradado) */
+.map-styles-container {
+  background: transparent;
+}
+
+/* ✅ TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
+.traffic-section {
+  background: white;
+  padding: 0;
+  margin: 0;
+}
+
+.traffic-section .q-item__label--header {
+  padding: 12px 16px;
+  margin: 0;
+}
+
+/* ✅ LÍNEA DIVISORIA */
+.menu-separator {
+  background-color: #949791cd !important;
+  margin: 0 !important;
+}
+
+/* Container de las tarjetas de estilo */
+.map-styles-container {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  justify-content: center;
+}
+
+/* Tarjeta individual de estilo */
+.map-style-card {
+  flex: 1;
+  cursor: pointer;
+  border-radius: 12px; /* ✅ Cambié de 8px a 12px */
+  overflow: hidden;
+  transition: all 0.2s ease;
+  border: 2px solid #e0e0e0;
+  background: white;
+}
+
+.map-style-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #bdbdbd;
+}
+
+.map-style-card.active {
+  border-color: #4caf50;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Preview de la imagen */
+.style-preview {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  overflow: hidden;
+  background: #f5f5f5;
+  padding: 4px; /* ✅ Agrega esto */
+}
+
+.style-preview svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 12px; /* ✅ Agrega esto para redondear el SVG también */
+  clip-path: inset(0 round 12px);
+}
+
+/* Badge de activo (checkmark) */
+.active-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Label del estilo */
+.style-label {
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #424242;
+  background: #f5f5f5;
+}
+
+.map-style-card.active .style-label {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Item del toggle de tráfico */
+.traffic-toggle-item {
+  padding: 12px 16px;
+}
+
+.traffic-toggle-item:hover {
+  background-color: #f5f5f5;
 }
 
 .traffic-toggle-btn {
@@ -2000,8 +2302,15 @@ const manejarToggleTrafico = () => {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
 }
 
-:deep(.icono-poi-hover:hover > div > div:last-child),
-:deep(.icono-geozona-hover:hover > div > div:last-child) {
-  transform: scale(0.91) !important;
+:deep(.mapboxgl-canvas-container) {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 </style>

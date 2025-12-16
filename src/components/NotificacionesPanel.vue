@@ -65,6 +65,8 @@
             :message="notif.message"
             :timestamp="notif.timestamp"
             :leida="notif.leida"
+            :map-image="notif.mapImage"
+            :map-url="notif.mapUrl"
             @close="removeNotification(notif.id)"
             @click="!notif.leida && marcarComoLeida(notif.id)"
             :style="{ transitionDelay: `${index * 50}ms` }"
