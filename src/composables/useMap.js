@@ -46,7 +46,6 @@ export function useMap() {
       weight: 2,
       dashArray: '5, 10',
     }).addTo(map.value)
-    console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
   }
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
@@ -223,7 +222,6 @@ export function useMap() {
           })
 
         marcadoresUnidades.value[unidadId] = marcador
-        console.log(`🆕 Nuevo marcador creado: ${unidad.conductorNombre} - ${unidad.unidadNombre}`)
       }
     })
 
@@ -232,7 +230,6 @@ export function useMap() {
       if (!idsActuales.has(id)) {
         map.value.removeLayer(marcadoresUnidades.value[id])
         delete marcadoresUnidades.value[id]
-        console.log(`🗑️ Marcador GPS removido: ${id}`)
       }
     })
 
@@ -247,7 +244,6 @@ export function useMap() {
     })
 
     marcadoresUnidades.value = {}
-    console.log('🧹 Marcadores GPS limpiados')
   }
 
   const centrarEnUnidad = (unidadId) => {
@@ -270,14 +266,12 @@ export function useMap() {
       map.value.removeLayer(circuloTemporalPOI)
     }
     crearCirculoTemporalPOI(lat, lng, nuevoRadio)
-    console.log(`🔄 Radio actualizado: ${nuevoRadio}m`)
   }
 
   function limpiarCirculoTemporalPOI() {
     if (circuloTemporalPOI && map.value) {
       map.value.removeLayer(circuloTemporalPOI)
       circuloTemporalPOI = null
-      console.log('🧹 Círculo temporal POI limpiado')
     }
   }
 
@@ -345,7 +339,6 @@ export function useMap() {
       fillOpacity: 0.15,
       weight: 2,
     }).addTo(map.value)
-    console.log(`🔄 Marcador y círculo actualizados: ${nombre} (${radio}m)`)
   }
 
   const activarModoSeleccion = () => {
@@ -358,7 +351,7 @@ export function useMap() {
     map.value.getContainer().style.cursor = 'crosshair'
     map.value.off('click')
     map.value.on('click', onMapClick)
-    console.log('✅ Modo selección activado')
+
     return true
   }
 
@@ -371,7 +364,6 @@ export function useMap() {
     map.value.off('click', onMapClick)
     map.value.off('click', onMapClickGeozonaCircular)
     map.value.off('click', onMapClickGeozonaPoligonal)
-    console.log('❌ Todos los modos de selección desactivados')
   }
 
   const activarModoSeleccionGeozonaCircular = () => {
@@ -384,7 +376,7 @@ export function useMap() {
     map.value.getContainer().style.cursor = 'crosshair'
     map.value.off('click')
     map.value.on('click', onMapClickGeozonaCircular)
-    console.log('✅ Modo selección geozona circular activado')
+
     return true
   }
 
@@ -398,7 +390,6 @@ export function useMap() {
     colorGeozonaActual.value = color // ✅ GUARDAR el color para usarlo después
 
     if (puntosExistentes && puntosExistentes.length > 0) {
-      console.log('🔄 Restaurando puntos existentes:', puntosExistentes.length)
       setPuntosSeleccionados(puntosExistentes)
     } else {
       puntosPoligono.value = []
@@ -409,7 +400,7 @@ export function useMap() {
     map.value.getContainer().style.cursor = 'crosshair'
     map.value.off('click')
     map.value.on('click', onMapClickGeozonaPoligonal)
-    console.log('✅ Modo selección geozona poligonal activado con color:', color)
+
     return true
   }
 
@@ -433,7 +424,6 @@ export function useMap() {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
       }
-      console.log('📍 Ubicación seleccionada:', ubicacionSeleccionada.value)
     })
   }
 
@@ -457,7 +447,6 @@ export function useMap() {
         direccion: direccionObtenida,
         radio: radioInicial,
       }
-      console.log('🔵 Geozona circular seleccionada:', ubicacionSeleccionada.value)
     })
   }
 
@@ -509,12 +498,7 @@ export function useMap() {
       actualizarPoligonoTemporal(puntosPoligono.value)
     }
 
-    console.log(
-      `📍 Punto ${puntosPoligono.value.length} agregado al polígono con color: ${fillColor}`,
-    )
-
     if (puntosPoligono.value.length >= 3) {
-      console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
       window.dispatchEvent(
         new CustomEvent('mostrarBotonConfirmarGeozona', {
           detail: { mostrar: true },
@@ -529,7 +513,7 @@ export function useMap() {
       return false
     }
     poligonoFinalizado.value = true
-    console.log('✅ Polígono finalizado con', puntosPoligono.value.length, 'puntos')
+
     return true
   }
 
@@ -583,21 +567,21 @@ export function useMap() {
 
   const confirmarMarcadorTemporal = (nombre) => {
     if (marcadorTemporal.value && ubicacionSeleccionada.value) {
-      console.log(`✅ Marcador confirmado: ${nombre}`, ubicacionSeleccionada.value)
+      console.log(`Marcador confirmado: ${nombre}`, ubicacionSeleccionada.value)
       limpiarMarcadorTemporal()
     }
   }
 
   const confirmarCirculoTemporal = (nombre) => {
     if (circuloTemporal.value && ubicacionSeleccionada.value) {
-      console.log(`✅ Círculo confirmado: ${nombre}`, ubicacionSeleccionada.value)
+      console.log(`Círculo confirmado: ${nombre}`, ubicacionSeleccionada.value)
       limpiarCirculoTemporal()
     }
   }
 
   const confirmarPoligonoTemporal = (nombre) => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
-      console.log(`✅ Polígono confirmado: ${nombre}`, puntosPoligono.value)
+      console.log(`Polígono confirmado: ${nombre}`, puntosPoligono.value)
       limpiarPoligonoTemporal()
     }
   }
@@ -650,8 +634,6 @@ export function useMap() {
 
     nuevoCirculo._geozonaId = id
     nuevoCirculo.bindPopup(`<b>🔵 ${nombre}</b><p>Radio: ${radio}m</p>`)
-
-    console.log(`✅ Círculo actualizado con color: ${color}`)
   }
 
   const actualizarPoligono = (id, puntos, nombre, color = '#4ECDC4') => {
@@ -698,8 +680,6 @@ export function useMap() {
 
     nuevoPoligono._geozonaId = id
     nuevoPoligono.bindPopup(`<b>🔷 ${nombre}</b><p>${puntos.length} puntos</p>`)
-
-    console.log(`✅ Polígono actualizado con color: ${color}`)
   }
   const actualizarPoligonoTemporal = (puntos) => {
     if (!map.value || !puntos || puntos.length < 2) return
@@ -738,8 +718,6 @@ export function useMap() {
         fillOpacity: 0.2,
         weight: 3,
       }).addTo(map.value)
-
-      console.log(`🔷 Polígono temporal actualizado con color: ${fillColor}`)
     }
   }
 
@@ -763,8 +741,6 @@ export function useMap() {
 
       map.value = L.map(containerId).setView(center, zoom)
 
-      console.log('🗺️ Cargando estilo con Static Tiles API...')
-
       // ✅ FORMATO CORRECTO según documentación oficial
       baseLayer.value = L.tileLayer(
         'https://api.mapbox.com/styles/v1/sistemasmj123/cmhv6nud000fr01reeltdgkyf/tiles/{z}/{x}/{y}@2x?access_token=' +
@@ -783,9 +759,7 @@ export function useMap() {
         console.error('URL:', tile.tile?.src)
       })
 
-      baseLayer.value.on('tileload', () => {
-        console.log('✅ Tile cargado correctamente')
-      })
+      baseLayer.value.on('tileload', () => {})
 
       capaTrafico.value = true
 
@@ -831,10 +805,8 @@ export function useMap() {
       const mapPage = document.getElementById('map-page')
       if (mapPage) {
         mapPage._mapaAPI = mapaAPI
-        console.log('✅ _mapaAPI expuesto')
       }
 
-      console.log('✅ Mapa inicializado con Static Tiles API')
       return map.value
     } catch (error) {
       console.error('❌ Error:', error)
@@ -885,7 +857,6 @@ export function useMap() {
     poligonoFinalizado.value = false
     capaTrafico.value = null
     limpiarMarcadoresUnidades()
-    console.log('🧹 Mapa limpiado')
   }
 
   const toggleTrafico = () => {
@@ -929,8 +900,6 @@ export function useMap() {
     if (puntos.length >= 2) {
       actualizarPoligonoTemporal(puntos)
     }
-
-    console.log(`✅ ${puntos.length} puntos restaurados en el mapa`)
   }
 
   return {

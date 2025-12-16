@@ -187,12 +187,6 @@ const COLUMNAS_EVENTOS = {
         tipoTexto = 'Salida'
       }
       // 🔥 DEBUG PASO A PASO
-      console.log('📊 Valores extraídos:', {
-        tipoTexto,
-        tipoUbicacion,
-        nombreUbicacion,
-        resultado: tipoTexto && nombreUbicacion ? 'DEBERÍA FUNCIONAR' : 'FALTA ALGO',
-      })
       // 🔥 CONSTRUCCIÓN PASO A PASO (más seguro)
       if (!tipoTexto) return 'N/A'
       if (!nombreUbicacion) return 'N/A'
@@ -767,9 +761,6 @@ export function useColumnasReportes() {
 
     // Resetear columnas filtradas
     columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
-
-    console.log(`📊 Tipo de informe cambiado a: ${nuevoTipo}`)
-    console.log(`📊 ${nombresColumnasDisponibles.value.length} columnas disponibles`)
   }
 
   /**
@@ -790,7 +781,6 @@ export function useColumnasReportes() {
     const index = columnasSeleccionadas.value.indexOf(nombreColumna)
     if (index > -1) {
       columnasSeleccionadas.value.splice(index, 1)
-      console.log(`❌ Columna removida: ${nombreColumna}`)
     }
   }
 
@@ -921,7 +911,6 @@ export function useColumnasReportes() {
     }
 
     columnasSeleccionadas.value = columnasPorDefecto[tipoInformeActivo.value] || []
-    console.log('🔄 Columnas reseteadas a valores por defecto')
   }
 
   // Inicializar con columnas por defecto
