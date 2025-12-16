@@ -928,6 +928,11 @@ export function useMapboxGL() {
       const center = map.value.getCenter()
       const zoom = map.value.getZoom()
 
+      // Guardar estado del tráfico
+      const traficoVisible = map.value.getLayer('traffic')
+        ? map.value.getLayoutProperty('traffic', 'visibility') === 'visible'
+        : false
+
       // Cambiar estilo
       const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
       estiloActual.value = nuevoEstilo
@@ -935,76 +940,83 @@ export function useMapboxGL() {
       // Aplicar nuevo estilo
       map.value.setStyle(ESTILOS_MAPA[nuevoEstilo])
 
-      // Esperar a que el estilo se cargue
+      // Esperar a que el estilo se cargue completamente
       map.value.once('style.load', () => {
         // Restaurar centro y zoom
         map.value.jumpTo({ center, zoom })
 
         // 🔄 RE-AGREGAR CAPA DE TRÁFICO
-        if (!map.value.getSource('mapbox-traffic')) {
-          map.value.addSource('mapbox-traffic', {
-            type: 'vector',
-            url: 'mapbox://mapbox.mapbox-traffic-v1',
-          })
-        }
-
-        // Buscar la primera capa de etiquetas
-        const layers = map.value.getStyle().layers
-        let labelLayerId
-        for (let i = 0; i < layers.length; i++) {
-          if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
-            labelLayerId = layers[i].id
-            break
+        try {
+          if (!map.value.getSource('mapbox-traffic')) {
+            map.value.addSource('mapbox-traffic', {
+              type: 'vector',
+              url: 'mapbox://mapbox.mapbox-traffic-v1',
+            })
           }
-        }
 
-        // Insertar tráfico antes de las etiquetas
-        if (!map.value.getLayer('traffic')) {
-          map.value.addLayer(
-            {
-              id: 'traffic',
-              type: 'line',
-              source: 'mapbox-traffic',
-              'source-layer': 'traffic',
-              paint: {
-                'line-width': [
-                  'interpolate',
-                  ['exponential', 1.5],
-                  ['zoom'],
-                  10,
-                  1,
-                  13,
-                  2,
-                  15,
-                  3,
-                  18,
-                  6,
-                  20,
-                  10,
-                ],
-                'line-color': [
-                  'case',
-                  ['==', ['get', 'congestion'], 'low'],
-                  '#4CAF50',
-                  ['==', ['get', 'congestion'], 'moderate'],
-                  '#FF9800',
-                  ['==', ['get', 'congestion'], 'heavy'],
-                  '#F44336',
-                  ['==', ['get', 'congestion'], 'severe'],
-                  '#9C27B0',
-                  '#888888',
-                ],
+          // Buscar la primera capa de etiquetas
+          const layers = map.value.getStyle().layers
+          let labelLayerId
+          for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+              labelLayerId = layers[i].id
+              break
+            }
+          }
+
+          // Insertar tráfico antes de las etiquetas
+          if (!map.value.getLayer('traffic')) {
+            map.value.addLayer(
+              {
+                id: 'traffic',
+                type: 'line',
+                source: 'mapbox-traffic',
+                'source-layer': 'traffic',
+                paint: {
+                  'line-width': [
+                    'interpolate',
+                    ['exponential', 1.5],
+                    ['zoom'],
+                    10,
+                    1,
+                    13,
+                    2,
+                    15,
+                    3,
+                    18,
+                    6,
+                    20,
+                    10,
+                  ],
+                  'line-color': [
+                    'case',
+                    ['==', ['get', 'congestion'], 'low'],
+                    '#4CAF50',
+                    ['==', ['get', 'congestion'], 'moderate'],
+                    '#FF9800',
+                    ['==', ['get', 'congestion'], 'heavy'],
+                    '#F44336',
+                    ['==', ['get', 'congestion'], 'severe'],
+                    '#9C27B0',
+                    '#888888',
+                  ],
+                },
+                layout: {
+                  visibility: traficoVisible ? 'visible' : 'none', // ✅ Restaurar estado
+                },
               },
-              layout: {
-                visibility: 'none',
-              },
-            },
-            labelLayerId,
-          )
+              labelLayerId,
+            )
+          }
+        } catch (error) {
+          console.warn('⚠️ Error al agregar capa de tráfico:', error)
         }
 
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
-        window.dispatchEvent(new CustomEvent('redibujarMapa'))
+        // Dar tiempo para que el mapa se estabilice
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('redibujarMapa'))
+        }, 100)
       })
 
       return nuevoEstilo === 'streets'
@@ -1078,10 +1090,29 @@ export function useMapboxGL() {
         })
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
+
+          // Crear imagen válida de 64x64 píxeles (tamaño estándar de Mapbox)
+          const size = 64
           const canvas = document.createElement('canvas')
-          canvas.width = 1
-          canvas.height = 1
-          map.value.addImage(id, canvas)
+          canvas.width = size
+          canvas.height = size
+          const context = canvas.getContext('2d')
+
+          // Crear imagen transparente válida
+          const imageData = context.createImageData(size, size)
+
+          // Verificar que la imagen no exista antes de agregarla
+          if (!map.value.hasImage(id)) {
+            try {
+              map.value.addImage(id, {
+                width: size,
+                height: size,
+                data: imageData.data,
+              })
+            } catch (error) {
+              console.warn(`⚠️ No se pudo agregar imagen placeholder para: ${id}`, error)
+            }
+          }
         })
 
         // Agregar fuente de tráfico
