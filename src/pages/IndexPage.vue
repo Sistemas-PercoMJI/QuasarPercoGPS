@@ -609,14 +609,6 @@ async function inicializarSistemaDeteccion() {
     const eventosActivos = eventos.filter((e) => e.activo)
 
     inicializar(eventosActivos, pois, geozonas)
-
-    if (eventosActivos.length > 0) {
-      eventosActivos.forEach((evento) => {
-        console.log(`  - ${evento.nombre}:`, evento.condiciones)
-      })
-    } else {
-      console.warn('⚠️ No hay eventos activos configurados')
-    }
   } catch (error) {
     console.error('❌ Error al inicializar detección:', error)
   }
