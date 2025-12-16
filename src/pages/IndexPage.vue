@@ -1318,17 +1318,26 @@ onMounted(async () => {
       body.style.maxHeight = '0'
     }
   }
-
   window.addEventListener('redibujarMapa', async () => {
+    // Esperar a que el mapa esté completamente cargado
+    await nextTick()
+
+    // Limpiar capas antiguas
     limpiarCapasDelMapa()
+
+    // Redibujar todo
     await dibujarTodosEnMapa()
+
+    // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
+
+    // Reiniciar evaluación de eventos
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
+    // Redibujar marcadores de unidades
     await nextTick()
-
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
