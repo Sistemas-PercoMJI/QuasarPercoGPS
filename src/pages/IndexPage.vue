@@ -796,14 +796,15 @@ const dibujarTodosEnMapa = async () => {
           <div class="poi-popup-container">
             <div class="poi-popup-header">
               <div class="header-info">
-                <div class="header-title">📍 ${poi.nombre}</div>
+                <div class="header-title">${poi.nombre}</div>
+                <div class="header-divider"></div>
                 <div class="header-subtitle">Radio: ${radio}m</div>
               </div>
             </div>
 
             <div class="poi-popup-body">
               <div class="address-info">
-                <div class="address-icon">📍</div>
+                <div class="address-icon"></div>
                 <div class="address-text">${poi.direccion}</div>
               </div>
 
@@ -864,7 +865,8 @@ const dibujarTodosEnMapa = async () => {
         <div class="geozona-popup-container">
           <div class="geozona-popup-header">
             <div class="header-info">
-              <div class="header-title">🔷 ${geozona.nombre}</div>
+              <div class="header-title">${geozona.nombre}</div>
+              <div class="header-divider"></div>
               <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
             </div>
             <button
@@ -1462,23 +1464,42 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .mapboxgl-popup-close-button {
+  background-color: #f3f4f6 !important;
+  border: 1px solid #6b7280;
   width: 28px !important;
   height: 28px !important;
   padding: 0 !important;
-  background-color: #f3f4f6 !important;
-  color: #6b7280 !important;
   border-radius: 50% !important;
   font-size: 18px !important;
   font-weight: bold !important;
-  border: 1px solid #e5e7eb !important;
-  transition: all 0.2s ease !important;
-  top: 6px !important;
-  right: 16px !important;
+
+  transition: all 0.3s ease !important;
+
+  /* Posición */
+  top: 14px !important;
+  left: 10px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .mapboxgl-popup-close-button:hover {
-  background-color: #e5e7eb !important;
+  background:
+    linear-gradient(#e5e7eb, #e5e7eb) padding-box,
+    conic-gradient(
+        from 0deg,
+        #6b7280 0deg,
+        #4b5563 60deg,
+        #6b7280 120deg,
+        #6b7280 180deg,
+        #4b5563 240deg,
+        #6b7280 300deg,
+        #6b7280 360deg
+      )
+      border-box !important;
   color: #374151 !important;
+  transform: scale(1.05) !important;
 }
 
 .geozona-popup-container {
@@ -1498,6 +1519,14 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.header-divider {
+  width: 100%;
+  height: 1px;
+  margin-bottom: 10px;
+  background-color: #6b7280;
+  margin: 15px 0;
+}
+
 .header-info {
   display: flex;
   flex-direction: column;
@@ -1509,6 +1538,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   font-weight: 700;
   color: #1f2937;
   line-height: 1.2;
+  margin-left: 15%;
 }
 
 .header-subtitle {
@@ -1518,8 +1548,9 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .toggle-geozona-btn {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background-color: #f3f4f6 !important;
+  border: 1px solid #6b7280;
+
   border-radius: 50%;
   cursor: pointer;
   width: 30px;
@@ -1527,14 +1558,15 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s ease !important;
   align-self: flex-end;
+  margin-top: -32px;
 }
 
 .toggle-geozona-btn:hover {
   background-color: #f3f4f6;
   border-color: #9ca3af;
-  transform: scale(1.05);
+  transform: scale(1.05) !important;
 }
 
 .chevron-icon {
@@ -1620,7 +1652,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   width: 100%;
   padding: 18px 12px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -1628,12 +1660,12 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   font-weight: 600;
   font-size: 14px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
 }
-
 .details-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, #91c6bc 0%, #047857 100%);
 }
 
 .points-list-container::-webkit-scrollbar {
