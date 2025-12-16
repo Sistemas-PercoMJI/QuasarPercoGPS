@@ -2,6 +2,28 @@ import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
+const originalWarn = console.warn
+console.warn = function (...args) {
+  const message = args[0]?.toString() || ''
+
+  // Lista de warnings que queremos ignorar
+  const ignoredWarnings = [
+    'Image "',
+    'could not be loaded',
+    'Cannot mix SDF and non-SDF icons',
+    'Unable to perform style diff',
+    'setSprite',
+  ]
+
+  // Si el mensaje contiene algún warning ignorado, no lo mostrar
+  if (ignoredWarnings.some((warning) => message.includes(warning))) {
+    return
+  }
+
+  // Para otros warnings, usar el comportamiento original
+  originalWarn.apply(console, args)
+}
+
 // Referencia reactiva al mapa
 const map = ref(null)
 const ubicacionSeleccionada = ref(null)
