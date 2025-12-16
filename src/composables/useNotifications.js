@@ -1,17 +1,45 @@
 // src/composables/useNotifications.js
 import { ref, computed } from 'vue'
+import { useMapboxStaticImage } from './useMapboxStaticImage'
 
 const notifications = ref([])
 let notificationIdCounter = 0
+
+// 🆕 Instancia del composable de mapas
+const { generarMapaEvento } = useMapboxStaticImage()
 
 export function useNotifications() {
   /**
    * Agrega una nueva notificación que expira en 5 minutos
    */
-  function agregarNotificacion(notificacionData) {
+  async function agregarNotificacion(notificacionData) {
     const id = ++notificationIdCounter
     const ahora = Date.now()
     const expiraEn = ahora + 5 * 60 * 1000 // 5 minutos
+
+    // 🆕 GENERAR MAPA SI HAY UBICACIÓN
+    let mapImage = null
+    let mapUrl = null
+
+    if (notificacionData.ubicacion) {
+      try {
+        console.log('🗺️ Generando mapa para notificación:', notificacionData.title)
+        const mapaData = await generarMapaEvento({
+          lat: notificacionData.ubicacion.lat,
+          lng: notificacionData.ubicacion.lng,
+          nombre:
+            notificacionData.ubicacion.nombre || notificacionData.ubicacionNombre || 'Ubicación',
+          tipo: notificacionData.ubicacion.tipo || notificacionData.tipoUbicacion || 'POI',
+        })
+
+        mapImage = mapaData.imagenBase64
+        mapUrl = mapaData.url
+        console.log('✅ Mapa generado para notificación')
+      } catch (error) {
+        console.warn('⚠️ Error generando mapa para notificación:', error)
+        // Continuar sin mapa si falla
+      }
+    }
 
     const nuevaNotificacion = {
       id,
@@ -26,6 +54,8 @@ export function useNotifications() {
       timestamp: ahora,
       expiraEn,
       leida: false,
+      mapImage, // 🆕 Imagen del mapa en base64
+      mapUrl, // 🆕 URL del mapa para abrir en nueva pestaña
     }
 
     notifications.value.unshift(nuevaNotificacion)

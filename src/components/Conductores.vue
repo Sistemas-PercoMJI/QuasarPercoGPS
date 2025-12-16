@@ -79,25 +79,36 @@
           class="group-item"
         >
           <q-item-section avatar>
-            <q-icon name="folder" :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue'" />
+            <q-avatar
+              :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
+              text-color="white"
+              size="36px"
+            >
+              <q-icon name="folder" size="20px" />
+            </q-avatar>
           </q-item-section>
 
           <q-item-section>
-            <q-item-label>{{ grupo.Nombre }}</q-item-label>
-            <q-item-label caption>
+            <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
+            <q-item-label caption class="text-grey-7">
+              <q-icon name="person" size="14px" class="q-mr-xs" />
               {{ contarConductoresPorGrupo(grupo.id) }} conductores
             </q-item-label>
           </q-item-section>
 
           <q-item-section side>
+            <!-- ✅ IMPORTANTE: Debe tener @click.stop -->
             <q-btn
               flat
               dense
               round
               icon="more_vert"
               size="sm"
+              color="grey-7"
               @click.stop="mostrarMenuGrupo($event, grupo)"
-            />
+            >
+              <q-tooltip>Opciones del grupo</q-tooltip>
+            </q-btn>
           </q-item-section>
         </q-item>
       </q-list>
@@ -123,15 +134,6 @@
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">{{ conductor.Telefono }}</div>
             </div>
-            <q-btn
-              flat
-              dense
-              round
-              icon="more_vert"
-              size="sm"
-              @click.stop="mostrarMenuConductor($event, conductor)"
-              class="card-menu"
-            />
           </q-card-section>
 
           <q-card-section class="card-body">
@@ -145,7 +147,6 @@
             </div>
           </q-card-section>
         </q-card>
-
         <!-- Mensaje si no hay conductores -->
         <div
           v-if="conductoresFiltrados.length === 0 && !loading"
@@ -237,19 +238,25 @@
               <q-card-section>
                 <div class="row q-gutter-md">
                   <div class="col-12 col-md-6">
-                    <div class="detalle-label">Código de licencia</div>
+                    <div class="detalle-label">Nùmero de licencia</div>
                     <q-input
-                      v-model="conductorEditando.LicenciaConducirCodigo"
+                      v-model="conductorEditando.LicenciaConducir"
                       outlined
                       dense
                       placeholder="Ej: A1234567"
+                      :disable="licenciaDeshabilitada"
                       @blur="
-                        actualizarCampo(
-                          'LicenciaConducirCodigo',
-                          conductorEditando.LicenciaConducirCodigo,
-                        )
+                        actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
                       "
-                    />
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="conductorEditando?.LicenciaConducirFecha"
+                          :color="esLicenciaVigente ? 'positive' : 'negative'"
+                          :label="esLicenciaVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
                   <div class="col-12 col-md-6">
                     <div class="detalle-label">Fecha de vencimiento</div>
@@ -377,8 +384,7 @@
                 />
               </q-card-section>
 
-              <!-- 🎯 NUEVO BOTÓN PARA NAVEGAR A LA UNIDAD -->
-              <q-card-section v-if="unidadAsignadaData">
+              <q-card-section v-if="unidadAsociada">
                 <q-btn
                   color="primary"
                   icon="my_location"
@@ -392,20 +398,30 @@
                 </q-btn>
               </q-card-section>
 
-              <q-separator v-if="unidadAsignadaData" />
-
-              <q-card-section v-if="unidadAsignadaData">
+              <q-separator v-if="unidadAsociada" />
+              <q-card-section v-if="unidadAsociada">
                 <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
                 <div class="row q-gutter-md">
                   <div class="col-12">
-                    <div class="detalle-label">Código de seguro</div>
+                    <div class="detalle-label">Número de seguro</div>
                     <q-input
-                      :model-value="unidadAsignadaData.SeguroUnidad || 'Sin código'"
+                      v-model="unidadAsociada.SeguroUnidad"
                       outlined
                       dense
-                      readonly
-                    />
+                      placeholder="Ingrese código de seguro"
+                      :disable="seguroDeshabilitado"
+                      @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="unidadAsociada?.SeguroUnidadFecha"
+                          :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                          :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
+
                   <div class="col-12">
                     <div class="detalle-label">Vencimiento del seguro</div>
                     <q-input
@@ -414,24 +430,56 @@
                       dense
                       readonly
                     >
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="seguroUnidadFechaFormato"
+                              mask="DD/MM/YYYY"
+                              @update:model-value="actualizarFechaSeguro"
+                            >
+                              <div class="row items-center justify-end">
+                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
                       <template v-slot:after>
                         <q-badge
-                          v-if="unidadAsignadaData.SeguroUnidadFecha"
+                          v-if="unidadAsociada?.SeguroUnidadFecha"
                           :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
                           :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
                         />
                       </template>
                     </q-input>
                   </div>
+
                   <div class="col-12">
-                    <div class="detalle-label">Código de tarjeta de circulación</div>
+                    <div class="detalle-label">Número de tarjeta de circulación</div>
                     <q-input
-                      :model-value="unidadAsignadaData.TargetaCirculacion || 'Sin código'"
+                      v-model="unidadAsociada.TargetaCirculacion"
                       outlined
                       dense
-                      readonly
-                    />
+                      placeholder="Ingrese código de tarjeta"
+                      :disable="tarjetaDeshabilitada"
+                      @blur="
+                        actualizarCampoUnidad(
+                          'TargetaCirculacion',
+                          unidadAsociada.TargetaCirculacion,
+                        )
+                      "
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="unidadAsociada?.TargetaCirculacionFecha"
+                          :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                          :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                        />
+                      </template>
+                    </q-input>
                   </div>
+
                   <div class="col-12">
                     <div class="detalle-label">Vencimiento de tarjeta</div>
                     <q-input
@@ -440,9 +488,24 @@
                       dense
                       readonly
                     >
+                      <template v-slot:append>
+                        <q-icon name="event" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-date
+                              :model-value="tarjetaCirculacionFechaFormato"
+                              mask="DD/MM/YYYY"
+                              @update:model-value="actualizarFechaTarjeta"
+                            >
+                              <div class="row items-center justify-end">
+                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                              </div>
+                            </q-date>
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
                       <template v-slot:after>
                         <q-badge
-                          v-if="unidadAsignadaData.TargetaCirculacionFecha"
+                          v-if="unidadAsociada?.TargetaCirculacionFecha"
                           :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
                           :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
                         />
@@ -730,37 +793,70 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu v-model="menuGrupoVisible" v-if="menuGrupoTarget" touch-position context-menu>
-      <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="editarGrupo">
+    <q-menu
+      v-model="menuGrupoVisible"
+      anchor="top right"
+      self="top left"
+      :offset="[8, 0]"
+      transition-show="scale"
+      transition-hide="scale"
+      no-parent-event
+    >
+      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+        <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="edit" size="xs" />
+            <q-icon name="edit" size="sm" color="primary" />
           </q-item-section>
-          <q-item-section>Editar</q-item-section>
+          <q-item-section>
+            <q-item-label>Editar grupo</q-item-label>
+          </q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="confirmarEliminarGrupo">
+
+        <q-separator spaced inset />
+
+        <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="delete" size="xs" color="negative" />
+            <q-icon name="delete" size="sm" color="negative" />
           </q-item-section>
-          <q-item-section class="text-negative">Eliminar</q-item-section>
+          <q-item-section>
+            <q-item-label class="text-negative">Eliminar grupo</q-item-label>
+          </q-item-section>
         </q-item>
       </q-list>
     </q-menu>
 
     <!-- Menú contextual para conductores -->
-    <q-menu v-model="menuConductorVisible" v-if="menuConductorTarget" touch-position context-menu>
-      <q-list dense style="min-width: 150px">
-        <q-item clickable v-close-popup @click="verDetalles">
+    <q-menu
+      v-model="menuConductorVisible"
+      context-menu
+      transition-show="jump-down"
+      transition-hide="jump-up"
+    >
+      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+        <q-item clickable v-close-popup @click="verDetalles" class="menu-item">
           <q-item-section avatar>
-            <q-icon name="info" size="xs" />
+            <q-icon name="info" size="sm" color="primary" />
           </q-item-section>
-          <q-item-section>Ver detalles</q-item-section>
+          <q-item-section>
+            <q-item-label>Ver detalles</q-item-label>
+          </q-item-section>
         </q-item>
-        <q-item clickable v-close-popup @click="quitarDeGrupo" v-if="grupoSeleccionado !== 'todos'">
+
+        <q-separator spaced inset v-if="grupoSeleccionado !== 'todos'" />
+
+        <q-item
+          clickable
+          v-close-popup
+          @click="quitarDeGrupo"
+          v-if="grupoSeleccionado !== 'todos'"
+          class="menu-item"
+        >
           <q-item-section avatar>
-            <q-icon name="remove_circle" size="xs" color="negative" />
+            <q-icon name="remove_circle" size="sm" color="negative" />
           </q-item-section>
-          <q-item-section class="text-negative">Quitar del grupo</q-item-section>
+          <q-item-section>
+            <q-item-label class="text-negative">Quitar del grupo</q-item-label>
+          </q-item-section>
         </q-item>
       </q-list>
     </q-menu>
@@ -862,6 +958,9 @@ const {
   conductoresPorGrupo,
   asignarUnidad,
   obtenerUnidadDeConductor,
+  puedeEditarLicenciaConducir,
+  puedeEditarSeguroUnidad,
+  puedeEditarTargetaCirculacion,
 } = composable
 
 // Funciones de fotos
@@ -888,8 +987,8 @@ const dialogDetallesConductor = ref(false)
 const dialogVerFoto = ref(false)
 const menuGrupoVisible = ref(false)
 const menuConductorVisible = ref(false)
-const menuGrupoTarget = ref(null)
-const menuConductorTarget = ref(null)
+//const menuGrupoTarget = ref(null)
+//const menuConductorTarget = ref(null)
 const grupoMenu = ref(null)
 const conductorMenu = ref(null)
 const modoEdicion = ref(false)
@@ -983,6 +1082,26 @@ const fechaVencimientoFormato = computed(() => {
   }
 
   return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const unidadAsociada = computed(() => {
+  if (!conductorEditando.value?.UnidadAsignada) return null
+  return obtenerUnidadDeConductor(conductorEditando.value.id)
+})
+// Computed para deshabilitar campos
+const licenciaDeshabilitada = computed(() => {
+  if (!conductorEditando.value) return true
+  return !puedeEditarLicenciaConducir(conductorEditando.value)
+})
+
+const seguroDeshabilitado = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarSeguroUnidad(unidadAsociada.value)
+})
+
+const tarjetaDeshabilitada = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarTargetaCirculacion(unidadAsociada.value)
 })
 
 const esLicenciaVigente = computed(() => {
@@ -1136,6 +1255,116 @@ async function actualizarCampo(campo, valor) {
     Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+// ✅ AGREGAR ESTA NUEVA FUNCIÓN
+async function actualizarCampoUnidad(campo, valor) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    // Importar updateDoc y doc si no están importados
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      [campo]: valor,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar el estado local
+    unidadAsociada.value[campo] = valor
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Código actualizado correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaSeguro(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      SeguroUnidadFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.SeguroUnidadFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de seguro actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaTarjeta(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      TargetaCirculacionFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.TargetaCirculacionFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de tarjeta actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
       icon: 'error',
     })
   }
@@ -1543,16 +1772,7 @@ function mostrarMenuGrupo(event, grupo) {
   event.preventDefault()
   event.stopPropagation()
   grupoMenu.value = grupo
-  menuGrupoTarget.value = true // ✅ Solo un flag booleano
   menuGrupoVisible.value = true
-}
-
-function mostrarMenuConductor(event, conductor) {
-  event.preventDefault()
-  event.stopPropagation()
-  conductorMenu.value = conductor
-  menuConductorTarget.value = true // ✅ Solo un flag booleano
-  menuConductorVisible.value = true
 }
 
 function editarGrupo() {
@@ -2217,5 +2437,61 @@ function navegarAUnidad() {
 .expansion-item .q-item {
   font-weight: 500;
   color: #424242;
+}
+
+/* Estilos para los menús contextuales */
+
+.menu-contextual {
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  background: white;
+}
+
+.menu-item {
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.menu-item:hover {
+  background: linear-gradient(90deg, #f5f5f5 0%, #fafafa 100%);
+}
+
+.menu-item .q-item__section--avatar {
+  min-width: 32px;
+}
+
+.menu-item .q-icon {
+  font-size: 18px;
+}
+
+/* Mejorar el separador */
+.q-separator--inset {
+  margin-left: 48px;
+}
+
+.rounded-borders {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* Mejorar el diseño de la lista de grupos */
+.grupos-lista .q-item {
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.grupos-lista .q-item:hover {
+  background-color: #e3f2fd;
+  transform: translateX(4px);
+}
+
+.grupos-lista .q-item.q-item--active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 </style>

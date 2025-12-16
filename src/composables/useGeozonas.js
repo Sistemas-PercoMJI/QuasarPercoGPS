@@ -12,12 +12,73 @@ import {
 } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 
+// ⚡ CONSTANTES PARA MAPBOX
+const MAPBOX_TOKEN =
+  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+
+// ⚡ FUNCIÓN AUXILIAR: Obtener dirección de Mapbox
+const obtenerDireccionPunto = async (lat, lng) => {
+  try {
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address&language=es&limit=1&access_token=${MAPBOX_TOKEN}`,
+    )
+    const data = await response.json()
+
+    if (data.features && data.features.length > 0) {
+      const address = data.features[0]
+      const placeName = address.place_name || ''
+      const parts = placeName.split(',')
+
+      if (parts.length > 0) {
+        const streetPart = parts[0].trim()
+        const streetOnly = streetPart.replace(/^\d+\s*/, '').replace(/\s*\d+$/, '')
+        return streetOnly || 'Calle desconocida'
+      }
+    }
+
+    return 'Dirección no disponible'
+  } catch (error) {
+    console.error('❌ Error obteniendo dirección:', error)
+    return 'Error al obtener dirección'
+  }
+}
+
+// ⚡ FUNCIÓN: Agregar direcciones a los puntos
+const agregarDireccionesAPuntos = async (puntos) => {
+  if (!puntos || puntos.length === 0) {
+    return []
+  }
+
+  console.log(`📍 Obteniendo direcciones para ${puntos.length} puntos...`)
+
+  const puntosConDireccion = await Promise.all(
+    puntos.map(async (punto) => {
+      // Si ya tiene dirección, no hacer nada
+      if (punto.direccion) {
+        console.log(`✅ Punto ya tiene dirección: ${punto.direccion}`)
+        return punto
+      }
+
+      // Si no tiene, obtenerla de Mapbox
+      console.log(`🔍 Obteniendo dirección para: ${punto.lat}, ${punto.lng}`)
+      const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+
+      return {
+        ...punto,
+        direccion,
+      }
+    }),
+  )
+
+  console.log(`✅ Direcciones obtenidas para ${puntosConDireccion.length} puntos`)
+  return puntosConDireccion
+}
+
 export function useGeozonas(userId) {
   const geozonas = ref([])
   const loading = ref(false)
   const error = ref(null)
 
-  // ✅ MODIFICAR ESTA FUNCIÓN
   const obtenerGeozonas = async () => {
     loading.value = true
     error.value = null
@@ -34,12 +95,11 @@ export function useGeozonas(userId) {
       querySnapshot.forEach((doc) => {
         const data = doc.data()
 
-        // ✅ CORRECCIÓN: Hacer el spread PRIMERO, luego sobrescribir
         const geozona = {
-          ...data, // ← Primero todas las propiedades de Firebase
-          id: doc.id, // ← Agregar el ID
-          tipoGeozona: data.tipo, // ← Preservar el tipo original (circular/poligono)
-          tipo: 'geozona', // ← Sobrescribir con el tipo correcto para filtros
+          ...data,
+          id: doc.id,
+          tipoGeozona: data.tipo,
+          tipo: 'geozona',
         }
 
         console.log('📦 Geozona transformada:', geozona)
@@ -58,26 +118,31 @@ export function useGeozonas(userId) {
     }
   }
 
-  // ✅ TAMBIÉN MODIFICAR crearGeozona para que guarde correctamente
+  // ✅ MODIFICADA: crearGeozona ahora agrega direcciones automáticamente
   const crearGeozona = async (geozonaData) => {
     loading.value = true
     error.value = null
 
     try {
+      // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS ANTES DE GUARDAR
+      if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
+        console.log('🔄 Agregando direcciones a los puntos del polígono...')
+        geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
+      }
+
       const dataConUsuario = {
         ...geozonaData,
-        color: geozonaData.color || '#4ECDC4', // ✅ Color por defecto
+        color: geozonaData.color || '#4ECDC4',
         fechaCreacion: new Date(),
       }
 
       const docRef = await addDoc(collection(db, 'Usuarios', userId, 'Geozonas'), dataConUsuario)
 
-      // ✅ CORRECCIÓN: Estructura correcta al agregar localmente
       const nuevaGeozona = {
-        ...dataConUsuario, // ← Primero el spread
-        id: docRef.id, // ← Agregar ID
-        tipoGeozona: dataConUsuario.tipo, // ← Preservar tipo original
-        tipo: 'geozona', // ← Sobrescribir con el tipo correcto
+        ...dataConUsuario,
+        id: docRef.id,
+        tipoGeozona: dataConUsuario.tipo,
+        tipo: 'geozona',
       }
 
       geozonas.value.unshift(nuevaGeozona)
@@ -93,11 +158,18 @@ export function useGeozonas(userId) {
     }
   }
 
+  // ✅ MODIFICADA: actualizarGeozona también agrega direcciones si faltan
   const actualizarGeozona = async (id, geozonaData) => {
     loading.value = true
     error.value = null
 
     try {
+      // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS SI FALTAN
+      if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
+        console.log('🔄 Verificando direcciones en los puntos...')
+        geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
+      }
+
       const geozonaRef = doc(db, 'Usuarios', userId, 'Geozonas', id)
       await updateDoc(geozonaRef, geozonaData)
 
@@ -107,8 +179,8 @@ export function useGeozonas(userId) {
         geozonas.value[index] = {
           ...geozonas.value[index],
           ...geozonaData,
-          tipo: 'geozona', // ✅ NUEVO: Mantener el tipo
-          tipoGeozona: geozonaData.tipo || geozonas.value[index].tipoGeozona, // ✅ NUEVO
+          tipo: 'geozona',
+          tipoGeozona: geozonaData.tipo || geozonas.value[index].tipoGeozona,
         }
       }
 
@@ -141,6 +213,53 @@ export function useGeozonas(userId) {
     }
   }
 
+  // ⚡ NUEVA: Función para migrar geozonas existentes (ejecutar una sola vez)
+  const migrarGeozonasExistentes = async () => {
+    console.log('🔄 Iniciando migración de geozonas...')
+
+    try {
+      const geozonasRef = collection(db, 'Usuarios', userId, 'Geozonas')
+      const snapshot = await getDocs(geozonasRef)
+
+      let actualizadas = 0
+      let sinCambios = 0
+
+      for (const docSnap of snapshot.docs) {
+        const geozona = docSnap.data()
+
+        // Solo migrar geozonas poligonales
+        if (geozona.tipo === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+          // Verificar si los puntos ya tienen direcciones
+          const necesitaMigracion = geozona.puntos.some((p) => !p.direccion)
+
+          if (necesitaMigracion) {
+            console.log(`🔄 Migrando geozona: ${geozona.nombre}`)
+
+            const puntosConDireccion = await agregarDireccionesAPuntos(geozona.puntos)
+
+            await updateDoc(docSnap.ref, {
+              puntos: puntosConDireccion,
+            })
+
+            actualizadas++
+          } else {
+            console.log(`✅ Geozona "${geozona.nombre}" ya tiene direcciones`)
+            sinCambios++
+          }
+        }
+      }
+
+      console.log(`✅ Migración completada:`)
+      console.log(`  - Geozonas actualizadas: ${actualizadas}`)
+      console.log(`  - Geozonas sin cambios: ${sinCambios}`)
+
+      return { actualizadas, sinCambios }
+    } catch (error) {
+      console.error('❌ Error en migración:', error)
+      throw error
+    }
+  }
+
   return {
     geozonas,
     loading,
@@ -149,5 +268,6 @@ export function useGeozonas(userId) {
     crearGeozona,
     actualizarGeozona,
     eliminarGeozona,
+    migrarGeozonasExistentes, // ⬅️ NUEVA FUNCIÓN
   }
 }

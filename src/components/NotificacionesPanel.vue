@@ -1,5 +1,8 @@
 <template>
-  <q-card style="width: 380px; max-height: 500px" class="column no-wrap notification-panel">
+  <q-card
+    style="width: 340px; height: 400px; max-height: 80vh"
+    class="column no-wrap notification-panel"
+  >
     <!-- Header con gradiente -->
     <q-card-section
       class="row items-center text-white q-pa-sm header-animated"
@@ -27,17 +30,7 @@
           {{ notificacionesActivas.length }}
         </q-badge>
       </div>
-      <div
-        class="tab-item"
-        :class="{ active: vistaActual === 'importantes' }"
-        @click="vistaActual = 'importantes'"
-      >
-        <q-icon name="priority_high" size="18px" />
-        <span>Importantes</span>
-        <q-badge v-if="notificacionesImportantes.length > 0" color="orange" class="q-ml-xs">
-          {{ notificacionesImportantes.length }}
-        </q-badge>
-      </div>
+
       <div
         class="tab-item"
         :class="{ active: vistaActual === 'leidas' }"
@@ -51,7 +44,7 @@
     <q-separator />
 
     <!-- Contenido scrolleable según tab seleccionado -->
-    <q-scroll-area style="height: 380px" class="scroll-area-animated">
+    <q-scroll-area class="scroll-area-animated">
       <div
         v-if="notificacionesFiltradas.length === 0"
         class="q-pa-lg text-center text-grey-6 empty-state"
@@ -72,6 +65,8 @@
             :message="notif.message"
             :timestamp="notif.timestamp"
             :leida="notif.leida"
+            :map-image="notif.mapImage"
+            :map-url="notif.mapUrl"
             @close="removeNotification(notif.id)"
             @click="!notif.leida && marcarComoLeida(notif.id)"
             :style="{ transitionDelay: `${index * 50}ms` }"
@@ -120,12 +115,12 @@ import NotificationCard from './NotificationCard.vue'
 const {
   notificacionesActivas,
   notificacionesLeidas,
-  notificacionesImportantes,
+  // notificacionesImportantes,
   totalNoLeidas,
   marcarComoLeida,
   removeNotification,
   clearAll,
-  limpiarHistorial
+  limpiarHistorial,
 } = useNotifications()
 
 // Estado del tab activo
@@ -135,8 +130,6 @@ const vistaActual = ref('todas')
 const notificacionesFiltradas = computed(() => {
   if (vistaActual.value === 'todas') {
     return notificacionesActivas.value
-  } else if (vistaActual.value === 'importantes') {
-    return notificacionesImportantes.value
   } else if (vistaActual.value === 'leidas') {
     return notificacionesLeidas.value
   }
@@ -147,8 +140,12 @@ const notificacionesFiltradas = computed(() => {
 <style scoped>
 /* Animación del panel completo */
 .notification-panel {
-  animation: slideDown 0.3s ease-out;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+.notification-panel > * {
+  flex-shrink: 0;
 }
 
 @keyframes slideDown {
@@ -204,8 +201,8 @@ const notificacionesFiltradas = computed(() => {
 .modern-tabs {
   display: flex;
   background: #f5f5f5;
-  padding: 4px;
-  gap: 4px;
+  padding: 8px 12px;
+  gap: 8px;
 }
 
 .tab-item {
@@ -260,9 +257,39 @@ const notificacionesFiltradas = computed(() => {
 
 /* Animación del área de scroll */
 .scroll-area-animated {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 🎨 SCROLLBAR MODERNO Y DISCRETO */
+.scroll-area-animated :deep(.q-scrollarea__bar) {
+  width: 8px;
+  right: 0;
+  background: transparent;
+}
+
+.scroll-area-animated :deep(.q-scrollarea__thumb) {
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+  border-radius: 4px;
+  width: 4px !important;
+  right: 2px;
+  opacity: 0;
   transition: all 0.3s ease;
 }
 
+.scroll-area-animated:hover :deep(.q-scrollarea__thumb) {
+  opacity: 0.6;
+}
+
+.scroll-area-animated :deep(.q-scrollarea__thumb):hover {
+  opacity: 1 !important;
+  width: 6px !important;
+}
+
+.scroll-area-animated :deep(.q-scrollarea__content) {
+  padding-right: 8px;
+}
 /* Estado vacío animado */
 .empty-state {
   animation: fadeIn 0.5s ease-out;

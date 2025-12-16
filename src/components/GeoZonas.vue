@@ -814,9 +814,13 @@ const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
 
 // Usar el composable de Geozonas
-const { crearGeozona, obtenerGeozonas, actualizarGeozona, eliminarGeozona } = useGeozonas(
-  userId.value,
-)
+const {
+  crearGeozona,
+  obtenerGeozonas,
+  actualizarGeozona,
+  eliminarGeozona,
+  migrarGeozonasExistentes,
+} = useGeozonas(userId.value)
 
 // 🆕 NUEVO: Cargar eventos para mostrar badges
 const { obtenerEventos, eliminarEventosPorUbicacion } = useEventos(userId.value)
@@ -2404,6 +2408,7 @@ defineExpose({
   geozonas: computed(() => geozonas.value),
   obtenerPOIs,
   obtenerGeozonas,
+  migrarGeozonasExistentes,
 })
 </script>
 

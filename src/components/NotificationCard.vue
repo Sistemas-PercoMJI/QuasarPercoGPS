@@ -1,13 +1,29 @@
 <template>
   <q-card
     :class="['notification-card', `bg-${type}`, { leida: leida }]"
-    class="q-mb-sm q-pa-md shadow-2 rounded-borders"
+    class="q-mb-sm q-pa-sm shadow-2 rounded-borders"
   >
     <div class="row items-start">
       <q-icon :name="icon" size="md" class="q-mr-sm notification-icon" />
       <div class="col">
         <div class="text-subtitle2 text-weight-medium">{{ title }}</div>
         <div class="text-body2 q-mt-xs">{{ message }}</div>
+
+        <!-- 🆕 MAPA ESTÁTICO SI EXISTE -->
+        <div v-if="mapImage" class="map-preview q-mt-sm" @click="abrirMapaCompleto">
+          <img
+            :src="mapImage"
+            alt="Mapa del evento"
+            class="map-image"
+            crossorigin="anonymous"
+            @error="handleImageError"
+          />
+          <div class="map-overlay">
+            <q-icon name="place" size="16px" />
+            <span class="text-caption">Ver ubicación</span>
+          </div>
+        </div>
+
         <div class="text-caption text-grey-7 q-mt-sm">
           <q-icon name="access_time" size="14px" class="q-mr-xs" />
           {{ tiempoTranscurrido }}
@@ -27,6 +43,8 @@ const props = defineProps({
   message: { type: String, default: '' },
   timestamp: { type: Number, default: Date.now },
   leida: { type: Boolean, default: false },
+  mapImage: { type: String, default: null }, // 🆕 IMAGEN DEL MAPA EN BASE64
+  mapUrl: { type: String, default: null }, // 🆕 URL DEL MAPA COMPLETO
 })
 
 const emit = defineEmits(['close'])
@@ -61,6 +79,22 @@ function actualizarTiempo() {
   }
 }
 
+// 🆕 FUNCIÓN PARA ABRIR MAPA EN NUEVA PESTAÑA
+function abrirMapaCompleto() {
+  if (props.mapUrl) {
+    window.open(props.mapUrl, '_blank')
+  }
+}
+
+// 🆕 FUNCIÓN PARA MANEJAR ERRORES DE CARGA DE IMAGEN
+function handleImageError(event) {
+  console.warn('⚠️ Error cargando imagen del mapa, intentando URL directa')
+  // Si falla, intentar con la URL directa con timestamp
+  if (props.mapUrl && event.target.src !== props.mapUrl) {
+    event.target.src = `${props.mapUrl}&t=${Date.now()}`
+  }
+}
+
 onMounted(() => {
   actualizarTiempo()
   intervalId = setInterval(actualizarTiempo, 60000) // Actualizar cada minuto
@@ -78,13 +112,6 @@ function handleClose() {
 </script>
 
 <style scoped>
-.notification-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  border-left: 4px solid rgba(0, 0, 0, 0.2);
-  opacity: 1;
-}
-
 /* 🎨 COLORES PERSONALIZADOS SUTILES - CON !important */
 .notification-card.bg-positive {
   background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%) !important;
@@ -179,5 +206,87 @@ function handleClose() {
   opacity: 1;
   transform: rotate(90deg) scale(1.1);
   background: rgba(0, 0, 0, 0.1);
+}
+
+.notification-card {
+  padding: 8px 10px !important;
+}
+
+.notification-card :deep(.text-subtitle2) {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.notification-card :deep(.text-body2) {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+}
+
+.notification-card :deep(.text-caption) {
+  font-size: 10px !important;
+}
+
+.notification-icon {
+  font-size: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* 🆕 ESTILOS PARA EL MAPA ESTÁTICO */
+.map-preview {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-preview:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.map-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.map-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  color: white;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-weight: 600;
+}
+
+.map-preview:hover .map-overlay {
+  opacity: 1;
+}
+
+.map-overlay .q-icon {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 </style>

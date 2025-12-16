@@ -200,7 +200,13 @@
           </q-badge>
           <q-tooltip>Notificaciones</q-tooltip>
 
-          <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+          <q-menu
+            anchor="bottom right"
+            self="top right"
+            :offset="[0, 8]"
+            content-class="no-scroll"
+            max-height="500px"
+          >
             <NotificacionesPanel />
           </q-menu>
         </q-btn>
@@ -1588,7 +1594,6 @@ function procesarResultado(resultado) {
   }
 }
 </script>
-
 <style scoped>
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
@@ -1716,8 +1721,8 @@ function procesarResultado(resultado) {
 }
 
 .search-container {
-  width: 500px; /* <-- AQUÍ defines el ancho */
-  max-width: 60vw; /* <-- Ancho máximo en pantallas pequeñas */
+  width: 500px;
+  max-width: 60vw;
   margin-left: 24px;
   border-radius: 500px;
 }
@@ -1759,12 +1764,12 @@ function procesarResultado(resultado) {
 /* Asegurar que el componente ocupe todo el espacio disponible */
 .component-card :deep(> *) {
   flex: 1;
-  min-height: 0; /* Importante para flexbox en algunos navegadores */
+  min-height: 0;
 }
 
 /* Ajustar posición del dialog para que empiece justo debajo del header */
 :deep(.component-dialog .q-dialog__inner) {
-  padding-top: 76px !important; /* Altura aproximada del header */
+  padding-top: 76px !important;
 }
 
 :deep(.component-dialog .q-card) {
@@ -1789,5 +1794,28 @@ function procesarResultado(resultado) {
 
 .sugerencias-menu {
   z-index: 9999 !important;
+}
+
+/* 🎨 FIX SCROLL EXTERNO EN MENU DE NOTIFICACIONES - ACTUALIZADO */
+:deep(.notif-menu-custom) {
+  overflow: hidden !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+:deep(.notif-menu-custom .q-card) {
+  overflow: hidden !important;
+}
+
+:deep(.q-menu__content) {
+  overflow: hidden !important;
+}
+
+:deep(.q-menu) {
+  overflow: hidden !important;
+}
+
+:deep(.q-menu .q-card) {
+  overflow: hidden !important;
 }
 </style>
