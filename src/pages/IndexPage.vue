@@ -1192,6 +1192,45 @@ onMounted(async () => {
         }, 2000)
 
         const mapPage = document.getElementById('map-page')
+
+        if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+          mapPage._mapaAPI.map.on('click', (e) => {
+            // Verificar si se hizo click en un marcador
+            const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
+
+            if (clickEnMarcador) {
+              return // Dejar que el marcador maneje su popup
+            }
+
+            // Verificar si se hizo click en una capa interactiva
+            const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
+            const clickEnCapa = features.some(
+              (feature) =>
+                feature.layer.id.startsWith('poi-circle-') ||
+                feature.layer.id.startsWith('geozona-circle-') ||
+                feature.layer.id.startsWith('geozona-polygon-'),
+            )
+
+            if (!clickEnCapa) {
+              // Cerrar popup global (geozonas y POIs)
+              if (popupGlobalActivo) {
+                popupGlobalActivo.remove()
+                popupGlobalActivo = null
+              }
+
+              // Cerrar TODOS los popups del mapa (incluyendo unidades)
+              const allPopups = document.querySelectorAll('.mapboxgl-popup')
+              allPopups.forEach((popupEl) => {
+                // Buscar el botón de cerrar y hacer click
+                const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
+                if (closeBtn) {
+                  closeBtn.click()
+                }
+              })
+            }
+          })
+        }
+
         if (mapPage) {
           mapPage.addEventListener('click', (event) => {
             if (!event || !event.target) {
