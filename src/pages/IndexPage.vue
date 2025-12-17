@@ -542,12 +542,45 @@ function actualizarMarcadorUsuario(lat, lng) {
       "></div>
     `
 
+    // ✅ NUEVO: Popup mejorado con el estilo de tus POIs
+    const popupContent = `
+      <div class="ubicacion-popup-container">
+        <div class="ubicacion-popup-header">
+          <div class="header-info">
+            <div class="header-title">📍 Tu ubicación</div>
+            <div class="header-divider"></div>
+            <div class="header-subtitle">Ubicación actual GPS</div>
+          </div>
+        </div>
+
+        <div class="ubicacion-popup-body">
+          <div class="coords-info">
+            <div class="coord-row">
+              <span class="coord-label">Latitud:</span>
+              <span class="coord-value">${lat.toFixed(6)}</span>
+            </div>
+            <div class="coord-row">
+              <span class="coord-label">Longitud:</span>
+              <span class="coord-value">${lng.toFixed(6)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+
+    const popup = new mapboxgl.Popup({
+      offset: 25,
+      className: 'popup-animated',
+      closeButton: true,
+      closeOnClick: false,
+    }).setHTML(popupContent)
+
     marcadorUsuario.value = new mapboxgl.Marker({
       element: markerEl,
       anchor: 'center',
     })
       .setLngLat([lng, lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML('<b>📍 Tu ubicación</b>'))
+      .setPopup(popup)
       .addTo(map)
   }
 }
@@ -1873,6 +1906,68 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 
 .unidad-popup-container.expanded .chevron-icon {
   transform: rotate(180deg);
+}
+
+.ubicacion-popup-container {
+  min-width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background-color: #ffffff;
+}
+
+.ubicacion-popup-header {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-bottom: 1px solid #90caf9;
+}
+
+.ubicacion-popup-body {
+  padding: 16px;
+}
+
+.coords-info {
+  background-color: #f5f9ff;
+  border: 1px solid #e3f2fd;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 4px;
+}
+
+.coord-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.coord-row:first-child {
+  padding-top: 0;
+  border-bottom: 1px solid #e3f2fd;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.coord-row:last-child {
+  padding-bottom: 0;
+  padding-top: 8px;
+}
+
+.coord-label {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.coord-value {
+  color: #0d47a1;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  background-color: #e3f2fd;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 </style>
 
