@@ -293,6 +293,17 @@
         </q-list>
       </q-menu>
     </q-btn>
+    <q-btn
+      fab
+      color="primary"
+      icon="my_location"
+      class="recenter-btn"
+      padding="sm"
+      border-color="#000000"
+      @click="recentrarEnUsuario"
+    >
+      <q-tooltip>Centrar en mi ubicación</q-tooltip>
+    </q-btn>
 
     <transition name="fade-scale">
       <div v-if="mostrarBotonConfirmarGeozona" class="floating-buttons-container">
@@ -1158,10 +1169,109 @@ const limpiarCapasDelMapa = () => {
   })
 }
 
+const inicializarMapaConUbicacion = async () => {
+  return new Promise((resolve) => {
+    // ✅ Coordenadas por defecto (MJ Industrias como fallback)
+    const defaultCoords = [32.504421823945805, -116.9514484543167]
+    const defaultZoom = 13
+
+    if (!navigator.geolocation) {
+      // No hay GPS, usar ubicación por defecto
+      console.warn('⚠️ Geolocalización no disponible, usando ubicación por defecto')
+      initMap('map', defaultCoords, defaultZoom).then(resolve)
+      return
+    }
+
+    // ✅ Intentar obtener ubicación del usuario (RÁPIDO - solo 5 segundos)
+    const timeoutId = setTimeout(() => {
+      // Si tarda más de 5 segundos, usar ubicación por defecto
+      console.warn('⏱️ GPS tardando, iniciando con ubicación por defecto')
+      initMap('map', defaultCoords, defaultZoom).then(resolve)
+    }, 5000)
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        clearTimeout(timeoutId)
+        const { latitude, longitude } = position.coords
+
+        console.log(`✅ Mapa centrado en ubicación del usuario: ${latitude}, ${longitude}`)
+
+        // ✅ Inicializar mapa en la ubicación del usuario
+        await initMap('map', [latitude, longitude], 14) // Zoom 14 para ver mejor el área
+
+        $q.notify({
+          type: 'positive',
+          message: '📍 Mapa centrado en tu ubicación',
+          position: 'top',
+          timeout: 2000,
+          icon: 'my_location',
+        })
+
+        resolve()
+      },
+      (error) => {
+        clearTimeout(timeoutId)
+        console.warn('⚠️ No se pudo obtener ubicación:', error.message)
+
+        // Usar ubicación por defecto
+        initMap('map', defaultCoords, defaultZoom).then(resolve)
+
+        // Notificar al usuario
+        $q.notify({
+          type: 'info',
+          message: '📍 Usando ubicación por defecto',
+          caption: 'Permite el acceso a GPS para centrar en tu ubicación',
+          position: 'top',
+          timeout: 3000,
+          icon: 'map',
+        })
+      },
+      {
+        enableHighAccuracy: false, // ✅ Más rápido, menos preciso (solo para centrar mapa)
+        timeout: 4000, // ✅ Solo 4 segundos para no hacer esperar al usuario
+        maximumAge: 60000, // ✅ Puede usar ubicación de hasta 1 minuto atrás
+      },
+    )
+  })
+}
+
+const recentrarEnUsuario = () => {
+  if (!marcadorUsuario.value) {
+    $q.notify({
+      type: 'warning',
+      message: '⚠️ Ubicación GPS no disponible',
+      caption: 'Esperando señal GPS...',
+      position: 'top',
+      timeout: 2000,
+    })
+    return
+  }
+
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
+
+  const coords = marcadorUsuario.value.getLngLat()
+
+  mapPage._mapaAPI.map.flyTo({
+    center: [coords.lng, coords.lat],
+    zoom: 15,
+    duration: 1500, // Animación suave de 1.5 segundos
+    essential: true,
+  })
+
+  $q.notify({
+    type: 'positive',
+    message: '🎯 Centrado en tu ubicación',
+    position: 'top',
+    timeout: 1500,
+    icon: 'my_location',
+  })
+}
+
 onMounted(async () => {
   try {
     requestAnimationFrame(async () => {
-      await initMap('map', [32.504421823945805, -116.9514484543167], 13)
+      await inicializarMapaConUbicacion()
 
       setTimeout(async () => {
         mapaListo.value = true
@@ -1972,6 +2082,26 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 </style>
 
 <style scoped>
+.recenter-btn {
+  position: fixed !important;
+  top: 145px;
+  right: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 12px !important;
+  border: 3px solid #ffffff !important;
+}
+
+.recenter-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  width: 45px !important;
+  height: 45px !important;
+}
+
 .full-height {
   height: 100%;
   overflow: hidden;
