@@ -547,7 +547,7 @@ function actualizarMarcadorUsuario(lat, lng) {
       <div class="ubicacion-popup-container">
         <div class="ubicacion-popup-header">
           <div class="header-info">
-            <div class="header-title">📍 Tu ubicación</div>
+            <div class="header-title">Tu ubicación</div>
             <div class="header-divider"></div>
             <div class="header-subtitle">Ubicación actual GPS</div>
           </div>
