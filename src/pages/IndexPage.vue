@@ -5,7 +5,8 @@
     <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
     <q-btn
       unelevated
-      color="primary"
+      style="background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%) !important"
+      text-color="white"
       icon="layers"
       class="layers-menu-btn"
       padding="sm"
@@ -295,8 +296,9 @@
     </q-btn>
     <q-btn
       fab
-      color="primary"
+      style="background: linear-gradient(135deg, #bb0000 30%, #bb5e00 70%) !important"
       icon="my_location"
+      text-color="white"
       class="recenter-btn"
       padding="sm"
       border-color="#000000"
