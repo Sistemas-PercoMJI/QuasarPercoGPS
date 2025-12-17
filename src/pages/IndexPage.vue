@@ -647,22 +647,15 @@ function crearIconoPOI(tieneEventos = false) {
           ? `
         <div style="
           position: absolute;
-          top: -4px;
-          right: -4px;
-          width: 18px;
-          height: 18px;
-          background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+          top: -3px;
+          right: -1px;
+          width: 15px;
+          height: 15px;
+          background:#FF9800;
           border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 10px;
-          animation: pulse-badge 2s infinite;
-        ">
-          🔔
-        </div>
+          border: 3px solid #FFFFFF;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        "></div>
       `
           : ''
       }
@@ -704,22 +697,15 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
           ? `
         <div style="
           position: absolute;
-          top: -2px;
-          right: -2px;
-          width: 16px;
-          height: 16px;
-          background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+          top: -3px;
+          right: -1px;
+          width: 15px;
+          height: 15px;
+          background: #FF9800;
           border-radius: 50%;
-          border: 2px solid white;
-          box-shadow: 0 2px 6px rgba(255, 87, 34, 0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 9px;
-          animation: pulse-badge 2s infinite;
-        ">
-          🔔
-        </div>
+          border: 3px solid #FFFFFF;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        "></div>
       `
           : ''
       }
@@ -732,7 +718,6 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
 
   return markerEl
 }
-
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
