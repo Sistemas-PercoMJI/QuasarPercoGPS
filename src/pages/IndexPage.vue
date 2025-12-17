@@ -1511,16 +1511,15 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   border-radius: 50% !important;
   font-size: 18px !important;
   font-weight: bold !important;
-
   transition: all 0.3s ease !important;
 
-  /* Posición */
   top: 14px !important;
-  left: 10px !important;
+  left: 14px !important;
 
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  z-index: 10 !important;
 }
 
 .mapboxgl-popup-close-button:hover {
@@ -1802,7 +1801,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .unidad-popup-container {
-  min-width: 280px;
+  min-width: 320px !important; /* ✅ Aumentado de 280px a 320px */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   border-radius: 12px;
   overflow: hidden;
@@ -1818,9 +1817,8 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  max-width: 220px; /* ✅ Ancho máximo para que no empuje el layout */
 }
-
 .unidad-popup-header {
   display: flex;
   align-items: center;
@@ -1834,17 +1832,22 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: 40px; /* ✅ Espacio para la X */
+  flex: 1; /* ✅ Ocupar espacio disponible */
+  min-width: 0; /* ✅ Permitir que el texto se ajuste */
 }
-
 .unidad-icon {
-  width: 40px;
-  height: 40px;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important; /* ✅ Ancho mínimo */
+  min-height: 40px !important; /* ✅ Alto mínimo */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0; /* ✅ NO permitir que se encoja */
 }
 
 .unidad-texto strong {
