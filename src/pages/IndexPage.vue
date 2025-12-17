@@ -339,7 +339,7 @@ import mapboxgl from 'mapbox-gl'
 
 const {
   initMap,
-  addMarker,
+  // addMarker,
   cleanup,
   toggleTrafico,
   cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
@@ -1131,10 +1131,6 @@ onMounted(async () => {
       await initMap('map', [32.504421823945805, -116.9514484543167], 13)
 
       setTimeout(async () => {
-        addMarker(32.504421823945805, -116.9514484543167, {
-          popup: '<b>MJ Industrias</b><br>Ubicación principal',
-        })
-
         mapaListo.value = true
 
         window.abrirDetallesUbicacion = (ubicacionData) => {
