@@ -1197,8 +1197,6 @@ const inicializarMapaConUbicacion = async () => {
         clearTimeout(timeoutId)
         const { latitude, longitude } = position.coords
 
-        console.log(`✅ Mapa centrado en ubicación del usuario: ${latitude}, ${longitude}`)
-
         // ✅ Inicializar mapa en la ubicación del usuario
         await initMap('map', [latitude, longitude], 14) // ✅ Sin .then()
 
