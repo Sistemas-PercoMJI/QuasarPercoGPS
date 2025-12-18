@@ -1629,43 +1629,33 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .mapboxgl-popup-close-button {
+  position: absolute !important;
+  top: 14px !important;
+  left: 14px !important;
   background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280;
+  border: 1px solid #6b7280 !important;
   width: 28px !important;
   height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
   padding: 0 !important;
   border-radius: 50% !important;
   font-size: 18px !important;
   font-weight: bold !important;
   transition: all 0.3s ease !important;
-
-  top: 14px !important;
-  left: 14px !important;
-
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   z-index: 10 !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
 }
 
 .mapboxgl-popup-close-button:hover {
-  background:
-    linear-gradient(#e5e7eb, #e5e7eb) padding-box,
-    conic-gradient(
-        from 0deg,
-        #6b7280 0deg,
-        #4b5563 60deg,
-        #6b7280 120deg,
-        #6b7280 180deg,
-        #4b5563 240deg,
-        #6b7280 300deg,
-        #6b7280 360deg
-      )
-      border-box !important;
-  color: #374151 !important;
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
   transform: scale(1.05) !important;
 }
-
 .geozona-popup-container {
   min-width: 260px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -1889,8 +1879,11 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   flex: 1;
 }
 
-.popup-animated .mapboxgl-popup-content {
-  animation: popupFade 0.2s ease-out;
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  background-color: #ffffff !important;
 }
 
 .popup-section {
@@ -1927,28 +1920,32 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .unidad-popup-container {
-  min-width: 320px !important; /* ✅ Aumentado de 280px a 320px */
+  min-width: 320px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
 }
+.unidad-popup-container .mapboxgl-popup-close-button {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  order: -1 !important;
+}
 
 .unidad-direccion {
   font-size: 12px;
-  color: #374151;
-  margin-top: 4px;
+  color: #6b7280;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px; /* ✅ Ancho máximo para que no empuje el layout */
 }
 .unidad-popup-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   padding: 12px 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -1956,50 +1953,67 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 
 .unidad-info {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: 40px; /* ✅ Espacio para la X */
-  flex: 1; /* ✅ Ocupar espacio disponible */
-  min-width: 0; /* ✅ Permitir que el texto se ajuste */
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  order: 1 !important;
 }
 .unidad-icon {
   width: 40px !important;
   height: 40px !important;
-  min-width: 40px !important; /* ✅ Ancho mínimo */
-  min-height: 40px !important; /* ✅ Alto mínimo */
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  flex-shrink: 0; /* ✅ NO permitir que se encoja */
+  min-width: 40px !important;
+  min-height: 40px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 2px solid white !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  flex-shrink: 0 !important;
+  order: 0 !important;
 }
-
 .unidad-texto strong {
   font-size: 15px;
   color: #1f2937;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
 .unidad-texto div {
   font-size: 12px;
   color: #6b7280;
 }
 
 .toggle-popup-btn {
-  background: none;
-  border: none;
+  background: #f3f4f6 !important;
+  border: 1px solid #6b7280 !important;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition:
-    background-color 0.2s,
-    transform 0.2s;
+  padding: 4px !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+  flex-shrink: 0 !important;
+  order: 2 !important;
 }
 
 .toggle-popup-btn:hover {
-  background-color: #e5e7eb;
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
+.toggle-popup-btn .chevron-icon {
+  transition: transform 0.3s ease-in-out;
+}
+.unidad-popup-container.expanded .toggle-popup-btn .chevron-icon {
+  transform: rotate(180deg);
 }
 
 .unidad-popup-body {
