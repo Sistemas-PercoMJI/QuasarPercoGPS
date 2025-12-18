@@ -1663,6 +1663,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
+  padding-bottom: 12px;
 }
 
 .geozona-popup-header {
@@ -1804,8 +1805,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 
 .details-btn {
   width: 100%;
-  padding: 18px 12px;
-  margin-bottom: 16px;
+  padding: 12px;
   background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
   color: white;
   border: none;
@@ -1815,6 +1815,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   font-size: 14px;
   transition: all 0.2s ease;
   box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+  margin-top: 8px;
 }
 .details-btn:hover {
   transform: translateY(-2px);
@@ -1889,9 +1890,13 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 .popup-section {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 8px 0;
   font-size: 13px;
   border-bottom: 1px solid #f3f4f6;
+}
+.popup-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 12px;
 }
 
 .popup-section:last-child {
@@ -1906,6 +1911,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 .popup-section .value {
   color: #1f2937;
   font-weight: 600;
+  text-align: right;
 }
 
 @keyframes popupFade {
@@ -1921,44 +1927,83 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 
 .unidad-popup-container {
   min-width: 320px !important;
+  max-width: 380px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   background-color: #ffffff;
 }
+
 .unidad-popup-container .mapboxgl-popup-close-button {
-  position: relative !important;
+  position: static !important;
   top: auto !important;
   left: auto !important;
+  background-color: #f3f4f6 !important;
+  border: 1px solid #6b7280 !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
   order: -1 !important;
+  align-self: flex-start !important; /* ✅ Clave: alinear arriba */
+  margin-right: 8px !important; /* ✅ Espacio hacia la derecha */
+  margin-top: 2px !important; /* ✅ Alinear con primera línea del texto */
 }
 
+.unidad-popup-container .mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
 .unidad-direccion {
   font-size: 12px;
   color: #6b7280;
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .unidad-popup-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
-
+.unidad-header-row {
+  display: flex;
+  align-items: flex-start; /* ✅ Cambio clave: permite múltiples líneas */
+  gap: 10px;
+  width: 100%;
+}
+.unidad-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  width: 100%;
+}
 .unidad-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
-  order: 1 !important;
 }
+/* ✅ Ícono del vehículo */
 .unidad-icon {
   width: 40px !important;
   height: 40px !important;
@@ -1971,15 +2016,23 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   border: 2px solid white !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
   flex-shrink: 0 !important;
-  order: 0 !important;
+}
+.unidad-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+}
+.unidad-texto {
+  flex: 1;
+  min-width: 0;
 }
 .unidad-texto strong {
   font-size: 15px;
   color: #1f2937;
+  font-weight: 700;
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .unidad-texto div {
   font-size: 12px;
@@ -1990,7 +2043,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   background: #f3f4f6 !important;
   border: 1px solid #6b7280 !important;
   cursor: pointer;
-  padding: 4px !important;
+  padding: 0 !important;
   border-radius: 50% !important;
   width: 28px !important;
   height: 28px !important;
@@ -2001,7 +2054,7 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   justify-content: center !important;
   transition: all 0.3s ease !important;
   flex-shrink: 0 !important;
-  order: 2 !important;
+  margin-top: 2px;
 }
 
 .toggle-popup-btn:hover {
@@ -2011,11 +2064,19 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 .toggle-popup-btn .chevron-icon {
   transition: transform 0.3s ease-in-out;
+  pointer-events: none;
 }
 .unidad-popup-container.expanded .toggle-popup-btn .chevron-icon {
   transform: rotate(180deg);
 }
-
+.unidad-placa {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .unidad-popup-body {
   max-height: 0;
   overflow: hidden;
@@ -2024,10 +2085,13 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
     padding 0.4s ease-in-out;
   padding: 0 16px;
 }
-
 .unidad-popup-container.expanded .unidad-popup-body {
-  max-height: 400px;
+  max-height: 500px;
   padding: 16px;
+}
+.unidad-popup-container .mapboxgl-popup-content {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .unidad-popup-container.expanded .chevron-icon {

@@ -158,20 +158,13 @@ export function useMapboxGL() {
     const popupId = `popup-unidad-${unidadId}`
 
     const popupContent = `
-    <div id="${popupId}" class="unidad-popup-container">
-      <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
-      <div class="unidad-popup-header">
-        <div class="unidad-info">
-          <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-              <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-            </svg>
-          </div>
-          <div class="unidad-texto">
-            <strong>${unidad.conductorNombre}</strong>
-            <div>${unidad.unidadNombre}</div>
-            <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
-          </div>
+  <div id="${popupId}" class="unidad-popup-container">
+    <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
+    <div class="unidad-popup-header">
+      <!-- ✅ Primera fila: Nombre del conductor + Chevron -->
+      <div class="unidad-header-row">
+        <div class="unidad-texto">
+          <strong>${unidad.conductorNombre}</strong>
         </div>
         <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -180,35 +173,49 @@ export function useMapboxGL() {
         </button>
       </div>
 
-      <!-- CUERPO (OCULTO POR DEFECTO) -->
-      <div class="unidad-popup-body">
-        <div class="popup-section">
-          <span class="label">Estado:</span>
-          <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+      <!-- ✅ Segunda fila: (Unidad + Dirección) | Ícono -->
+      <div class="unidad-info-row">
+        <div class="unidad-info">
+          <div class="unidad-placa">${unidad.unidadNombre}</div>
+          <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
         </div>
-        <div class="popup-section">
-          <span class="label">Velocidad:</span>
-          <span class="value">${unidad.velocidad || 0} km/h</span>
+        <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
         </div>
-        <div class="popup-section">
-          <span class="label">Batería:</span>
-          <span class="value">${unidad.bateria || 0}%</span>
-        </div>
-        <div class="popup-section">
-          <span class="label">Coordenadas:</span>
-          <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
-        </div>
-
-        <button
-          class="details-btn"
-          data-action="ver-detalles-conductor"
-          data-conductor-id="${unidad.conductorId || unidad.id}"
-          data-conductor-nombre="${unidad.conductorNombre}"
-        >
-          Ver Detalles del Conductor
-        </button>
       </div>
     </div>
+
+    <!-- CUERPO (OCULTO POR DEFECTO) -->
+    <div class="unidad-popup-body">
+      <div class="popup-section">
+        <span class="label">Estado:</span>
+        <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Velocidad:</span>
+        <span class="value">${unidad.velocidad || 0} km/h</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Batería:</span>
+        <span class="value">${unidad.bateria || 0}%</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Coordenadas:</span>
+        <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
+      </div>
+
+      <button
+        class="details-btn"
+        data-action="ver-detalles-conductor"
+        data-conductor-id="${unidad.conductorId || unidad.id}"
+        data-conductor-nombre="${unidad.conductorNombre}"
+      >
+        Ver Detalles del Conductor
+      </button>
+    </div>
+  </div>
   `
 
     return popupContent
