@@ -1172,23 +1172,24 @@ const limpiarCapasDelMapa = () => {
 }
 
 const inicializarMapaConUbicacion = async () => {
+  // ✅ Coordenadas por defecto (MJ Industrias como fallback)
+  const defaultCoords = [32.504421823945805, -116.9514484543167]
+  const defaultZoom = 13
+
+  if (!navigator.geolocation) {
+    // No hay GPS, usar ubicación por defecto
+    console.warn('⚠️ Geolocalización no disponible, usando ubicación por defecto')
+    await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
+    return
+  }
+
+  // ✅ Intentar obtener ubicación del usuario (RÁPIDO - solo 5 segundos)
   return new Promise((resolve) => {
-    // ✅ Coordenadas por defecto (MJ Industrias como fallback)
-    const defaultCoords = [32.504421823945805, -116.9514484543167]
-    const defaultZoom = 13
-
-    if (!navigator.geolocation) {
-      // No hay GPS, usar ubicación por defecto
-      console.warn('⚠️ Geolocalización no disponible, usando ubicación por defecto')
-      initMap('map', defaultCoords, defaultZoom).then(resolve)
-      return
-    }
-
-    // ✅ Intentar obtener ubicación del usuario (RÁPIDO - solo 5 segundos)
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(async () => {
       // Si tarda más de 5 segundos, usar ubicación por defecto
       console.warn('⏱️ GPS tardando, iniciando con ubicación por defecto')
-      initMap('map', defaultCoords, defaultZoom).then(resolve)
+      await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
+      resolve()
     }, 5000)
 
     navigator.geolocation.getCurrentPosition(
@@ -1199,7 +1200,7 @@ const inicializarMapaConUbicacion = async () => {
         console.log(`✅ Mapa centrado en ubicación del usuario: ${latitude}, ${longitude}`)
 
         // ✅ Inicializar mapa en la ubicación del usuario
-        await initMap('map', [latitude, longitude], 14) // Zoom 14 para ver mejor el área
+        await initMap('map', [latitude, longitude], 14) // ✅ Sin .then()
 
         $q.notify({
           type: 'positive',
@@ -1211,12 +1212,12 @@ const inicializarMapaConUbicacion = async () => {
 
         resolve()
       },
-      (error) => {
+      async (error) => {
         clearTimeout(timeoutId)
         console.warn('⚠️ No se pudo obtener ubicación:', error.message)
 
         // Usar ubicación por defecto
-        initMap('map', defaultCoords, defaultZoom).then(resolve)
+        await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
 
         // Notificar al usuario
         $q.notify({
@@ -1227,11 +1228,13 @@ const inicializarMapaConUbicacion = async () => {
           timeout: 3000,
           icon: 'map',
         })
+
+        resolve()
       },
       {
-        enableHighAccuracy: false, // ✅ Más rápido, menos preciso (solo para centrar mapa)
-        timeout: 4000, // ✅ Solo 4 segundos para no hacer esperar al usuario
-        maximumAge: 60000, // ✅ Puede usar ubicación de hasta 1 minuto atrás
+        enableHighAccuracy: false,
+        timeout: 4000,
+        maximumAge: 60000,
       },
     )
   })
