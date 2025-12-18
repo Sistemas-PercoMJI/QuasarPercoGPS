@@ -53,8 +53,6 @@ export function useRutaDiaria() {
           const ahora = Date.now()
 
           if (ahora - ultimoTimestamp < MIN_INTERVALO_MS) {
-            const segundosTranscurridos = Math.round((ahora - ultimoTimestamp) / 1000)
-            console.log(`Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`)
             debeAgregar = false
           }
         }
