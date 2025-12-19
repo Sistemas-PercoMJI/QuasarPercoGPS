@@ -1171,7 +1171,7 @@ const limpiarCapasDelMapa = () => {
   })
 }
 
-const inicializarMapaConUbicacion = async () => {
+/*const inicializarMapaConUbicacion = async () => {
   // ✅ Coordenadas por defecto (MJ Industrias como fallback)
   const defaultCoords = [32.504421823945805, -116.9514484543167]
   const defaultZoom = 13
@@ -1236,7 +1236,7 @@ const inicializarMapaConUbicacion = async () => {
       },
     )
   })
-}
+}*/
 
 const recentrarEnUsuario = () => {
   if (!marcadorUsuario.value) {
@@ -1273,193 +1273,253 @@ const recentrarEnUsuario = () => {
 
 onMounted(async () => {
   try {
-    requestAnimationFrame(async () => {
-      await inicializarMapaConUbicacion()
+    // ✅ PASO 1: Inicializar mapa INMEDIATAMENTE (sin esperar GPS)
+    const defaultCoords = [32.504421823945805, -116.9514484543167]
+    const defaultZoom = 13
 
-      setTimeout(async () => {
-        mapaListo.value = true
+    await initMap('map', defaultCoords, defaultZoom)
 
-        window.abrirDetallesUbicacion = (ubicacionData) => {
-          try {
-            if (ubicacionData.tipo === 'poi') {
-              const poi = poisCargados.value.find((p) => p.id === ubicacionData.id)
-              if (poi) {
-                abrirGeozonasConPOI(poi)
-              } else {
-                console.error('❌ POI no encontrado:', ubicacionData.id)
-              }
-            } else if (ubicacionData.tipo === 'geozona') {
-              const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
-              if (geozona) {
-                abrirGeozonasConPOI(geozona)
-              } else {
-                console.error('❌ Geozona no encontrada:', ubicacionData.id)
-              }
-            }
-          } catch (error) {
-            console.error('❌ Error al abrir detalles:', error)
+    // ✅ PASO 2: Esperar a que el mapa esté completamente cargado
+    const mapPage = document.getElementById('map-page')
+    if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+      console.error('❌ Error: Mapa no inicializado correctamente')
+      return
+    }
+
+    // ✅ PASO 3: Esperar al evento 'load' del mapa antes de continuar
+    await new Promise((resolve) => {
+      if (mapPage._mapaAPI.map.loaded()) {
+        resolve()
+      } else {
+        mapPage._mapaAPI.map.once('load', resolve)
+      }
+    })
+
+    // ✅ PASO 4: AHORA sí, marcar como listo y dibujar todo
+    mapaListo.value = true
+
+    // ✅ PASO 5: Configurar funciones globales
+    window.abrirDetallesUbicacion = (ubicacionData) => {
+      try {
+        if (ubicacionData.tipo === 'poi') {
+          const poi = poisCargados.value.find((p) => p.id === ubicacionData.id)
+          if (poi) {
+            abrirGeozonasConPOI(poi)
+          } else {
+            console.error('❌ POI no encontrado:', ubicacionData.id)
+          }
+        } else if (ubicacionData.tipo === 'geozona') {
+          const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
+          if (geozona) {
+            abrirGeozonasConPOI(geozona)
+          } else {
+            console.error('❌ Geozona no encontrada:', ubicacionData.id)
           }
         }
+      } catch (error) {
+        console.error('❌ Error al abrir detalles:', error)
+      }
+    }
 
-        window.verDetallesPOI = (poiId) => {
-          window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
+    window.verDetallesPOI = (poiId) => {
+      window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
+    }
+
+    window.verDetallesGeozona = (geozonaId) => {
+      window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
+    }
+
+    // ✅ PASO 6: Dibujar POIs y Geozonas
+    await dibujarTodosEnMapa()
+
+    // ✅ PASO 7: Inicializar sistema de detección
+    await inicializarSistemaDeteccion()
+    iniciarEvaluacionContinuaEventos()
+
+    // ✅ PASO 8: Iniciar seguimiento GPS (esto actualiza marcadorUsuario)
+    iniciarSeguimientoGPS()
+
+    // ✅ PASO 9: Iniciar simulador
+    setTimeout(async () => {
+      await iniciarSimuladorAutomatico()
+    }, 1000)
+
+    // ✅ PASO 10: Configurar listeners de clicks
+    if (mapPage) {
+      mapPage.addEventListener('click', (event) => {
+        if (!event || !event.target) {
+          console.warn('⚠️ Evento sin target válido')
+          return
         }
 
-        window.verDetallesGeozona = (geozonaId) => {
-          window.abrirDetallesUbicacion({ tipo: 'geozona', id: geozonaId })
+        const actionButton = event.target.closest('[data-action]')
+        if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
+          const action = actionButton.dataset.action
+          const id = actionButton.dataset.poiId || actionButton.dataset.geozonaId
+
+          if (action === 'ver-detalles-poi' && id) {
+            window.verDetallesPOI(id)
+          } else if (action === 'ver-detalles-geozona' && id) {
+            window.verDetallesGeozona(id)
+          }
+          return
         }
 
-        await dibujarTodosEnMapa()
-        await inicializarSistemaDeteccion()
-        iniciarEvaluacionContinuaEventos()
-        iniciarSeguimientoGPS()
-
-        setTimeout(async () => {
-          await iniciarSimuladorAutomatico()
-        }, 2000)
-
-        const mapPage = document.getElementById('map-page')
-
-        if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
-          mapPage._mapaAPI.map.on('click', (e) => {
-            // Verificar si se hizo click en un marcador
-            const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
-
-            if (clickEnMarcador) {
-              return // Dejar que el marcador maneje su popup
+        const toggleBtn = event.target.closest('.toggle-popup-btn')
+        if (toggleBtn) {
+          const unidadId = toggleBtn.dataset.unidadId
+          if (unidadId) {
+            const popupContainer = document.getElementById(`popup-unidad-${unidadId}`)
+            if (popupContainer) {
+              popupContainer.classList.toggle('expanded')
             }
-
-            // Verificar si se hizo click en una capa interactiva
-            const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
-            const clickEnCapa = features.some(
-              (feature) =>
-                feature.layer.id.startsWith('poi-circle-') ||
-                feature.layer.id.startsWith('geozona-circle-') ||
-                feature.layer.id.startsWith('geozona-polygon-'),
-            )
-
-            if (!clickEnCapa) {
-              // Cerrar popup global (geozonas y POIs)
-              if (popupGlobalActivo) {
-                popupGlobalActivo.remove()
-                popupGlobalActivo = null
-              }
-
-              // Cerrar TODOS los popups del mapa (incluyendo unidades)
-              const allPopups = document.querySelectorAll('.mapboxgl-popup')
-              allPopups.forEach((popupEl) => {
-                // Buscar el botón de cerrar y hacer click
-                const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
-                if (closeBtn) {
-                  closeBtn.click()
-                }
-              })
-            }
-          })
+          }
+          return
         }
 
-        if (mapPage) {
-          mapPage.addEventListener('click', (event) => {
-            if (!event || !event.target) {
-              console.warn('⚠️ Evento sin target válido')
-              return
-            }
+        const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
+        if (detailsBtn) {
+          const conductorId = detailsBtn.dataset.conductorId
+          const conductorNombre = detailsBtn.dataset.conductorNombre
 
-            const actionButton = event.target.closest('[data-action]')
-            if (actionButton && actionButton.dataset.action !== 'ver-detalles-conductor') {
-              const action = actionButton.dataset.action
-              const id = actionButton.dataset.poiId || actionButton.dataset.geozonaId
+          if (conductorId) {
+            obtenerConductores().then(() => {
+              const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
 
-              if (action === 'ver-detalles-poi' && id) {
-                window.verDetallesPOI(id)
-              } else if (action === 'ver-detalles-geozona' && id) {
-                window.verDetallesGeozona(id)
-              }
-              return
-            }
+              if (conductorEncontrado) {
+                obtenerGruposConductores().then(() => {
+                  const grupoDelConductor = gruposConductores.value.find((g) =>
+                    g.ConductoresIds?.includes(conductorId),
+                  )
 
-            const toggleBtn = event.target.closest('.toggle-popup-btn')
-            if (toggleBtn) {
-              const unidadId = toggleBtn.dataset.unidadId
-              if (unidadId) {
-                const popupContainer = document.getElementById(`popup-unidad-${unidadId}`)
-                if (popupContainer) {
-                  popupContainer.classList.toggle('expanded')
-                }
-              }
-              return
-            }
+                  if (grupoDelConductor) {
+                    const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
+                    window.dispatchEvent(cerrarDialogs)
 
-            const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
-            if (detailsBtn) {
-              const conductorId = detailsBtn.dataset.conductorId
-              const conductorNombre = detailsBtn.dataset.conductorNombre
-
-              if (conductorId) {
-                obtenerConductores().then(() => {
-                  const conductorEncontrado = conductores.value.find((c) => c.id === conductorId)
-
-                  if (conductorEncontrado) {
-                    obtenerGruposConductores().then(() => {
-                      const grupoDelConductor = gruposConductores.value.find((g) =>
-                        g.ConductoresIds?.includes(conductorId),
-                      )
-
-                      if (grupoDelConductor) {
-                        const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
-                        window.dispatchEvent(cerrarDialogs)
-
-                        setTimeout(() => {
-                          estadoCompartido.value.abrirConductoresConConductor = {
-                            conductor: {
-                              id: conductorId,
-                              grupoId: grupoDelConductor.id,
-                              grupoNombre: grupoDelConductor.Nombre,
-                            },
-                            timestamp: Date.now(),
-                          }
-
-                          $q.notify({
-                            type: 'positive',
-                            message: `Abriendo detalles de ${conductorNombre}`,
-                            icon: 'person',
-                            position: 'top',
-                            timeout: 2000,
-                          })
-                        }, 100)
-                      } else {
-                        console.warn('⚠️ Conductor sin grupo')
-                        $q.notify({
-                          type: 'warning',
-                          message: 'El conductor no está asignado a ningún grupo',
-                          icon: 'warning',
-                          position: 'top',
-                        })
+                    setTimeout(() => {
+                      estadoCompartido.value.abrirConductoresConConductor = {
+                        conductor: {
+                          id: conductorId,
+                          grupoId: grupoDelConductor.id,
+                          grupoNombre: grupoDelConductor.Nombre,
+                        },
+                        timestamp: Date.now(),
                       }
-                    })
+
+                      $q.notify({
+                        type: 'positive',
+                        message: `Abriendo detalles de ${conductorNombre}`,
+                        icon: 'person',
+                        position: 'top',
+                        timeout: 2000,
+                      })
+                    }, 100)
                   } else {
-                    console.error('❌ Conductor no encontrado')
+                    console.warn('⚠️ Conductor sin grupo')
                     $q.notify({
-                      type: 'negative',
-                      message: 'No se encontró el conductor',
-                      icon: 'error',
+                      type: 'warning',
+                      message: 'El conductor no está asignado a ningún grupo',
+                      icon: 'warning',
                       position: 'top',
                     })
                   }
                 })
+              } else {
+                console.error('❌ Conductor no encontrado')
+                $q.notify({
+                  type: 'negative',
+                  message: 'No se encontró el conductor',
+                  icon: 'error',
+                  position: 'top',
+                })
               }
-              return
+            })
+          }
+          return
+        }
+      })
+    }
+
+    // ✅ PASO 11: Configurar listener de clicks en el mapa para cerrar popups
+    if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
+      mapPage._mapaAPI.map.on('click', (e) => {
+        const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
+
+        if (clickEnMarcador) {
+          return
+        }
+
+        const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
+        const clickEnCapa = features.some(
+          (feature) =>
+            feature.layer.id.startsWith('poi-circle-') ||
+            feature.layer.id.startsWith('geozona-circle-') ||
+            feature.layer.id.startsWith('geozona-polygon-'),
+        )
+
+        if (!clickEnCapa) {
+          if (popupGlobalActivo) {
+            popupGlobalActivo.remove()
+            popupGlobalActivo = null
+          }
+
+          const allPopups = document.querySelectorAll('.mapboxgl-popup')
+          allPopups.forEach((popupEl) => {
+            const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
+            if (closeBtn) {
+              closeBtn.click()
             }
           })
         }
-      }, 500)
+      })
+    }
 
-      window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
-    })
+    // ✅ PASO 12: Intentar obtener ubicación GPS en segundo plano (SOLO PARA CENTRAR INICIAL)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+
+          // Volar suavemente a la ubicación del usuario
+          if (mapPage._mapaAPI && mapPage._mapaAPI.map) {
+            mapPage._mapaAPI.map.flyTo({
+              center: [longitude, latitude],
+              zoom: 14,
+              duration: 2000,
+              essential: true,
+            })
+
+            $q.notify({
+              type: 'positive',
+              message: '📍 Mapa centrado en tu ubicación',
+              position: 'top',
+              timeout: 2000,
+              icon: 'my_location',
+            })
+          }
+        },
+        () => {
+          // ✅ SILENCIOSO: No mostrar warning si falla el GPS inicial
+          console.log('ℹ️ Ubicación GPS no disponible en carga inicial')
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 60000,
+        },
+      )
+    }
   } catch (error) {
     console.error('❌ Error inicializando mapa:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al inicializar el mapa',
+      icon: 'error',
+      position: 'top',
+    })
   }
 
+  // ✅ PASO 13: Configurar listener de resize
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -1474,6 +1534,8 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
+  window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
+
   window.toggleGeozonaPopup = (geozonaId) => {
     const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
     const button = document.getElementById(`toggle-btn-geo-${geozonaId}`)
@@ -1486,25 +1548,15 @@ onMounted(async () => {
       body.style.maxHeight = '0'
     }
   }
+
   window.addEventListener('redibujarMapa', async () => {
-    // Esperar a que el mapa esté completamente cargado
     await nextTick()
-
-    // Limpiar capas antiguas
     limpiarCapasDelMapa()
-
-    // Redibujar todo
     await dibujarTodosEnMapa()
-
-    // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
-
-    // Reiniciar evaluación de eventos
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
-
-    // Redibujar marcadores de unidades
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
