@@ -1937,9 +1937,9 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 }
 
 .unidad-popup-container .mapboxgl-popup-close-button {
-  position: static !important;
-  top: auto !important;
-  left: auto !important;
+  position: absolute !important;
+  top: 16px !important;
+  left: 16px !important;
   background-color: #f3f4f6 !important;
   border: 1px solid #6b7280 !important;
   width: 28px !important;
@@ -1957,10 +1957,6 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   z-index: 10 !important;
   flex-shrink: 0 !important;
   margin: 0 !important;
-  order: -1 !important;
-  align-self: flex-start !important; /* ✅ Clave: alinear arriba */
-  margin-right: 8px !important; /* ✅ Espacio hacia la derecha */
-  margin-top: 2px !important; /* ✅ Alinear con primera línea del texto */
 }
 
 .unidad-popup-container .mapboxgl-popup-close-button:hover {
@@ -1984,11 +1980,18 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
-.unidad-header-row {
+.unidad-header-top-row {
   display: flex;
-  align-items: flex-start; /* ✅ Cambio clave: permite múltiples líneas */
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
+  position: relative;
+}
+.unidad-close-placeholder {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 .unidad-info-row {
   display: flex;

@@ -161,8 +161,9 @@ export function useMapboxGL() {
   <div id="${popupId}" class="unidad-popup-container">
     <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
-      <!-- ✅ Primera fila: Nombre del conductor + Chevron -->
-      <div class="unidad-header-row">
+      <!-- ✅ Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
+      <div class="unidad-header-top-row">
+        <div class="unidad-close-placeholder"></div>
         <div class="unidad-texto">
           <strong>${unidad.conductorNombre}</strong>
         </div>
@@ -220,7 +221,6 @@ export function useMapboxGL() {
 
     return popupContent
   }
-
   // ⚡ OPTIMIZADO: Procesamiento real de marcadores
   const procesarActualizacionMarcadores = (unidades) => {
     if (!map.value || !unidades) {
