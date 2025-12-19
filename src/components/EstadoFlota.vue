@@ -158,6 +158,7 @@
           >
             <!-- Tab Resumen -->
             <q-tab-panel name="resumen" class="tab-panel-padding">
+              <!-- Ubicación actual -->
               <div class="info-card ubicacion-card">
                 <div class="info-icon-wrapper">
                   <q-icon name="place" color="primary" size="24px" />
@@ -172,9 +173,9 @@
                 </div>
               </div>
 
+              <!-- Detalles -->
               <div class="detalles-grid">
-                <div class="detalle-row"></div>
-
+                <!-- Estado actual -->
                 <div class="detalle-row">
                   <span class="detalle-label">Estado actual</span>
                   <q-chip
@@ -190,25 +191,30 @@
 
                 <q-separator class="separator" />
 
-                <div class="detalle-row">
-                  <span class="detalle-label">Tiempo de conducción hoy</span>
-                  <span class="detalle-valor">{{ vehiculoSeleccionado.tiempoConductionHoy }}</span>
+                <!-- 🆕 Indicador de carga mientras se obtienen estadísticas -->
+                <div v-if="loadingEstadisticas" class="detalle-row">
+                  <q-spinner color="primary" size="20px" />
+                  <span class="detalle-label">Cargando estadísticas...</span>
                 </div>
 
-                <div class="detalle-row">
-                  <span class="detalle-label">Tiempo esta semana</span>
-                  <span class="detalle-valor">{{
-                    vehiculoSeleccionado.tiempoConductionSemana
-                  }}</span>
-                </div>
-
-                <div class="detalle-row">
-                  <span class="detalle-label">Duración de estado</span>
-                  <span class="detalle-valor">{{ vehiculoSeleccionado.duracionEstado }}</span>
-                </div>
+                <template v-else>
+                  <!-- Tiempo de conducción hoy -->
+                  <div class="detalle-row">
+                    <span class="detalle-label">Tiempo de conducción hoy</span>
+                    <span class="detalle-valor">
+                      {{ estadisticasVehiculo?.tiempoConductionHoy || '0h 0m' }}
+                    </span>
+                  </div>
+                  <!-- Duración de estado -->
+                  <div class="detalle-row">
+                    <span class="detalle-label">Duración de estado</span>
+                    <span class="detalle-valor">{{ vehiculoSeleccionado.duracionEstado }}</span>
+                  </div>
+                </template>
 
                 <q-separator class="separator" />
 
+                <!-- Última sincronización -->
                 <div class="detalle-row">
                   <span class="detalle-label">
                     <q-icon name="sync" size="16px" class="q-mr-xs" />
@@ -219,6 +225,7 @@
                   </span>
                 </div>
 
+                <!-- Fecha y hora -->
                 <div class="detalle-row">
                   <span class="detalle-label">
                     <q-icon name="schedule" size="16px" class="q-mr-xs" />
@@ -227,35 +234,89 @@
                   <span class="detalle-valor-small">{{ vehiculoSeleccionado.fechaHora }}</span>
                 </div>
 
-                <div class="detalle-row">
-                  <span class="detalle-label">
-                    <q-icon name="route" size="16px" class="q-mr-xs" />
-                    Tipo de trayecto
-                  </span>
-                  <span class="detalle-valor-small">{{ vehiculoSeleccionado.tipoTrayecto }}</span>
-                </div>
+                <!-- ❌ ELIMINADO: Tipo de trayecto -->
               </div>
             </q-tab-panel>
 
             <!-- Tab Hoy -->
             <q-tab-panel name="hoy" class="tab-panel-padding">
+              <!-- Selector de fecha -->
               <div class="filtro-dia-card">
-                <q-btn flat dense round icon="chevron_left" size="sm" />
+                <q-btn flat dense round icon="chevron_left" size="sm" @click="cambiarDia(-1)" />
                 <div class="dia-actual">
-                  <div class="dia-label">Hoy</div>
-                  <div class="dia-fecha">{{ vehiculoSeleccionado.fechaTimeline }}</div>
+                  <div class="dia-label">
+                    {{ fechaSeleccionada.toLocaleDateString('es-MX', { weekday: 'long' }) }}
+                  </div>
+                  <div class="dia-fecha">
+                    {{
+                      fechaSeleccionada.toLocaleDateString('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    }}
+                  </div>
                 </div>
-                <q-btn flat dense round icon="chevron_right" size="sm" />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="chevron_right"
+                  size="sm"
+                  @click="cambiarDia(1)"
+                  :disable="fechaSeleccionada.toDateString() === new Date().toDateString()"
+                />
               </div>
 
-              <div class="resumen-dia-card">
+              <!-- 🆕 Filtro por rango de horas -->
+              <div class="filtro-horas-card">
+                <div class="filtro-horas-header">
+                  <q-icon name="schedule" size="20px" color="primary" />
+                  <span class="filtro-horas-titulo">Filtrar por hora</span>
+                  <q-btn
+                    flat
+                    dense
+                    label="Resetear"
+                    size="sm"
+                    color="primary"
+                    @click="resetearFiltroHoras"
+                  />
+                </div>
+
+                <div class="filtro-horas-inputs">
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Desde</span>
+                    <q-input v-model="horaInicio" type="time" outlined dense class="hora-input" />
+                  </div>
+
+                  <q-icon name="arrow_forward" size="20px" color="grey-6" />
+
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Hasta</span>
+                    <q-input v-model="horaFin" type="time" outlined dense class="hora-input" />
+                  </div>
+                </div>
+
+                <div class="filtro-resultados">
+                  {{ trayectosFiltradosPorHora.length }} de {{ trayectosDia.length }} viajes
+                </div>
+              </div>
+
+              <!-- Loading -->
+              <div v-if="loadingHistorial" class="loading-container">
+                <q-spinner color="primary" size="40px" />
+                <div class="loading-text">Cargando trayectos...</div>
+              </div>
+
+              <!-- Resumen del día -->
+              <div v-else-if="resumenDia" class="resumen-dia-card">
                 <div class="card-title">Resumen del día</div>
                 <div class="resumen-grid">
                   <div class="resumen-item-card">
                     <q-icon name="play_circle" color="green" size="20px" />
                     <div class="resumen-content">
                       <div class="resumen-label">Ubicación de inicio</div>
-                      <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionInicio }}</div>
+                      <div class="resumen-valor">{{ resumenDia.ubicacionInicio }}</div>
                     </div>
                   </div>
 
@@ -263,7 +324,7 @@
                     <q-icon name="stop_circle" color="red" size="20px" />
                     <div class="resumen-content">
                       <div class="resumen-label">Ubicación de fin</div>
-                      <div class="resumen-valor">{{ vehiculoSeleccionado.ubicacionFin }}</div>
+                      <div class="resumen-valor">{{ resumenDia.ubicacionFin }}</div>
                     </div>
                   </div>
 
@@ -271,94 +332,83 @@
                     <q-icon name="work" color="blue" size="18px" />
                     <div>
                       <div class="stat-label">Duración de trabajo</div>
-                      <div class="stat-valor">{{ vehiculoSeleccionado.duracionTrabajo }}</div>
+                      <div class="stat-valor">{{ resumenDia.duracionTrabajo }}</div>
+                    </div>
+                  </div>
+
+                  <div class="resumen-stat">
+                    <q-icon name="route" color="purple" size="18px" />
+                    <div>
+                      <div class="stat-label">Kilometraje</div>
+                      <div class="stat-valor">{{ resumenDia.kilometraje }}</div>
+                    </div>
+                  </div>
+
+                  <div class="resumen-stat">
+                    <q-icon name="directions_car" color="green" size="18px" />
+                    <div>
+                      <div class="stat-label">Viajes realizados</div>
+                      <div class="stat-valor">{{ resumenDia.numTrayectos }}</div>
                     </div>
                   </div>
 
                   <div class="resumen-stat">
                     <q-icon name="pause_circle" color="orange" size="18px" />
                     <div>
-                      <div class="stat-label">Duración de parada</div>
-                      <div class="stat-valor">{{ vehiculoSeleccionado.duracionParada }}</div>
-                    </div>
-                  </div>
-
-                  <div class="resumen-stat">
-                    <q-icon name="speed" color="purple" size="18px" />
-                    <div>
-                      <div class="stat-label">Kilometraje</div>
-                      <div class="stat-valor">{{ vehiculoSeleccionado.kilometraje }}</div>
+                      <div class="stat-label">Paradas</div>
+                      <div class="stat-valor">{{ resumenDia.numParadas }}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="timeline-section" v-if="vehiculoSeleccionado.actividades.length > 0">
-                <div class="section-title">Actividades</div>
+              <!-- Timeline de trayectos -->
+              <div v-if="trayectosFiltradosPorHora.length > 0" class="timeline-section">
+                <div class="section-title">
+                  Historial de viajes ({{ trayectosFiltradosPorHora.length }})
+                </div>
                 <q-timeline color="primary" class="timeline-actividades">
                   <q-timeline-entry
-                    v-for="(actividad, index) in vehiculoSeleccionado.actividades"
-                    :key="index"
-                    :icon="actividad.icono"
-                    :color="actividad.color"
+                    v-for="trayecto in trayectosFiltradosPorHora"
+                    :key="trayecto.id"
+                    :icon="trayecto.icono"
+                    :color="trayecto.color"
                   >
                     <template v-slot:title>
-                      <div class="timeline-title">{{ actividad.titulo }}</div>
+                      <div class="timeline-title">{{ trayecto.titulo }}</div>
                     </template>
                     <template v-slot:subtitle>
-                      <div class="timeline-hora">{{ actividad.hora }}</div>
+                      <div class="timeline-hora">
+                        {{ trayecto.horaInicio }} - {{ trayecto.horaFin }}
+                      </div>
                     </template>
                     <div class="timeline-detalle-card">
                       <div class="timeline-info">
                         <span class="timeline-info-label">Duración</span>
-                        <span class="timeline-info-valor">{{ actividad.duracion }}</span>
+                        <span class="timeline-info-valor">{{ trayecto.duracion }}</span>
                       </div>
                       <div class="timeline-info">
-                        <span class="timeline-info-label">Kilometraje</span>
-                        <span class="timeline-info-valor">{{ actividad.kilometraje }}</span>
+                        <span class="timeline-info-label">Distancia</span>
+                        <span class="timeline-info-valor">{{ trayecto.distancia }}</span>
+                      </div>
+                      <div class="timeline-info">
+                        <span class="timeline-info-label">Vel. Máxima</span>
+                        <span class="timeline-info-valor">{{ trayecto.velocidadMax }}</span>
+                      </div>
+                      <div class="timeline-info">
+                        <span class="timeline-info-label">Vel. Promedio</span>
+                        <span class="timeline-info-valor">{{ trayecto.velocidadPromedio }}</span>
                       </div>
                     </div>
                   </q-timeline-entry>
                 </q-timeline>
               </div>
 
-              <div class="info-adicional-card">
-                <div class="info-item">
-                  <q-icon name="person" color="grey-7" size="20px" />
-                  <div>
-                    <div class="info-item-label">Conducido por</div>
-                    <div class="info-item-valor">{{ vehiculoSeleccionado.conductor }}</div>
-                  </div>
-                </div>
-
-                <q-separator />
-
-                <div class="info-item">
-                  <q-icon name="route" color="grey-7" size="20px" />
-                  <div class="flex-grow">
-                    <div class="info-item-label">Tipo de trayecto</div>
-                    <div class="info-item-valor">{{ vehiculoSeleccionado.tipoTrayecto }}</div>
-                  </div>
-                  <q-btn flat dense color="primary" label="Editar" size="sm" />
-                </div>
-
-                <q-separator />
-
-                <div class="info-item-column">
-                  <div class="info-item-header">
-                    <q-icon name="note" color="grey-7" size="20px" />
-                    <div class="info-item-label">Notas</div>
-                    <q-btn flat dense color="primary" label="Editar" size="sm" />
-                  </div>
-                  <q-input
-                    v-model="vehiculoSeleccionado.notas"
-                    outlined
-                    type="textarea"
-                    placeholder="Agregar nota..."
-                    rows="3"
-                    class="notas-input"
-                  />
-                </div>
+              <!-- Empty state -->
+              <div v-else-if="!loadingHistorial" class="empty-state">
+                <q-icon name="route" size="80px" color="grey-4" />
+                <div class="empty-title">Sin trayectos</div>
+                <div class="empty-subtitle">No hay viajes registrados en este rango de horas</div>
               </div>
             </q-tab-panel>
 
@@ -425,16 +475,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
+import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
+import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
 
-// Composable de tracking
-const {
-  unidadesActivas,
-  //loading,
-  iniciarTracking,
-  contarPorEstado,
-} = useTrackingUnidades()
+// Composables
+const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
+const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
+const { obtenerTrayectosDia } = useTrayectosDiarios()
 
 // Props y emits
 const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
@@ -445,14 +494,16 @@ const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
 const tabActual = ref('resumen')
 const filtroNotificaciones = ref('todos')
+const estadisticasVehiculo = ref(null)
+const loadingEstadisticas = ref(false)
 
 // Computed - Convertir unidades activas a formato de vehículos
 const vehiculos = computed(() => {
   return unidadesActivas.value.map((unidad) => ({
     id: unidad.id,
     nombre: unidad.unidadNombre,
-    ubicacion: unidad.direccionTexto || 'Ubicación desconocida', // 👈 Para MOSTRAR
-    ubicacionCoords: unidad.ubicacion, // 👈 Para NAVEGAR {lat, lng}
+    ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
+    ubicacionCoords: unidad.ubicacion,
     coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
     velocidad: `${unidad.velocidad} km/h`,
     estado: unidad.estado,
@@ -462,53 +513,22 @@ const vehiculos = computed(() => {
     ignicion: unidad.ignicion,
     bateria: unidad.bateria,
     timestamp: unidad.timestamp,
-    ultimaActualizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
+    ultimaActualizacion: formatearFechaHora(unidad.timestamp), // 🆕 Usar formatter
 
-    // Resto de tus propiedades...
-    bloqueado: false,
-    tiempoConductionHoy: '3h 24m',
-    tiempoConductionSemana: '18h 45m',
-    duracionEstado: '15 minutos',
-    ultimaSincronizacion: new Date(unidad.timestamp).toLocaleString('es-MX'),
-    fechaHora: new Date().toLocaleString('es-MX'),
-    tipoTrayecto: 'Ruta comercial',
+    // 🆕 Datos calculados dinámicamente
+    tiempoConductionHoy: estadisticasVehiculo.value?.tiempoConductionHoy || 'Cargando...',
+    tiempoConductionSemana: estadisticasVehiculo.value?.tiempoConductionSemana || 'Cargando...',
+    duracionEstado: calcularDuracionEstado(unidad.timestamp),
+    ultimaSincronizacion: formatearFechaHora(unidad.timestamp),
+    fechaHora: formatearFechaHora(unidad.timestamp),
+
     notificaciones: 0,
-
     fechaTimeline: new Date().toLocaleDateString('es-MX'),
     ubicacionInicio: 'Zona Centro',
     ubicacionFin: unidad.direccionTexto,
     duracionTrabajo: '3h 24m',
-
-    actividades: [
-      {
-        titulo: 'Viaje iniciado',
-        hora: '08:00 AM',
-        ubicacion: 'Zona Centro',
-        distancia: '0 km',
-        duracion: '0 min',
-      },
-      {
-        titulo: 'En ruta',
-        hora: new Date(unidad.timestamp).toLocaleTimeString('es-MX', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        ubicacion: unidad.direccionTexto,
-        distancia: '12 km',
-        duracion: `${Math.floor(Math.random() * 60)} min`,
-      },
-    ],
-
+    actividades: [],
     eventos: [],
-
-    combustible: {
-      nivelActual: Math.floor(Math.random() * 40) + 60,
-      capacidadTotal: 60,
-      rendimiento: 12.5,
-      ultimaCarga: 'Hace 2 días',
-      consumoHoy: 8.5,
-      kmRestantes: 450,
-    },
   }))
 })
 
@@ -574,9 +594,31 @@ function seleccionarEstado(estado) {
   estadoSeleccionado.value = estado.tipo
 }
 
+const cargarEstadisticasVehiculo = async (unidadId) => {
+  loadingEstadisticas.value = true
+
+  try {
+    estadisticasVehiculo.value = await obtenerEstadisticas(unidadId)
+  } catch (err) {
+    console.error('Error cargando estadísticas:', err)
+  } finally {
+    loadingEstadisticas.value = false
+  }
+}
+
+// 🆕 Watch para recargar estadísticas cuando cambia el vehículo seleccionado
+watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
+  if (nuevoVehiculo) {
+    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
+  } else {
+    estadisticasVehiculo.value = null
+  }
+})
+
 function seleccionarVehiculo(vehiculo) {
   vehiculoSeleccionado.value = vehiculo
   emit('vehiculo-seleccionado', vehiculo)
+  // Las estadísticas se cargarán automáticamente por el watch
 }
 
 function seleccionarVehiculoParaMapa(vehiculo) {
@@ -650,6 +692,117 @@ function getEstadoTexto(estado) {
     inactivo: 'Inactivo',
   }
   return textos[estado] || 'Desconocido'
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+const fechaSeleccionada = ref(new Date())
+const trayectosDia = ref([])
+const resumenDia = ref(null)
+const loadingHistorial = ref(false)
+const horaInicio = ref('00:00')
+const horaFin = ref('23:59')
+
+// 🆕 Computed para filtrar trayectos por rango de horas
+const trayectosFiltradosPorHora = computed(() => {
+  if (!trayectosDia.value || trayectosDia.value.length === 0) {
+    return []
+  }
+
+  const [horaInicioNum, minInicioNum] = horaInicio.value.split(':').map(Number)
+  const [horaFinNum, minFinNum] = horaFin.value.split(':').map(Number)
+
+  const minutosInicio = horaInicioNum * 60 + minInicioNum
+  const minutosFin = horaFinNum * 60 + minFinNum
+
+  return trayectosDia.value.filter((trayecto) => {
+    // Extraer hora del formato "08:30 a.m."
+    const horaStr = trayecto.horaInicio.toLowerCase().replace(/\s/g, '')
+    const match = horaStr.match(/(\d+):(\d+)(am|pm)/)
+
+    if (!match) return true
+
+    let hora = parseInt(match[1])
+    const minuto = parseInt(match[2])
+    const periodo = match[3]
+
+    // Convertir a formato 24h
+    if (periodo === 'pm' && hora !== 12) hora += 12
+    if (periodo === 'am' && hora === 12) hora = 0
+
+    const minutosTrayecto = hora * 60 + minuto
+
+    return minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
+  })
+})
+
+// 🆕 Cargar trayectos cuando se selecciona una fecha
+const cargarTrayectosDia = async () => {
+  if (!vehiculoSeleccionado.value) return
+
+  loadingHistorial.value = true
+  try {
+    const resultado = await obtenerTrayectosDia(
+      vehiculoSeleccionado.value.id,
+      fechaSeleccionada.value,
+    )
+
+    trayectosDia.value = resultado.trayectos
+    resumenDia.value = resultado.resumen
+
+    console.log('📋 Trayectos del día:', resultado)
+  } catch (err) {
+    console.error('Error cargando trayectos:', err)
+    trayectosDia.value = []
+    resumenDia.value = null
+  } finally {
+    loadingHistorial.value = false
+  }
+}
+
+// 🆕 Modificar el watch de vehiculoSeleccionado EXISTENTE
+// Encuentra tu watch actual y reemplázalo por este:
+watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
+  if (nuevoVehiculo) {
+    loadingEstadisticas.value = true
+    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
+    loadingEstadisticas.value = false
+
+    // 🆕 Agregar esto al watch existente
+    fechaSeleccionada.value = new Date()
+    horaInicio.value = '00:00'
+    horaFin.value = '23:59'
+    await cargarTrayectosDia()
+  } else {
+    // 🆕 Agregar esto también
+    trayectosDia.value = []
+    resumenDia.value = null
+  }
+})
+
+// 🆕 Watch para recargar cuando cambia la fecha
+watch(fechaSeleccionada, () => {
+  if (vehiculoSeleccionado.value) {
+    cargarTrayectosDia()
+  }
+})
+
+// 🆕 Funciones para navegar fechas
+const cambiarDia = (dias) => {
+  const nuevaFecha = new Date(fechaSeleccionada.value)
+  nuevaFecha.setDate(nuevaFecha.getDate() + dias)
+
+  const hoy = new Date()
+  hoy.setHours(23, 59, 59, 999)
+
+  if (nuevaFecha <= hoy) {
+    fechaSeleccionada.value = nuevaFecha
+  }
+}
+
+const resetearFiltroHoras = () => {
+  horaInicio.value = '00:00'
+  horaFin.value = '23:59'
 }
 
 // Lifecycle
@@ -1379,5 +1532,77 @@ onMounted(() => {
   .tab-panel-padding {
     padding: 16px;
   }
+}
+
+/* === FILTRO DE HORAS === */
+.filtro-horas-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.filtro-horas-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filtro-horas-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #212121;
+  flex: 1;
+}
+
+.filtro-horas-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hora-input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hora-label {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+}
+
+.hora-input {
+  background: white;
+}
+
+.filtro-resultados {
+  font-size: 12px;
+  color: #2196f3;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+  background: #e3f2fd;
+  border-radius: 8px;
+}
+
+/* Loading container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #757575;
 }
 </style>
