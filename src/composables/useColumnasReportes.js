@@ -341,6 +341,7 @@ const COLUMNAS_EVENTOS = {
     obtenerValor: (notificacion) => notificacion.estado || 'N/A',
     ancho: 150,
     formato: 'texto',
+    oculta: true,
   },
 
   Ignición: {
@@ -747,7 +748,12 @@ export function useColumnasReportes() {
    * Lista de nombres de columnas disponibles
    */
   const nombresColumnasDisponibles = computed(() => {
-    return Object.keys(columnasDisponibles.value)
+    const todasLasColumnas = columnasDisponibles.value
+
+    // 🔥 FILTRAR columnas que tengan oculta: true
+    return Object.entries(todasLasColumnas)
+      .filter(([, config]) => !config.oculta) // Excluir ocultas
+      .map(([nombre]) => nombre) // Retornar solo nombres
   })
 
   /**
