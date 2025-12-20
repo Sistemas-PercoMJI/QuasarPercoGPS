@@ -145,7 +145,6 @@
               {{ vehiculoSeleccionado.notificaciones }}
             </q-badge>
           </q-tab>
-          <q-tab name="combustible" icon="local_gas_station" class="tab-item" />
         </q-tabs>
 
         <!-- Contenido de las tabs -->
@@ -431,65 +430,61 @@
                 <div class="loading-text">Cargando eventos...</div>
               </div>
 
-              <!-- Lista de eventos -->
-              <div v-else-if="eventosFiltrados && eventosFiltrados.length > 0" class="eventos-list">
-                <div v-for="evento in eventosFiltrados" :key="evento.id" class="evento-card">
-                  <q-avatar
-                    :style="{ backgroundColor: getColorHex(evento.color) }"
-                    text-color="white"
-                    size="44px"
-                  >
-                    <q-icon :name="evento.icono" size="22px" />
-                  </q-avatar>
+              <!-- Lista de eventos como tarjetas -->
+              <div
+                v-else-if="eventosFiltrados && eventosFiltrados.length > 0"
+                class="eventos-container"
+              >
+                <div
+                  v-for="evento in eventosFiltrados"
+                  :key="evento.id"
+                  class="evento-notification-card"
+                >
+                  <!-- Header con icono y título -->
+                  <div class="evento-header">
+                    <q-avatar
+                      :style="{ backgroundColor: getColorHex(evento.color) }"
+                      text-color="white"
+                      size="40px"
+                    >
+                      <q-icon :name="evento.icono" size="20px" />
+                    </q-avatar>
 
-                  <div class="evento-content">
-                    <div class="evento-titulo">{{ evento.titulo }}</div>
-                    <div class="evento-descripcion">{{ evento.descripcion }}</div>
-                    <div class="evento-fecha">
-                      <q-icon name="schedule" size="14px" />
-                      {{ evento.fechaTexto }}
+                    <div class="evento-main-content">
+                      <div class="evento-titulo">{{ evento.titulo }}</div>
+                      <div class="evento-descripcion">{{ evento.descripcion }}</div>
                     </div>
                   </div>
 
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="expand_more"
-                    @click="evento.expanded = !evento.expanded"
-                  >
-                    <q-tooltip>Ver detalles</q-tooltip>
-                  </q-btn>
-
-                  <!-- Detalles expandibles -->
-                  <transition name="slide-down">
-                    <div v-if="evento.expanded" class="evento-detalles-wrapper">
-                      <q-separator class="q-my-sm" />
-
-                      <div class="evento-detalles">
-                        <div class="detalle-item">
-                          <q-icon name="place" size="16px" color="grey-7" />
-                          <span class="detalle-label">Ubicación:</span>
-                          <span class="detalle-valor">{{ evento.ubicacion }}</span>
-                        </div>
-
-                        <div class="detalle-item">
-                          <q-icon name="person" size="16px" color="grey-7" />
-                          <span class="detalle-label">Conductor:</span>
-                          <span class="detalle-valor">{{ evento.conductorNombre }}</span>
-                        </div>
-
-                        <div v-if="evento.coordenadas" class="detalle-item">
-                          <q-icon name="my_location" size="16px" color="grey-7" />
-                          <span class="detalle-label">Coordenadas:</span>
-                          <span class="detalle-valor">
-                            {{ evento.coordenadas.lat.toFixed(6) }},
-                            {{ evento.coordenadas.lng.toFixed(6) }}
-                          </span>
-                        </div>
-                      </div>
+                  <!-- Detalles del evento -->
+                  <div class="evento-details">
+                    <!-- Fecha/Hora -->
+                    <div class="detail-item">
+                      <q-icon name="schedule" size="14px" color="grey-7" />
+                      <span class="detail-text">{{ evento.fechaTexto }}</span>
                     </div>
-                  </transition>
+
+                    <!-- Ubicación -->
+                    <div class="detail-item">
+                      <q-icon name="place" size="14px" color="grey-7" />
+                      <span class="detail-text">{{ evento.ubicacion }}</span>
+                    </div>
+
+                    <!-- Conductor -->
+                    <div class="detail-item">
+                      <q-icon name="person" size="14px" color="grey-7" />
+                      <span class="detail-text">{{ evento.conductorNombre }}</span>
+                    </div>
+
+                    <!-- Coordenadas (expandible) -->
+                    <div v-if="evento.coordenadas" class="detail-item">
+                      <q-icon name="my_location" size="14px" color="grey-7" />
+                      <span class="detail-text detail-coords">
+                        {{ evento.coordenadas.lat.toFixed(6) }},
+                        {{ evento.coordenadas.lng.toFixed(6) }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -656,7 +651,7 @@ const trayectosFiltradosPorHora = computed(() => {
     const match = horaStr.match(/(\d+):(\d+)\s*(a\.?m\.?|p\.?m\.?)/i)
 
     if (!match) {
-      console.warn('No se pudo parsear la hora:', horaStr)
+      console.warn('⚠️ No se pudo parsear la hora:', horaStr)
       return true // Incluir si no se puede parsear
     }
 
@@ -674,26 +669,34 @@ const trayectosFiltradosPorHora = computed(() => {
     const minutosTrayecto = hora * 60 + minuto
 
     // Verificar si está en el rango
-    return minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
+    const enRango = minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
+
+    return enRango
   })
 })
 
 // Computed para eventos filtrados
 const eventosFiltrados = computed(() => {
+  if (!eventosUnidad.value || eventosUnidad.value.length === 0) {
+    return []
+  }
+
   if (filtroNotificaciones.value === 'Todo') {
     return eventosUnidad.value
   }
 
   if (filtroNotificaciones.value === 'Entradas') {
-    return eventosUnidad.value.filter(
-      (e) => e.accion?.includes('ENTRADA') || e.accion?.includes('entró'),
-    )
+    return eventosUnidad.value.filter((e) => {
+      const accion = e.accion?.toLowerCase() || ''
+      return accion.includes('entrada') || accion.includes('entró')
+    })
   }
 
   if (filtroNotificaciones.value === 'Salidas') {
-    return eventosUnidad.value.filter(
-      (e) => e.accion?.includes('SALIDA') || e.accion?.includes('salió'),
-    )
+    return eventosUnidad.value.filter((e) => {
+      const accion = e.accion?.toLowerCase() || ''
+      return accion.includes('salida') || accion.includes('salió')
+    })
   }
 
   return eventosUnidad.value
@@ -1625,11 +1628,119 @@ onMounted(() => {
   margin-top: 12px;
 }
 
+.eventos-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* === EVENTOS COMO NOTIFICACIONES === */
 .evento-detalles {
   width: 100%;
   background: #f5f5f5;
   padding: 12px;
   border-radius: 8px;
+}
+
+.evento-notification-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid;
+  transition: all 0.3s ease;
+}
+
+.evento-notification-card:hover {
+  transform: translateX(4px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Colores de borde según tipo */
+.evento-notification-card:has(
+  .evento-header .q-avatar[style*='background-color: rgb(76, 175, 80)']
+) {
+  border-left-color: #4caf50; /* Verde - Entrada */
+}
+
+.evento-notification-card:has(
+  .evento-header .q-avatar[style*='background-color: rgb(244, 67, 54)']
+) {
+  border-left-color: #f44336; /* Rojo - Salida */
+}
+
+.evento-notification-card:has(
+  .evento-header .q-avatar[style*='background-color: rgb(255, 152, 0)']
+) {
+  border-left-color: #ff9800; /* Naranja - Alerta */
+}
+
+.evento-notification-card:has(
+  .evento-header .q-avatar[style*='background-color: rgb(0, 188, 212)']
+) {
+  border-left-color: #00bcd4; /* Cyan - Info */
+}
+
+.evento-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.evento-main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.evento-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #212121;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.evento-descripcion {
+  font-size: 13px;
+  color: #616161;
+  line-height: 1.4;
+}
+
+.evento-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detail-text {
+  color: #424242;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.detail-coords {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #757575;
+}
+
+/* Animación del icono */
+.evento-notification-card .q-avatar {
+  transition: transform 0.3s ease;
+}
+
+.evento-notification-card:hover .q-avatar {
+  transform: scale(1.1) rotate(5deg);
 }
 
 /*
