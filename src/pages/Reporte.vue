@@ -297,7 +297,6 @@
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
               <!-- 🆕 HEADER CON BOTÓN DE RESETEAR -->
               <div class="columnas-header q-mb-sm">
-                <div class="text-subtitle2">Lista de columnas</div>
                 <q-btn
                   flat
                   dense
