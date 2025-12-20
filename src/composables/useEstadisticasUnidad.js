@@ -6,17 +6,64 @@ export function useEstadisticasUnidad() {
   const loading = ref(false)
   const error = ref(null)
 
+  // Configuración de umbrales
+  const VELOCIDAD_MINIMA_MOVIMIENTO = 5 // km/h
+  const MAX_TIEMPO_ENTRE_PUNTOS = 600000 // 10 minutos en ms
+
   /**
-   * 🆕 Descarga las coordenadas del archivo JSON en Firebase Storage
-   * (Reutilizando lógica de useReportesTrayectos.js)
+   * Calcula la distancia entre dos coordenadas (fórmula Haversine)
+   */
+  const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+    const R = 6371 // Radio de la Tierra en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Distancia en km
+  }
+
+  /**
+   * Calcula la velocidad entre dos coordenadas
+   */
+  const calcularVelocidad = (coord1, coord2) => {
+    const distanciaKm = calcularDistancia(coord1.lat, coord1.lng, coord2.lat, coord2.lng)
+    const tiempoHoras =
+      (new Date(coord2.timestamp).getTime() - new Date(coord1.timestamp).getTime()) / 3600000
+
+    if (tiempoHoras <= 0) return 0
+
+    return distanciaKm / tiempoHoras // km/h
+  }
+
+  /**
+   * Determina el estado basándose en la velocidad
+   */
+  const determinarEstado = (velocidad) => {
+    if (velocidad >= VELOCIDAD_MINIMA_MOVIMIENTO) {
+      return 'movimiento'
+    } else if (velocidad > 0) {
+      return 'detenido'
+    } else {
+      return 'detenido'
+    }
+  }
+
+  /**
+   * Descarga las coordenadas del archivo JSON en Firebase Storage
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) {
-      console.warn('No hay URL de rutas')
+      console.warn('⚠️ No hay URL de rutas')
       return []
     }
 
     try {
+      console.log('🌐 Descargando coordenadas desde:', rutasUrl)
       const response = await fetch(rutasUrl)
 
       if (!response.ok) {
@@ -49,114 +96,151 @@ export function useEstadisticasUnidad() {
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
           timestamp: coord.timestamp || coord.time || null,
-          estado: coord.estado || coord.status || 'desconocido',
         }))
 
+      console.log(`✅ ${coordenadasNormalizadas.length} coordenadas descargadas`)
       return coordenadasNormalizadas
     } catch (err) {
-      console.error('Error descargando coordenadas del Storage:', err)
+      console.error('❌ Error descargando coordenadas del Storage:', err)
       return []
     }
   }
 
   /**
-   * 🔥 Calcula el tiempo de conducción HOY analizando coordenadas
+   * 🔥 Calcula el tiempo de conducción analizando coordenadas con velocidad
    */
-  const calcularTiempoConductionHoy = async (unidadId) => {
-    try {
-      const hoy = new Date()
-      const fechaStr = formatearFechaParaFirestore(hoy)
-
-      console.log(`📊 Buscando RutaDiaria para unidad ${unidadId} en fecha ${fechaStr}`)
-
-      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fechaStr)
-      const rutaSnap = await getDoc(rutaRef)
-
-      if (!rutaSnap.exists()) {
-        console.log(`❌ No hay datos de RutaDiaria para ${unidadId}/${fechaStr}`)
-        return 0
-      }
-
-      const data = rutaSnap.data()
-      console.log('📦 Datos de RutaDiaria:', data)
-
-      // 🔥 OPCIÓN 1: Si tienes coordenadas en Storage
-      if (data.rutas_url) {
-        console.log('🌐 Descargando coordenadas desde Storage...')
-        const coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
-
-        if (coordenadas.length > 0) {
-          console.log(`✅ Descargadas ${coordenadas.length} coordenadas`)
-          return calcularTiempoDesdeCoordenadasConEstado(coordenadas)
-        }
-      }
-
-      // 🔥 OPCIÓN 2: Si está en el campo duracion_total_minutos
-      if (data.duracion_total_minutos) {
-        console.log(`✅ Usando duracion_total_minutos: ${data.duracion_total_minutos}`)
-        return data.duracion_total_minutos * 60 * 1000 // Convertir a ms
-      }
-
-      // 🔥 OPCIÓN 3: Si tienes fecha_hora_inicio y fecha_hora_fin
-      if (data.fecha_hora_inicio && data.fecha_hora_fin) {
-        const inicio = data.fecha_hora_inicio.toDate?.() || new Date(data.fecha_hora_inicio)
-        const fin = data.fecha_hora_fin.toDate?.() || new Date(data.fecha_hora_fin)
-        const duracionMs = fin.getTime() - inicio.getTime()
-
-        console.log(`✅ Calculado desde inicio/fin: ${formatearDuracion(duracionMs)}`)
-        return duracionMs
-      }
-
-      console.log('⚠️ No se encontró forma de calcular duración')
-      return 0
-    } catch (err) {
-      console.error('Error calculando tiempo de conducción:', err)
-      return 0
-    }
-  }
-
-  /**
-   * 🆕 Calcula el tiempo total filtrando por estado
-   */
-  const calcularTiempoDesdeCoordenadasConEstado = (coordenadas) => {
-    // Filtrar solo coordenadas con timestamp válido
+  const calcularTiempoDesdeCoordenadasConVelocidad = (coordenadas) => {
+    // Filtrar y ordenar coordenadas válidas
     const coordsValidas = coordenadas
       .filter((coord) => coord.timestamp && !isNaN(new Date(coord.timestamp).getTime()))
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
     if (coordsValidas.length < 2) {
       console.log('⚠️ No hay suficientes coordenadas con timestamp')
-      return 0
+      return {
+        tiempoTotal: 0,
+        tiempoMovimiento: 0,
+        tiempoDetenido: 0,
+        desglose: [],
+      }
     }
 
-    // 🔥 CALCULAR TIEMPO SOLO EN MOVIMIENTO O DETENIDO
-    let tiempoTotal = 0
+    console.log(`📊 Analizando ${coordsValidas.length} coordenadas...`)
 
+    let tiempoMovimiento = 0
+    let tiempoDetenido = 0
+    const desglose = []
+
+    // Analizar cada segmento entre coordenadas
     for (let i = 1; i < coordsValidas.length; i++) {
       const coordActual = coordsValidas[i]
       const coordAnterior = coordsValidas[i - 1]
 
       const timestampActual = new Date(coordActual.timestamp).getTime()
       const timestampAnterior = new Date(coordAnterior.timestamp).getTime()
+      const diferenciaTiempo = timestampActual - timestampAnterior
 
-      const diferencia = timestampActual - timestampAnterior
-
-      // Solo contar si la diferencia es razonable (< 10 minutos entre puntos)
-      if (diferencia > 0 && diferencia < 600000) {
-        // Si tiene estado, solo contar movimiento/detenido
-        if (coordActual.estado) {
-          if (coordActual.estado === 'movimiento' || coordActual.estado === 'detenido') {
-            tiempoTotal += diferencia
-          }
-        } else {
-          // Si no hay estado, contar todo
-          tiempoTotal += diferencia
-        }
+      // Validar que la diferencia sea razonable
+      if (diferenciaTiempo <= 0 || diferenciaTiempo > MAX_TIEMPO_ENTRE_PUNTOS) {
+        continue
       }
+
+      // Calcular velocidad
+      const velocidad = calcularVelocidad(coordAnterior, coordActual)
+      const estado = determinarEstado(velocidad)
+
+      // Acumular tiempo según estado
+      if (estado === 'movimiento') {
+        tiempoMovimiento += diferenciaTiempo
+      } else if (estado === 'detenido') {
+        tiempoDetenido += diferenciaTiempo
+      }
+
+      desglose.push({
+        desde: new Date(coordAnterior.timestamp),
+        hasta: new Date(coordActual.timestamp),
+        duracion: diferenciaTiempo,
+        velocidad: velocidad.toFixed(2),
+        estado,
+      })
     }
 
-    console.log(`✅ Tiempo total calculado desde coordenadas: ${formatearDuracion(tiempoTotal)}`)
-    return tiempoTotal
+    const tiempoTotal = tiempoMovimiento + tiempoDetenido
+
+    console.log(`✅ Tiempo en movimiento: ${formatearDuracion(tiempoMovimiento)}`)
+    console.log(`✅ Tiempo detenido: ${formatearDuracion(tiempoDetenido)}`)
+    console.log(`✅ Tiempo total de conducción: ${formatearDuracion(tiempoTotal)}`)
+
+    return {
+      tiempoTotal,
+      tiempoMovimiento,
+      tiempoDetenido,
+      desglose,
+    }
+  }
+
+  /**
+   * 🔥 Calcula el tiempo de conducción HOY
+   */
+  const calcularTiempoConductionHoy = async (unidadId) => {
+    try {
+      const hoy = new Date()
+      const fechaStr = formatearFechaParaFirestore(hoy)
+
+      console.log(`\n📊 === CALCULANDO TIEMPO DE CONDUCCIÓN ===`)
+      console.log(`📍 Unidad: ${unidadId}`)
+      console.log(`📅 Fecha: ${fechaStr}`)
+
+      const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fechaStr)
+      const rutaSnap = await getDoc(rutaRef)
+
+      if (!rutaSnap.exists()) {
+        console.log(`❌ No hay datos de RutaDiaria para hoy`)
+        return {
+          tiempoTotal: 0,
+          tiempoMovimiento: 0,
+          tiempoDetenido: 0,
+        }
+      }
+
+      const data = rutaSnap.data()
+
+      // Descargar coordenadas desde Storage
+      if (data.rutas_url) {
+        const coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
+
+        if (coordenadas.length > 0) {
+          const resultado = calcularTiempoDesdeCoordenadasConVelocidad(coordenadas)
+          console.log(`=== FIN CÁLCULO ===\n`)
+          return resultado
+        }
+      }
+
+      // Si no hay coordenadas, intentar usar campos del documento
+      if (data.duracion_total_minutos) {
+        console.log(`⚠️ Usando duracion_total_minutos del documento`)
+        const tiempoMs = data.duracion_total_minutos * 60 * 1000
+        return {
+          tiempoTotal: tiempoMs,
+          tiempoMovimiento: tiempoMs,
+          tiempoDetenido: 0,
+        }
+      }
+
+      console.log(`❌ No se pudo calcular el tiempo`)
+      return {
+        tiempoTotal: 0,
+        tiempoMovimiento: 0,
+        tiempoDetenido: 0,
+      }
+    } catch (err) {
+      console.error('❌ Error calculando tiempo de conducción:', err)
+      return {
+        tiempoTotal: 0,
+        tiempoMovimiento: 0,
+        tiempoDetenido: 0,
+      }
+    }
   }
 
   /**
@@ -167,16 +251,14 @@ export function useEstadisticasUnidad() {
     error.value = null
 
     try {
-      console.log(`\n📊 === CALCULANDO ESTADÍSTICAS PARA UNIDAD ${unidadId} ===`)
-
-      const tiempoHoy = await calcularTiempoConductionHoy(unidadId)
-
-      console.log(`✅ RESULTADO: Tiempo hoy = ${formatearDuracion(tiempoHoy)}`)
-      console.log(`=== FIN CÁLCULO ===\n`)
+      const resultado = await calcularTiempoConductionHoy(unidadId)
 
       return {
-        tiempoConductionHoy: tiempoHoy > 0 ? formatearDuracion(tiempoHoy) : '0h 0m',
-        tiempoConductionHoyMs: tiempoHoy,
+        tiempoConductionHoy:
+          resultado.tiempoTotal > 0 ? formatearDuracion(resultado.tiempoTotal) : '0h 0m',
+        tiempoConductionHoyMs: resultado.tiempoTotal,
+        tiempoMovimiento: formatearDuracion(resultado.tiempoMovimiento),
+        tiempoDetenido: formatearDuracion(resultado.tiempoDetenido),
       }
     } catch (err) {
       console.error('❌ Error obteniendo estadísticas:', err)
@@ -185,6 +267,8 @@ export function useEstadisticasUnidad() {
       return {
         tiempoConductionHoy: 'N/A',
         tiempoConductionHoyMs: 0,
+        tiempoMovimiento: 'N/A',
+        tiempoDetenido: 'N/A',
       }
     } finally {
       loading.value = false
@@ -193,17 +277,22 @@ export function useEstadisticasUnidad() {
 
   /**
    * Calcula la duración del estado actual
+   * Necesita timestamp_cambio_estado del documento principal de la unidad
    */
-  const calcularDuracionEstado = (timestampUltimaActualizacion) => {
-    if (!timestampUltimaActualizacion) {
+  const calcularDuracionEstado = (timestampCambioEstado, timestampActual) => {
+    if (!timestampCambioEstado || !timestampActual) {
       return 'N/A'
     }
 
-    const ahora = Date.now()
-    const diff = ahora - timestampUltimaActualizacion
+    const diff = timestampActual - timestampCambioEstado
+
+    if (diff < 0) {
+      return 'N/A'
+    }
 
     if (diff > 86400000) {
-      return 'Desactualizado'
+      // Más de 24 horas
+      return 'Más de 1 día'
     }
 
     return formatearDuracion(diff)
@@ -218,8 +307,11 @@ export function useEstadisticasUnidad() {
     const segundos = Math.floor(ms / 1000)
     const minutos = Math.floor(segundos / 60)
     const horas = Math.floor(minutos / 60)
+    const dias = Math.floor(horas / 24)
 
-    if (horas > 0) {
+    if (dias > 0) {
+      return `${dias}d ${horas % 24}h`
+    } else if (horas > 0) {
       return `${horas}h ${minutos % 60}m`
     } else if (minutos > 0) {
       return `${minutos}m`

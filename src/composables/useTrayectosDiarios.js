@@ -8,12 +8,42 @@ export function useTrayectosDiarios() {
   const error = ref(null)
 
   /**
+   * Calcula distancia entre dos puntos (fórmula Haversine)
+   */
+  const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+    const R = 6371 // Radio de la Tierra en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  /**
+   * Calcula velocidad entre dos coordenadas
+   */
+  const calcularVelocidad = (coord1, coord2) => {
+    const distanciaKm = calcularDistancia(coord1.lat, coord1.lng, coord2.lat, coord2.lng)
+    const tiempoHoras =
+      (new Date(coord2.timestamp).getTime() - new Date(coord1.timestamp).getTime()) / 3600000
+
+    if (tiempoHoras <= 0) return 0
+    return distanciaKm / tiempoHoras // km/h
+  }
+
+  /**
    * Descarga coordenadas desde Storage
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) return []
 
     try {
+      console.log('🌐 Descargando coordenadas desde Storage...')
       const response = await fetch(rutasUrl)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
@@ -30,30 +60,60 @@ export function useTrayectosDiarios() {
         coordenadas = data.puntos
       }
 
-      return coordenadas
+      const coordenadasNormalizadas = coordenadas
         .filter((coord) => {
           const lat = coord.lat || coord.latitude
           const lng = coord.lng || coord.longitude || coord.lon
-          return lat && lng
+          const timestamp = coord.timestamp || coord.time
+          return lat && lng && timestamp
         })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
-          timestamp: coord.timestamp || coord.time || null,
-          velocidad: coord.velocidad || coord.speed || 0,
-          estado: coord.estado || coord.status || 'desconocido',
+          timestamp: coord.timestamp || coord.time,
         }))
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+      console.log(`✅ ${coordenadasNormalizadas.length} coordenadas descargadas`)
+      return coordenadasNormalizadas
     } catch (err) {
-      console.error('Error descargando coordenadas:', err)
+      console.error('❌ Error descargando coordenadas:', err)
       return []
     }
+  }
+
+  /**
+   * 🔥 Analiza coordenadas y calcula velocidades entre puntos
+   */
+  const enriquecerCoordenadasConVelocidad = (coordenadas) => {
+    if (coordenadas.length < 2) return []
+
+    const coordenadasEnriquecidas = [
+      {
+        ...coordenadas[0],
+        velocidad: 0,
+      },
+    ]
+
+    for (let i = 1; i < coordenadas.length; i++) {
+      const velocidad = calcularVelocidad(coordenadas[i - 1], coordenadas[i])
+      coordenadasEnriquecidas.push({
+        ...coordenadas[i],
+        velocidad: Math.round(velocidad), // Redondear a entero
+      })
+    }
+
+    return coordenadasEnriquecidas
   }
 
   /**
    * Analiza coordenadas y genera trayectos (viajes separados por paradas)
    */
   const analizarTrayectos = (coordenadas) => {
-    if (!coordenadas || coordenadas.length === 0) return []
+    if (!coordenadas || coordenadas.length < 2) return []
+
+    // 🔥 Primero calcular velocidades
+    const coordsConVelocidad = enriquecerCoordenadasConVelocidad(coordenadas)
 
     const trayectos = []
     let trayectoActual = {
@@ -67,10 +127,10 @@ export function useTrayectosDiarios() {
 
     let enMovimiento = false
     const UMBRAL_PARADA = 5 // km/h
-    //const TIEMPO_MIN_PARADA = 5 * 60 * 1000 // 5 minutos en ms
+    const MIN_COORDS_TRAYECTO = 5
 
-    for (let i = 0; i < coordenadas.length; i++) {
-      const coord = coordenadas[i]
+    for (let i = 0; i < coordsConVelocidad.length; i++) {
+      const coord = coordsConVelocidad[i]
       const velocidad = coord.velocidad || 0
 
       // Detectar inicio de movimiento
@@ -78,6 +138,7 @@ export function useTrayectosDiarios() {
         enMovimiento = true
         trayectoActual.inicio = coord
         trayectoActual.coordenadas = [coord]
+        console.log(`🚗 Inicio de trayecto en ${formatearHora(coord.timestamp)}`)
       }
 
       // Si está en movimiento, agregar coordenada
@@ -85,7 +146,7 @@ export function useTrayectosDiarios() {
         trayectoActual.coordenadas.push(coord)
         trayectoActual.velocidadMax = Math.max(trayectoActual.velocidadMax, velocidad)
 
-        // Calcular distancia (aproximación simple)
+        // Calcular distancia
         if (trayectoActual.coordenadas.length > 1) {
           const prev = trayectoActual.coordenadas[trayectoActual.coordenadas.length - 2]
           const dist = calcularDistancia(prev.lat, prev.lng, coord.lat, coord.lng)
@@ -95,8 +156,9 @@ export function useTrayectosDiarios() {
 
       // Detectar parada (velocidad baja por tiempo prolongado)
       if (enMovimiento && velocidad <= UMBRAL_PARADA) {
-        const siguientesParados = coordenadas
-          .slice(i, i + 5)
+        // Verificar si los siguientes 3 puntos también están parados
+        const siguientesParados = coordsConVelocidad
+          .slice(i, i + 3)
           .every((c) => (c.velocidad || 0) <= UMBRAL_PARADA)
 
         if (siguientesParados) {
@@ -109,8 +171,11 @@ export function useTrayectosDiarios() {
           trayectoActual.velocidadPromedio =
             velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
 
-          // Guardar trayecto
-          if (trayectoActual.coordenadas.length > 5) {
+          // Guardar trayecto solo si tiene suficientes coordenadas
+          if (trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
+            console.log(
+              `🏁 Fin de trayecto en ${formatearHora(coord.timestamp)} - ${trayectoActual.distancia.toFixed(2)} km`,
+            )
             trayectos.push({ ...trayectoActual })
           }
 
@@ -129,8 +194,8 @@ export function useTrayectosDiarios() {
     }
 
     // Si quedó un trayecto activo al final
-    if (enMovimiento && trayectoActual.coordenadas.length > 5) {
-      trayectoActual.fin = coordenadas[coordenadas.length - 1]
+    if (enMovimiento && trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
+      trayectoActual.fin = coordsConVelocidad[coordsConVelocidad.length - 1]
       const velocidades = trayectoActual.coordenadas
         .map((c) => c.velocidad || 0)
         .filter((v) => v > 0)
@@ -139,24 +204,8 @@ export function useTrayectosDiarios() {
       trayectos.push(trayectoActual)
     }
 
+    console.log(`✅ Total de trayectos detectados: ${trayectos.length}`)
     return trayectos
-  }
-
-  /**
-   * Calcula distancia entre dos puntos (fórmula Haversine)
-   */
-  const calcularDistancia = (lat1, lon1, lat2, lon2) => {
-    const R = 6371 // Radio de la Tierra en km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180
-    const dLon = ((lon2 - lon1) * Math.PI) / 180
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
   }
 
   /**
@@ -168,7 +217,6 @@ export function useTrayectosDiarios() {
 
     try {
       const fechaStr = formatearFechaParaFirestore(fecha)
-      console.log(`📊 Buscando trayectos para unidad ${unidadId} en fecha ${fechaStr}`)
 
       const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fechaStr)
       const rutaSnap = await getDoc(rutaRef)
@@ -183,40 +231,40 @@ export function useTrayectosDiarios() {
       }
 
       const data = rutaSnap.data()
-      console.log('📦 Datos encontrados:', data)
+      console.log('📦 Datos de RutaDiaria:', {
+        duracion: data.duracion_total_minutos,
+        distancia: data.distancia_recorrida_km,
+        paradas: data.paradas?.length,
+        tiene_rutas_url: !!data.rutas_url,
+      })
 
       // Descargar coordenadas
       let coordenadas = []
       if (data.rutas_url) {
         coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
-      } else if (data.nuevaCoordenada) {
-        coordenadas = [data.nuevaCoordenada]
       }
 
-      console.log(`✅ ${coordenadas.length} coordenadas descargadas`)
+      if (coordenadas.length === 0) {
+        console.log('⚠️ No hay coordenadas para analizar')
+        return {
+          existenDatos: true,
+          trayectos: [],
+          resumen: generarResumenDesdeData(data, []),
+        }
+      }
 
       // Analizar trayectos
       const trayectos = analizarTrayectos(coordenadas)
-      console.log(`✅ ${trayectos.length} trayectos detectados`)
 
       // Generar resumen
-      const resumen = {
-        ubicacionInicio: data.ubicacion_inicio || 'Desconocido',
-        ubicacionFin: data.ubicacion_fin || 'Desconocido',
-        duracionTrabajo: data.duracion_total_minutos
-          ? formatearDuracion(data.duracion_total_minutos * 60 * 1000)
-          : 'N/A',
-        kilometraje: data.distancia_recorrida_km
-          ? `${parseFloat(data.distancia_recorrida_km).toFixed(2)} km`
-          : 'N/A',
-        numTrayectos: trayectos.length,
-        numParadas: data.paradas?.length || 0,
-      }
+      const resumen = generarResumenDesdeData(data, trayectos)
+
+      console.log(`=== FIN OBTENCIÓN TRAYECTOS ===\n`)
 
       return {
         existenDatos: true,
         trayectos: trayectos.map((t, index) => ({
-          id: `trayecto_${index}`,
+          id: `trayecto_${fechaStr}_${index}`,
           titulo: `Viaje ${index + 1}`,
           horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
           horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
@@ -231,7 +279,7 @@ export function useTrayectosDiarios() {
         resumen,
       }
     } catch (err) {
-      console.error('Error obteniendo trayectos:', err)
+      console.error('❌ Error obteniendo trayectos:', err)
       error.value = err.message
       return {
         existenDatos: false,
@@ -240,6 +288,88 @@ export function useTrayectosDiarios() {
       }
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * 🆕 Geocodifica coordenadas a dirección legible usando Nominatim
+   */
+  const geocodificarCoordenadas = async (lat, lng) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'WebGpsPerco/1.0', // Nominatim requiere User-Agent
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.display_name) {
+        // Simplificar la dirección
+        const address = data.address
+        const partes = []
+
+        if (address.road) partes.push(address.road)
+        if (address.suburb) partes.push(address.suburb)
+        if (address.city || address.town) partes.push(address.city || address.town)
+        if (address.state) partes.push(address.state)
+
+        return partes.length > 0 ? partes.join(', ') : data.display_name
+      }
+
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    } catch (err) {
+      console.error('Error geocodificando:', err)
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    }
+  }
+
+  /**
+   * Genera el resumen del día calculando desde los trayectos
+   */
+  const generarResumenDesdeData = (data, trayectos) => {
+    // Calcular duración total sumando todos los trayectos
+    let duracionTotalMs = 0
+    let kilometrajeTotal = 0
+
+    trayectos.forEach((t) => {
+      if (t.inicio.timestamp && t.fin.timestamp) {
+        const duracion =
+          new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
+        duracionTotalMs += duracion
+      }
+      kilometrajeTotal += t.distancia
+    })
+
+    // Obtener primera y última coordenada del día
+    let ubicacionInicio = 'Desconocido'
+    let ubicacionFin = 'Desconocido'
+
+    if (trayectos.length > 0) {
+      const primerTrayecto = trayectos[0]
+      const ultimoTrayecto = trayectos[trayectos.length - 1]
+
+      if (primerTrayecto.inicio) {
+        ubicacionInicio = `${primerTrayecto.inicio.lat.toFixed(6)}, ${primerTrayecto.inicio.lng.toFixed(6)}`
+      }
+
+      if (ultimoTrayecto.fin) {
+        ubicacionFin = `${ultimoTrayecto.fin.lat.toFixed(6)}, ${ultimoTrayecto.fin.lng.toFixed(6)}`
+      }
+    }
+
+    return {
+      ubicacionInicio,
+      ubicacionFin,
+      duracionTrabajo: duracionTotalMs > 0 ? formatearDuracion(duracionTotalMs) : 'N/A',
+      kilometraje: kilometrajeTotal > 0 ? `${kilometrajeTotal.toFixed(2)} km` : '0.00 km',
+      numTrayectos: trayectos.length,
     }
   }
 
@@ -279,6 +409,7 @@ export function useTrayectosDiarios() {
   return {
     loading,
     error,
+    geocodificarCoordenadas,
     obtenerTrayectosDia,
   }
 }
