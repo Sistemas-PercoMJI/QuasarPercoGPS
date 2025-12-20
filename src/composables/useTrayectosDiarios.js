@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { doc, getDoc } from 'firebase/firestore'
+import { useGeocoding } from './useGeocoding'
 
 export function useTrayectosDiarios() {
   const loading = ref(false)
   const error = ref(null)
+  const { obtenerDireccion } = useGeocoding()
 
   /**
    * Calcula distancia entre dos puntos (fórmula Haversine)
@@ -257,7 +259,7 @@ export function useTrayectosDiarios() {
       const trayectos = analizarTrayectos(coordenadas)
 
       // Generar resumen
-      const resumen = generarResumenDesdeData(data, trayectos)
+      const resumen = await generarResumenDesdeData(data, trayectos)
 
       console.log(`=== FIN OBTENCIÓN TRAYECTOS ===\n`)
 
@@ -333,7 +335,7 @@ export function useTrayectosDiarios() {
   /**
    * Genera el resumen del día calculando desde los trayectos
    */
-  const generarResumenDesdeData = (data, trayectos) => {
+  const generarResumenDesdeData = async (data, trayectos) => {
     // Calcular duración total sumando todos los trayectos
     let duracionTotalMs = 0
     let kilometrajeTotal = 0
@@ -347,7 +349,6 @@ export function useTrayectosDiarios() {
       kilometrajeTotal += t.distancia
     })
 
-    // Obtener primera y última coordenada del día
     let ubicacionInicio = 'Desconocido'
     let ubicacionFin = 'Desconocido'
 
@@ -355,12 +356,24 @@ export function useTrayectosDiarios() {
       const primerTrayecto = trayectos[0]
       const ultimoTrayecto = trayectos[trayectos.length - 1]
 
+      // 🔥 Geocodificar ubicación de inicio
       if (primerTrayecto.inicio) {
-        ubicacionInicio = `${primerTrayecto.inicio.lat.toFixed(6)}, ${primerTrayecto.inicio.lng.toFixed(6)}`
+        console.log('🌍 Geocodificando ubicación de inicio...')
+        ubicacionInicio = await obtenerDireccion({
+          lat: primerTrayecto.inicio.lat,
+          lng: primerTrayecto.inicio.lng,
+        })
+        console.log('✅ Inicio:', ubicacionInicio)
       }
 
+      // 🔥 Geocodificar ubicación de fin
       if (ultimoTrayecto.fin) {
-        ubicacionFin = `${ultimoTrayecto.fin.lat.toFixed(6)}, ${ultimoTrayecto.fin.lng.toFixed(6)}`
+        console.log('🌍 Geocodificando ubicación de fin...')
+        ubicacionFin = await obtenerDireccion({
+          lat: ultimoTrayecto.fin.lat,
+          lng: ultimoTrayecto.fin.lng,
+        })
+        console.log('✅ Fin:', ubicacionFin)
       }
     }
 
