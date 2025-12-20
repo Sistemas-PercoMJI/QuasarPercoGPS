@@ -512,7 +512,7 @@ export function useReportePDF() {
         head: [resumenPorTipo.headers],
         body: resumenPorTipo.rows,
         theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
         styles: { fontSize: 8 },
       })
 
@@ -624,7 +624,7 @@ export function useReportePDF() {
         body: tableData,
         theme: 'striped',
         headStyles: {
-          fillColor: [66, 139, 202],
+          fillColor: [145, 198, 188],
           fontStyle: 'bold',
           fontSize: 5, // 🔥 Reducido de 8 a 5
           cellPadding: 1, // 🔥 Reducido de 2 a 1
@@ -677,7 +677,7 @@ export function useReportePDF() {
 
           doc.setFontSize(16)
           doc.setFont('helvetica', 'bold')
-          doc.setTextColor(41, 128, 185)
+          doc.setTextColor(75, 157, 169)
           doc.text(headerInfo.titulo, 20, yPosition)
           yPosition += 8
 
@@ -726,7 +726,7 @@ export function useReportePDF() {
 
             doc.setFontSize(12)
             doc.setFont('helvetica', 'bold')
-            doc.setTextColor(52, 152, 219)
+            doc.setTextColor(75, 157, 169)
             doc.text(headerSubGrupo.titulo, 25, yPosition)
             yPosition += 6
 
@@ -881,7 +881,7 @@ export function useReportePDF() {
               cellPadding: 2,
             },
             headStyles: {
-              fillColor: [52, 152, 219],
+              fillColor: [145, 198, 188],
               textColor: 255,
               fontStyle: 'bold',
               halign: 'center',
@@ -945,7 +945,7 @@ export function useReportePDF() {
       head: [columnas],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [66, 139, 202] },
+      headStyles: { fillColor: [145, 198, 188] },
       styles: { fontSize: 8 },
     })
 
@@ -1037,7 +1037,7 @@ export function useReportePDF() {
           head: [['Concepto', 'Valor']],
           body: resumenData,
           theme: 'grid',
-          headStyles: { fillColor: [66, 139, 202] },
+          headStyles: { fillColor: [145, 198, 188] },
           styles: { fontSize: 10 },
         })
 
@@ -1103,7 +1103,7 @@ export function useReportePDF() {
         // ========================================
         doc.setFontSize(16)
         doc.setFont(undefined, 'bold')
-        doc.setTextColor(41, 128, 185) // Azul oscuro
+        doc.setTextColor(75, 157, 169) // Azul oscuro
 
         const headerTitulo =
           config.reportarPor === 'Unidades'
@@ -1170,7 +1170,7 @@ export function useReportePDF() {
           body: tableData,
           theme: 'grid',
           headStyles: {
-            fillColor: [76, 175, 80],
+            fillColor: [145, 198, 188],
             fontStyle: 'bold',
             fontSize: necesitaMultilinea ? 7 : 8,
             minCellHeight: necesitaMultilinea ? 10 : 8,
@@ -1471,7 +1471,7 @@ export function useReportePDF() {
         ],
         body: resumenData,
         theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
         styles: { fontSize: 8 },
         columnStyles: {
           0: { cellWidth: 80 },
@@ -1553,7 +1553,7 @@ export function useReportePDF() {
       // ========================================
       doc.setFontSize(16)
       doc.setFont(undefined, 'bold')
-      doc.setTextColor(41, 128, 185) // Azul oscuro
+      doc.setTextColor(75, 157, 169) // Azul oscuro
 
       const headerTitulo =
         config.reportarPor === 'Unidades'
@@ -1618,7 +1618,7 @@ export function useReportePDF() {
 
           doc.setFontSize(12)
           doc.setFont(undefined, 'bold')
-          doc.setTextColor(52, 152, 219) // Azul claro
+          doc.setTextColor(75, 157, 169) // Azul claro
 
           const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', {
             weekday: 'long',
@@ -1762,7 +1762,7 @@ export function useReportePDF() {
               head: [headersViajes], // 🔥 USAR HEADERS CONFIGURABLES
               body: todosLosViajes,
               theme: 'grid',
-              headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
+              headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
               styles: { fontSize: 7, cellPadding: 2 },
               margin: { left: 20, right: 20 },
             })
@@ -1866,7 +1866,7 @@ export function useReportePDF() {
             head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
             body: resumenPorDia,
             theme: 'grid',
-            headStyles: { fillColor: [76, 175, 80], fontSize: 9 },
+            headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
             styles: { fontSize: 8, cellPadding: 3 },
             columnStyles: {
               0: { cellWidth: 80 },
