@@ -2,6 +2,7 @@
 // 📊 SISTEMA DE COLUMNAS DINÁMICAS PARA TODOS LOS TIPOS DE REPORTES
 
 import { ref, computed } from 'vue'
+import { usePreferenciasReportes } from './usePreferenciasReportes'
 
 /**
  * ============================================
@@ -39,6 +40,25 @@ const COLUMNAS_COMPARTIDAS = {
   },
 }
 
+export const COLUMNAS_DEFAULT = {
+  eventos: ['Nombre de evento', 'Hora de inicio de evento', 'Conductor', 'Vehículo', 'Tipo'],
+  trayectos: [
+    'Hora de inicio de trabajo',
+    'Ubicación de inicio de trabajo',
+    'Hora de fin de trabajo',
+    'Ubicación de fin de trabajo',
+    'Duración del trayecto',
+    'Kilometraje recorrido',
+  ],
+  horas_trabajo: [
+    'Fecha',
+    'Hora de inicio de trabajo',
+    'Hora de fin de trabajo',
+    'Duración total de trabajo',
+    'Duración dentro del horario comercial',
+    'Duración fuera del horario comercial',
+  ],
+}
 /**
  * ============================================
  * COLUMNAS PARA INFORME DE EVENTOS
@@ -722,14 +742,14 @@ export const COLUMNAS_POR_TIPO = {
  * ============================================
  */
 export function useColumnasReportes() {
+  const { obtenerColumnasGuardadas, guardarColumnasSeleccionadas, resetearPreferencias } =
+    usePreferenciasReportes()
+
   // Tipo de informe actual
   const tipoInformeActivo = ref('eventos')
 
   // Columnas seleccionadas por el usuario
   const columnasSeleccionadas = ref([])
-
-  // Columna temporal para agregar
-  //const columnaAgregar = ref(null)
 
   // Mostrar resumen
   const mostrarResumen = ref(true)
@@ -750,34 +770,45 @@ export function useColumnasReportes() {
   const nombresColumnasDisponibles = computed(() => {
     const todasLasColumnas = columnasDisponibles.value
 
-    // 🔥 FILTRAR columnas que tengan oculta: true
     return Object.entries(todasLasColumnas)
-      .filter(([, config]) => !config.oculta) // Excluir ocultas
-      .map(([nombre]) => nombre) // Retornar solo nombres
+      .filter(([, config]) => !config.oculta)
+      .map(([nombre]) => nombre)
   })
 
   /**
-   * Cambiar tipo de informe y resetear columnas
+   * 🆕 Cargar columnas guardadas o usar defaults
+   */
+  const cargarColumnasIniciales = (tipo) => {
+    const columnasGuardadas = obtenerColumnasGuardadas(tipo)
+
+    if (columnasGuardadas && columnasGuardadas.length > 0) {
+      console.log(`📋 Cargando ${columnasGuardadas.length} columnas guardadas para ${tipo}`)
+      return [...columnasGuardadas]
+    } else {
+      console.log(`📋 Usando ${COLUMNAS_DEFAULT[tipo].length} columnas por defecto para ${tipo}`)
+      return [...COLUMNAS_DEFAULT[tipo]]
+    }
+  }
+
+  /**
+   * Cambiar tipo de informe y cargar columnas apropiadas
    */
   const cambiarTipoInforme = (nuevoTipo) => {
     tipoInformeActivo.value = nuevoTipo
-
-    // Resetear columnas seleccionadas
-    columnasSeleccionadas.value = []
-
-    // Resetear columnas filtradas
+    columnasSeleccionadas.value = cargarColumnasIniciales(nuevoTipo)
     columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
   }
 
   /**
-   * Agregar una columna
+   * 🆕 Guardar columnas seleccionadas actuales
    */
-  /*const agregarColumna = (columna) => {
-    if (columna && !columnasSeleccionadas.value.includes(columna)) {
-      columnasSeleccionadas.value.push(columna)
+  const guardarColumnasActuales = () => {
+    if (columnasSeleccionadas.value.length > 0) {
+      guardarColumnasSeleccionadas(tipoInformeActivo.value, columnasSeleccionadas.value)
+      console.log(
+        `💾 Guardadas ${columnasSeleccionadas.value.length} columnas para ${tipoInformeActivo.value}`,
+      )
     }
-    columnaAgregar.value = null
-    // 🔥 QUITAR TODO EL nextTick(() => { ... })
   }
 
   /**
@@ -826,12 +857,10 @@ export function useColumnasReportes() {
     return datos.map((dato) => {
       const fila = {}
 
-      // 🔥 USAR obtenerValor() en lugar de mapeo directo
       configuracion.forEach((col) => {
         fila[col.label] = col.obtenerValor(dato)
       })
 
-      // 🔥 AGREGAR: Incluir datos adicionales necesarios para el mapa
       fila.coordenadas = dato.coordenadas || []
       fila.latitud = dato.latitud || dato.coordenadas?.[0]?.lat
       fila.longitud = dato.longitud || dato.coordenadas?.[0]?.lng
@@ -863,25 +892,20 @@ export function useColumnasReportes() {
     }
 
     datos.forEach((dato) => {
-      // 🔥 CORREGIDO: Contar por tipo de evento (Entrada/Salida)
       const tipo = dato.tipoEvento || dato.TipoEvento || 'Sin tipo'
       resumen.eventosPorTipo[tipo] = (resumen.eventosPorTipo[tipo] || 0) + 1
 
-      // Contar por ubicación
       const ubicacion =
         dato.ubicacionNombre || dato.geozonaNombre || dato.GeozonaNombre || 'Sin ubicación'
       resumen.eventosPorUbicacion[ubicacion] = (resumen.eventosPorUbicacion[ubicacion] || 0) + 1
 
-      // Conductores únicos
       if (dato.conductorNombre) {
-        // 🔥 LIMPIEZA: Eliminar "undefined" si existe
         const nombreLimpio = dato.conductorNombre.replace(/\s*undefined\s*/gi, '').trim()
         if (nombreLimpio) {
           resumen.conductoresUnicos.add(nombreLimpio)
         }
       }
 
-      // Vehículos únicos
       if (dato.unidadNombre) {
         resumen.vehiculosUnicos.add(dato.unidadNombre)
       }
@@ -897,37 +921,22 @@ export function useColumnasReportes() {
   }
 
   /**
-   * Resetear columnas a valores por defecto según tipo
+   * 🔄 Resetear columnas a valores por defecto
    */
   const resetearColumnas = () => {
-    const columnasPorDefecto = {
-      eventos: ['Nombre de evento', 'Hora de inicio de evento', 'Conductor', 'Vehículo'],
-      trayectos: [
-        'Hora de inicio de trabajo',
-        'Hora de fin de trabajo',
-        'Kilometraje recorrido',
-        'Conductor',
-      ],
-      horas_trabajo: [
-        'Fecha',
-        'Hora de inicio de trabajo',
-        'Duración total de trabajo',
-        'Conductor',
-      ],
-    }
-
-    columnasSeleccionadas.value = columnasPorDefecto[tipoInformeActivo.value] || []
+    columnasSeleccionadas.value = [...COLUMNAS_DEFAULT[tipoInformeActivo.value]]
+    resetearPreferencias(tipoInformeActivo.value)
+    console.log(`🔄 Reseteado a ${columnasSeleccionadas.value.length} columnas por defecto`)
   }
 
-  // Inicializar con columnas por defecto
-  resetearColumnas()
+  // 🚀 INICIALIZACIÓN (solo una vez)
+  columnasSeleccionadas.value = cargarColumnasIniciales(tipoInformeActivo.value)
   columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
 
   return {
     // Estado
     tipoInformeActivo,
     columnasSeleccionadas,
-    //columnaAgregar,
     mostrarResumen,
     columnasDisponiblesFiltradas,
 
@@ -937,7 +946,6 @@ export function useColumnasReportes() {
 
     // Métodos
     cambiarTipoInforme,
-    //agregarColumna,
     removerColumna,
     filtrarColumnas,
     obtenerConfiguracionColumnas,
@@ -945,6 +953,7 @@ export function useColumnasReportes() {
     procesarNotificacionesParaReporte,
     generarResumen,
     resetearColumnas,
+    guardarColumnasActuales, // 👈 Para guardar al generar reporte
   }
 }
 
