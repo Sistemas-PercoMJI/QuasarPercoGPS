@@ -295,7 +295,21 @@
             <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
             <div v-if="tieneOpcion('seleccionColumnas')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
-
+              <!-- 🆕 HEADER CON BOTÓN DE RESETEAR -->
+              <div class="columnas-header q-mb-sm">
+                <div class="text-subtitle2">Lista de columnas</div>
+                <q-btn
+                  flat
+                  dense
+                  size="sm"
+                  icon="refresh"
+                  color="primary"
+                  label="Restaurar por defecto"
+                  @click="onResetearColumnas"
+                >
+                  <q-tooltip>Volver a las columnas por defecto</q-tooltip>
+                </q-btn>
+              </div>
               <!-- Buscador de columnas -->
               <q-select
                 v-model="columnasSeleccionadas"
@@ -470,7 +484,7 @@ const { obtenerGeozonas, obtenerGruposConductores, obtenerUnidades, obtenerCondu
 const {
   tipoInformeSeleccionado,
   listaTiposInforme,
-  cambiarTipoInforme,
+  cambiarTipoInforme: cambiarTipoInformeOriginal,
   tieneOpcion,
   METODOS_AGRUPACION,
   TIPOS_INFORME_COMERCIAL,
@@ -490,6 +504,9 @@ const {
   obtenerConfiguracionColumnas,
   procesarNotificacionesParaReporte,
   generarResumen,
+  cambiarTipoInforme: cambiarTipoInformeColumnas, // 👈 Nuevo
+  guardarColumnasActuales, // 👈 Nuevo
+  resetearColumnas, // 👈 Nuevo
 } = instanciaColumnas
 
 const { generarExcelEventos } = useReporteExcel()
@@ -593,6 +610,28 @@ const filtrarEventos = (val, update) => {
 // Métodos
 const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
+}
+
+// 🆕 NUEVA: Función wrapper para cambiar tipo de informe
+const cambiarTipoInforme = (nuevoTipo) => {
+  // Cambiar en useTiposInforme (tu lógica existente)
+  cambiarTipoInformeOriginal(nuevoTipo)
+
+  // Cambiar en useColumnasReportes (cargar columnas guardadas)
+  cambiarTipoInformeColumnas(nuevoTipo)
+}
+
+// 🆕 NUEVA: Función para resetear columnas
+const onResetearColumnas = () => {
+  resetearColumnas()
+
+  $q.notify({
+    type: 'info',
+    message: 'Columnas restauradas por defecto',
+    icon: 'refresh',
+    position: 'top',
+    timeout: 2000,
+  })
 }
 
 const cancelarReporte = () => {
@@ -1112,7 +1151,7 @@ const obtenerDatosReporte = async () => {
 
 const generarReporte = async () => {
   if (!validarFormulario()) return
-
+  guardarColumnasActuales()
   generando.value = true
   const formatearDuracionHoras = (totalHoras) => {
     const horas = Math.floor(totalHoras)
@@ -1293,7 +1332,7 @@ const generarReporte = async () => {
 
 const generarExcel = async () => {
   if (!validarFormulario()) return
-
+  guardarColumnasActuales()
   generando.value = true
 
   try {
@@ -1459,3 +1498,12 @@ watch(eventos, () => {
   }
 })
 </script>
+
+<style scoped>
+/* 🆕 ESTILOS PARA EL HEADER DE COLUMNAS */
+.columnas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
