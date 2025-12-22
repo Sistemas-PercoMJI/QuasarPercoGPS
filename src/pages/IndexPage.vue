@@ -1091,31 +1091,6 @@ const dibujarTodosEnMapa = async () => {
           })
         }
 
-        if (!tieneEventos) {
-          mapaAPI.map.on('click', polygonId, (e) => {
-            if (popupGlobalActivo) {
-              popupGlobalActivo.remove()
-            }
-
-            popupGlobalActivo = new mapboxgl.Popup({
-              closeButton: true,
-              closeOnClick: false,
-              className: 'popup-animated',
-            })
-              .setLngLat(e.lngLat)
-              .setHTML(popupContent)
-              .addTo(mapaAPI.map)
-          })
-
-          mapaAPI.map.on('mouseenter', polygonId, () => {
-            mapaAPI.map.getCanvas().style.cursor = 'pointer'
-          })
-
-          mapaAPI.map.on('mouseleave', polygonId, () => {
-            mapaAPI.map.getCanvas().style.cursor = ''
-          })
-        }
-
         const lats = geozona.puntos.map((p) => p.lat)
         const lngs = geozona.puntos.map((p) => p.lng)
         const centroLat = lats.reduce((a, b) => a + b) / lats.length
@@ -1130,7 +1105,6 @@ const dibujarTodosEnMapa = async () => {
           closeOnClick: false,
         }).setHTML(popupContent)
 
-        // ✅ GUARDAR la referencia del marcador
         const marker = new mapboxgl.Marker({ element: markerEl })
           .setLngLat([centroLng, centroLat])
           .setPopup(popup)
@@ -1143,7 +1117,40 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
 
-        marcadoresPOIs.value.push(marker) // ✅ AGREGAR al array
+        marcadoresPOIs.value.push(marker)
+
+        // ✅ SOLO para geozonas SIN eventos
+        if (!tieneEventos) {
+          // Función compartida para toggle del popup
+          const togglePopupGeozona = (e) => {
+            if (e && e.originalEvent) {
+              e.originalEvent.stopPropagation()
+            }
+
+            if (popup.isOpen()) {
+              popup.remove()
+            } else {
+              if (popupGlobalActivo && popupGlobalActivo !== popup) {
+                popupGlobalActivo.remove()
+              }
+              marker.togglePopup()
+            }
+          }
+
+          // Agregar listener al MARCADOR (para el icono)
+          markerEl.addEventListener('click', togglePopupGeozona)
+
+          // Agregar listener al polígono (para el área)
+          mapaAPI.map.on('click', polygonId, togglePopupGeozona)
+
+          mapaAPI.map.on('mouseenter', polygonId, () => {
+            mapaAPI.map.getCanvas().style.cursor = 'pointer'
+          })
+
+          mapaAPI.map.on('mouseleave', polygonId, () => {
+            mapaAPI.map.getCanvas().style.cursor = ''
+          })
+        }
       }
     }
 
