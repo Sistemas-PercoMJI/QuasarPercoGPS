@@ -1127,18 +1127,22 @@ const dibujarTodosEnMapa = async () => {
               e.originalEvent.stopPropagation()
             }
 
+            // ✅ Usar directamente setLngLat y addTo/remove en lugar de togglePopup
             if (popup.isOpen()) {
               popup.remove()
             } else {
               if (popupGlobalActivo && popupGlobalActivo !== popup) {
                 popupGlobalActivo.remove()
               }
-              marker.togglePopup()
+              popup.setLngLat([centroLng, centroLat]).addTo(mapaAPI.map)
             }
           }
 
           // Agregar listener al MARCADOR (para el icono)
-          markerEl.addEventListener('click', togglePopupGeozona)
+          markerEl.addEventListener('click', (e) => {
+            e.stopPropagation()
+            togglePopupGeozona(e)
+          })
 
           // Agregar listener al polígono (para el área)
           mapaAPI.map.on('click', polygonId, togglePopupGeozona)
