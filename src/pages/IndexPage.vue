@@ -681,11 +681,12 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-function crearIconoPOI(tieneEventos = false) {
+function crearIconoPOI(tieneEventos = false, color = '#FF5252') {
+  // ✅ Agregar parámetro color
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
-        <path fill="white" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        <path fill="${color}" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       </svg>
 
       ${
@@ -849,7 +850,7 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
-        const markerEl = crearIconoPOI(tieneEventos)
+        const markerEl = crearIconoPOI(tieneEventos, poi.color || '#FF5252')
 
         const popup = new mapboxgl.Popup({
           offset: 25,

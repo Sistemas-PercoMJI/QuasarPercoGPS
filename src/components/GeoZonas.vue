@@ -369,7 +369,72 @@
               <q-icon name="folder" />
             </template>
           </q-select>
+          <!-- 🎨 Selector de Color para POI -->
+          <div class="q-mb-md">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
+              <q-icon name="palette" size="16px" class="q-mr-xs" />
+              COLOR DEL MARCADOR
+            </div>
 
+            <!-- Paleta de colores predefinida -->
+            <div class="color-palette q-mb-sm">
+              <div
+                v-for="color in paletaColoresPOI"
+                :key="color.valor"
+                class="color-chip"
+                :class="{ 'color-chip-selected': nuevoPOI.color === color.valor }"
+                :style="{ background: color.valor }"
+                @click="nuevoPOI.color = color.valor"
+              >
+                <q-icon
+                  v-if="nuevoPOI.color === color.valor"
+                  name="check"
+                  size="18px"
+                  color="white"
+                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
+                />
+                <q-tooltip>{{ color.nombre }}</q-tooltip>
+              </div>
+            </div>
+
+            <!-- Botón para abrir color picker personalizado -->
+            <q-btn
+              outline
+              dense
+              icon="colorize"
+              label="Color personalizado"
+              color="grey-7"
+              size="sm"
+              @click="mostrarColorPickerPOI = true"
+              class="full-width"
+            />
+
+            <!-- Vista previa del color seleccionado -->
+            <div class="color-preview q-mt-sm">
+              <div class="preview-box" :style="{ background: nuevoPOI.color }"></div>
+              <span class="text-caption text-grey-7">{{ nuevoPOI.color.toUpperCase() }}</span>
+            </div>
+          </div>
+
+          <!-- Dialog del Color Picker para POI -->
+          <q-dialog v-model="mostrarColorPickerPOI">
+            <q-card style="min-width: 300px">
+              <q-card-section class="row items-center q-pb-none">
+                <div class="text-h6">Elige un color</div>
+                <q-space />
+                <q-btn icon="close" flat round dense v-close-popup />
+              </q-card-section>
+
+              <q-card-section>
+                <q-color v-model="nuevoPOI.color" format-model="hex" default-view="palette" />
+              </q-card-section>
+
+              <q-card-actions align="right">
+                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
           <q-input
             v-model="nuevoPOI.notas"
             label="Notas adicionales"
@@ -812,7 +877,20 @@ const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 
 // Usar el composable de POIs
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
+//seleccionador de color para POI:
+const mostrarColorPickerPOI = ref(false)
 
+// Agregar paleta de colores para POIs (similar a la de geozonas)
+const paletaColoresPOI = [
+  { nombre: 'Rojo', valor: '#FF5252' },
+  { nombre: 'Azul', valor: '#2196F3' },
+  { nombre: 'Verde', valor: '#4CAF50' },
+  { nombre: 'Naranja', valor: '#FF9800' },
+  { nombre: 'Morado', valor: '#9C27B0' },
+  { nombre: 'Amarillo', valor: '#FFC107' },
+  { nombre: 'Rosa', valor: '#E91E63' },
+  { nombre: 'Turquesa', valor: '#00BCD4' },
+]
 // Usar el composable de Geozonas
 const {
   crearGeozona,
@@ -858,6 +936,7 @@ const nuevoPOI = ref({
   notas: '',
   coordenadas: null,
   radio: 100, // ✅ NUEVO: Radio por defecto 100m
+  color: '#FF5252',
 })
 
 const nuevaGeozona = ref({
@@ -1441,7 +1520,8 @@ function editarItem() {
       coordenadas: itemMenu.value.coordenadas,
       grupoId: itemMenu.value.grupoId,
       notas: itemMenu.value.notas || '',
-      radio: itemMenu.value.radio || 5, // ✅ NUEVO: Cargar radio existente
+      radio: itemMenu.value.radio || 5,
+      color: itemMenu.value.color || '#FF5252',
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
@@ -1571,6 +1651,7 @@ const guardarPOI = async () => {
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
       radio: nuevoPOI.value.radio || 5, // ✅ NUEVO: Incluir radio
+      color: nuevoPOI.value.color || '#FF5252',
     }
 
     if (nuevoPOI.value.id) {
@@ -1593,6 +1674,7 @@ const guardarPOI = async () => {
           nuevoPOI.value.nombre,
           nuevoPOI.value.direccion,
           nuevoPOI.value.radio,
+          nuevoPOI.value.color,
         )
       }
 
@@ -1607,7 +1689,11 @@ const guardarPOI = async () => {
 
       // ✅ NUEVO: Confirmar marcador temporal Y su círculo en el mapa
       if (mapPage && mapPage._mapaAPI) {
-        mapPage._mapaAPI.confirmarMarcadorConCirculo(nuevoPOI.value.nombre, nuevoPOI.value.radio)
+        mapPage._mapaAPI.confirmarMarcadorConCirculo(
+          nuevoPOI.value.nombre,
+          nuevoPOI.value.radio,
+          nuevoPOI.value.color,
+        )
       }
 
       items.value.push({
@@ -1631,7 +1717,8 @@ const guardarPOI = async () => {
       coordenadas: null,
       grupoId: null,
       notas: '',
-      radio: 100, // ✅ NUEVO: Resetear con valor por defecto
+      radio: 100,
+      color: '#FF5252',
     }
     dialogNuevoPOI.value = false
   } catch (err) {
@@ -2140,7 +2227,8 @@ const cancelarNuevoPOI = () => {
     coordenadas: null,
     grupoId: null,
     notas: '',
-    radio: 5, // Agrega esta línea con el valor por defecto
+    radio: 5,
+    color: '#FF5252',
   }
 
   dialogNuevoPOI.value = false
