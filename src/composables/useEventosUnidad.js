@@ -2,13 +2,20 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore'
+import { useGeocoding } from './useGeocoding' // 🆕 Importar geocoding
 
 export function useEventosUnidad() {
   const loading = ref(false)
   const error = ref(null)
 
+  // 🆕 Inicializar geocoding
+  const { obtenerDireccion } = useGeocoding()
+
+  // ========================================
+  // FUNCIÓN ORIGINAL - Sin cambios
+  // ========================================
   /**
-   * Obtiene los eventos de una unidad específica
+   * Obtiene los eventos de una unidad específica desde /Eventos
    * @param {string} unidadId - ID de la unidad
    * @param {number} limite - Número máximo de eventos (por defecto 50)
    * @returns {Array} - Lista de eventos
@@ -67,6 +74,124 @@ export function useEventosUnidad() {
       loading.value = false
     }
   }
+
+  // ========================================
+  // 🆕 NUEVA FUNCIÓN - Para eventos diarios con GEOCODING
+  // ========================================
+  /**
+   * Obtiene eventos diarios de /Unidades/{id}/RutaDiaria/{fecha}/EventoDiario
+   * @param {string} unidadId - ID de la unidad
+   * @param {number} limiteCantidad - Cantidad máxima de eventos (default: 50)
+   * @returns {Array} - Lista de eventos formateados
+   */
+  const obtenerEventosDiarios = async (unidadId, limiteCantidad = 50) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Fecha de hoy en formato YYYY-MM-DD
+      const hoy = new Date()
+      const fechaStr = hoy.toISOString().split('T')[0]
+
+      console.log(`📊 Obteniendo eventos diarios de unidad ${unidadId} - Fecha: ${fechaStr}`)
+
+      // Ruta: /Unidades/{idUnidad}/RutaDiaria/{fecha}/EventoDiario
+      const eventosRef = collection(
+        db,
+        'Unidades',
+        String(unidadId),
+        'RutaDiaria',
+        fechaStr,
+        'EventoDiario',
+      )
+
+      const q = query(eventosRef, orderBy('Timestamp', 'desc'), limit(limiteCantidad))
+
+      const snapshot = await getDocs(q)
+
+      if (snapshot.empty) {
+        console.log('⚠️ No hay eventos diarios')
+        return []
+      }
+
+      // 🆕 Mapear y hacer geocoding en paralelo
+      const eventosPromesas = snapshot.docs.map(async (doc) => {
+        const data = doc.data()
+
+        // Determinar color e icono según TipoEvento
+        let color = 'cyan'
+        let icono = 'info'
+
+        if (data.TipoEvento === 'Entrada') {
+          color = 'green'
+          icono = 'login'
+        } else if (data.TipoEvento === 'Salida') {
+          color = 'red'
+          icono = 'logout'
+        }
+
+        // Formatear timestamp
+        const timestamp = data.Timestamp?.toDate()
+        const fechaTexto = formatearTiempoRelativo(timestamp)
+
+        // Coordenadas
+        const lat = data.Coordenadas?.lat || 0
+        const lng = data.Coordenadas?.lng || 0
+
+        // 🔥 GEOCODING: Obtener dirección si no existe o está en formato de coordenadas
+        let direccion = data.Direccion || ''
+
+        // Si la dirección parece ser coordenadas (contiene números decimales largos)
+        const esFormatoCoordenadas = /^\d+\.\d{6,}/.test(direccion)
+
+        if (!direccion || esFormatoCoordenadas) {
+          try {
+            direccion = await obtenerDireccion({ lat, lng })
+            console.log(`📍 Geocoding aplicado: ${direccion}`)
+          } catch (err) {
+            console.warn('⚠️ Error en geocoding, usando coordenadas:', err)
+            direccion = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+          }
+        }
+
+        // Generar URL de mapa estático
+        const mapaUrl = generarMapaEstatico(lat, lng, color)
+
+        return {
+          id: doc.id,
+          titulo: data.NombreEvento || 'Evento sin nombre',
+          descripcion: `${data.TipoEvento} en ${data.GeozonaNombre || 'ubicación'}`,
+          ubicacion: direccion, // 🔥 Dirección geocodificada
+          coordenadas: { lat, lng },
+          fechaTexto,
+          conductorNombre: 'Conductor', // Puedes agregarlo si está disponible
+          color,
+          icono,
+          mapaUrl,
+          accion: data.TipoEvento, // Para filtrar
+          geozonaNombre: data.GeozonaNombre,
+          tipoUbicacion: data.tipoUbicacion,
+          _raw: data,
+        }
+      })
+
+      // Esperar a que todos los eventos se procesen (incluyendo geocoding)
+      const eventos = await Promise.all(eventosPromesas)
+
+      console.log(`✅ ${eventos.length} eventos diarios obtenidos con geocoding`)
+      return eventos
+    } catch (err) {
+      console.error('❌ Error obteniendo eventos diarios:', err)
+      error.value = err.message
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ========================================
+  // FUNCIONES AUXILIARES - Sin cambios
+  // ========================================
 
   /**
    * Filtra eventos por tipo
@@ -204,10 +329,50 @@ export function useEventosUnidad() {
     }
   }
 
+  // ========================================
+  // 🆕 FUNCIONES AUXILIARES NUEVAS
+  // ========================================
+
+  /**
+   * Genera URL de mapa estático de Mapbox
+   */
+  const generarMapaEstatico = (lat, lng, color) => {
+    const accessToken =
+      'pk.eyJ1IjoiY29uY2F6ZWQiLCJhIjoiY200MnE0cnNkMGduNzJrczhtZzh4c2JiNSJ9.3x7HwvZNxr4Tsr6KGLCWeg'
+
+    const pinColor = color === 'green' ? '4CAF50' : color === 'red' ? 'F44336' : '00BCD4'
+
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+${pinColor}(${lng},${lat})/${lng},${lat},15,0/350x150@2x?access_token=${accessToken}`
+  }
+
+  /**
+   * Formatea timestamp a texto relativo ("Justo ahora", "Hace 5 min")
+   */
+  const formatearTiempoRelativo = (fecha) => {
+    if (!fecha) return 'Desconocido'
+
+    const ahora = new Date()
+    const diffMs = ahora - fecha
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+
+    if (diffMins < 1) return 'Justo ahora'
+    if (diffMins < 60) return `Hace ${diffMins} min`
+    if (diffHours < 24) return `Hace ${diffHours}h`
+
+    return fecha.toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
   return {
     loading,
     error,
-    obtenerEventosUnidad,
-    filtrarEventosPorTipo,
+    obtenerEventosUnidad, // ✅ Original
+    obtenerEventosDiarios, // 🆕 Nueva con geocoding
+    filtrarEventosPorTipo, // ✅ Original
   }
 }
