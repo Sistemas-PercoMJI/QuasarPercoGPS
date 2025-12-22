@@ -478,7 +478,7 @@ const userId = ref(auth.currentUser?.uid || '')
 
 // ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
-  console.error('❌ Error crítico: estadoCompartido.value no está definido en MainLayout')
+  console.error('Error crítico: estadoCompartido.value no está definido en MainLayout')
 }
 
 // NOTIFICACIONES
@@ -518,11 +518,8 @@ const geozonas = ref([])
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
 function abrirEventosConUbicacion(data) {
-  console.log('4️⃣ MainLayout: Recibido evento crear-evento-ubicacion')
-  console.log('📦 Data recibida:', data)
-
   if (!data || !data.ubicacion || !data.tipo) {
-    console.error('❌ Datos incompletos:', data)
+    console.error('Datos incompletos:', data)
     $q.notify({
       type: 'negative',
       message: 'Error: Datos de ubicación incompletos',
@@ -531,22 +528,15 @@ function abrirEventosConUbicacion(data) {
     return
   }
 
-  console.log('5️⃣ MainLayout: Datos validados')
-
   window._ubicacionParaEvento = {
     ubicacion: data.ubicacion,
     tipo: data.tipo,
   }
 
-  console.log('6️⃣ MainLayout: Datos guardados')
-
   geozonaDrawerOpen.value = false
-  console.log('7️⃣ MainLayout: Drawer cerrado')
 
   setTimeout(() => {
-    console.log('8️⃣ MainLayout: Abriendo Eventos')
     eventosDrawerOpen.value = true
-    console.log('9️⃣ MainLayout: Eventos abierto')
   }, 350)
 }
 
@@ -556,9 +546,8 @@ const cargarDatosConductores = async () => {
     try {
       await Promise.all([obtenerConductores(), obtenerGruposConductores()])
       conductoresCargados.value = true
-      console.log('✅ Datos de conductores cargados para búsqueda')
     } catch (error) {
-      console.error('❌ Error al cargar datos de conductores:', error)
+      console.error('Error al cargar datos de conductores:', error)
     }
   }
 }
@@ -568,9 +557,8 @@ const cargarDatosUnidades = async () => {
     try {
       await obtenerUnidades()
       unidadesCargadas.value = true
-      console.log('✅ Datos de unidades cargados para búsqueda')
     } catch (error) {
-      console.error('❌ Error al cargar datos de unidades:', error)
+      console.error('Error al cargar datos de unidades:', error)
     }
   }
 }
@@ -635,8 +623,6 @@ watch(
   () => estadoCompartido.value.abrirGeozonasConPOI,
   (newValue) => {
     if (newValue && newValue.item) {
-      console.log('🚀 MainLayout: Detectado cambio en estadoCompartido, abriendo GeoZonas')
-      console.log('✅ Abriendo GeoZonas con item:', newValue.item)
       cerrarTodosLosDialogs()
       setTimeout(() => {
         geozonaDrawerOpen.value = true
@@ -647,11 +633,6 @@ watch(
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
 async function realizarBusqueda(termino) {
-  console.log('🔍 INICIANDO BÚSQUEDA')
-  console.log('  - Término:', termino)
-  console.log('  - Filtros activos:', filtrosActivos.value)
-  console.log('  - ¿Incluye direccion?:', filtrosActivos.value.includes('direccion'))
-
   // Verificar que el término sigue siendo el actual
   if (busqueda.value !== termino) {
     buscando.value = false
@@ -662,22 +643,13 @@ async function realizarBusqueda(termino) {
 
   // Solo buscar en los filtros activos
   if (filtrosActivos.value.includes('direccion')) {
-    console.log('  ✅ Agregando búsqueda de direcciones')
     promesas.push(buscarDirecciones(termino))
-  } else {
-    console.log('  ❌ NO buscando direcciones')
   }
   if (filtrosActivos.value.includes('vehiculo')) {
-    console.log('  ✅ Agregando búsqueda de vehículos')
     promesas.push(buscarVehiculos(termino))
-  } else {
-    console.log('  ❌ NO buscando vehículos')
   }
   if (filtrosActivos.value.includes('conductor')) {
-    console.log('  ✅ Agregando búsqueda de conductores')
     promesas.push(buscarConductores(termino))
-  } else {
-    console.log('  ❌ NO buscando conductores')
   }
   if (filtrosActivos.value.includes('poi')) {
     promesas.push(buscarPOIs(termino))
@@ -697,9 +669,8 @@ async function realizarBusqueda(termino) {
     const resultados = resultadosArray.flat().filter((r) => r !== null && r !== undefined)
 
     resultadosBusqueda.value = resultados
-    console.log('✅ Resultados encontrados:', resultados.length)
   } catch (error) {
-    console.error('❌ Error en búsqueda:', error)
+    console.error('Error en búsqueda:', error)
     resultadosBusqueda.value = []
   } finally {
     buscando.value = false
@@ -709,8 +680,6 @@ async function realizarBusqueda(termino) {
 // 📍 BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
   try {
-    console.log('🔍 Buscando direcciones para:', termino)
-
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
       {
@@ -725,7 +694,6 @@ async function buscarDirecciones(termino) {
     }
 
     const data = await response.json()
-    console.log('📍 Direcciones encontradas:', data.length)
 
     return data.map((lugar) => ({
       id: `dir-${lugar.place_id}`,
@@ -736,15 +704,13 @@ async function buscarDirecciones(termino) {
       lng: parseFloat(lugar.lon),
     }))
   } catch (error) {
-    console.error('❌ Error buscando direcciones:', error)
+    console.error('Error buscando direcciones:', error)
     return []
   }
 }
 
 async function buscarVehiculos(termino) {
   try {
-    console.log('🚗 Buscando vehículos para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosUnidades()
 
@@ -774,11 +740,9 @@ async function buscarVehiculos(termino) {
         datosUnidad: unidad,
       })
     }
-
-    console.log('🚗 Vehículos encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando vehículos:', error)
+    console.error('Error buscando vehículos:', error)
     return []
   }
 }
@@ -786,8 +750,6 @@ async function buscarVehiculos(termino) {
 // 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
 async function buscarConductores(termino) {
   try {
-    console.log('👤 Buscando conductores para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosConductores()
 
@@ -816,10 +778,9 @@ async function buscarConductores(termino) {
       }
     }
 
-    console.log('👤 Conductores encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando conductores:', error)
+    console.error('Error buscando conductores:', error)
     return []
   }
 }
@@ -840,7 +801,6 @@ function limpiarBusqueda() {
   resultadosBusqueda.value = []
   mostrarSugerencias.value = false
   buscando.value = false
-  console.log('🧹 Búsqueda limpiada')
 }
 
 function seleccionarBusquedaReciente(reciente) {
@@ -861,7 +821,6 @@ function toggleFiltro(filtro) {
   if (soloEsteActivo) {
     // Si solo este filtro está activo, activar TODOS (búsqueda general)
     filtrosActivos.value = ['direccion', 'vehiculo', 'conductor', 'poi', 'geozona']
-    console.log('🔄 Activando TODOS los filtros (búsqueda general)')
 
     $q.notify({
       message: 'Búsqueda general activada',
@@ -873,7 +832,6 @@ function toggleFiltro(filtro) {
   } else {
     // Activar SOLO este filtro
     filtrosActivos.value = [filtro]
-    console.log(`🎯 Solo filtro "${filtro}" activo`)
 
     $q.notify({
       message: `Filtrando solo por: ${filtro}`,
@@ -884,8 +842,6 @@ function toggleFiltro(filtro) {
     })
   }
 
-  console.log('🎛️ Filtros activos:', [...filtrosActivos.value])
-
   // Re-buscar si hay texto
   if (busqueda.value && busqueda.value.length >= 3) {
     resultadosBusqueda.value = []
@@ -894,21 +850,18 @@ function toggleFiltro(filtro) {
   }
 }
 function centrarMapaEn(lat, lng, zoom = 18) {
-  console.log('🎯 Intentando centrar mapa en:', { lat, lng, zoom })
-
   // Función para verificar y esperar por el mapa
   const esperarMapa = (intentos = 0) => {
     // Verificar si window.mapaGlobal existe y tiene el mapa
     if (window.mapaGlobal && window.mapaGlobal.map && window.L) {
-      console.log('✅ Mapa disponible, centrando...')
       ejecutarCentrado(lat, lng, zoom)
       return true
     } else if (intentos < 10) {
       // Máximo 10 intentos (5 segundos)
-      console.log(`⏳ Esperando mapa... intento ${intentos + 1}`)
+
       setTimeout(() => esperarMapa(intentos + 1), 500)
     } else {
-      console.error('❌ Timeout: Mapa no disponible después de 5 segundos')
+      console.error('Timeout: Mapa no disponible después de 5 segundos')
       $q.notify({
         message: 'El mapa no está disponible. Recarga la página e intenta nuevamente.',
         color: 'negative',
@@ -929,13 +882,12 @@ function ejecutarCentrado(lat, lng, zoom) {
   try {
     const map = window.mapaGlobal.map
     if (!map) {
-      console.error('❌ Mapa no disponible')
+      console.error('Mapa no disponible')
       return
     }
 
     // Si ya hay una búsqueda en progreso, la ignoramos para evitar solapamientos
     if (busquedaEnProgreso.value) {
-      console.log('⏳ Búsqueda ya en progreso, ignorando...')
       return
     }
 
@@ -946,8 +898,6 @@ function ejecutarCentrado(lat, lng, zoom) {
       animate: false,
       duration: 0,
     })
-    console.log('✅ setView ejecutado sin animación')
-
     // Actualizar o crear el marcador
     actualizarMarcadorBusqueda(lat, lng)
 
@@ -956,7 +906,7 @@ function ejecutarCentrado(lat, lng, zoom) {
       busquedaEnProgreso.value = false
     }, 300) // Un pequeño retraso para evitar clics múltiples
   } catch (error) {
-    console.error('❌ Error al centrar mapa:', error)
+    console.error('Error al centrar mapa:', error)
     $q.notify({
       message: `Error: ${error.message}`,
       color: 'negative',
@@ -969,7 +919,7 @@ function ejecutarCentrado(lat, lng, zoom) {
 
 function actualizarMarcadorBusqueda(lat, lng) {
   if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
-    console.warn('⚠️ Mapa no disponible para actualizar marcador')
+    console.warn('Mapa no disponible para actualizar marcador')
     return
   }
 
@@ -1001,25 +951,20 @@ function actualizarMarcadorBusqueda(lat, lng) {
         closeOnEscapeKey: true,
         autoPan: true, // Permitir que el mapa se mueva para mostrar el popup
       })
-
-      console.log('✅ Marcador creado y añadido al mapa')
     } else {
       // Si ya existe, solo actualiza su posición
       window.marcadorBusqueda.setLatLng([lat, lng])
-      console.log('✅ Posición del marcador actualizada')
     }
 
     // Abrir popup
     window.marcadorBusqueda.openPopup()
   } catch (error) {
-    console.error('❌ Error al actualizar marcador:', error)
+    console.error('Error al actualizar marcador:', error)
   }
 }
 
 // Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
-  console.log('🎯 Resultado seleccionado:', resultado)
-
   // Guardar en búsquedas recientes
   if (busqueda.value && !busquedasRecientes.value.includes(busqueda.value)) {
     busquedasRecientes.value.unshift(busqueda.value)
@@ -1096,7 +1041,6 @@ onUnmounted(() => {
   if (window.marcadorBusqueda && window.marcadorBusqueda.remove) {
     window.marcadorBusqueda.remove()
     window.marcadorBusqueda = null
-    console.log('🗑️ Marcador de búsqueda eliminado al desmontar.')
   }
   document.removeEventListener('click', handleClickOutside)
   if (timeoutBusqueda) {
@@ -1178,15 +1122,9 @@ const eventosDrawerOpen = ref(false)
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
-    console.log('👀 Conductores.vue: Watch activado')
-    console.log('📦 newValue completo:', newValue)
-
     if (newValue && newValue.conductor) {
-      console.log('📦 Datos recibidos en MainLayout:', newValue.conductor)
-
       // Asegurarse de estar en la ruta correcta
       if (router.currentRoute.value.path !== '/') {
-        console.log('🔄 Redirigiendo a ruta principal')
         router.push('/')
       }
 
@@ -1195,11 +1133,10 @@ watch(
 
       // Esperar para sincronización
       setTimeout(() => {
-        console.log('🚪 Abriendo drawer de conductores')
         conductoresDrawerOpen.value = true
 
         nextTick(() => {
-          console.log('✅ Drawer renderizado, Conductores.vue debe recibir datos')
+          console.log('Drawer renderizado, Conductores.vue debe recibir datos')
         })
       }, 150)
     }
@@ -1285,7 +1222,6 @@ function cerrarTodosLosDialogs() {
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
   eventosDrawerOpen.value = false
-  console.log('🚪 Todos los dialogs cerrados')
 }
 
 function cerrarEstadoFlota() {
@@ -1333,9 +1269,8 @@ const cargarDatosPOIs = async () => {
       const poisData = await obtenerPOIs()
       pois.value = poisData
       poisCargados.value = true
-      console.log('✅ POIs cargados para búsqueda:', poisData.length)
     } catch (error) {
-      console.error('❌ Error al cargar POIs:', error)
+      console.error('Error al cargar POIs:', error)
     }
   }
 }
@@ -1349,9 +1284,8 @@ const cargarDatosGeozonas = async () => {
       const geozonasDa = await obtenerGeozonas()
       geozonas.value = geozonasDa
       geozonasCargadas.value = true
-      console.log('✅ Geozonas cargadas para búsqueda:', geozonasDa.length)
     } catch (error) {
-      console.error('❌ Error al cargar Geozonas:', error)
+      console.error('Error al cargar Geozonas:', error)
     }
   }
 }
@@ -1381,8 +1315,6 @@ function calcularCentroPoligono(puntos) {
 // ============================================
 async function buscarPOIs(termino) {
   try {
-    console.log('📌 Buscando POIs para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosPOIs()
 
@@ -1407,10 +1339,9 @@ async function buscarPOIs(termino) {
       }
     }
 
-    console.log('📌 POIs encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando POIs:', error)
+    console.error('Error buscando POIs:', error)
     return []
   }
 }
@@ -1420,8 +1351,6 @@ async function buscarPOIs(termino) {
 // ============================================
 async function buscarGeozonas(termino) {
   try {
-    console.log('🗺️ Buscando geozonas para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosGeozonas()
 
@@ -1466,10 +1395,9 @@ async function buscarGeozonas(termino) {
       }
     }
 
-    console.log('🗺️ Geozonas encontradas:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando geozonas:', error)
+    console.error('Error buscando geozonas:', error)
     return []
   }
 }
@@ -1480,8 +1408,6 @@ async function buscarGeozonas(termino) {
 function procesarResultado(resultado) {
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
-    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
-
     if (resultado.lat && resultado.lng) {
       centrarMapaEn(resultado.lat, resultado.lng)
       $q.notify({
@@ -1492,7 +1418,7 @@ function procesarResultado(resultado) {
         timeout: 3000,
       })
     } else {
-      console.error('❌ Coordenadas inválidas:', resultado)
+      console.error('Coordenadas inválidas:', resultado)
       $q.notify({
         message: 'Error: Ubicación sin coordenadas válidas',
         color: 'negative',
@@ -1501,7 +1427,6 @@ function procesarResultado(resultado) {
       })
     }
   } else if (resultado.tipo === 'vehiculo') {
-    console.log('🚗 Abriendo estado de flota')
     estadoFlotaDrawerOpen.value = true
     $q.notify({
       message: `🚗 Vehículo: ${resultado.nombre}`,
@@ -1510,8 +1435,6 @@ function procesarResultado(resultado) {
       position: 'top',
     })
   } else if (resultado.tipo === 'conductor') {
-    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
-
     // Abrir el drawer de conductores
     conductoresDrawerOpen.value = true
 
@@ -1525,14 +1448,12 @@ function procesarResultado(resultado) {
     }
 
     $q.notify({
-      message: `👤 Conductor: ${resultado.nombre}`,
+      message: `Conductor: ${resultado.nombre}`,
       color: 'positive',
       icon: 'person',
       position: 'top',
     })
   } else if (resultado.tipo === 'poi') {
-    console.log('📌 Procesando POI:', resultado.poiId)
-
     if (resultado.lat && resultado.lng) {
       // Centrar en el POI con zoom cercano
       centrarMapaEn(resultado.lat, resultado.lng, 18)
@@ -1561,8 +1482,6 @@ function procesarResultado(resultado) {
       timeout: 3000,
     })
   } else if (resultado.tipo === 'geozona') {
-    console.log('🗺️ Procesando geozona:', resultado.geozonaId)
-
     if (resultado.lat && resultado.lng) {
       // Centrar en la geozona con zoom medio (para ver todo el área)
       const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14

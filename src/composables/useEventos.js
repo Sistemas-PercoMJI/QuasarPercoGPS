@@ -39,7 +39,6 @@ export function useEventos(userId) {
         id: docRef.id,
       })
 
-      console.log('✅ Evento guardado con ID:', docRef.id)
       return docRef.id
     } catch (err) {
       error.value = err.message
@@ -67,7 +66,6 @@ export function useEventos(userId) {
         })
       })
 
-      console.log('✅ Eventos cargados:', eventos.length)
       return eventos
     } catch (err) {
       error.value = err.message
@@ -89,8 +87,6 @@ export function useEventos(userId) {
         ...eventoData,
         updatedAt: serverTimestamp(),
       })
-
-      console.log('✅ Evento actualizado:', eventoId)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al actualizar evento:', err)
@@ -108,8 +104,6 @@ export function useEventos(userId) {
     try {
       const eventoDoc = doc(db, 'Usuarios', userId, 'Eventos', eventoId)
       await deleteDoc(eventoDoc)
-
-      console.log('✅ Evento eliminado:', eventoId)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al eliminar evento:', err)
@@ -130,8 +124,6 @@ export function useEventos(userId) {
         activo,
         updatedAt: serverTimestamp(),
       })
-
-      console.log(`✅ Evento ${activo ? 'activado' : 'desactivado'}:`, eventoId)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al cambiar estado del evento:', err)
@@ -163,7 +155,6 @@ export function useEventos(userId) {
         updatedAt: serverTimestamp(),
       })
 
-      console.log('✅ Evento duplicado con ID:', nuevoDocRef.id)
       return nuevoDocRef.id
     } catch (err) {
       error.value = err.message
@@ -179,8 +170,6 @@ export function useEventos(userId) {
     error.value = null
 
     try {
-      console.log(`🔍 Buscando eventos que usan ${tipo}: ${ubicacionId}`)
-
       const eventosSnapshot = await getDocs(eventosRef)
       const eventosAEliminar = []
 
@@ -201,8 +190,6 @@ export function useEventos(userId) {
         }
       })
 
-      console.log(`📋 Eventos encontrados: ${eventosAEliminar.length}`)
-
       // Eliminar todos los eventos encontrados
       const promesas = eventosAEliminar.map((evento) => {
         const eventoDoc = doc(db, 'Usuarios', userId, 'Eventos', evento.id)
@@ -210,8 +197,6 @@ export function useEventos(userId) {
       })
 
       await Promise.all(promesas)
-
-      console.log(`✅ ${eventosAEliminar.length} eventos eliminados`)
 
       return {
         cantidad: eventosAEliminar.length,

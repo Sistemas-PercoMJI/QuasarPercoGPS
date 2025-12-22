@@ -13,20 +13,11 @@ export function useReportesHoras() {
     error.value = null
 
     try {
-      console.log('⏰ Calculando horas de trabajo...')
-      console.log('📦 Unidades:', unidadesIds)
-      console.log('📅 Desde:', fechaInicio.toLocaleDateString())
-      console.log('📅 Hasta:', fechaFin.toLocaleDateString())
-      console.log('⚙️ Opciones:', opciones)
-
       // Obtener trayectos (reales o simulados)
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
       trayectos = await enriquecerConDatosUnidades(trayectos)
 
-      console.log(`✅ ${trayectos.length} trayectos procesados para calcular horas`)
-
       if (trayectos.length === 0) {
-        console.log('⚠️ No hay trayectos para calcular horas')
         return []
       }
 
@@ -34,12 +25,12 @@ export function useReportesHoras() {
       const {
         diasLaborables = [1, 2, 3, 4, 5], // Lunes a Viernes por defecto
         horarioInicio = '08:00',
-        horarioFin = '17:00'
+        horarioFin = '17:00',
       } = opciones
 
-      const registros = trayectos.map(trayecto => {
-        const duracionHoras = trayecto.duracion 
-          ? (trayecto.duracion / (1000 * 60 * 60)).toFixed(2) 
+      const registros = trayectos.map((trayecto) => {
+        const duracionHoras = trayecto.duracion
+          ? (trayecto.duracion / (1000 * 60 * 60)).toFixed(2)
           : trayecto.duracionHoras || 0
 
         // Calcular si está dentro del horario laboral
@@ -48,7 +39,7 @@ export function useReportesHoras() {
           trayecto.finTimestamp,
           horarioInicio,
           horarioFin,
-          diasLaborables
+          diasLaborables,
         )
 
         // Calcular horas laborales vs no laborales
@@ -61,11 +52,17 @@ export function useReportesHoras() {
           conductorNombre: trayecto.conductorNombre || 'Sin conductor',
           unidadNombre: trayecto.unidadNombre,
           unidadPlaca: trayecto.unidadPlaca || 'N/A',
-          horaInicioTrabajo: trayecto.inicioTimestamp 
-            ? trayecto.inicioTimestamp.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+          horaInicioTrabajo: trayecto.inicioTimestamp
+            ? trayecto.inicioTimestamp.toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
             : 'N/A',
           horaFinTrabajo: trayecto.finTimestamp
-            ? trayecto.finTimestamp.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+            ? trayecto.finTimestamp.toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
             : 'N/A',
           duracionTotal: parseFloat(duracionHoras),
           horasLaborales: horasLaborales.toFixed(2),
@@ -79,14 +76,11 @@ export function useReportesHoras() {
           ubicacionFin: trayecto.ubicacionFin || 'N/A',
           dentroHorarioLaboral: dentroHorario.esDentroHorario,
           _trayecto: trayecto,
-          _simulado: trayecto._simulado || false
+          _simulado: trayecto._simulado || false,
         }
       })
 
-      console.log(`✅ ${registros.length} registros de horas calculados`)
-
       return registros
-
     } catch (err) {
       console.error('❌ Error al calcular horas:', err)
       error.value = err.message
@@ -132,17 +126,17 @@ export function useReportesHoras() {
     }
 
     const duracionTotal = (fin - inicio) / (1000 * 60 * 60)
-    const esDentroHorario = horasLaborales > (duracionTotal * 0.5) // Más del 50% dentro
+    const esDentroHorario = horasLaborales > duracionTotal * 0.5 // Más del 50% dentro
 
     return {
       esDentroHorario,
-      horasLaborales
+      horasLaborales,
     }
   }
 
   return {
     loading,
     error,
-    calcularHorasTrabajo
+    calcularHorasTrabajo,
   }
 }

@@ -23,9 +23,6 @@ export function usePOIs(userId) {
     error.value = null
 
     try {
-      console.log('📝 Creando POI para userId:', userId)
-      console.log('📝 Datos del POI:', poiData)
-
       const dataConUsuario = {
         ...poiData,
         fechaCreacion: new Date(),
@@ -35,8 +32,6 @@ export function usePOIs(userId) {
 
       const docRef = await addDoc(collection(db, 'Usuarios', userId, 'POIS'), dataConUsuario)
 
-      console.log('✅ POI creado con ID:', docRef.id)
-
       const nuevoPOI = {
         ...dataConUsuario,
         id: docRef.id,
@@ -44,7 +39,6 @@ export function usePOIs(userId) {
       }
 
       pois.value.unshift(nuevoPOI)
-      console.log('✅ Nuevo POI agregado localmente:', nuevoPOI)
 
       return docRef.id
     } catch (err) {
@@ -64,14 +58,9 @@ export function usePOIs(userId) {
     error.value = null
 
     try {
-      console.log('🔍 Obteniendo POIs para userId:', userId)
-      console.log('🔍 Ruta completa: Usuarios/', userId, '/POIS')
-
       // Intentar primero sin orderBy para verificar si hay datos
       const collectionRef = collection(db, 'Usuarios', userId, 'POIS')
       const querySnapshot = await getDocs(collectionRef)
-
-      console.log('📦 Total de documentos POI encontrados:', querySnapshot.size)
 
       if (querySnapshot.empty) {
         console.warn('⚠️ No se encontraron POIs en la base de datos')
@@ -83,7 +72,6 @@ export function usePOIs(userId) {
 
       querySnapshot.forEach((documento) => {
         const data = documento.data()
-        console.log('📄 Documento POI:', documento.id, data)
 
         const poi = {
           ...data,
@@ -103,7 +91,7 @@ export function usePOIs(userId) {
       })
 
       pois.value = poisData
-      console.log('✅ POIs transformados y ordenados:', poisData)
+
       return poisData
     } catch (err) {
       console.error('❌ Error al obtener POIs:', err)
@@ -137,7 +125,6 @@ export function usePOIs(userId) {
         }
       }
 
-      console.log('✅ POI actualizado:', poiId)
       return true
     } catch (err) {
       console.error('❌ Error al actualizar POI:', err)
@@ -159,7 +146,6 @@ export function usePOIs(userId) {
 
       pois.value = pois.value.filter((p) => p.id !== poiId)
 
-      console.log('✅ POI eliminado:', poiId)
       return true
     } catch (err) {
       console.error('❌ Error al eliminar POI:', err)

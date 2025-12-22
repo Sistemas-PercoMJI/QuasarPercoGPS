@@ -96,8 +96,6 @@ export function useReportesEventos() {
       return []
     }
 
-    console.log(`🔄 Procesando ${eventos.length} evento(s) (geocodificando direcciones)...`)
-
     const { obtenerDireccionDesdeCoordenadas } = useGeocoding()
 
     const eventosProcesados = await Promise.all(
@@ -113,7 +111,6 @@ export function useReportesEventos() {
 
             if (direccion && direccion !== 'Dirección no disponible') {
               direccionGeocoded = direccion
-              console.log(`  🗺️ "${evento.eventoNombre}": ${direccion}`)
             }
           }
 
@@ -122,13 +119,11 @@ export function useReportesEventos() {
             direccion: direccionGeocoded,
           }
         } catch (error) {
-          console.error(`  ❌ Error geocodificando evento:`, error)
+          console.error(`Error geocodificando evento:`, error)
           return evento
         }
       }),
     )
-
-    console.log(`✅ ${eventosProcesados.length} evento(s) geocodificados`)
     return eventosProcesados
   }
 
@@ -141,11 +136,6 @@ export function useReportesEventos() {
     fechaFin,
     filtroEventos = [],
   ) => {
-    console.log('🔍 Obteniendo eventos reales...')
-    console.log('📦 Unidades:', unidadesNombres)
-    console.log('📅 Desde:', fechaInicio.toLocaleDateString())
-    console.log('📅 Hasta:', fechaFin.toLocaleDateString())
-
     loading.value = true
     error.value = null
 
@@ -162,21 +152,16 @@ export function useReportesEventos() {
         return nombre
       })
 
-      console.log('📦 IDs de unidades a consultar:', unidadesIds)
-
       for (const unidadId of unidadesIds) {
-        console.log(`🚗 Procesando unidad: ${unidadId}`)
-
         let unidadPlaca = 'Sin placa'
         try {
           const unidadRef = doc(db, `Unidades/${unidadId}`)
           const unidadSnap = await getDoc(unidadRef)
           if (unidadSnap.exists()) {
             unidadPlaca = unidadSnap.data().SeguroUnidad || unidadSnap.data().placa || 'Sin placa'
-            console.log(`  🚗 Placa obtenida: ${unidadPlaca}`)
           }
         } catch (errUnidad) {
-          console.warn(`  ⚠️ Error al obtener datos de unidad:`, errUnidad.message)
+          console.warn(`Error al obtener datos de unidad:`, errUnidad.message)
         }
         // Iterar por cada día en el rango
         const fechaActual = new Date(fechaInicio)
@@ -203,12 +188,11 @@ export function useReportesEventos() {
                   .trim()
 
                 conductorNombre = nombreLimpio || 'Sin conductor'
-                console.log(`  👤 Conductor obtenido (limpio): ${conductorNombre}`)
               } else {
-                console.log(`  ⚠️ No existe RutaDiaria para ${fechaStr}`)
+                console.warn(`No existe RutaDiaria para ${fechaStr}`)
               }
             } catch (errRuta) {
-              console.warn(`  ⚠️ Error al obtener RutaDiaria:`, errRuta.message)
+              console.warn(`Error al obtener RutaDiaria:`, errRuta.message)
             }
 
             // 🔥 PASO 2: OBTENER EVENTOS DIARIOS
@@ -220,8 +204,6 @@ export function useReportesEventos() {
             const snapshot = await getDocs(eventosRef)
 
             if (!snapshot.empty) {
-              console.log(`  ✅ ${fechaStr}: ${snapshot.size} eventos encontrados en Firebase`)
-
               snapshot.forEach((doc) => {
                 const data = doc.data()
 
@@ -279,39 +261,24 @@ export function useReportesEventos() {
                 })
               })
             } else {
-              console.log(`  ⚠️ ${fechaStr}: No hay eventos en Firebase`)
+              console.warn(`${fechaStr}: No hay eventos en Firebase`)
             }
           } catch (err) {
-            console.error(`  ❌ Error al obtener eventos de ${fechaStr}:`, err)
+            console.error(`Error al obtener eventos de ${fechaStr}:`, err)
           }
 
           fechaActual.setDate(fechaActual.getDate() + 1)
         }
       }
 
-      console.log(`✅ Total de eventos reales obtenidos: ${todosLosEventos.length}`)
-
-      // 🔍 DEBUG: Mostrar nombres únicos de eventos y conductores
-      if (todosLosEventos.length > 0) {
-        const nombresUnicos = [...new Set(todosLosEventos.map((e) => e.eventoNombre))]
-        const conductoresUnicos = [...new Set(todosLosEventos.map((e) => e.conductorNombre))]
-        console.log('📋 Nombres de eventos en Firebase:', nombresUnicos)
-        console.log('👥 Conductores en eventos:', conductoresUnicos)
-      }
-
       // 🔥 SI NO HAY EVENTOS REALES, GENERAR SIMULADOS
       if (todosLosEventos.length === 0) {
-        console.log('⚠️ No se encontraron eventos reales, generando datos simulados...')
-
         for (let i = 0; i < unidadesNombres.length; i++) {
           const nombre = unidadesNombres[i]
           const id = unidadesIds[i]
           const eventosSimulados = generarEventosSimulados(nombre, id, fechaInicio, fechaFin)
           todosLosEventos.push(...eventosSimulados)
-          console.log(`  ✅ Generados ${eventosSimulados.length} eventos simulados para ${nombre}`)
         }
-
-        console.log(`✅ Total de eventos simulados: ${todosLosEventos.length}`)
       }
 
       // Filtrar por tipos de evento si se especificaron
@@ -320,17 +287,16 @@ export function useReportesEventos() {
         eventosFiltrados = todosLosEventos.filter((evento) =>
           filtroEventos.includes(evento.eventoNombre),
         )
-        console.log(`🔍 Filtrados ${eventosFiltrados.length} eventos de ${todosLosEventos.length}`)
       }
 
       const eventosProcesados = await procesarEventosParaPDF(eventosFiltrados)
       return eventosProcesados
     } catch (err) {
-      console.error('❌ Error al obtener eventos:', err)
+      console.error('Error al obtener eventos:', err)
       error.value = err.message
 
       // En caso de error, generar datos simulados como fallback
-      console.log('🔄 Generando datos simulados como fallback...')
+
       const eventosFallback = []
       const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
 

@@ -159,9 +159,20 @@ export function useReporteExcel() {
     })
 
     // 🔥 Si hay datos, agregarlos
-    if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
-      datosReales.datosColumnas.forEach((fila) => {
-        const rowData = config.columnasSeleccionadas.map((col) => fila[col] || 'N/A')
+    if (datosReales.eventosAgrupados) {
+      // Extraer todos los eventos originales de los grupos
+      const todosLosEventos = Object.values(datosReales.eventosAgrupados).flat()
+
+      todosLosEventos.forEach((evento) => {
+        // 🔥 USAR obtenerValor() igual que en las hojas individuales
+        const rowData = config.columnasSeleccionadas.map((nombreCol) => {
+          const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
+          if (columnaConfig && columnaConfig.obtenerValor) {
+            return columnaConfig.obtenerValor(evento) // 👈 AQUÍ está la clave
+          }
+          return 'N/A'
+        })
+
         const dataRow = todosSheet.addRow(rowData)
 
         // Agregar bordes
@@ -191,7 +202,7 @@ export function useReporteExcel() {
 
     // 🔥 Ajustar anchos según configuración de columnas
     config.columnasSeleccionadas.forEach((nombreCol, index) => {
-      const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
+      const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
       if (columnaConfig) {
         todosSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
       } else {
@@ -655,9 +666,6 @@ export function useReporteExcel() {
       (col) => !columnasAgregadas.includes(col),
     )
 
-    console.log('📊 Columnas para tabla:', columnasParaTabla)
-    console.log('🚫 Columnas excluidas:', columnasAgregadas)
-
     // ========================================
     // HOJA 2: Todos los registros (sin agrupar)
     // ========================================
@@ -690,11 +698,7 @@ export function useReporteExcel() {
     let hayDatos = false
 
     if (datosReales.registros && datosReales.registros.length > 0) {
-      console.log('📊 Total de registros:', datosReales.registros.length)
-
       datosReales.registros.forEach((registro) => {
-        console.log('📝 Registro:', registro.fecha, 'Viajes:', registro.detallesViajes?.length || 0)
-
         if (registro.detallesViajes && registro.detallesViajes.length > 0) {
           registro.detallesViajes.forEach((viaje) => {
             // Aplicar filtro comercial
@@ -714,7 +718,7 @@ export function useReporteExcel() {
             }
 
             if (!incluirViaje) {
-              console.log('⏭️ Viaje excluido por filtro:', config.tipoInformeComercial)
+              console.log('Viaje excluido por filtro:', config.tipoInformeComercial)
               return
             }
 

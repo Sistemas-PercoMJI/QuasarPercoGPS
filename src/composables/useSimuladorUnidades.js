@@ -75,12 +75,11 @@ export function useSimuladorUnidades() {
           .trim()
 
         if (direccionFinal && direccionFinal.length > 3) {
-          console.log(`🗺️ Geocoding exitoso: ${direccionFinal}`)
           return direccionFinal
         }
       }
 
-      console.warn('⚠️ Sin resultado específico, intentando búsqueda amplia...')
+      console.warn('Sin resultado específico, intentando búsqueda amplia...')
       const responseAmplia = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&limit=1`,
       )
@@ -91,12 +90,11 @@ export function useSimuladorUnidades() {
         const parts = feature.place_name.split(',')
         const direccion = parts[0].trim()
         if (direccion && direccion.length > 3) {
-          console.log(`🗺️ Geocoding amplio: ${direccion}`)
           return direccion
         }
       }
     } catch (error) {
-      console.error('❌ Error en geocoding:', error)
+      console.error('Error en geocoding:', error)
     }
 
     return '📍 Sin nombre de calle'
@@ -170,18 +168,8 @@ export function useSimuladorUnidades() {
       }
     }
 
-    const tiempoRestante = (estadoActual.tiempoProximoCambioEstado || 0) - ahora
-    if (tiempoRestante > 0 && tiempoRestante < 5000) {
-      console.log(
-        `⏱️ ${estadoActual.unidadNombre}: ${Math.floor(tiempoRestante / 1000)}s hasta cambio de estado`,
-      )
-    }
-
     if (ahora >= (estadoActual.tiempoProximoCambioEstado || 0)) {
       const nuevoEstado = determinarSiguienteEstado()
-      console.log(
-        `🔄 ${estadoActual.unidadNombre}: ${estadoActual.estado} → ${nuevoEstado} (${new Date().toLocaleTimeString()})`,
-      )
 
       if (nuevoEstado === ESTADOS.MOVIMIENTO) {
         return {
@@ -195,9 +183,6 @@ export function useSimuladorUnidades() {
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
       } else if (nuevoEstado === ESTADOS.DETENIDO) {
-        console.log(
-          `⏸️ ${estadoActual.unidadNombre} ahora está DETENIDO - mantendrá posición por 20s`,
-        )
         return {
           ubicacion: estadoActual.ubicacion,
           direccion: estadoActual.direccion,
@@ -209,9 +194,6 @@ export function useSimuladorUnidades() {
           ultimaActualizacionDireccion: estadoActual.ultimaActualizacionDireccion || 0,
         }
       } else {
-        console.log(
-          `🔌 ${estadoActual.unidadNombre} ahora está INACTIVO - mantendrá posición por 20s`,
-        )
         return {
           ubicacion: estadoActual.ubicacion,
           direccion: estadoActual.direccion,
@@ -308,15 +290,11 @@ export function useSimuladorUnidades() {
       estadoExistente = snapshot.val()
     } catch {
       // Sin estado previo, continuará para crear uno nuevo
-      console.log(`📍 ${unidad.Unidad}: No hay estado previo`)
+      console.warn(`${unidad.Unidad}: No hay estado previo`)
     }
 
     // ✅ SI EXISTE: Restaurar ubicación anterior
     if (estadoExistente && estadoExistente.ubicacion) {
-      console.log(`🔄 ${unidad.Unidad}: Restaurando desde última posición`)
-      console.log(`   📍 Última ubicación: ${estadoExistente.direccionTexto}`)
-      console.log(`   🎯 Último estado: ${estadoExistente.estado}`) // ✅ CORREGIDO
-
       await update(unidadRef, {
         timestamp: Date.now(),
         ultimaActualizacion: new Date().toISOString(),
@@ -325,16 +303,12 @@ export function useSimuladorUnidades() {
         conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
         conductorFoto: conductor.LicenciaConducirFoto || null,
       })
-
-      console.log(`✅ ${unidad.Unidad} continúa desde su última posición`)
-
       // Iniciar intervalo
       iniciarIntervaloActualizacion(conductor, unidad, unidadRef)
       return
     }
 
     // ✅ SI NO EXISTE: Crear nueva posición
-    console.log(`🆕 ${unidad.Unidad}: Primera vez, generando posición inicial`)
 
     const ubicacionInicial = generarUbicacionAleatoria()
     const destinoInicial = generarDestinoAleatorio(ubicacionInicial)
@@ -344,10 +318,6 @@ export function useSimuladorUnidades() {
       ubicacionInicial.lat,
       ubicacionInicial.lng,
     )
-
-    console.log(`🚗 INICIO: ${unidad.Unidad}`)
-    console.log(`   📍 Dirección: ${direccionReal}`)
-    console.log(`   🎯 Estado: ${estadoInicial}`)
 
     const estado = {
       id: unidad.id,
@@ -374,7 +344,6 @@ export function useSimuladorUnidades() {
     }
 
     await set(unidadRef, estado)
-    console.log(`✅ ${unidad.Unidad} guardada en Firebase`)
 
     // 🆕 Si la unidad está en movimiento, agregamos la coordenada inicial al buffer
     if (estadoInicial === ESTADOS.MOVIMIENTO) {
@@ -391,7 +360,7 @@ export function useSimuladorUnidades() {
           },
         })
       } catch (err) {
-        console.error(`❌ Error agregando coordenada inicial al buffer:`, err)
+        console.error(`Error agregando coordenada inicial al buffer:`, err)
       }
     }
 
@@ -438,15 +407,8 @@ export function useSimuladorUnidades() {
                   nuevoMovimiento.ubicacion.lng,
                 )
                 actualizarTimestampDireccion = Date.now()
-
-                console.log('📍 Dirección actualizada:', {
-                  unidad: estadoActual.unidadNombre,
-                  direccionNueva: nuevaDireccionTexto.substring(0, 40) + '...',
-                  distanciaMovida: `${distanciaCambio.toFixed(0)}m`,
-                  estado: nuevoMovimiento.estado,
-                })
               } catch (error) {
-                console.warn('⚠️ Error geocoding:', error)
+                console.warn('Error geocoding:', error)
                 nuevaDireccionTexto = `${nuevoMovimiento.ubicacion.lat.toFixed(5)}, ${nuevoMovimiento.ubicacion.lng.toFixed(5)}`
               }
             }
@@ -493,7 +455,7 @@ export function useSimuladorUnidades() {
             })
           } catch (errRuta) {
             // Este error ahora es menos crítico, ya que si falla, el buffer lo reintentará
-            console.error(`⚠️ Error al agregar al buffer de ruta:`, errRuta)
+            console.error(`Error al agregar al buffer de ruta:`, errRuta)
           }
         }
 
@@ -513,10 +475,10 @@ export function useSimuladorUnidades() {
             },
           ])
         } catch (errorEvento) {
-          console.error('⚠️ Error eventos:', errorEvento)
+          console.error('Error eventos:', errorEvento)
         }
       } catch (error) {
-        console.error(`❌ Error actualizando ${unidadId}:`, error)
+        console.error(`Error actualizando ${unidadId}:`, error)
       }
     }, INTERVALO_ACTUALIZACION) // 🆕 Usamos la constante en lugar de 5000 hardcoded
 
@@ -531,7 +493,6 @@ export function useSimuladorUnidades() {
 
   const iniciarSimulacion = async (conductores, unidades) => {
     if (simulacionActiva.value) {
-      console.warn('⚠️ Simulación activa')
       return
     }
 
@@ -544,10 +505,6 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
 
-    console.log('🎲 Simulación v3.4 - CON BATCHING')
-    console.log('   ✅ Restaura última posición desde Firebase')
-    console.log('   🆕 Implementa batching para evitar error 429')
-
     for (const conductor of conductoresConUnidad) {
       const unidad = unidades.find((u) => u.id === conductor.UnidadAsignada)
       if (unidad) {
@@ -555,13 +512,9 @@ export function useSimuladorUnidades() {
         await new Promise((resolve) => setTimeout(resolve, 500))
       }
     }
-
-    console.log(`✅ ${conductoresConUnidad.length} unidades activas`)
   }
 
   const detenerSimulacion = async () => {
-    console.log('🛑 Deteniendo...')
-
     intervalos.value.forEach(({ intervalo }) => clearInterval(intervalo))
 
     // 🆕 Corregido: solo usamos unidadId en lugar de desestructurar unidadIdReal que no se usa
@@ -571,15 +524,13 @@ export function useSimuladorUnidades() {
         // porque forzarEnvioDeTodosLosBatches ya se encargó
         await remove(dbRef(realtimeDb, `unidades_activas/${unidadId}`))
       } catch (err) {
-        console.error(`❌ Error finalizando ${unidadId}:`, err)
+        console.error(`Error finalizando ${unidadId}:`, err)
       }
     }
 
     intervalos.value = []
     unidadesSimuladas.value = []
     simulacionActiva.value = false
-
-    console.log('✅ Simulación detenida y datos guardados')
   }
 
   const toggleSimulacion = async (conductores, unidades) => {

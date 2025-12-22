@@ -6,14 +6,8 @@
       <div class="header-content">
         <div class="text-h6 text-weight-medium">Conductores</div>
         <div class="header-stats">
-          <div class="stat-item">
-            <span class="stat-number">{{ conductores.length }}</span>
-            <span class="stat-label">Total</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number">{{ gruposConductores.length }}</span>
-            <span class="stat-label">Grupos</span>
-          </div>
+          <div class="stat-item"></div>
+          <div class="stat-item"></div>
         </div>
       </div>
       <div class="header-actions">
@@ -23,23 +17,6 @@
         <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
       </div>
     </div>
-
-    <!-- Tabs de navegación (Grupos primero) -->
-    <div class="tabs-container">
-      <q-tabs
-        v-model="tab"
-        dense
-        class="text-grey"
-        active-color="primary"
-        indicator-color="primary"
-        align="justify"
-        narrow-indicator
-      >
-        <q-tab name="grupos" label="Grupos" />
-        <q-tab name="todos" label="Todos" />
-      </q-tabs>
-    </div>
-
     <!-- Botones de acción -->
     <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
       <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
@@ -153,15 +130,13 @@
           class="no-data q-pa-md text-center"
         >
           <q-icon name="person_off" size="48px" color="grey-5" />
-          <div class="text-grey-6 q-mt-sm">No hay conductores en este grupo</div>
-          <q-btn
-            flat
-            color="primary"
-            label="Ver todos"
-            icon="folder_open"
-            class="q-mt-md"
-            @click="verTodosConductores"
-          />
+          <div class="text-grey-6 q-mt-sm">
+            {{
+              grupoSeleccionado
+                ? 'No hay conductores en este grupo'
+                : 'Selecciona un grupo para ver sus conductores'
+            }}
+          </div>
         </div>
       </div>
     </q-scroll-area>
@@ -981,7 +956,7 @@ const busqueda = ref('')
 const busquedaConductoresGrupo = ref('')
 const conductorSeleccionado = ref(null)
 const conductorEditando = ref({})
-const grupoSeleccionado = ref('todos')
+const grupoSeleccionado = ref(null)
 const dialogNuevoGrupo = ref(false)
 const dialogDetallesConductor = ref(false)
 const dialogVerFoto = ref(false)
@@ -1018,13 +993,11 @@ const nuevoGrupo = ref({
 })
 
 const conductoresFiltrados = computed(() => {
-  let resultado = []
-
-  if (grupoSeleccionado.value === 'todos') {
-    resultado = conductores.value
-  } else {
-    resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  if (!grupoSeleccionado.value) {
+    return []
   }
+
+  let resultado = conductoresPorGrupo(grupoSeleccionado.value)
 
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
@@ -1192,11 +1165,6 @@ function obtenerIniciales(nombre) {
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
-}
-
-function verTodosConductores() {
-  grupoSeleccionado.value = 'todos'
-  tab.value = 'todos'
 }
 
 async function seleccionarConductor(conductor) {
@@ -1788,7 +1756,7 @@ async function confirmarEliminarGrupo() {
     await eliminarGrupo(grupoMenu.value.id)
 
     if (grupoSeleccionado.value === grupoMenu.value.id) {
-      grupoSeleccionado.value = 'todos'
+      grupoSeleccionado.value = null
     }
 
     Notify.create({
@@ -1811,7 +1779,7 @@ function verDetalles() {
 }
 
 async function quitarDeGrupo() {
-  if (grupoSeleccionado.value === 'todos') {
+  if (!grupoSeleccionado.value) {
     Notify.create({
       type: 'warning',
       message: 'Selecciona un grupo primero',
@@ -1840,18 +1808,10 @@ async function quitarDeGrupo() {
 // Lifecycle
 onMounted(async () => {
   try {
-    console.log('🔄 Iniciando carga de datos de Firebase...')
-
     await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
     unsubscribeConductores = escucharConductores()
     unsubscribeGrupos = escucharGrupos()
-
-    console.log('✅ Conectado a Firebase:', {
-      conductores: conductores.value.length,
-      unidades: unidades.value.length,
-      grupos: gruposConductores.value.length,
-    })
   } catch (error) {
     console.error('❌ Error al conectar con Firebase:', error)
 
@@ -1867,23 +1827,13 @@ onMounted(async () => {
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
-    console.log('👀 Conductores.vue: Watch activado')
-    console.log('📦 newValue completo:', JSON.stringify(newValue, null, 2))
-
     if (newValue && newValue.conductor) {
       const { id, grupoId, grupoNombre } = newValue.conductor
-
-      console.log('✅ Datos recibidos:', { id, grupoId, grupoNombre })
-      console.log('📂 Grupos disponibles:', gruposConductores.value.length)
-      console.log('👥 Conductores disponibles:', conductores.value.length)
-
       const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
-      console.log('🔍 ¿Grupo existe?', grupoExiste ? 'SÍ' : 'NO')
 
       if (!grupoExiste) {
         console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
         setTimeout(() => {
-          console.log('🔄 Re-intentando después de espera...')
           procesarSeleccionConductor(id, grupoId, grupoNombre)
         }, 500)
       } else {
@@ -1897,32 +1847,18 @@ watch(
 )
 
 function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
-  console.log('🎯 Procesando selección de conductor...')
-  console.log('   - ID:', conductorId)
-  console.log('   - Grupo ID:', grupoId)
-  console.log('   - Grupo Nombre:', grupoNombre)
-
   if (grupoId && grupoId !== grupoSeleccionado.value) {
-    console.log(`📂 Cambiando a grupo: ${grupoNombre} (${grupoId})`)
     grupoSeleccionado.value = grupoId
     tab.value = 'grupos'
   }
 
   nextTick(() => {
-    console.log('🔄 NextTick ejecutado')
-    console.log('📊 Conductores filtrados disponibles:', conductoresFiltrados.value.length)
-
     const conductorEncontrado = conductoresFiltrados.value.find((c) => c.id === conductorId)
-
     if (conductorEncontrado) {
-      console.log(`✅ Conductor encontrado: ${conductorEncontrado.Nombre}`)
-
       seleccionarConductor(conductorEncontrado)
-
       setTimeout(() => {
         const elemento = document.querySelector(`[data-conductor-id="${conductorId}"]`)
         if (elemento) {
-          console.log('📍 Haciendo scroll al elemento')
           elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
           elemento.classList.add('flash-highlight')
@@ -1942,14 +1878,10 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
       })
     } else {
       console.warn('⚠️ Conductor no encontrado en lista filtrada')
-      console.log('🔍 Buscando en todos los conductores...')
 
       const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
 
       if (conductorEnTodos) {
-        console.log('✅ Encontrado en lista general')
-        console.log('   Conductor:', conductorEnTodos.Nombre)
-
         if (grupoId) {
           grupoSeleccionado.value = grupoId
           tab.value = 'grupos'
@@ -1962,13 +1894,6 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
         }
       } else {
         console.error('❌ Conductor no existe en la base de datos')
-        console.log(
-          '📋 Conductores disponibles:',
-          conductores.value.map((c) => ({
-            id: c.id,
-            nombre: c.Nombre,
-          })),
-        )
 
         Notify.create({
           type: 'negative',
@@ -1997,9 +1922,6 @@ function navegarAUnidad() {
     return
   }
 
-  console.log('🔍 === NAVEGACIÓN A UNIDAD ===')
-  console.log('Buscando:', unidadAsignadaData.value.Unidad)
-
   // Acceder al mapa y sus marcadores
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -2013,8 +1935,6 @@ function navegarAUnidad() {
 
   // 🎯 NUEVA ESTRATEGIA: Obtener marcadores directamente del mapa
   const mapaAPI = mapPage._mapaAPI
-
-  console.log('📍 Verificando marcadores en el mapa...')
 
   // Los marcadores están en mapaAPI (revisa useMapboxGL.js)
   // La función centrarEnUnidad ya existe y funciona
@@ -2031,21 +1951,14 @@ function navegarAUnidad() {
   // Buscar en window._unidadesTrackeadas primero
   let unidadesDisponibles = window._unidadesTrackeadas || []
 
-  console.log(`📊 Unidades en window: ${unidadesDisponibles.length}`)
-
   // Si no hay en window, buscar directamente en los marcadores del mapa
   if (unidadesDisponibles.length === 0) {
-    console.log('⚠️ No hay unidades en window, intentando obtener del tracking...')
-
     // Verificar si el tracking está activo mirando Firebase
     const unidadesRef = window.firebase_unidades_activas
     if (unidadesRef) {
-      console.log('✅ Encontradas unidades en Firebase cache')
       unidadesDisponibles = Object.values(unidadesRef)
     }
   }
-
-  console.log(`📋 Total unidades disponibles: ${unidadesDisponibles.length}`)
 
   if (unidadesDisponibles.length === 0) {
     console.error('❌ No hay unidades en el sistema')
@@ -2072,15 +1985,6 @@ function navegarAUnidad() {
   // Buscar la unidad por nombre (case insensitive y flexible)
   const nombreBuscado = unidadAsignadaData.value.Unidad?.toLowerCase().trim()
 
-  console.log(`🔍 Buscando unidad: "${nombreBuscado}"`)
-  console.log(
-    '📋 Unidades disponibles:',
-    unidadesDisponibles.map((u) => ({
-      nombre: u.unidadNombre,
-      id: u.id,
-    })),
-  )
-
   const unidadActiva = unidadesDisponibles.find((u) => {
     const nombreUnidad = u.unidadNombre?.toLowerCase().trim()
 
@@ -2090,10 +1994,6 @@ function navegarAUnidad() {
     const matchInverso = nombreBuscado?.includes(nombreUnidad)
 
     const match = matchExacto || matchContiene || matchInverso
-
-    if (match) {
-      console.log(`✅ Match: "${u.unidadNombre}" ≈ "${unidadAsignadaData.value.Unidad}"`)
-    }
 
     return match
   })
@@ -2111,8 +2011,6 @@ function navegarAUnidad() {
     return
   }
 
-  console.log('✅ Unidad encontrada:', unidadActiva.unidadNombre)
-
   // Verificar ubicación
   if (!unidadActiva.ubicacion || !unidadActiva.ubicacion.lat || !unidadActiva.ubicacion.lng) {
     Notify.create({
@@ -2125,8 +2023,6 @@ function navegarAUnidad() {
   }
 
   const { lat, lng } = unidadActiva.ubicacion
-
-  console.log(`🎯 Navegando a: ${lat}, ${lng}`)
 
   // Centrar mapa con animación suave
   mapaAPI.map.flyTo({
@@ -2156,8 +2052,6 @@ function navegarAUnidad() {
     position: 'top',
     timeout: 2500,
   })
-
-  console.log('✅ Navegación completada')
 }
 </script>
 
@@ -2281,14 +2175,14 @@ function navegarAUnidad() {
 /* Lista de conductores con diseño de tarjetas */
 .conductores-list {
   flex: 1;
-  overflow-y: auto;
   padding: 16px;
 }
 
 .conductores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  gap: 0px;
+  padding-top: 5px;
 }
 
 .card-header {
@@ -2477,9 +2371,9 @@ function navegarAUnidad() {
   overflow: hidden;
 }
 
-/* Mejorar el diseño de la lista de grupos */
 .grupos-lista .q-item {
   border-radius: 8px;
+  padding-top: 10px;
   margin-bottom: 6px;
   transition: all 0.2s ease;
 }
@@ -2487,11 +2381,32 @@ function navegarAUnidad() {
 .grupos-lista .q-item:hover {
   background-color: #e3f2fd;
   transform: translateX(4px);
+  padding-bottom: 8px;
 }
 
 .grupos-lista .q-item.q-item--active {
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+  padding-bottom: 8px;
+}
+
+.conductores-list :deep(.q-scrollarea__thumb) {
+  width: 5px !important;
+  background-color: #9e9e9e !important;
+  border-radius: 2.5px !important;
+  opacity: 0.6 !important;
+  right: 2px !important;
+}
+
+.conductores-list :deep(.q-scrollarea__bar) {
+  width: 8px !important;
+  right: 0px !important;
+  background: transparent !important;
+}
+
+.conductores-list:hover :deep(.q-scrollarea__thumb) {
+  opacity: 0.8 !important;
+  background-color: #757575 !important;
 }
 </style>

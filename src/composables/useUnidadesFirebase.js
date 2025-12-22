@@ -22,7 +22,7 @@ export function useUnidadesFirebase() {
 
       const userId = getCurrentUserId()
       if (!userId) {
-        console.warn('⚠️ No hay usuario autenticado')
+        console.warn('No hay usuario autenticado')
         return []
       }
 
@@ -34,10 +34,9 @@ export function useUnidadesFirebase() {
         ...doc.data(),
       }))
 
-      console.log('✅ Unidades cargadas:', unidades.value.length)
       return unidades.value
     } catch (err) {
-      console.error('❌ Error al obtener unidades:', err)
+      console.error('Error al obtener unidades:', err)
       error.value = err.message
       return []
     } finally {

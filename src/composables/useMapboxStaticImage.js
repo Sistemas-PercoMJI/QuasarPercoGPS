@@ -109,11 +109,8 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
   }
 
   if (coordenadas.length <= maxPuntos) {
-    console.log(`  ℹ️ Trayecto con ${coordenadas.length} puntos (no requiere simplificación)`)
     return coordenadas
   }
-
-  console.log(`  🔄 Simplificando ${coordenadas.length} puntos...`)
 
   // Calcular tolerancia inicial basada en el área del trayecto
   const lats = coordenadas.map((c) => c.lat)
@@ -138,7 +135,6 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
 
   // Si después de todo aún hay demasiados puntos, aplicar muestreo uniforme
   if (simplificadas.length > maxPuntos) {
-    console.log(`  ⚠️ Aplicando muestreo adicional...`)
     const paso = Math.ceil(simplificadas.length / maxPuntos)
     const muestreadas = [simplificadas[0]] // Siempre incluir inicio
 
@@ -223,7 +219,6 @@ function prepararDatosTrayectos(registros) {
       }
     })
 
-  console.log(`✅ Trayectos preparados: ${trayectos.length}`)
   trayectos.forEach((t, i) => {
     console.log(`   ${i + 1}. ${t.vehiculoNombre}: ${t.coordenadas.length} puntos`)
   })
@@ -246,10 +241,6 @@ function calcularBoundingBox(trayectos) {
   })
 
   // 🔍 AGREGAR ESTOS LOGS:
-  console.log(`   📊 Bounding Box:`)
-  console.log(`      Lat: ${minLat.toFixed(4)} a ${maxLat.toFixed(4)}`)
-  console.log(`      Lng: ${minLng.toFixed(4)} a ${maxLng.toFixed(4)}`)
-  console.log(`      Rango: ${(maxLat - minLat).toFixed(4)} x ${(maxLng - minLng).toFixed(4)}`)
 
   return { minLat, maxLat, minLng, maxLng }
 }
@@ -268,9 +259,6 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
   const { mostrarPins = true } = config
 
-  console.log('🗺️ Generando URL de mapa...')
-  console.log(`   Trayectos: ${trayectos.length}`)
-
   const bbox = calcularBoundingBox(trayectos) // 👈 AQUÍ SE LLAMA
   const centroLat = (bbox.minLat + bbox.maxLat) / 2
   const centroLng = (bbox.minLng + bbox.maxLng) / 2
@@ -288,8 +276,6 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   else if (rangoMax > 0.05) zoom = 12
   else zoom = 13
 
-  console.log(`   📍 Centro: [${centroLat.toFixed(4)}, ${centroLng.toFixed(4)}]`)
-  console.log(`   🔍 Zoom: ${zoom}`)
   // Construir overlays (paths + pins)
   const overlays = []
 
@@ -315,11 +301,6 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
     const geojsonStr = encodeURIComponent(JSON.stringify(geojson))
 
-    console.log(`   🛣️ Trayecto ${index + 1}:`)
-    console.log(`      Color: ${color}`)
-    console.log(`      Coordenadas: ${coordenadas.length}`)
-    console.log(`      GeoJSON length: ${geojsonStr.length} caracteres`)
-
     overlays.push(`geojson(${geojsonStr})`)
 
     // 2. Pin de inicio (verde)
@@ -335,7 +316,6 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     }
   })
 
-  console.log('📋 Overlays generados:')
   overlays.forEach((overlay, i) => {
     console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
   })
@@ -345,15 +325,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  console.log('🔍 DEBUG - Valores finales:')
-  console.log(`   centroLng: ${centroLng}`)
-  console.log(`   centroLat: ${centroLat}`)
-  console.log(`   zoom: ${zoom}`)
-
   const url = `${baseURL}/${overlaysStr}/${centroLng},${centroLat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
-  console.log(`✅ URL generada (longitud: ${url.length} caracteres)`)
-  console.log(`🔗 URL completa:`, url)
-  console.log(`✅ URL generada (longitud: ${url.length} caracteres)`)
 
   if (url.length > 8000) {
     console.warn('⚠️ URL muy larga, puede fallar. Considera reducir más los puntos.')
@@ -368,12 +340,8 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
  */
 async function descargarImagenMapaBase64(url) {
   try {
-    console.log('📥 Descargando imagen del mapa...')
-
     // 🔥 USAR TU FIREBASE FUNCTION COMO PROXY
     const proxyUrl = `https://us-central1-gpsmjindust.cloudfunctions.net/getMapboxImage?url=${encodeURIComponent(url)}`
-
-    console.log('🔄 Usando Firebase Function proxy...')
 
     const response = await fetch(proxyUrl, {
       method: 'GET',
@@ -388,7 +356,6 @@ async function descargarImagenMapaBase64(url) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onloadend = () => {
-        console.log('✅ Imagen convertida a base64')
         resolve(reader.result)
       }
       reader.onerror = reject
@@ -413,9 +380,6 @@ export function useMapboxStaticImage() {
    */
   const generarMapaTrayectos = async (registros, config = {}) => {
     try {
-      console.log('🗺️ Iniciando generación de mapa de trayectos')
-      console.log(`   Registros recibidos: ${registros.length}`)
-
       // 1. Preparar trayectos
       const trayectos = prepararDatosTrayectos(registros)
 
@@ -433,8 +397,6 @@ export function useMapboxStaticImage() {
 
       // 3. Descargar imagen
       const imagenBase64 = await descargarImagenMapaBase64(url)
-
-      console.log('✅ Mapa generado exitosamente')
 
       return {
         imagenBase64,
@@ -454,8 +416,6 @@ export function useMapboxStaticImage() {
    */
   const generarMapaEvento = async (ubicacion) => {
     try {
-      console.log('🗺️ Generando mapa para evento:', ubicacion.nombre)
-
       const { lat, lng, nombre, tipo } = ubicacion
       const zoom = 15 // Zoom más cercano para eventos
       const width = 400
@@ -472,8 +432,6 @@ export function useMapboxStaticImage() {
       const dimensions = `${width}x${height}${retina}`
 
       const url = `${baseURL}/${pin}/${lng},${lat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
-
-      console.log('✅ URL generada para evento:', url.substring(0, 100) + '...')
 
       // Descargar imagen
       const imagenBase64 = await descargarImagenMapaBase64(url)

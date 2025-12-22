@@ -295,7 +295,20 @@
             <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
             <div v-if="tieneOpcion('seleccionColumnas')" class="q-mb-md">
               <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
-
+              <!-- 🆕 HEADER CON BOTÓN DE RESETEAR -->
+              <div class="columnas-header q-mb-sm">
+                <q-btn
+                  flat
+                  dense
+                  size="sm"
+                  icon="refresh"
+                  color="primary"
+                  label="Restaurar por defecto"
+                  @click="onResetearColumnas"
+                >
+                  <q-tooltip>Volver a las columnas por defecto</q-tooltip>
+                </q-btn>
+              </div>
               <!-- Buscador de columnas -->
               <q-select
                 v-model="columnasSeleccionadas"
@@ -470,7 +483,7 @@ const { obtenerGeozonas, obtenerGruposConductores, obtenerUnidades, obtenerCondu
 const {
   tipoInformeSeleccionado,
   listaTiposInforme,
-  cambiarTipoInforme,
+  cambiarTipoInforme: cambiarTipoInformeOriginal,
   tieneOpcion,
   METODOS_AGRUPACION,
   TIPOS_INFORME_COMERCIAL,
@@ -490,6 +503,9 @@ const {
   obtenerConfiguracionColumnas,
   procesarNotificacionesParaReporte,
   generarResumen,
+  cambiarTipoInforme: cambiarTipoInformeColumnas, // 👈 Nuevo
+  guardarColumnasActuales, // 👈 Nuevo
+  resetearColumnas, // 👈 Nuevo
 } = instanciaColumnas
 
 const { generarExcelEventos } = useReporteExcel()
@@ -595,6 +611,28 @@ const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
 }
 
+// 🆕 NUEVA: Función wrapper para cambiar tipo de informe
+const cambiarTipoInforme = (nuevoTipo) => {
+  // Cambiar en useTiposInforme (tu lógica existente)
+  cambiarTipoInformeOriginal(nuevoTipo)
+
+  // Cambiar en useColumnasReportes (cargar columnas guardadas)
+  cambiarTipoInformeColumnas(nuevoTipo)
+}
+
+// 🆕 NUEVA: Función para resetear columnas
+const onResetearColumnas = () => {
+  resetearColumnas()
+
+  $q.notify({
+    type: 'info',
+    message: 'Columnas restauradas por defecto',
+    icon: 'refresh',
+    position: 'top',
+    timeout: 2000,
+  })
+}
+
 const cancelarReporte = () => {
   tipoInformeSeleccionado.value = null
   reportarPor.value = 'Unidades'
@@ -650,7 +688,7 @@ const cargarOpcionesSelector = async () => {
         })
         opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
         opcionesSelectorFiltradas.value = opcionesSelector.value
-        console.log('📦 Mapeo de unidades:', window.unidadesMap)
+
         break
       }
 
@@ -712,22 +750,15 @@ const cargarEventosDisponibles = async () => {
   loadingEventos.value = true
 
   try {
-    console.log('📥 Cargando eventos desde Firebase...')
-
     // Obtener instancia de useEventos con el userId actual
     const { obtenerEventos } = useEventos(userId.value)
 
     // Obtener todos los eventos del usuario
     const eventosDelUsuario = await obtenerEventos()
 
-    console.log('✅ Eventos obtenidos:', eventosDelUsuario.length)
-    console.log('📋 Eventos:', eventosDelUsuario)
-
     // Extraer solo los nombres de los eventos para el selector
     listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
     eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
-
-    console.log('✅ Eventos disponibles para selector:', listaEventosDisponibles.value)
 
     if (listaEventosDisponibles.value.length === 0) {
       console.warn('⚠️ No se encontraron eventos activos')
@@ -781,13 +812,6 @@ const validarFormulario = () => {
 
 // 🔥 FUNCIÓN ACTUALIZADA Y MEJORADA - PARSEO DE FECHAS ROBUSTO
 const obtenerDatosReporte = async () => {
-  console.log('🔍 Obteniendo datos del reporte...')
-  console.log('📊 Tipo de informe:', tipoInformeSeleccionado.value)
-  console.log('📅 Rango crudo:', rangoFecha.value)
-  console.log('📅 Tipo de dato:', typeof rangoFecha.value)
-  console.log('📅 Es null?:', rangoFecha.value === null)
-  console.log('📅 Es undefined?:', rangoFecha.value === undefined)
-
   if (!userId.value) {
     throw new Error('Usuario no autenticado')
   }
@@ -824,23 +848,13 @@ const obtenerDatosReporte = async () => {
   let fechaInicio, fechaFin
 
   if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
-    // Caso 1: Formato object del date picker { from: "YYYY/MM/DD", to: "YYYY/MM/DD" }
-    console.log('🔍 Formato object detectado')
-    console.log('  from:', rangoFecha.value.from)
-    console.log('  to:', rangoFecha.value.to)
-
     fechaInicio = parsearFechaString(rangoFecha.value.from)
     fechaFin = parsearFechaString(rangoFecha.value.to)
 
     fechaInicio.setHours(0, 0, 0, 0)
     fechaFin.setHours(23, 59, 59, 999)
   } else if (typeof rangoFecha.value === 'string') {
-    // Caso 2: Formato string
-    console.log('🔍 Formato string detectado:', rangoFecha.value)
-
     if (rangoFecha.value.includes(' - ')) {
-      // Caso 2a: Rango con separador "YYYY/MM/DD - YYYY/MM/DD"
-      console.log('🔍 Rango de fechas detectado')
       const [inicio, fin] = rangoFecha.value.split(' - ').map((s) => s.trim())
 
       fechaInicio = parsearFechaString(inicio)
@@ -849,9 +863,6 @@ const obtenerDatosReporte = async () => {
       fechaInicio.setHours(0, 0, 0, 0)
       fechaFin.setHours(23, 59, 59, 999)
     } else {
-      // Caso 2b: Fecha única "YYYY/MM/DD" - usar todo el día
-      console.log('🔍 Fecha única detectada, usando el día completo')
-
       fechaInicio = parsearFechaString(rangoFecha.value)
       fechaFin = parsearFechaString(rangoFecha.value)
 
@@ -867,18 +878,6 @@ const obtenerDatosReporte = async () => {
     throw new Error('Las fechas no son válidas')
   }
 
-  console.log('✅ Fechas parseadas correctamente:')
-  console.log(
-    '  📅 Inicio:',
-    fechaInicio.toLocaleDateString('es-MX'),
-    fechaInicio.toLocaleTimeString('es-MX'),
-  )
-  console.log(
-    '  📅 Fin:',
-    fechaFin.toLocaleDateString('es-MX'),
-    fechaFin.toLocaleTimeString('es-MX'),
-  )
-
   // Determinar tipo de informe
   const tipoInforme = tipoInformeSeleccionado.value || 'eventos'
   const unidadesIds = elementosSeleccionados.value
@@ -893,33 +892,20 @@ const obtenerDatosReporte = async () => {
 
   // 🔥 OBTENER DATOS SEGÚN TIPO
   if (tipoInforme === 'eventos') {
-    console.log('📊 Obteniendo eventos reales...')
     const { obtenerEventosReales } = useReportesEventos()
 
     // 🔥 DETERMINAR QUÉ IDs PASAR A LA FUNCIÓN
     let idsParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
-      console.log('🚗 Reportar por conductores, convirtiendo a IDs de unidades...')
-
       const todosConductores = await obtenerConductores()
-      console.log('👥 Total conductores en Firebase:', todosConductores.length)
 
       for (const nombreConductor of unidadesIds) {
-        console.log(`🔍 Buscando conductor: "${nombreConductor}"`)
-
         const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
 
         if (conductor) {
-          console.log(`✅ Conductor encontrado:`, {
-            id: conductor.id,
-            nombre: conductor.Nombre,
-            unidadAsignada: conductor.UnidadAsignada,
-          })
-
           if (conductor.UnidadAsignada) {
             idsParaBuscar.push(conductor.UnidadAsignada)
-            console.log(`   → Agregando unidad: ${conductor.UnidadAsignada}`)
           } else {
             console.warn(`   ⚠️ Conductor sin UnidadAsignada`)
           }
@@ -931,18 +917,12 @@ const obtenerDatosReporte = async () => {
       if (idsParaBuscar.length === 0) {
         throw new Error('Los conductores seleccionados no tienen unidades asignadas')
       }
-
-      console.log('📍 IDs de unidades a buscar:', idsParaBuscar)
     } else if (reportarPor.value === 'Unidades') {
-      console.log('🚙 Reportar por unidades, convirtiendo nombres a IDs...')
-
       idsParaBuscar = unidadesIds.map((nombre) => {
         const id = window.unidadesMap?.[nombre] || nombre
-        console.log(`   ${nombre} → ${id}`)
+
         return id
       })
-
-      console.log('📍 IDs de unidades:', idsParaBuscar)
     } else {
       // Grupos o Geozonas
       idsParaBuscar = unidadesIds
@@ -956,29 +936,20 @@ const obtenerDatosReporte = async () => {
       eventos.value || [],
     )
   } else if (tipoInforme === 'trayectos') {
-    console.log('🗺️ Obteniendo trayectos...')
     const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
 
     // 🔥 NUEVA LÓGICA: Convertir conductores a unidades
     let unidadesParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
-      console.log('🚗 Reportar por conductores, obteniendo unidades asignadas...')
-
       const todosConductores = await obtenerConductores()
-      console.log('👥 Total conductores:', todosConductores.length)
 
       for (const nombreConductor of unidadesIds) {
-        console.log(`🔍 Buscando: "${nombreConductor}"`)
-
         const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
 
         if (conductor) {
-          console.log(`✅ Conductor encontrado:`, conductor)
-
           if (conductor.UnidadAsignada) {
             unidadesParaBuscar.push(conductor.UnidadAsignada)
-            console.log(`   → Unidad asignada: ${conductor.UnidadAsignada}`)
           } else {
             console.warn(`   ⚠️ No tiene UnidadAsignada`)
           }
@@ -990,19 +961,12 @@ const obtenerDatosReporte = async () => {
       if (unidadesParaBuscar.length === 0) {
         throw new Error('Los conductores seleccionados no tienen unidades asignadas')
       }
-
-      console.log('📍 Unidades finales a buscar:', unidadesParaBuscar)
     } else if (reportarPor.value === 'Unidades') {
-      console.log('🚙 Reportar por unidades directamente')
-      console.log('📝 Nombres seleccionados:', unidadesIds)
-
       unidadesParaBuscar = unidadesIds.map((nombre) => {
         const id = window.unidadesMap?.[nombre] || nombre
-        console.log(`   ${nombre} → ${id}`)
+
         return id
       })
-
-      console.log('📍 IDs de unidades:', unidadesParaBuscar)
     } else {
       unidadesParaBuscar = unidadesIds
     }
@@ -1026,18 +990,13 @@ const obtenerDatosReporte = async () => {
       acc[clave].push(trayecto)
       return acc
     }, {})
-
-    console.log('🗺️ Trayectos agrupados:', Object.keys(datosAgrupados))
   } else if (tipoInforme === 'horas_trabajo') {
-    console.log('⏰ Calculando horas de trabajo...')
     const { calcularHorasTrabajo } = useReportesHorasTrabajo()
 
     // 🔥 DETERMINAR QUÉ IDs PASAR
     let idsParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
-      console.log('🚗 Reportar por conductores, convirtiendo a IDs de unidades...')
-
       const todosConductores = await obtenerConductores()
       for (const nombreConductor of unidadesIds) {
         const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
@@ -1062,8 +1021,6 @@ const obtenerDatosReporte = async () => {
     })
   }
 
-  console.log('✅ Datos obtenidos:', datosInforme.length)
-
   if (!datosInforme || datosInforme.length === 0) {
     throw new Error('No se encontraron datos para el período seleccionado')
   }
@@ -1072,7 +1029,6 @@ const obtenerDatosReporte = async () => {
   let datosFiltrados = datosInforme
   if (tipoInforme === 'eventos' && eventos.value.length > 0) {
     datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
-    console.log(`🔍 Filtrados ${datosFiltrados.length} eventos de ${datosInforme.length} totales`)
   }
 
   // Agrupar datos
@@ -1091,9 +1047,6 @@ const obtenerDatosReporte = async () => {
     } else {
       criterioPrincipal = 'unidad'
     }
-
-    console.log('📊 Agrupación PRINCIPAL por:', criterioPrincipal)
-    console.log('📊 Sub-agrupación por:', metodoAgrupacion.value)
 
     // 🔥 PASO 2: Agrupar por criterio principal
     datosAgrupados = datosFiltrados.reduce((acc, dato) => {
@@ -1122,14 +1075,8 @@ const obtenerDatosReporte = async () => {
     }, {})
   }
 
-  console.log('✅ Datos agrupados en', Object.keys(datosAgrupados).length, 'grupos')
-  console.log('🔍 Claves de grupos:', Object.keys(datosAgrupados))
-
   // Elementos sin datos
   let elementosConDatos = []
-
-  console.log('🔍 Primer dato de ejemplo:', datosFiltrados[0])
-  console.log('🔍 Campos disponibles:', Object.keys(datosFiltrados[0] || {}))
 
   if (reportarPor.value === 'Conductores') {
     elementosConDatos = [
@@ -1139,7 +1086,6 @@ const obtenerDatosReporte = async () => {
           .filter(Boolean),
       ),
     ]
-    console.log('👥 Conductores con datos encontrados:', elementosConDatos)
   } else if (reportarPor.value === 'Unidades') {
     elementosConDatos = Object.keys(datosAgrupados)
   } else {
@@ -1169,8 +1115,6 @@ const obtenerDatosReporte = async () => {
       .size,
   }
 
-  console.log('📊 Estadísticas finales:', stats)
-
   // Resumen por grupo
   const resumenPorGrupo = {}
   Object.entries(datosAgrupados).forEach(([nombre, registros]) => {
@@ -1178,12 +1122,6 @@ const obtenerDatosReporte = async () => {
   })
 
   const configuracion = obtenerConfiguracionColumnas()
-  console.log('🔍 Columnas seleccionadas:', columnasSeleccionadas.value)
-  console.log('🔍 Configuración obtenida:', configuracion)
-  console.log(
-    '🔍 Labels en configuración:',
-    configuracion.map((c) => c.label),
-  )
 
   if (tipoInforme === 'horas_trabajo') {
     return {
@@ -1212,7 +1150,7 @@ const obtenerDatosReporte = async () => {
 
 const generarReporte = async () => {
   if (!validarFormulario()) return
-
+  guardarColumnasActuales()
   generando.value = true
   const formatearDuracionHoras = (totalHoras) => {
     const horas = Math.floor(totalHoras)
@@ -1236,22 +1174,10 @@ const generarReporte = async () => {
       mostrarPlacaMapa: mostrarPlacaMapa.value,
     }
 
-    console.log('🔍 datosReales completo:', datosReales)
-    console.log('🔍 configuracionColumnas:', datosReales.configuracionColumnas)
-
     let pdfResult
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🗺️ Generando PDF de trayectos...')
-
-      console.log('🔍 datosReales.datosColumnas[0]:', datosReales.datosColumnas[0])
-      console.log('🔍 datosReales.eventosAgrupados:', datosReales.eventosAgrupados)
-      console.log(
-        '🔍 Primer trayecto del grupo:',
-        Object.values(datosReales.eventosAgrupados)[0]?.[0],
-      )
-
       if (mostrarMapaTrayecto.value) {
         $q.notify({
           type: 'info',
@@ -1263,19 +1189,11 @@ const generarReporte = async () => {
 
       pdfResult = await generarPDFTrayectos(config, datosReales)
     } else if (tipoInformeSeleccionado.value === 'eventos') {
-      console.log('📊 Generando PDF de eventos...')
       pdfResult = generarPDFEventos(config, datosReales)
     } else if (tipoInformeSeleccionado.value === 'horas_trabajo') {
-      console.log('⏰ Generando PDF de horas de trabajo...')
-
       const horasArray = Array.isArray(datosReales)
         ? datosReales
         : datosReales.registros || datosReales.datosColumnas || []
-
-      console.log('📊 Datos de horas extraídos:', {
-        longitud: horasArray.length,
-        primerItem: horasArray[0],
-      })
 
       // Preparar resumen general
       const resumenGeneral = {}
@@ -1413,7 +1331,7 @@ const generarReporte = async () => {
 
 const generarExcel = async () => {
   if (!validarFormulario()) return
-
+  guardarColumnasActuales()
   generando.value = true
 
   try {
@@ -1437,26 +1355,20 @@ const generarExcel = async () => {
     let blob, filename
 
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🗺️ DATOS DE TRAYECTOS PARA EXCEL:', datosReales)
-      console.log('🗺️ datosColumnas:', datosReales.datosColumnas)
-      console.log('🗺️ Primer trayecto en datosColumnas:', datosReales.datosColumnas[0])
-      console.log('🗺️ Campos disponibles:', Object.keys(datosReales.datosColumnas[0] || {}))
+      Object.keys(datosReales.datosColumnas[0] || {})
     }
 
     // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
-      console.log('📊 Generando Excel de Horas de Trabajo...')
       const { generarExcelHorasTrabajo } = useReporteExcel()
       const resultado = await generarExcelHorasTrabajo(config, datosReales)
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'eventos') {
-      console.log('📊 Generando Excel de Eventos...')
       const resultado = await generarExcelEventos(config, datosReales)
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('📊 Generando Excel de Trayectos...')
       const { generarExcelTrayectos } = useReporteExcel()
       const resultado = await generarExcelTrayectos(config, datosReales)
       blob = resultado.blob
@@ -1585,3 +1497,12 @@ watch(eventos, () => {
   }
 })
 </script>
+
+<style scoped>
+/* 🆕 ESTILOS PARA EL HEADER DE COLUMNAS */
+.columnas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>

@@ -658,7 +658,6 @@ function getIconoTipoCondicion(tipo) {
 
 const redibujarMapa = () => {
   window.dispatchEvent(new CustomEvent('redibujarMapa'))
-  console.log('🔄 Solicitando redibujado del mapa...')
 }
 
 function cerrarDrawer() {
@@ -947,42 +946,25 @@ async function eliminarEventoSeleccionado() {
 
 // Cargar datos al montar el componente
 onMounted(async () => {
-  console.log('🔟 Eventos: Componente montado')
-
   await cargarDatos()
-
-  console.log('1️⃣1️⃣ Eventos: Verificando window._ubicacionParaEvento')
-  console.log('📦 Valor:', window._ubicacionParaEvento)
 
   if (window._ubicacionParaEvento) {
     const data = window._ubicacionParaEvento
-    console.log('1️⃣2️⃣ Eventos: ¡Ubicación preseleccionada detectada!')
-    console.log('📍 Ubicación:', data.ubicacion.nombre)
-    console.log('🏷️ Tipo:', data.tipo)
 
     delete window._ubicacionParaEvento
-    console.log('1️⃣3️⃣ Eventos: window._ubicacionParaEvento limpiado')
 
     setTimeout(() => {
-      console.log('1️⃣4️⃣ Eventos: Ejecutando crearEventoConUbicacionPreseleccionada')
       crearEventoConUbicacionPreseleccionada(data)
     }, 500)
-  } else {
-    console.log('ℹ️ Eventos: No hay ubicación preseleccionada')
   }
 })
 
 // 🆕 MODIFICADO: Crear evento con ENTRADA y SALIDA automáticamente
 function crearEventoConUbicacionPreseleccionada(data) {
-  console.log('1️⃣5️⃣ Eventos: Configurando evento con ubicación')
-  console.log('📦 Data:', data)
-
   modoEdicion.value = false
 
   const nombreUbicacion = data.ubicacion.nombre
   const tipoUbicacion = data.tipo
-
-  console.log('1️⃣6️⃣ Eventos: Preparando nuevoEvento.value')
 
   // 🆕 AUTO-CREAR ENTRADA Y SALIDA
   nuevoEvento.value = {
@@ -1013,12 +995,7 @@ function crearEventoConUbicacionPreseleccionada(data) {
   // 🆕 Inicializar opciones filtradas para ambas condiciones
   opcionesFiltradas.value = [opcionesUbicaciones.value, opcionesUbicaciones.value]
 
-  console.log('1️⃣7️⃣ Eventos: nuevoEvento configurado con ENTRADA y SALIDA:', nuevoEvento.value)
-  console.log('1️⃣8️⃣ Eventos: Abriendo dialogNuevoEvento')
-
   dialogNuevoEvento.value = true
-
-  console.log('1️⃣9️⃣ Eventos: dialogNuevoEvento.value =', dialogNuevoEvento.value)
 
   if ($q && $q.notify) {
     $q.notify({
@@ -1030,15 +1007,10 @@ function crearEventoConUbicacionPreseleccionada(data) {
       timeout: 3000,
     })
   }
-
-  console.log('2️⃣0️⃣ Eventos: Proceso completado')
 }
 
 async function cargarDatos() {
   try {
-    console.log('🔄 Iniciando carga de datos...')
-    console.log('👤 UserId:', userId.value)
-
     if ($q && $q.loading) {
       $q.loading.show({ message: 'Cargando datos...' })
     }
@@ -1052,11 +1024,6 @@ async function cargarDatos() {
     eventos.value = eventosData
     pois.value = poisData
     geozonas.value = geozonasDa
-
-    console.log('✅ Datos cargados correctamente:')
-    console.log('  📊 Eventos:', eventosData.length)
-    console.log('  📍 POIs:', poisData.length)
-    console.log('  🗺️ Geozonas:', geozonasDa.length)
 
     if (poisData.length === 0 && geozonasDa.length === 0) {
       if ($q && $q.notify) {
