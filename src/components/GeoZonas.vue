@@ -859,7 +859,7 @@
 
 <script setup>
 // MODIFICAR esta línea existente:
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 //import mapboxgl from 'mapbox-gl'
@@ -1543,11 +1543,10 @@ const eliminarItem = async () => {
   const tipo = itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona'
 
   try {
-    // 🔍 PASO 1: Buscar eventos asociados
-
+    // 🔍 Buscar eventos asociados
     const { cantidad: eventosEncontrados } = await eliminarEventosPorUbicacion(ubicacionId, tipo)
 
-    // 💬 PASO 2: Crear mensaje para window.confirm
+    // 💬 Crear mensaje para window.confirm
     let mensaje = `¿Estás seguro de eliminar "${ubicacionNombre}"?`
 
     if (eventosEncontrados > 0) {
@@ -1560,7 +1559,7 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 ¿Deseas continuar?`
     }
 
-    // 💬 PASO 3: Mostrar confirmación nativa
+    // 💬 Mostrar confirmación
     const confirmacion = window.confirm(mensaje)
 
     if (!confirmacion) {
@@ -1569,31 +1568,11 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 
     console.log('✅ Usuario confirmó eliminación')
 
-    // 🗑️ PASO 4: Eliminar ubicación
+    // 🗑️ Eliminar de Firebase
     if (itemMenu.value.tipo === 'poi') {
       await eliminarPOI(itemMenu.value.id)
-
-      // Eliminar marcador del mapa
-      if (itemMenu.value.coordenadas) {
-        const mapPage = document.querySelector('#map-page')
-        if (mapPage && mapPage._mapaAPI) {
-          mapPage._mapaAPI.eliminarMarcadorPorCoordenadas(
-            itemMenu.value.coordenadas.lat,
-            itemMenu.value.coordenadas.lng,
-          )
-        }
-      }
     } else if (itemMenu.value.tipo === 'geozona') {
       await eliminarGeozona(itemMenu.value.id)
-
-      const mapPage = document.querySelector('#map-page')
-      if (mapPage && mapPage._mapaAPI) {
-        if (itemMenu.value.tipoGeozona === 'circular') {
-          mapPage._mapaAPI.eliminarCirculo(itemMenu.value.id)
-        } else if (itemMenu.value.tipoGeozona === 'poligono') {
-          mapPage._mapaAPI.eliminarPoligono(itemMenu.value.id)
-        }
-      }
     }
 
     // Eliminar del array local
@@ -1602,7 +1581,7 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
       items.value.splice(index, 1)
     }
 
-    // 📢 PASO 5: Alerta de éxito
+    // 📢 Alerta de éxito
     const mensajeExito =
       eventosEncontrados > 0
         ? `✅ ${tipo} y ${eventosEncontrados} evento(s) eliminados correctamente`
@@ -1610,14 +1589,22 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 
     window.alert(mensajeExito)
 
-    redibujarMapa()
     menuContextualVisible.value = false
+
+    // ✅ IMPORTANTE: Actualizar eventos y redibujar
+    await nextTick()
+
+    // Recargar eventos desde Firebase
+    const eventosActualizados = await obtenerEventos()
+    eventosActivos.value = eventosActualizados.filter((e) => e.activo)
+
+    // Redibujar mapa completo
+    redibujarMapa()
   } catch (err) {
     console.error('❌ Error al eliminar:', err)
     window.alert(`❌ Error al eliminar: ${err.message}`)
   }
 }
-
 // 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
 const guardarPOI = async () => {
   try {
@@ -1692,6 +1679,7 @@ const guardarPOI = async () => {
         message: 'POI guardado correctamente',
         icon: 'check_circle',
       })
+      await nextTick()
       redibujarMapa()
     }
 
@@ -2085,6 +2073,8 @@ const guardarGeozona = async () => {
     }
 
     dialogNuevaGeozona.value = false
+    await nextTick()
+    redibujarMapa()
   } catch (err) {
     console.error('❌ Error al guardar geozona:', err)
     $q.notify({

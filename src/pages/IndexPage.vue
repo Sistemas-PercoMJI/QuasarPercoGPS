@@ -1559,19 +1559,45 @@ onMounted(async () => {
       body.style.maxHeight = '0'
     }
   }
-
   window.addEventListener('redibujarMapa', async () => {
+    console.log('🔄 Evento redibujarMapa recibido')
+
     await nextTick()
+
+    // ✅ PASO 1: Limpiar marcadores de POIs existentes
+    if (marcadoresPOIs.value && marcadoresPOIs.value.length > 0) {
+      marcadoresPOIs.value.forEach((marker) => {
+        try {
+          marker.remove()
+        } catch (e) {
+          console.warn('⚠️ Error al remover marcador:', e)
+        }
+      })
+      marcadoresPOIs.value = []
+    }
+
+    // ✅ PASO 2: Limpiar capas del mapa
     limpiarCapasDelMapa()
+
+    // ✅ PASO 3: Esperar un momento para asegurar limpieza
+    await nextTick()
+
+    // ✅ PASO 4: Redibujar todo desde cero
     await dibujarTodosEnMapa()
+
+    // ✅ PASO 5: Reinicializar sistema de detección de eventos
     resetear()
     await inicializarSistemaDeteccion()
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
+
+    // ✅ PASO 6: Actualizar marcadores de unidades
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
+
+    console.log('✅ Mapa redibujado completamente')
   })
 
   iniciarTracking()
