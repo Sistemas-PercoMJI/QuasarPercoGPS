@@ -2686,6 +2686,15 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
 }
 
+:deep(.icono-unidad-hover:hover) {
+  transform: scale(1.15);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) !important;
+}
+
+:deep(.custom-marker-unidad:hover) {
+  z-index: 1000 !important;
+}
+
 :deep(.mapboxgl-canvas-container) {
   will-change: transform;
   transform: translateZ(0);
