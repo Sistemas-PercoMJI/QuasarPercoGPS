@@ -832,6 +832,7 @@ const dibujarTodosEnMapa = async () => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
         const radio = poi.radio || 100
+        const color = poi.color || '#FF5252' // ✅ Obtener color del POI
 
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
@@ -862,42 +863,42 @@ const dibujarTodosEnMapa = async () => {
                 ],
                 base: 2,
               },
-              'circle-color': '#2196F3',
+              'circle-color': color, // ✅ USAR EL COLOR DEL POI (antes era '#2196F3')
               'circle-opacity': 0.15,
               'circle-stroke-width': 2,
-              'circle-stroke-color': '#2196F3',
+              'circle-stroke-color': color, // ✅ USAR EL COLOR DEL POI (antes era '#2196F3')
             },
           })
         }
 
         const popupContent = `
-          <div class="poi-popup-container">
-            <div class="poi-popup-header">
-              <div class="header-info">
-                <div class="header-title">${poi.nombre}</div>
-                <div class="header-divider"></div>
-                <div class="header-subtitle">Radio: ${radio}m</div>
-              </div>
-            </div>
-
-            <div class="poi-popup-body">
-              <div class="address-info">
-                <div class="address-icon"></div>
-                <div class="address-text">${poi.direccion}</div>
-              </div>
-
-              <button
-                onclick="window.verDetallesPOI('${poi.id}')"
-                class="details-btn"
-              >
-                Ver más detalles
-              </button>
-            </div>
+      <div class="poi-popup-container">
+        <div class="poi-popup-header">
+          <div class="header-info">
+            <div class="header-title">${poi.nombre}</div>
+            <div class="header-divider"></div>
+            <div class="header-subtitle">Radio: ${radio}m</div>
           </div>
-        `
+        </div>
 
-        // ✅ USAR EL COLOR DEL POI
-        const markerEl = crearIconoPOI(tieneEventos, poi.color || '#FF5252')
+        <div class="poi-popup-body">
+          <div class="address-info">
+            <div class="address-icon"></div>
+            <div class="address-text">${poi.direccion}</div>
+          </div>
+
+          <button
+            onclick="window.verDetallesPOI('${poi.id}')"
+            class="details-btn"
+          >
+            Ver más detalles
+          </button>
+        </div>
+      </div>
+    `
+
+        // ✅ Pasar el color a la función
+        const markerEl = crearIconoPOI(tieneEventos, color, poi.nombre)
 
         const popup = new mapboxgl.Popup({
           offset: 25,
@@ -918,7 +919,6 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
 
-        // ✅ GUARDAR referencia del marcador
         marcadoresPOIs.value.push(marker)
       }
     })
