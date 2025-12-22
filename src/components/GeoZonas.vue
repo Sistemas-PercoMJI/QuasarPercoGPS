@@ -1609,11 +1609,7 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 const guardarPOI = async () => {
   try {
     mostrarSliderRadio.value = false
-    const mapPage = document.querySelector('#map-page')
-    if (mapPage && mapPage._mapaAPI) {
-      mapPage._mapaAPI.limpiarMarcadorTemporal()
-      mapPage._mapaAPI.limpiarCirculoTemporalPOI()
-    }
+    // const mapPage = document.querySelector('#map-page')
 
     // Preparar datos del POI
     const poiData = {
@@ -1622,8 +1618,8 @@ const guardarPOI = async () => {
       coordenadas: nuevoPOI.value.coordenadas || null,
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
-      radio: nuevoPOI.value.radio || 5, // ✅ NUEVO: Incluir radio
-      color: nuevoPOI.value.color || '#FF5252',
+      radio: nuevoPOI.value.radio || 5,
+      color: nuevoPOI.value.color || '#FF5252', // ✅ Color incluido
     }
 
     if (nuevoPOI.value.id) {
@@ -1638,18 +1634,6 @@ const guardarPOI = async () => {
         }
       }
 
-      // ✅ NUEVO: Actualizar marcador Y círculo en el mapa
-      if (mapPage && mapPage._mapaAPI && nuevoPOI.value.coordenadas) {
-        mapPage._mapaAPI.actualizarMarcadorConCirculo(
-          nuevoPOI.value.coordenadas.lat,
-          nuevoPOI.value.coordenadas.lng,
-          nuevoPOI.value.nombre,
-          nuevoPOI.value.direccion,
-          nuevoPOI.value.radio,
-          nuevoPOI.value.color,
-        )
-      }
-
       $q.notify({
         type: 'positive',
         message: 'POI actualizado correctamente',
@@ -1658,15 +1642,6 @@ const guardarPOI = async () => {
     } else {
       // CREAR NUEVO POI
       const nuevoId = await crearPOI(poiData)
-
-      // ✅ NUEVO: Confirmar marcador temporal Y su círculo en el mapa
-      if (mapPage && mapPage._mapaAPI) {
-        mapPage._mapaAPI.confirmarMarcadorConCirculo(
-          nuevoPOI.value.nombre,
-          nuevoPOI.value.radio,
-          nuevoPOI.value.color,
-        )
-      }
 
       items.value.push({
         id: nuevoId,
@@ -1679,11 +1654,12 @@ const guardarPOI = async () => {
         message: 'POI guardado correctamente',
         icon: 'check_circle',
       })
-      await nextTick()
-      redibujarMapa()
     }
 
-    // Resetear formulario
+    // ✅ CERRAR DIALOG
+    dialogNuevoPOI.value = false
+
+    // ✅ RESETEAR FORMULARIO
     nuevoPOI.value = {
       nombre: '',
       direccion: '',
@@ -1693,7 +1669,10 @@ const guardarPOI = async () => {
       radio: 100,
       color: '#FF5252',
     }
-    dialogNuevoPOI.value = false
+
+    // ✅ ESPERAR Y REDIBUJAR MAPA
+    await nextTick()
+    redibujarMapa()
   } catch (err) {
     console.error('Error al guardar POI:', err)
     $q.notify({

@@ -364,6 +364,7 @@ const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
 
 const marcadoresPOIs = ref([])
+//const marcadoresGeozonas = ref([])
 const mapaListo = ref(false)
 const mostrarBotonConfirmarGeozona = ref(false)
 const ubicacionActiva = ref(false)
@@ -792,6 +793,7 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
+    // ✅ DIBUJAR POIs
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const { lat, lng } = poi.coordenadas
@@ -860,6 +862,7 @@ const dibujarTodosEnMapa = async () => {
           </div>
         `
 
+        // ✅ USAR EL COLOR DEL POI
         const markerEl = crearIconoPOI(tieneEventos, poi.color || '#FF5252')
 
         const popup = new mapboxgl.Popup({
@@ -881,6 +884,7 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
 
+        // ✅ GUARDAR referencia del marcador
         marcadoresPOIs.value.push(marker)
       }
     })
@@ -888,6 +892,7 @@ const dibujarTodosEnMapa = async () => {
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
+    // ✅ DIBUJAR GEOZONAS
     for (const geozona of geozonas) {
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
@@ -1031,7 +1036,8 @@ const dibujarTodosEnMapa = async () => {
           closeOnClick: false,
         }).setHTML(popupContent)
 
-        new mapboxgl.Marker({ element: markerEl })
+        // ✅ GUARDAR la referencia del marcador
+        const marker = new mapboxgl.Marker({ element: markerEl })
           .setLngLat([lng, lat])
           .setPopup(popup)
           .addTo(mapaAPI.map)
@@ -1042,6 +1048,8 @@ const dibujarTodosEnMapa = async () => {
           }
           popupGlobalActivo = popup
         })
+
+        marcadoresPOIs.value.push(marker) // ✅ AGREGAR al array
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
@@ -1122,7 +1130,8 @@ const dibujarTodosEnMapa = async () => {
           closeOnClick: false,
         }).setHTML(popupContent)
 
-        new mapboxgl.Marker({ element: markerEl })
+        // ✅ GUARDAR la referencia del marcador
+        const marker = new mapboxgl.Marker({ element: markerEl })
           .setLngLat([centroLng, centroLat])
           .setPopup(popup)
           .addTo(mapaAPI.map)
@@ -1133,6 +1142,8 @@ const dibujarTodosEnMapa = async () => {
           }
           popupGlobalActivo = popup
         })
+
+        marcadoresPOIs.value.push(marker) // ✅ AGREGAR al array
       }
     }
 
@@ -1140,6 +1151,8 @@ const dibujarTodosEnMapa = async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
+
+    console.log(`✅ Dibujados ${marcadoresPOIs.value.length} marcadores totales`)
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
@@ -1148,6 +1161,20 @@ const dibujarTodosEnMapa = async () => {
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
+  // ✅ PASO 1: Limpiar MARCADORES de POIs y Geozonas
+  if (marcadoresPOIs.value && marcadoresPOIs.value.length > 0) {
+    console.log(`🧹 Limpiando ${marcadoresPOIs.value.length} marcadores`)
+    marcadoresPOIs.value.forEach((marker) => {
+      try {
+        marker.remove()
+      } catch (e) {
+        console.warn('⚠️ Error al remover marcador:', e)
+      }
+    })
+    marcadoresPOIs.value = []
+  }
+
+  // ✅ PASO 2: Limpiar CAPAS del mapa (círculos y polígonos)
   const layers = mapaAPI.map.getStyle().layers
 
   layers.forEach((layer) => {
@@ -1164,6 +1191,7 @@ const limpiarCapasDelMapa = () => {
     }
   })
 
+  // ✅ PASO 3: Limpiar SOURCES del mapa
   const sources = Object.keys(mapaAPI.map.getStyle().sources)
   sources.forEach((sourceId) => {
     if (
@@ -1180,8 +1208,9 @@ const limpiarCapasDelMapa = () => {
       }
     }
   })
-}
 
+  console.log('✅ Capas y marcadores limpiados')
+}
 /*const inicializarMapaConUbicacion = async () => {
   // ✅ Coordenadas por defecto (MJ Industrias como fallback)
   const defaultCoords = [32.504421823945805, -116.9514484543167]
