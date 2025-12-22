@@ -684,8 +684,8 @@ function oscurecerColor(hex, porcentaje = 20) {
 
 function crearIconoPOI(tieneEventos = false, color = '#FF5252') {
   const iconoHTML = `
-    <div style="position: relative; display: inline-block;">
-      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
+    <div class="marker-container-poi" style="position: relative; display: inline-block; transition: transform 0.2s ease;">
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer;" class="icono-poi-hover">
         <!-- Borde blanco exterior -->
         <path
           fill="white"
@@ -724,6 +724,23 @@ function crearIconoPOI(tieneEventos = false, color = '#FF5252') {
   markerEl.innerHTML = iconoHTML
   markerEl.style.cursor = 'pointer'
 
+  // ✅ Agregar efecto hover al contenedor completo
+  const container = markerEl.querySelector('.marker-container-poi')
+
+  markerEl.addEventListener('mouseenter', () => {
+    if (container) {
+      container.style.transform = 'scale(1.15)'
+      container.style.filter = 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4))'
+    }
+  })
+
+  markerEl.addEventListener('mouseleave', () => {
+    if (container) {
+      container.style.transform = 'scale(1)'
+      container.style.filter = ''
+    }
+  })
+
   return markerEl
 }
 
@@ -734,20 +751,20 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
 
   if (tipo === 'circular') {
     iconoSVG = `
-      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer;" class="icono-geozona-hover">
         <circle cx="12" cy="12" r="10" fill="${colorFinal}" stroke="white" stroke-width="2"/>
       </svg>
     `
   } else {
     iconoSVG = `
-      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease;" class="icono-geozona-hover">
+      <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); cursor: pointer;" class="icono-geozona-hover">
         <polygon points="12,2 22,12 12,22 2,12" fill="${colorFinal}" stroke="white" stroke-width="2"/>
       </svg>
     `
   }
 
   const iconoHTML = `
-    <div style="position: relative; display: inline-block;">
+    <div class="marker-container-geozona" style="position: relative; display: inline-block; transition: transform 0.2s ease, filter 0.2s ease;">
       ${iconoSVG}
 
       ${
@@ -773,6 +790,23 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
   const markerEl = document.createElement('div')
   markerEl.innerHTML = iconoHTML
   markerEl.style.cursor = 'pointer'
+
+  // ✅ Agregar efecto hover al contenedor completo
+  const container = markerEl.querySelector('.marker-container-geozona')
+
+  markerEl.addEventListener('mouseenter', () => {
+    if (container) {
+      container.style.transform = 'scale(1.15)'
+      container.style.filter = 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35))'
+    }
+  })
+
+  markerEl.addEventListener('mouseleave', () => {
+    if (container) {
+      container.style.transform = 'scale(1)'
+      container.style.filter = ''
+    }
+  })
 
   return markerEl
 }
