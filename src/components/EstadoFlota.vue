@@ -513,7 +513,7 @@ import { useEventosUnidad } from 'src/composables/useEventosUnidad'
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
-const { obtenerEventosUnidad } = useEventosUnidad()
+const { obtenerEventosDiarios } = useEventosUnidad()
 //, filtrarEventosPorTipo esto va arriba en EventosUnidad
 
 // Props y emits
@@ -744,8 +744,8 @@ const cargarTrayectosDia = async () => {
 const cargarEventosUnidad = async (unidadId) => {
   loadingEventos.value = true
   try {
-    console.log(`📊 Cargando eventos para unidad ${unidadId}`)
-    const eventos = await obtenerEventosUnidad(unidadId, 50)
+    console.log(`📊 Cargando eventos diarios para unidad ${unidadId}`)
+    const eventos = await obtenerEventosDiarios(unidadId, 50) // 👈 Usas la nueva función
     eventosUnidad.value = eventos
     console.log(`✅ ${eventos.length} eventos cargados`)
   } catch (err) {
