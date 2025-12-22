@@ -430,7 +430,7 @@
               </q-card-section>
 
               <q-card-actions align="right">
-                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                <q-btn flat label="Cancelar" colors="grey-7" v-close-popup />
                 <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
               </q-card-actions>
             </q-card>
@@ -862,7 +862,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
-import mapboxgl from 'mapbox-gl'
+//import mapboxgl from 'mapbox-gl'
 // 🆕 NUEVO: Importar composable de eventos
 import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
@@ -1395,41 +1395,22 @@ function verEnMapa() {
       })
       return
     }
-    const popupContent = `
-      <div style="min-width: 200px;">
-        <b style="font-size: 16px;">📍 ${itemMenu.value.nombre}</b>
-        <p style="margin: 8px 0 4px 0; font-size: 13px; color: #666;">
-          ${itemMenu.value.direccion}
-        </p>
-      </div>
-    `
 
-    // Eliminar marcador anterior si existe
-    if (marcadorActivo.value) {
-      marcadorActivo.value.remove() // ✅ MAPBOX GL
-      marcadorActivo.value = null
-    }
-
-    // Crear nuevo marcador
-    // ✅ Crear marcador con Mapbox GL
-    const markerEl = document.createElement('div')
-    markerEl.innerHTML = '📍'
-    markerEl.style.fontSize = '40px'
-    markerEl.style.cursor = 'pointer'
-    markerEl.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
-
-    marcadorActivo.value = new mapboxgl.Marker({ element: markerEl, anchor: 'bottom' })
-      .setLngLat([lng, lat])
-      .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
-      .addTo(mapaAPI.map)
-
-    marcadorActivo.value.togglePopup()
-
-    // Centrar el mapa con animación
+    // ✅ SOLO CENTRAR LA VISTA - El marcador ya existe en el mapa
     mapaAPI.map.flyTo({
       center: [lng, lat],
       zoom: 18,
       duration: 1000,
+    })
+
+    // ✅ NOTIFICAR AL USUARIO
+    $q.notify({
+      type: 'info',
+      message: `📍 Centrado en: ${itemMenu.value.nombre}`,
+      caption: 'Haz clic en el marcador para ver detalles',
+      position: 'top',
+      timeout: 2500,
+      icon: 'place',
     })
   } else if (itemMenu.value.tipo === 'geozona') {
     // Eliminar polígono/círculo anterior si existe
@@ -1642,6 +1623,10 @@ const guardarPOI = async () => {
   try {
     mostrarSliderRadio.value = false
     const mapPage = document.querySelector('#map-page')
+    if (mapPage && mapPage._mapaAPI) {
+      mapPage._mapaAPI.limpiarMarcadorTemporal()
+      mapPage._mapaAPI.limpiarCirculoTemporalPOI()
+    }
 
     // Preparar datos del POI
     const poiData = {

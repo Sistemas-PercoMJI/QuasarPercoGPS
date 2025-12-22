@@ -682,11 +682,21 @@ function oscurecerColor(hex, porcentaje = 20) {
 }
 
 function crearIconoPOI(tieneEventos = false, color = '#FF5252') {
-  // ✅ Agregar parámetro color
   const iconoHTML = `
     <div style="position: relative; display: inline-block;">
       <svg width="32" height="32" viewBox="0 0 24 24" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); cursor: pointer; transition: transform 0.2s ease;" class="icono-poi-hover">
-        <path fill="${color}" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        <!-- Borde blanco exterior -->
+        <path
+          fill="white"
+          stroke="white"
+          stroke-width="4"
+          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+        />
+        <!-- Pin con color -->
+        <path
+          fill="${color}"
+          d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+        />
       </svg>
 
       ${
@@ -696,9 +706,9 @@ function crearIconoPOI(tieneEventos = false, color = '#FF5252') {
           position: absolute;
           top: -3px;
           right: -1px;
-          width: 15px;
-          height: 15px;
-          background:#FF9800;
+          width: 16px;
+          height: 16px;
+          background: #FF9800;
           border-radius: 50%;
           border: 3px solid #FFFFFF;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
@@ -2674,6 +2684,15 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 :deep(.icono-geozona-hover:hover) {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)) !important;
+}
+
+:deep(.icono-unidad-hover:hover) {
+  transform: scale(1.15);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) !important;
+}
+
+:deep(.custom-marker-unidad:hover) {
+  z-index: 1000 !important;
 }
 
 :deep(.mapboxgl-canvas-container) {
