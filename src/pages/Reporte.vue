@@ -322,11 +322,11 @@
           <!-- COLUMNA DERECHA -->
           <div class="col-12 col-md-6">
             <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
+            <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
             <q-card
               v-if="
-                tieneOpcion('mostrarMapaTrayecto') ||
-                tieneOpcion('mostrarMapaZona') ||
-                tieneOpcion('seleccionColumnas')
+                (tieneOpcion('mostrarMapaTrayecto') || tieneOpcion('mostrarMapaZona')) &&
+                tipoInformeSeleccionado !== 'eventos'
               "
               flat
               bordered
