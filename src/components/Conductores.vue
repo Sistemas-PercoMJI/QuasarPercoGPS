@@ -355,8 +355,23 @@
                   map-options
                   clearable
                   label="Seleccionar unidad"
+                  :option-disable="(opt) => opt.disabled"
                   @update:model-value="asignarUnidadAConductor"
-                />
+                >
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        <q-item-label v-if="scope.opt.conductorActual" caption>
+                          {{ scope.opt.conductorActual }}
+                        </q-item-label>
+                      </q-item-section>
+                      <q-item-section side v-if="scope.opt.disabled">
+                        <q-icon name="lock" color="negative" />
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
               </q-card-section>
 
               <q-card-section v-if="unidadAsociada">
@@ -851,17 +866,30 @@ if (!estadoCompartido.value) {
 }
 
 const opcionesUnidades = computed(() => {
-  const unidadesAsignadas = conductores.value
-    .filter((c) => c.id !== conductorEditando.value?.id)
-    .map((c) => c.UnidadAsignada)
-    .filter(Boolean)
+  const conductorEditandoId = conductorEditando.value?.id
+  const unidadActualDelConductor = conductorEditando.value?.UnidadAsignada
 
-  return unidades.value
-    .filter((u) => !unidadesAsignadas.includes(u.id))
-    .map((u) => ({
-      label: u.Unidad,
-      value: u.id,
-    }))
+  // Crear mapa de asignaciones excluyendo al conductor actual
+  const asignaciones = {}
+  conductores.value.forEach((c) => {
+    if (c.UnidadAsignada && c.id !== conductorEditandoId) {
+      asignaciones[c.UnidadAsignada] = c.Nombre
+    }
+  })
+
+  // Procesar todas las unidades
+  return unidades.value.map((unidad) => {
+    const estaOcupada = !!asignaciones[unidad.id]
+    const esMiUnidadActual = unidad.id === unidadActualDelConductor
+
+    return {
+      label: `${unidad.Unidad}${asignaciones[unidad.id] ? ` (Ocupada por: ${asignaciones[unidad.id]})` : ''}${esMiUnidadActual ? ' (Mi unidad actual)' : ''}`,
+      value: unidad.id,
+      disabled: estaOcupada && !esMiUnidadActual, // Deshabilitar si está ocupada por otro
+      conductorActual: asignaciones[unidad.id],
+      esMiUnidadActual: esMiUnidadActual,
+    }
+  })
 })
 
 watch(
@@ -1368,38 +1396,57 @@ async function actualizarFechaVencimiento(fecha) {
 async function asignarUnidadAConductor(unidadId) {
   if (!conductorEditando.value?.id) return
 
-  const unidadYaAsignada = conductores.value.find(
-    (c) => c.id !== conductorEditando.value.id && c.UnidadAsignada === unidadId,
-  )
-
-  if (unidadYaAsignada) {
-    Notify.create({
-      type: 'negative',
-      message: `Esta unidad ya está asignada a ${unidadYaAsignada.Nombre}`,
-      icon: 'error',
-      timeout: 3000,
-    })
-
-    conductorEditando.value.UnidadAsignada = null
-    return
-  }
+  const conductorId = conductorEditando.value.id
+  const unidadAnteriorId = conductorEditando.value.UnidadAsignada
 
   try {
-    await asignarUnidad(conductorEditando.value.id, unidadId)
+    // Verificar si la unidad ya está asignada a OTRO conductor
+    if (unidadId) {
+      const otroConductorConEstaUnidad = conductores.value.find(
+        (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
+      )
+
+      if (otroConductorConEstaUnidad) {
+        Notify.create({
+          type: 'negative',
+          message: `Error: La unidad ya está asignada a ${otroConductorConEstaUnidad.Nombre}`,
+          icon: 'error',
+          timeout: 3000,
+        })
+
+        // Restaurar valor anterior
+        conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
+        return
+      }
+    }
+
+    // Ejecutar la asignación/remoción
+    await asignarUnidad(conductorId, unidadId || null)
+
+    // Actualizar estado local
+    if (conductorSeleccionado.value) {
+      conductorSeleccionado.value.UnidadAsignada = unidadId || null
+    }
 
     Notify.create({
       type: 'positive',
-      message: 'Unidad asignada correctamente',
+      message: unidadId ? 'Unidad asignada correctamente' : 'Unidad removida correctamente',
       icon: 'check_circle',
     })
 
-    await cargarFotosConductor()
+    // Recargar datos para actualizar las opciones
+    await obtenerConductores()
+    await obtenerUnidades()
   } catch (error) {
+    console.error('Error:', error)
     Notify.create({
       type: 'negative',
-      message: 'Error al asignar unidad: ' + error.message,
+      message: 'Error: ' + error.message,
       icon: 'error',
     })
+
+    // Restaurar en caso de error
+    conductorEditando.value.UnidadAsignada = unidadAnteriorId
   }
 }
 

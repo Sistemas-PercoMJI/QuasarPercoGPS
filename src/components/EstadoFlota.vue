@@ -95,6 +95,15 @@
                 <q-icon name="place" size="14px" class="q-mr-xs" />
                 {{ vehiculo.ubicacion }}
               </q-item-label>
+
+              <q-item-label
+                caption
+                class="vehiculo-conductor"
+                v-if="vehiculo.conductor !== 'Sin conductor'"
+              >
+                <q-icon name="person" size="12px" class="q-mr-xs" />
+                {{ vehiculo.conductor }}
+              </q-item-label>
             </q-item-section>
 
             <q-item-section side class="velocidad-section">
@@ -514,7 +523,6 @@ const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidade
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
 const { obtenerEventosDiarios } = useEventosUnidad()
-//, filtrarEventosPorTipo esto va arriba en EventosUnidad
 
 // Props y emits
 const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
@@ -524,6 +532,10 @@ const vehiculoSeleccionado = ref(null)
 const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
 const tabActual = ref('resumen')
+
+// ✅ NUEVO: Estado para conductores
+const conductoresLista = ref([])
+const cargandoConductores = ref(false)
 
 // Estado - Tab Resumen
 const estadisticasVehiculo = ref(null)
@@ -542,34 +554,91 @@ const filtroNotificaciones = ref('Todo')
 const eventosUnidad = ref([])
 const loadingEventos = ref(false)
 
+// ==================== FUNCIONES PARA CONDUCTORES ====================
+
+// ✅ NUEVO: Cargar conductores desde Firebase
+const cargarConductoresFirebase = async () => {
+  cargandoConductores.value = true
+  try {
+    const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const conductoresRef = collection(db, 'Conductores')
+    const q = query(conductoresRef, orderBy('Nombre'))
+    const snapshot = await getDocs(q)
+
+    conductoresLista.value = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }))
+
+    console.log(`✅ ${conductoresLista.value.length} conductores cargados`)
+    return conductoresLista.value
+  } catch (error) {
+    console.error('❌ Error cargando conductores:', error)
+    return []
+  } finally {
+    cargandoConductores.value = false
+  }
+}
+
+// ✅ NUEVO: Función para buscar el conductor asignado a una unidad
+const obtenerConductorDeUnidad = (unidadId) => {
+  if (!unidadId || !conductoresLista.value.length) return null
+
+  const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === unidadId)
+
+  if (conductor) {
+    return {
+      id: conductor.id,
+      nombre: conductor.Nombre,
+      telefono: conductor.Telefono,
+      licencia: conductor.LicenciaConducir,
+      unidadAsignada: conductor.UnidadAsignada,
+      datosCompletos: conductor,
+    }
+  }
+
+  return null
+}
 // ==================== COMPUTED ====================
 
 // Computed - Convertir unidades activas a formato de vehículos
 const vehiculos = computed(() => {
-  return unidadesActivas.value.map((unidad) => ({
-    id: unidad.id,
-    nombre: unidad.unidadNombre,
-    ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
-    ubicacionCoords: unidad.ubicacion,
-    coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
-    velocidad: `${unidad.velocidad} km/h`,
-    estado: unidad.estado,
-    conductor: unidad.conductorNombre,
-    conductorFoto: unidad.conductorFoto,
-    placa: unidad.unidadPlaca,
-    ignicion: unidad.ignicion,
-    bateria: unidad.bateria,
-    timestamp: unidad.timestamp,
-    timestampCambioEstado: unidad.timestamp_cambio_estado,
+  return unidadesActivas.value.map((unidad) => {
+    // ✅ CORREGIDO: Usar la función correcta
+    const infoConductor = obtenerConductorDeUnidad(unidad.id)
 
-    // Datos calculados dinámicamente
-    tiempoConductionHoy: estadisticasVehiculo.value?.tiempoConductionHoy || 'Cargando...',
-    duracionEstado: calcularDuracionEstado(unidad.timestamp_cambio_estado, unidad.timestamp),
-    ultimaSincronizacion: formatearFechaHora(unidad.timestamp),
-    fechaHora: formatearFechaHora(unidad.timestamp),
+    return {
+      id: unidad.id,
+      nombre: unidad.unidadNombre,
+      ubicacion: unidad.direccionTexto || 'Ubicación desconocida',
+      ubicacionCoords: unidad.ubicacion,
+      coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
+      velocidad: `${unidad.velocidad} km/h`,
+      estado: unidad.estado,
 
-    notificaciones: 0,
-  }))
+      // INFORMACIÓN DEL CONDUCTOR (nuevo)
+      conductor: infoConductor ? infoConductor.nombre : 'Sin conductor',
+      conductorId: infoConductor ? infoConductor.id : null,
+      conductorTelefono: infoConductor ? infoConductor.telefono : null,
+      conductorLicencia: infoConductor ? infoConductor.licencia : null,
+
+      placa: unidad.unidadPlaca,
+      ignicion: unidad.ignicion,
+      bateria: unidad.bateria,
+      timestamp: unidad.timestamp,
+      timestampCambioEstado: unidad.timestamp_cambio_estado,
+
+      // Datos calculados dinámicamente
+      tiempoConductionHoy: estadisticasVehiculo.value?.tiempoConductionHoy || 'Cargando...',
+      duracionEstado: calcularDuracionEstado(unidad.timestamp_cambio_estado, unidad.timestamp),
+      ultimaSincronizacion: formatearFechaHora(unidad.timestamp),
+      fechaHora: formatearFechaHora(unidad.timestamp),
+
+      notificaciones: 0,
+    }
+  })
 })
 
 // Computed para estados
@@ -745,7 +814,7 @@ const cargarEventosUnidad = async (unidadId) => {
   loadingEventos.value = true
   try {
     console.log(`📊 Cargando eventos diarios para unidad ${unidadId}`)
-    const eventos = await obtenerEventosDiarios(unidadId, 50) // 👈 Usas la nueva función
+    const eventos = await obtenerEventosDiarios(unidadId, 50)
     eventosUnidad.value = eventos
     console.log(`✅ ${eventos.length} eventos cargados`)
   } catch (err) {
@@ -890,7 +959,11 @@ watch(fechaSeleccionada, () => {
 
 // ==================== LIFECYCLE ====================
 
-onMounted(() => {
+onMounted(async () => {
+  // ✅ NUEVO: Cargar conductores primero
+  await cargarConductoresFirebase()
+
+  // Luego iniciar el tracking
   iniciarTracking()
 })
 </script>
