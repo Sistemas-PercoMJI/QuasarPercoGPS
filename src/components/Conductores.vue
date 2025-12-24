@@ -371,6 +371,17 @@
                       </q-item-section>
                     </q-item>
                   </template>
+
+                  <template v-slot:append>
+                    <q-icon
+                      v-if="conductorEditando.UnidadAsignada"
+                      name="close"
+                      @click.stop="asignarUnidadAConductor(null)"
+                      class="cursor-pointer"
+                    >
+                      <q-tooltip>Quitar unidad</q-tooltip>
+                    </q-icon>
+                  </template>
                 </q-select>
               </q-card-section>
 
@@ -1400,49 +1411,103 @@ async function asignarUnidadAConductor(unidadId) {
   const unidadAnteriorId = conductorEditando.value.UnidadAsignada
 
   try {
-    // Verificar si la unidad ya está asignada a OTRO conductor
-    if (unidadId) {
-      const otroConductorConEstaUnidad = conductores.value.find(
-        (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
-      )
+    // 🆕 CASO 1: Si unidadId es null/undefined, está QUITANDO la unidad
+    if (!unidadId) {
+      console.log('🗑️ Removiendo unidad del conductor...')
 
-      if (otroConductorConEstaUnidad) {
-        Notify.create({
-          type: 'negative',
-          message: `Error: La unidad ya está asignada a ${otroConductorConEstaUnidad.Nombre}`,
-          icon: 'error',
-          timeout: 3000,
-        })
+      // Eliminar de Firebase Realtime Database
+      if (unidadAnteriorId) {
+        const { realtimeDb } = await import('src/firebase/firebaseConfig')
+        const { ref: dbRef, remove } = await import('firebase/database')
 
-        // Restaurar valor anterior
-        conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
-        return
+        const unidadIdKey = `unidad_${unidadAnteriorId}`
+        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
+
+        await remove(unidadRef)
+        console.log(`✅ Unidad ${unidadIdKey} eliminada del mapa`)
       }
+
+      // Actualizar Firestore
+      await asignarUnidad(conductorId, null)
+
+      // Actualizar estado local
+      conductorEditando.value.UnidadAsignada = null
+      if (conductorSeleccionado.value) {
+        conductorSeleccionado.value.UnidadAsignada = null
+      }
+
+      Notify.create({
+        type: 'positive',
+        message: 'Unidad removida correctamente',
+        icon: 'check_circle',
+        timeout: 2000,
+      })
+
+      // Recargar datos
+      await obtenerConductores()
+      await obtenerUnidades()
+
+      return
     }
 
-    // Ejecutar la asignación/remoción
-    await asignarUnidad(conductorId, unidadId || null)
+    // 🆕 CASO 2: Está ASIGNANDO una nueva unidad
+    // Verificar si la unidad ya está asignada a OTRO conductor
+    const otroConductorConEstaUnidad = conductores.value.find(
+      (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
+    )
+
+    if (otroConductorConEstaUnidad) {
+      Notify.create({
+        type: 'negative',
+        message: `Error: La unidad ya está asignada a ${otroConductorConEstaUnidad.Nombre}`,
+        icon: 'error',
+        timeout: 3000,
+      })
+
+      // Restaurar valor anterior
+      conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
+      return
+    }
+
+    // 🆕 Si había una unidad anterior diferente, eliminarla del mapa
+    if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
+      const { realtimeDb } = await import('src/firebase/firebaseConfig')
+      const { ref: dbRef, remove } = await import('firebase/database')
+
+      const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
+      const unidadAnteriorRef = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
+
+      await remove(unidadAnteriorRef)
+      console.log(`✅ Unidad anterior ${unidadAnteriorKey} eliminada del mapa`)
+    }
+
+    // Ejecutar la asignación
+    await asignarUnidad(conductorId, unidadId)
 
     // Actualizar estado local
+    conductorEditando.value.UnidadAsignada = unidadId
     if (conductorSeleccionado.value) {
-      conductorSeleccionado.value.UnidadAsignada = unidadId || null
+      conductorSeleccionado.value.UnidadAsignada = unidadId
     }
 
     Notify.create({
       type: 'positive',
-      message: unidadId ? 'Unidad asignada correctamente' : 'Unidad removida correctamente',
+      message: 'Unidad asignada correctamente',
       icon: 'check_circle',
+      timeout: 2000,
     })
 
     // Recargar datos para actualizar las opciones
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
-    console.error('Error:', error)
+    console.error('❌ Error al gestionar unidad:', error)
+
     Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error',
+      timeout: 3000,
     })
 
     // Restaurar en caso de error
