@@ -126,7 +126,7 @@ export function useReportesTrayectos() {
           conductorId: `conductor_${Math.floor(Math.random() * 4)}`,
           conductorNombre: conductores[Math.floor(Math.random() * conductores.length)],
           unidadNombre: unidadNombre,
-          unidadPlaca: `ABC-${Math.floor(Math.random() * 900) + 100}`,
+          Placa: `ABC-${Math.floor(Math.random() * 900) + 100}`,
           inicioTimestamp: inicioTimestamp,
           finTimestamp: finTimestamp,
           duracion: duracionMs,
@@ -209,7 +209,7 @@ export function useReportesTrayectos() {
                 conductorId: data.conductor_id || null,
                 conductorNombre: data.conductor_nombre || 'N/A',
                 unidadNombre: unidadNombre,
-                unidadPlaca: 'N/A',
+                Placa: 'N/A',
                 inicioTimestamp: data.fecha_hora_inicio?.toDate?.() || null,
                 finTimestamp: data.fecha_hora_fin?.toDate?.() || null,
                 duracion: (data.duracion_total_minutos || 0) * 60000,
@@ -286,33 +286,65 @@ export function useReportesTrayectos() {
     try {
       // Si ya tienen nombre de unidad (simulados), no hace falta enriquecer
       if (trayectos.length > 0 && trayectos[0]._simulado) {
+        console.log('🔍 Trayectos simulados, saltando enriquecimiento')
         return trayectos
       }
 
       const unidadesRef = collection(db, 'Unidades')
       const unidadesSnapshot = await getDocs(unidadesRef)
 
+      console.log('🔍 Total de unidades en Firebase:', unidadesSnapshot.size)
+
       const unidadesMap = {}
       unidadesSnapshot.docs.forEach((doc) => {
         const data = doc.data()
+
+        // 🔥 DEBUG: Ver qué campos tiene cada unidad
+        console.log(`🔍 Unidad ${doc.id}:`, {
+          Unidad: data.Unidad,
+          Placa: data.Placa,
+          SeguroUnidad: data.SeguroUnidad,
+          todosLosCampos: Object.keys(data),
+        })
+
         unidadesMap[doc.id] = {
           nombre: data.Unidad || doc.id,
-          placa: data.SeguroUnidad || 'N/A',
+          placa: data.Placa || 'Sin placa',
         }
       })
 
-      return trayectos.map((trayecto) => ({
-        ...trayecto,
-        unidadNombre:
-          unidadesMap[trayecto.idUnidad]?.nombre || trayecto.unidadNombre || trayecto.idUnidad,
-        unidadPlaca: unidadesMap[trayecto.idUnidad]?.placa || trayecto.unidadPlaca || 'N/A',
-      }))
+      console.log('🔍 Mapa de unidades creado:', unidadesMap)
+
+      const trayectosEnriquecidos = trayectos.map((trayecto) => {
+        const unidadInfo = unidadesMap[trayecto.idUnidad]
+
+        console.log(`🔍 Enriqueciendo trayecto:`, {
+          idUnidad: trayecto.idUnidad,
+          unidadInfo: unidadInfo,
+          placaFinal: unidadInfo?.placa || trayecto.Placa || 'Sin placa',
+        })
+
+        return {
+          ...trayecto,
+          unidadNombre: unidadInfo?.nombre || trayecto.unidadNombre || trayecto.idUnidad,
+          Placa: unidadInfo?.placa || trayecto.Placa || 'Sin placa',
+        }
+      })
+
+      console.log(
+        '🔍 Trayectos enriquecidos:',
+        trayectosEnriquecidos.map((t) => ({
+          unidad: t.unidadNombre,
+          placa: t.Placa,
+        })),
+      )
+
+      return trayectosEnriquecidos
     } catch (err) {
-      console.error('Error al enriquecer unidades:', err)
+      console.error('❌ Error al enriquecer unidades:', err)
       return trayectos
     }
   }
-
   return {
     loading,
     error,

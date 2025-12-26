@@ -9,6 +9,7 @@ export function useReportesHoras() {
   const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
 
   const calcularHorasTrabajo = async (unidadesIds, fechaInicio, fechaFin, opciones = {}) => {
+    console.log('🚨🚨🚨 HORAS - INICIO DE FUNCIÓN', { unidadesIds, fechaInicio, fechaFin }) // 🔥 AGREGAR ESTO
     loading.value = true
     error.value = null
 
@@ -16,6 +17,15 @@ export function useReportesHoras() {
       // Obtener trayectos (reales o simulados)
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
       trayectos = await enriquecerConDatosUnidades(trayectos)
+      console.log('🔍 HORAS - Trayectos después de enriquecer:')
+      trayectos.forEach((t, index) => {
+        console.log(`  ${index}. ${t.unidadNombre}:`, {
+          Placa: t.Placa,
+          placa: t.placa,
+          unidadPlaca: t.unidadPlaca,
+          todasLasPropiedades: Object.keys(t),
+        })
+      })
 
       if (trayectos.length === 0) {
         return []
@@ -45,13 +55,18 @@ export function useReportesHoras() {
         // Calcular horas laborales vs no laborales
         const horasLaborales = dentroHorario.horasLaborales
         const horasNoLaborales = parseFloat(duracionHoras) - horasLaborales
-
+        console.log('🔍 HORAS - Procesando trayecto:', {
+          unidad: trayecto.unidadNombre,
+          'trayecto.Placa': trayecto.Placa,
+          'trayecto.placa': trayecto.placa,
+          'trayecto.unidadPlaca': trayecto.unidadPlaca,
+        })
         return {
           fecha: trayecto.fecha,
           idUnidad: trayecto.idUnidad,
           conductorNombre: trayecto.conductorNombre || 'Sin conductor',
           unidadNombre: trayecto.unidadNombre,
-          unidadPlaca: trayecto.unidadPlaca || 'N/A',
+          Placa: trayecto.Placa || trayecto.placa || trayecto.unidadPlaca || 'Sin placa',
           horaInicioTrabajo: trayecto.inicioTimestamp
             ? trayecto.inicioTimestamp.toLocaleTimeString('es-MX', {
                 hour: '2-digit',
@@ -78,6 +93,12 @@ export function useReportesHoras() {
           _trayecto: trayecto,
           _simulado: trayecto._simulado || false,
         }
+      })
+      console.log('🔍 HORAS - Registros finales:')
+      registros.forEach((r, index) => {
+        console.log(`  ${index}. ${r.unidadNombre}:`, {
+          Placa: r.Placa,
+        })
       })
 
       return registros

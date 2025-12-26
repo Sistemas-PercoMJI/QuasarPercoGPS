@@ -34,7 +34,10 @@ const COLUMNAS_COMPARTIDAS = {
   Placa: {
     key: 'placa',
     label: 'Placa',
-    obtenerValor: (dato) => dato.unidadPlaca || dato.placa || 'Sin placa', // 🔥 AGREGADO fallback
+    obtenerValor: (dato) => {
+      // 🔥 BUSCAR EN MÚLTIPLES PROPIEDADES
+      return dato.Placa || dato.placa || dato.unidadPlaca || 'Sin placa'
+    },
     ancho: 100,
     formato: 'texto',
   },

@@ -158,7 +158,7 @@ export function useReportesEventos() {
           const unidadRef = doc(db, `Unidades/${unidadId}`)
           const unidadSnap = await getDoc(unidadRef)
           if (unidadSnap.exists()) {
-            unidadPlaca = unidadSnap.data().SeguroUnidad || unidadSnap.data().placa || 'Sin placa'
+            unidadPlaca = unidadSnap.data().Placa || unidadSnap.data().placa || 'Sin placa'
           }
         } catch (errUnidad) {
           console.warn(`Error al obtener datos de unidad:`, errUnidad.message)

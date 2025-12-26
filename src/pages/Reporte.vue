@@ -1276,12 +1276,18 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (mostrarMapaTrayecto.value) {
-        $q.notify({
-          type: 'info',
-          message: 'Generando mapa de trayectos...',
-          icon: 'map',
-          timeout: 2000,
+      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
+      console.log('📊 datosReales completo:', datosReales)
+      if (datosReales.eventosAgrupados) {
+        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
+          console.log(
+            `📦 ${nombre}:`,
+            trayectos.map((t) => ({
+              unidad: t.unidadNombre,
+              placa: t.Placa,
+              todasLasPropiedades: Object.keys(t),
+            })),
+          )
         })
       }
 

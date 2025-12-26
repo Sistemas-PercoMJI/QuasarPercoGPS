@@ -90,7 +90,8 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   // Si agrupamos por UNIDAD (o por defecto)
   if (agruparPor === 'unidad' || config.reportarPor === 'Unidades') {
     const primerEvento = eventos[0]
-    const placa = primerEvento?.unidadPlaca || 'Sin placa'
+    const placa =
+      primerEvento?.Placa || primerEvento?.placa || primerEvento?.unidadPlaca || 'Sin placa'
     const conductores = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
     const conductorTexto =
       conductores.length > 0 ? conductores.join(', ') : 'Sin conductor asignado'
@@ -411,7 +412,7 @@ function generarHeaderSubGrupo(nombreSubGrupo, eventos, config) {
 
     case 'unidad': {
       titulo = `UNIDAD: ${nombreSubGrupo}`
-      const placa = eventos[0]?.placa || 'Sin placa'
+      const placa = eventos[0]?.Placa || eventos[0]?.placa || eventos[0]?.unidadPlaca || 'Sin placa'
       const conductoresUnicos = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
       subtitulo = `Placa: ${placa}`
       if (conductoresUnicos.length > 0) {
@@ -1120,7 +1121,13 @@ export function useReportePDF() {
 
         const primerTrayecto = trayectos[0]
         if (config.reportarPor === 'Unidades') {
-          const placa = primerTrayecto.unidadPlaca || 'Sin placa'
+          const placa =
+            primerTrayecto.Placa ||
+            primerTrayecto.placa ||
+            primerTrayecto.unidadPlaca ||
+            'Sin placa'
+          console.log('🔍 PDF - Primer trayecto completo:', primerTrayecto)
+          console.log('🔍 PDF - Placa encontrada:', placa)
           const conductores = [...new Set(trayectos.map((t) => t.conductorNombre).filter(Boolean))]
           doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
         } else {
@@ -1250,7 +1257,18 @@ export function useReportePDF() {
               // Info del mapa
               doc.setFontSize(10)
               doc.setFont(undefined, 'normal')
-              doc.text(`Placa: ${primerTrayecto.unidadPlaca || 'N/A'}`, 20, yPos)
+              const placaDisplay =
+                primerTrayecto.Placa ||
+                primerTrayecto.placa ||
+                primerTrayecto.unidadPlaca ||
+                'Sin placa'
+              console.log(
+                '🔍 PDF Display - Placa:',
+                placaDisplay,
+                'de trayecto:',
+                primerTrayecto.unidadNombre,
+              )
+              doc.text(`Placa: ${placaDisplay}`, 20, yPos)
               yPos += 6
               doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
               yPos += 10
@@ -1570,7 +1588,8 @@ export function useReportePDF() {
 
       const primerRegistro = registros[0]
       if (config.reportarPor === 'Unidades') {
-        const placa = primerRegistro.unidadPlaca || 'Sin placa'
+        const placa =
+          primerRegistro.Placa || primerRegistro.placa || primerRegistro.unidadPlaca || 'Sin placa'
         const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
         doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
       } else {
