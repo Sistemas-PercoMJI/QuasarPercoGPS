@@ -29,7 +29,6 @@ const cargarPreferencias = () => {
         ...preferencias.value,
         ...parsed,
       }
-      console.log('✅ Preferencias de columnas cargadas:', preferencias.value)
     }
   } catch (error) {
     console.error('❌ Error cargando preferencias de columnas:', error)
@@ -40,7 +39,6 @@ const cargarPreferencias = () => {
 const guardarPreferencias = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferencias.value))
-    console.log('💾 Preferencias de columnas guardadas')
   } catch (error) {
     console.error('❌ Error guardando preferencias de columnas:', error)
   }
@@ -72,8 +70,6 @@ export function usePreferenciasReportes() {
 
     preferencias.value[tipoReporte].columnasSeleccionadas = [...columnas]
     preferencias.value[tipoReporte].ultimaActualizacion = new Date().toISOString()
-
-    console.log(`💾 Columnas guardadas para ${tipoReporte}:`, columnas)
   }
 
   const resetearPreferencias = (tipoReporte) => {
@@ -82,7 +78,6 @@ export function usePreferenciasReportes() {
         columnasSeleccionadas: null,
         ultimaActualizacion: null,
       }
-      console.log(`🔄 Preferencias reseteadas para ${tipoReporte}`)
     } else {
       // Resetear todo
       Object.keys(preferencias.value).forEach((tipo) => {
@@ -91,7 +86,6 @@ export function usePreferenciasReportes() {
           ultimaActualizacion: null,
         }
       })
-      console.log('🔄 Todas las preferencias reseteadas')
     }
   }
 
