@@ -39,6 +39,7 @@ const poligonoTemporal = ref(null)
 const circuloTemporalPOI = ref(null)
 let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
+let clickHandlerPoligonal = null
 let isZooming = false
 let lastZoomLevel = 0
 let PanTimeout = null
@@ -582,10 +583,25 @@ export function useMapboxGL() {
 
   const desactivarModoSeleccion = () => {
     if (!map.value) return
+
+    // 🆕 LIMPIAR LISTENER DE POLÍGONO
+    if (clickHandlerPoligonal) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+      console.log('✅ Event listener poligonal desactivado')
+    }
+
+    // Desactivar todos los modos
     modoSeleccionActivo.value = false
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
-    map.value.getCanvas().style.cursor = ''
+
+    // Restaurar cursor
+    if (map.value.getCanvas()) {
+      map.value.getCanvas().style.cursor = ''
+    }
+
+    console.log('✅ Todos los modos de selección desactivados')
   }
 
   // 🔵 MODO SELECCIÓN GEOZONA CIRCULAR
@@ -671,12 +687,19 @@ export function useMapboxGL() {
     }
   }
 
-  // 🔷 MODO SELECCIÓN GEOZONA POLIGONAL
   const activarModoSeleccionGeozonaPoligonal = (puntosExistentes = [], color = '#4ECDC4') => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
       return false
     }
+
+    // 🆕 LIMPIAR LISTENER ANTERIOR SI EXISTE
+    if (clickHandlerPoligonal) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+      console.log('✅ Event listener anterior eliminado')
+    }
+
     limpiarPoligonoTemporal()
     colorPoligonoTemporal = color
     modoSeleccionGeozonaPoligonal.value = true
@@ -691,7 +714,8 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     map.value.getCanvas().style.cursor = 'crosshair'
 
-    const clickHandler = (e) => {
+    // 🆕 ASIGNAR A LA VARIABLE GLOBAL
+    clickHandlerPoligonal = (e) => {
       if (!modoSeleccionGeozonaPoligonal.value) return
 
       const { lng, lat } = e.lngLat
@@ -725,7 +749,9 @@ export function useMapboxGL() {
       }
     }
 
-    map.value.on('click', clickHandler)
+    // 🆕 REGISTRAR EL LISTENER USANDO LA VARIABLE GLOBAL
+    map.value.on('click', clickHandlerPoligonal)
+    console.log('✅ Nuevo event listener registrado')
 
     return true
   }
@@ -804,6 +830,14 @@ export function useMapboxGL() {
     const sourceId = 'geozona-temporal'
 
     try {
+      // 🆕 ELIMINAR EVENT LISTENER
+      if (clickHandlerPoligonal) {
+        map.value.off('click', clickHandlerPoligonal)
+        clickHandlerPoligonal = null
+        console.log('✅ Event listener eliminado en limpiarPoligonoTemporal')
+      }
+
+      // Limpiar capas del mapa
       if (map.value.getLayer(`${sourceId}-outline`)) {
         map.value.removeLayer(`${sourceId}-outline`)
       }
@@ -815,6 +849,7 @@ export function useMapboxGL() {
         map.value.removeSource(sourceId)
       }
 
+      // Limpiar marcadores
       if (marcadoresPuntosPoligono && marcadoresPuntosPoligono.length > 0) {
         marcadoresPuntosPoligono.forEach((marker) => {
           try {
@@ -826,8 +861,16 @@ export function useMapboxGL() {
         marcadoresPuntosPoligono = []
       }
 
+      // Limpiar datos
       puntosPoligono.value = []
       poligonoFinalizado.value = false
+
+      // 🆕 RESTAURAR CURSOR
+      if (map.value.getCanvas()) {
+        map.value.getCanvas().style.cursor = ''
+      }
+
+      console.log('✅ Polígono temporal limpiado completamente')
     } catch (error) {
       console.error('Error limpiando polígono temporal:', error)
     }
@@ -1408,6 +1451,12 @@ export function useMapboxGL() {
     ultimasPosiciones.clear()
     cerrarPopupGlobal()
 
+    // 🆕 AGREGAR ESTA LÍNEA
+    if (clickHandlerPoligonal && map.value) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+    }
+
     if (map.value) {
       map.value.remove()
       map.value = null
@@ -1464,6 +1513,24 @@ export function useMapboxGL() {
     g = Math.floor(g * (1 - porcentaje / 100))
     b = Math.floor(b * (1 - porcentaje / 100))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  const eliminarMarcadorUnidad = (unidadId) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
+
+    if (marcadoresUnidades.value[unidadId]) {
+      // Eliminar el marcador del mapa
+      marcadoresUnidades.value[unidadId].remove()
+
+      // Eliminar de la cache
+      delete marcadoresUnidades.value[unidadId]
+      ultimasPosiciones.delete(unidadId)
+
+      console.log(`✅ Marcador ${unidadId} eliminado del mapa`)
+    }
   }
 
   return {
@@ -1533,5 +1600,6 @@ export function useMapboxGL() {
     limpiarMarcadoresUnidades,
     centrarEnUnidad,
     setPuntosSeleccionados,
+    eliminarMarcadorUnidad,
   }
 }

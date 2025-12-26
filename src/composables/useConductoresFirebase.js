@@ -785,6 +785,53 @@ export function useConductoresFirebase() {
     return puedeEditarCampo(unidad?.TargetaCirculacionFecha)
   }
 
+  const desasignarUnidadYLimpiarMapa = async (conductorId) => {
+    loading.value = true
+    error.value = null
+    try {
+      // 1. Obtener el conductor actual
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const unidadAsignada = conductorData.UnidadAsignada
+
+      // 2. Actualizar Firestore para quitar la unidad
+      await updateDoc(conductorDocRef, {
+        UnidadAsignada: null,
+        updatedAt: Timestamp.now(),
+      })
+
+      // 3. Si había una unidad asignada, eliminarla del Realtime Database
+      if (unidadAsignada) {
+        const { realtimeDb } = await import('src/firebase/firebaseConfig')
+        const { ref: dbRef, remove } = await import('firebase/database')
+
+        const unidadId = `unidad_${unidadAsignada}`
+        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
+
+        // Eliminar de unidades_activas
+        await remove(unidadRef)
+        console.log(`✅ Unidad ${unidadId} eliminada del mapa`)
+      }
+
+      // 4. Actualizar el estado local
+      await obtenerConductores()
+
+      return true
+    } catch (err) {
+      console.error('❌ Error al desasignar unidad:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // Estado
     conductores,
@@ -836,5 +883,8 @@ export function useConductoresFirebase() {
     // Utilidades
     conductoresPorGrupo,
     contarConductoresPorGrupo,
+
+    // Nueva implementacion
+    desasignarUnidadYLimpiarMapa,
   }
 }

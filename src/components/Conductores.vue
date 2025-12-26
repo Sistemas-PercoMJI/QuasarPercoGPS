@@ -348,28 +348,65 @@
                 <div class="detalle-label">Asignar unidad</div>
                 <q-select
                   v-model="conductorEditando.UnidadAsignada"
-                  :options="opcionesUnidades"
+                  :options="opcionesUnidadesFiltradas"
                   outlined
                   dense
                   emit-value
                   map-options
-                  clearable
                   label="Seleccionar unidad"
                   :option-disable="(opt) => opt.disabled"
                   @update:model-value="asignarUnidadAConductor"
+                  use-input
+                  input-debounce="300"
+                  @filter="filtrarUnidades"
+                  behavior="menu"
                 >
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section>
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                        <q-item-label v-if="scope.opt.conductorActual" caption>
-                          {{ scope.opt.conductorActual }}
-                        </q-item-label>
-                      </q-item-section>
-                      <q-item-section side v-if="scope.opt.disabled">
-                        <q-icon name="lock" color="negative" />
+                  <!-- 🔥 NO USES clearable NI clear-icon -->
+                  <!-- Esto elimina la X con círculo gris -->
+
+                  <template v-slot:prepend>
+                    <q-icon name="directions_car" />
+                  </template>
+
+                  <template v-slot:no-option>
+                    <q-item>
+                      <q-item-section class="text-grey">
+                        No se encontraron unidades
                       </q-item-section>
                     </q-item>
+                  </template>
+
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section avatar>
+                        <q-icon
+                          :name="scope.opt.disabled ? 'lock' : 'check_circle'"
+                          :color="scope.opt.disabled ? 'negative' : 'positive'"
+                        />
+                      </q-item-section>
+
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                        <q-item-label v-if="scope.opt.conductorActual" caption class="text-orange">
+                          Ocupada por: {{ scope.opt.conductorActual }}
+                        </q-item-label>
+                        <q-item-label v-else caption class="text-positive">
+                          Disponible
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+
+                  <!-- ✅ Solo esta X (sin círculo gris) -->
+                  <template v-slot:append>
+                    <q-icon
+                      v-if="conductorEditando.UnidadAsignada"
+                      name="close"
+                      @click.stop="asignarUnidadAConductor(null)"
+                      class="cursor-pointer"
+                    >
+                      <q-tooltip>Quitar unidad</q-tooltip>
+                    </q-icon>
                   </template>
                 </q-select>
               </q-card-section>
@@ -392,6 +429,7 @@
               <q-card-section v-if="unidadAsociada">
                 <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
                 <div class="row q-gutter-md">
+                  <!-- SEGURO DE UNIDAD -->
                   <div class="col-12">
                     <div class="detalle-label">Número de seguro</div>
                     <q-input
@@ -445,6 +483,88 @@
                     </q-input>
                   </div>
 
+                  <!-- 🆕 FOTOS DEL SEGURO AQUÍ -->
+                  <div class="col-12">
+                    <div class="detalle-label">
+                      <q-icon name="image" class="q-mr-xs" />
+                      Fotos del Seguro
+                      <q-space />
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        icon="add_photo_alternate"
+                        size="sm"
+                        color="primary"
+                        @click="abrirSelectorFotoSeguro"
+                      >
+                        <q-tooltip>Subir nueva foto</q-tooltip>
+                      </q-btn>
+                      <input
+                        ref="inputFotoSeguro"
+                        type="file"
+                        accept="image/*"
+                        style="display: none"
+                        @change="subirNuevaFotoSeguro"
+                      />
+                    </div>
+                    <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
+                      <q-spinner color="primary" size="30px" />
+                    </div>
+                    <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
+                      <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
+                        <q-img
+                          :src="foto.url"
+                          class="foto-thumbnail"
+                          @click="verFotoEnGrande(foto.url)"
+                          style="cursor: pointer"
+                        />
+                        <div class="foto-actions">
+                          <q-btn
+                            flat
+                            dense
+                            icon="visibility"
+                            size="sm"
+                            color="primary"
+                            @click="verFotoEnGrande(foto.url)"
+                          >
+                            <q-tooltip>Ver</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            flat
+                            dense
+                            icon="download"
+                            size="sm"
+                            color="positive"
+                            @click="descargarFotoHandler(foto.url, foto.name)"
+                          >
+                            <q-tooltip>Descargar</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            flat
+                            dense
+                            icon="delete"
+                            size="sm"
+                            :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
+                            :disable="esSeguroUnidadVigente"
+                            @click="eliminarFotoSeguroHandler(foto.url)"
+                          >
+                            <q-tooltip>{{
+                              esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                            }}</q-tooltip>
+                          </q-btn>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="no-fotos">
+                      <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                      <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
+                    </div>
+                  </div>
+
+                  <q-separator class="col-12" />
+
+                  <!-- TARJETA DE CIRCULACIÓN -->
                   <div class="col-12">
                     <div class="detalle-label">Número de tarjeta de circulación</div>
                     <q-input
@@ -502,176 +622,87 @@
                       </template>
                     </q-input>
                   </div>
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
 
-          <!-- Documentación de la Unidad (si hay unidad asignada) -->
-          <q-expansion-item
-            v-if="unidadAsignadaData"
-            icon="description"
-            label="Documentación de la Unidad"
-            class="expansion-item"
-          >
-            <q-card flat bordered class="q-ma-md">
-              <!-- Fotos de Seguro -->
-              <q-card-section>
-                <div class="detalle-label">
-                  <q-icon name="image" class="q-mr-xs" />
-                  Fotos del Seguro
-                  <q-space />
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="add_photo_alternate"
-                    size="sm"
-                    color="primary"
-                    @click="abrirSelectorFotoSeguro"
-                  >
-                    <q-tooltip>Subir nueva foto</q-tooltip>
-                  </q-btn>
-                  <input
-                    ref="inputFotoSeguro"
-                    type="file"
-                    accept="image/*"
-                    style="display: none"
-                    @change="subirNuevaFotoSeguro"
-                  />
-                </div>
-                <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
-                  <q-spinner color="primary" size="30px" />
-                </div>
-                <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
-                  <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
-                    <q-img
-                      :src="foto.url"
-                      class="foto-thumbnail"
-                      @click="verFotoEnGrande(foto.url)"
-                      style="cursor: pointer"
-                    />
-                    <div class="foto-actions">
+                  <!-- 🆕 FOTOS DE TARJETA AQUÍ -->
+                  <div class="col-12">
+                    <div class="detalle-label">
+                      <q-icon name="image" class="q-mr-xs" />
+                      Fotos de Tarjeta de Circulación
+                      <q-space />
                       <q-btn
                         flat
                         dense
-                        icon="visibility"
+                        round
+                        icon="add_photo_alternate"
                         size="sm"
                         color="primary"
-                        @click="verFotoEnGrande(foto.url)"
+                        @click="abrirSelectorFotoTargeta"
                       >
-                        <q-tooltip>Ver</q-tooltip>
+                        <q-tooltip>Subir nueva foto</q-tooltip>
                       </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="download"
-                        size="sm"
-                        color="positive"
-                        @click="descargarFotoHandler(foto.url, foto.name)"
-                      >
-                        <q-tooltip>Descargar</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="delete"
-                        size="sm"
-                        :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
-                        :disable="esSeguroUnidadVigente"
-                        @click="eliminarFotoSeguroHandler(foto.url)"
-                      >
-                        <q-tooltip>{{
-                          esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
-                        }}</q-tooltip>
-                      </q-btn>
+                      <input
+                        ref="inputFotoTargeta"
+                        type="file"
+                        accept="image/*"
+                        style="display: none"
+                        @change="subirNuevaFotoTargeta"
+                      />
+                    </div>
+                    <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
+                      <q-spinner color="primary" size="30px" />
+                    </div>
+                    <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
+                      <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
+                        <q-img
+                          :src="foto.url"
+                          class="foto-thumbnail"
+                          @click="verFotoEnGrande(foto.url)"
+                          style="cursor: pointer"
+                        />
+                        <div class="foto-actions">
+                          <q-btn
+                            flat
+                            dense
+                            icon="visibility"
+                            size="sm"
+                            color="primary"
+                            @click="verFotoEnGrande(foto.url)"
+                          >
+                            <q-tooltip>Ver</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            flat
+                            dense
+                            icon="download"
+                            size="sm"
+                            color="positive"
+                            @click="descargarFotoHandler(foto.url, foto.name)"
+                          >
+                            <q-tooltip>Descargar</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            flat
+                            dense
+                            icon="delete"
+                            size="sm"
+                            :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
+                            :disable="esTarjetaCirculacionVigente"
+                            @click="eliminarFotoTargetaHandler(foto.url)"
+                          >
+                            <q-tooltip>{{
+                              esTarjetaCirculacionVigente
+                                ? 'No se puede eliminar (vigente)'
+                                : 'Eliminar'
+                            }}</q-tooltip>
+                          </q-btn>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="no-fotos">
+                      <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                      <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
                     </div>
                   </div>
-                </div>
-                <div v-else class="no-fotos">
-                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
-                </div>
-              </q-card-section>
-              <q-separator />
-              <!-- Fotos de Tarjeta -->
-              <q-card-section>
-                <div class="detalle-label">
-                  <q-icon name="image" class="q-mr-xs" />
-                  Fotos de Tarjeta de Circulación
-                  <q-space />
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="add_photo_alternate"
-                    size="sm"
-                    color="primary"
-                    @click="abrirSelectorFotoTargeta"
-                  >
-                    <q-tooltip>Subir nueva foto</q-tooltip>
-                  </q-btn>
-                  <input
-                    ref="inputFotoTargeta"
-                    type="file"
-                    accept="image/*"
-                    style="display: none"
-                    @change="subirNuevaFotoTargeta"
-                  />
-                </div>
-                <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
-                  <q-spinner color="primary" size="30px" />
-                </div>
-                <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
-                  <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
-                    <q-img
-                      :src="foto.url"
-                      class="foto-thumbnail"
-                      @click="verFotoEnGrande(foto.url)"
-                      style="cursor: pointer"
-                    />
-                    <div class="foto-actions">
-                      <q-btn
-                        flat
-                        dense
-                        icon="visibility"
-                        size="sm"
-                        color="primary"
-                        @click="verFotoEnGrande(foto.url)"
-                      >
-                        <q-tooltip>Ver</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="download"
-                        size="sm"
-                        color="positive"
-                        @click="descargarFotoHandler(foto.url, foto.name)"
-                      >
-                        <q-tooltip>Descargar</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="delete"
-                        size="sm"
-                        :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
-                        :disable="esTarjetaCirculacionVigente"
-                        @click="eliminarFotoTargetaHandler(foto.url)"
-                      >
-                        <q-tooltip>{{
-                          esTarjetaCirculacionVigente
-                            ? 'No se puede eliminar (vigente)'
-                            : 'Eliminar'
-                        }}</q-tooltip>
-                      </q-btn>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="no-fotos">
-                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
                 </div>
               </q-card-section>
             </q-card>
@@ -1010,6 +1041,7 @@ const cargandoFotosTargeta = ref(false)
 const inputFotoLicencia = ref(null)
 const inputFotoSeguro = ref(null)
 const inputFotoTargeta = ref(null)
+const opcionesUnidadesFiltradas = ref([])
 
 // Listeners de Firebase
 let unsubscribeConductores = null
@@ -1038,6 +1070,29 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
+
+function filtrarUnidades(val, update) {
+  update(() => {
+    if (val === '') {
+      // Si no hay búsqueda, mostrar todas las opciones
+      opcionesUnidadesFiltradas.value = opcionesUnidades.value
+    } else {
+      // Filtrar por nombre de unidad
+      const needle = val.toLowerCase()
+      opcionesUnidadesFiltradas.value = opcionesUnidades.value.filter(
+        (v) => v.label.toLowerCase().indexOf(needle) > -1,
+      )
+    }
+  })
+}
+
+watch(
+  opcionesUnidades,
+  (nuevasOpciones) => {
+    opcionesUnidadesFiltradas.value = nuevasOpciones
+  },
+  { immediate: true },
+)
 
 const conductoresDisponiblesParaGrupo = computed(() => {
   let disponibles = conductores.value
@@ -1400,49 +1455,111 @@ async function asignarUnidadAConductor(unidadId) {
   const unidadAnteriorId = conductorEditando.value.UnidadAsignada
 
   try {
-    // Verificar si la unidad ya está asignada a OTRO conductor
-    if (unidadId) {
-      const otroConductorConEstaUnidad = conductores.value.find(
-        (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
-      )
+    // CASO 1: Si unidadId es null/undefined, está QUITANDO la unidad
+    if (!unidadId) {
+      console.log('🗑️ Removiendo unidad del conductor...')
 
-      if (otroConductorConEstaUnidad) {
-        Notify.create({
-          type: 'negative',
-          message: `Error: La unidad ya está asignada a ${otroConductorConEstaUnidad.Nombre}`,
-          icon: 'error',
-          timeout: 3000,
-        })
+      // Eliminar de Firebase Realtime Database
+      if (unidadAnteriorId) {
+        const { realtimeDb } = await import('src/firebase/firebaseConfig')
+        const { ref: dbRef, remove } = await import('firebase/database')
 
-        // Restaurar valor anterior
-        conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
-        return
+        const unidadIdKey = `unidad_${unidadAnteriorId}`
+        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
+
+        await remove(unidadRef)
+        console.log(`✅ Unidad ${unidadIdKey} eliminada del mapa`)
       }
+
+      // Actualizar Firestore
+      await asignarUnidad(conductorId, null)
+
+      // Actualizar estado local
+      conductorEditando.value.UnidadAsignada = null
+      if (conductorSeleccionado.value) {
+        conductorSeleccionado.value.UnidadAsignada = null
+      }
+
+      Notify.create({
+        type: 'positive',
+        message: 'Unidad removida correctamente',
+        icon: 'check_circle',
+        timeout: 2000,
+      })
+
+      // Recargar datos
+      await obtenerConductores()
+      await obtenerUnidades()
+
+      return
     }
 
-    // Ejecutar la asignación/remoción
-    await asignarUnidad(conductorId, unidadId || null)
+    // CASO 2: Está ASIGNANDO una nueva unidad
+    // Verificar si la unidad ya está asignada a OTRO conductor
+    const otroConductorConEstaUnidad = conductores.value.find(
+      (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
+    )
+
+    if (otroConductorConEstaUnidad) {
+      Notify.create({
+        type: 'negative',
+        message: `Error: La unidad ya está asignada a ${otroConductorConEstaUnidad.Nombre}`,
+        icon: 'error',
+        timeout: 3000,
+      })
+
+      // Restaurar valor anterior
+      conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
+      return
+    }
+
+    // Si había una unidad anterior diferente, eliminarla del mapa
+    if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
+      const { realtimeDb } = await import('src/firebase/firebaseConfig')
+      const { ref: dbRef, remove } = await import('firebase/database')
+
+      const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
+      const unidadAnteriorRef = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
+
+      await remove(unidadAnteriorRef)
+      console.log(`✅ Unidad anterior ${unidadAnteriorKey} eliminada del mapa`)
+    }
+
+    // Ejecutar la asignación
+    await asignarUnidad(conductorId, unidadId)
 
     // Actualizar estado local
+    conductorEditando.value.UnidadAsignada = unidadId
     if (conductorSeleccionado.value) {
-      conductorSeleccionado.value.UnidadAsignada = unidadId || null
+      conductorSeleccionado.value.UnidadAsignada = unidadId
     }
 
-    Notify.create({
-      type: 'positive',
-      message: unidadId ? 'Unidad asignada correctamente' : 'Unidad removida correctamente',
-      icon: 'check_circle',
-    })
-
-    // Recargar datos para actualizar las opciones
+    // Recargar datos primero
     await obtenerConductores()
     await obtenerUnidades()
+
+    // 🆕 SOLUCIÓN MEJORADA: Notificar al usuario
+    Notify.create({
+      type: 'info',
+      message: 'Unidad asignada correctamente',
+      caption: 'Reinicia el simulador para verla en el mapa',
+      icon: 'info',
+      timeout: 4000,
+      actions: [
+        {
+          label: 'Entendido',
+          color: 'white',
+        },
+      ],
+    })
   } catch (error) {
-    console.error('Error:', error)
+    console.error('❌ Error al gestionar unidad:', error)
+
     Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error',
+      timeout: 3000,
     })
 
     // Restaurar en caso de error
