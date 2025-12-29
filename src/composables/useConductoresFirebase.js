@@ -222,6 +222,36 @@ export function useConductoresFirebase() {
     }
   }
 
+  // 🆕 Obtener fotos de placas desde Firestore
+  const obtenerFotosPlacas = async (unidadId) => {
+    try {
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        console.warn('⚠️ Unidad no encontrada')
+        return []
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosArray = unidadData.PlacasFotos || []
+
+      const fotos = fotosArray
+        .filter((url) => url && url.trim() !== '')
+        .map((url, index) => ({
+          name: `placa_${index + 1}`,
+          url: url,
+          fullPath: url,
+          index: index,
+        }))
+
+      return fotos
+    } catch (err) {
+      console.error('❌ Error al obtener fotos de placas:', err)
+      return []
+    }
+  }
+
   // Descargar foto
   const descargarFoto = async (url, nombreArchivo) => {
     try {
@@ -376,6 +406,49 @@ export function useConductoresFirebase() {
     }
   }
 
+  // 🆕 Subir foto de placas
+  const subirFotoPlacas = async (unidadId, file) => {
+    loading.value = true
+    error.value = null
+    try {
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, uploadBytes, getDownloadURL } = await import('firebase/storage')
+
+      const timestamp = Date.now()
+      const fileName = `PlacasFotos/${unidadId}/${timestamp}_${file.name}`
+      const fileRef = storageRef(storage, fileName)
+
+      await uploadBytes(fileRef, file)
+      const downloadURL = await getDownloadURL(fileRef)
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.PlacasFotos || []
+      const nuevasFotos = [...fotosActuales, downloadURL]
+
+      await updateDoc(unidadDocRef, {
+        PlacasFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      await obtenerUnidades()
+
+      return downloadURL
+    } catch (err) {
+      console.error('❌ Error al subir foto de placa:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Eliminar foto de licencia (solo si está expirada)
   const eliminarFotoLicencia = async (conductorId, fotoUrl, fechaVencimiento) => {
     loading.value = true
@@ -418,8 +491,6 @@ export function useConductoresFirebase() {
       const { storage } = await import('src/firebase/firebaseConfig')
       const { ref: storageRef, deleteObject } = await import('firebase/storage')
 
-      // Extraer la ruta del archivo de la URL
-      // Formato esperado de la URL: https://firebasestorage.googleapis.com/v0/b/BUCKET_NAME/o/RUTA_ARCHIVO?alt=media&token=TOKEN
       try {
         const urlObj = new URL(fotoUrl)
         const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
@@ -559,6 +630,68 @@ export function useConductoresFirebase() {
       return true
     } catch (err) {
       console.error('❌ Error al eliminar foto de tarjeta:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 🆕 Eliminar foto de placas (solo si está expirada)
+  const eliminarFotoPlacas = async (unidadId, fotoUrl, fechaVencimiento) => {
+    loading.value = true
+    error.value = null
+    try {
+      if (!fechaVencimiento) {
+        throw new Error('No se puede eliminar: No hay fecha de vencimiento configurada')
+      }
+
+      let fechaVenc
+      if (fechaVencimiento.toDate) {
+        fechaVenc = fechaVencimiento.toDate()
+      } else {
+        fechaVenc = new Date(fechaVencimiento)
+      }
+
+      const hoy = new Date()
+      if (fechaVenc > hoy) {
+        throw new Error('No se puede eliminar: Las placas aún están vigentes')
+      }
+
+      const unidadDocRef = doc(unidadesRef, unidadId)
+      const unidadSnap = await getDoc(unidadDocRef)
+
+      if (!unidadSnap.exists()) {
+        throw new Error('Unidad no encontrada')
+      }
+
+      const unidadData = unidadSnap.data()
+      const fotosActuales = unidadData.PlacasFotos || []
+      const nuevasFotos = fotosActuales.filter((url) => url !== fotoUrl)
+
+      await updateDoc(unidadDocRef, {
+        PlacasFotos: nuevasFotos,
+        updatedAt: Timestamp.now(),
+      })
+
+      const { storage } = await import('src/firebase/firebaseConfig')
+      const { ref: storageRef, deleteObject } = await import('firebase/storage')
+
+      try {
+        const urlObj = new URL(fotoUrl)
+        const filePath = decodeURIComponent(urlObj.pathname.split('/o/')[1].split('?')[0])
+        const fotoRef = storageRef(storage, filePath)
+
+        await deleteObject(fotoRef)
+      } catch (deleteErr) {
+        console.warn('⚠️ No se pudo eliminar del Storage:', deleteErr.message)
+      }
+
+      await obtenerUnidades()
+
+      return true
+    } catch (err) {
+      console.error('❌ Error al eliminar foto de placas:', err)
       error.value = err.message
       throw err
     } finally {
@@ -785,6 +918,58 @@ export function useConductoresFirebase() {
     return puedeEditarCampo(unidad?.TargetaCirculacionFecha)
   }
 
+  // 🆕 Validar si se pueden editar las placas
+  const puedeEditarPlacas = (unidad) => {
+    return puedeEditarCampo(unidad?.PlacasFecha)
+  }
+
+  const desasignarUnidadYLimpiarMapa = async (conductorId) => {
+    loading.value = true
+    error.value = null
+    try {
+      // 1. Obtener el conductor actual
+      const conductorDocRef = doc(conductoresRef, conductorId)
+      const conductorSnap = await getDoc(conductorDocRef)
+
+      if (!conductorSnap.exists()) {
+        throw new Error('Conductor no encontrado')
+      }
+
+      const conductorData = conductorSnap.data()
+      const unidadAsignada = conductorData.UnidadAsignada
+
+      // 2. Actualizar Firestore para quitar la unidad
+      await updateDoc(conductorDocRef, {
+        UnidadAsignada: null,
+        updatedAt: Timestamp.now(),
+      })
+
+      // 3. Si había una unidad asignada, eliminarla del Realtime Database
+      if (unidadAsignada) {
+        const { realtimeDb } = await import('src/firebase/firebaseConfig')
+        const { ref: dbRef, remove } = await import('firebase/database')
+
+        const unidadId = `unidad_${unidadAsignada}`
+        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
+
+        // Eliminar de unidades_activas
+        await remove(unidadRef)
+        console.log(`✅ Unidad ${unidadId} eliminada del mapa`)
+      }
+
+      // 4. Actualizar el estado local
+      await obtenerConductores()
+
+      return true
+    } catch (err) {
+      console.error('❌ Error al desasignar unidad:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // Estado
     conductores,
@@ -803,23 +988,27 @@ export function useConductoresFirebase() {
     obtenerFotosLicencia,
     obtenerFotosSeguroUnidad,
     obtenerFotosTargetaCirculacion,
+    obtenerFotosPlacas, // 🆕
     descargarFoto,
 
     // Métodos para subir fotos
     subirFotoLicencia,
     subirFotoSeguroUnidad,
     subirFotoTargetaCirculacion,
+    subirFotoPlacas, // 🆕
 
     // Métodos para eliminar fotos (con validación de fecha)
     eliminarFotoLicencia,
     eliminarFotoSeguroUnidad,
     eliminarFotoTargetaCirculacion,
+    eliminarFotoPlacas, // 🆕
 
-    // **NUEVAS FUNCIONES DE VALIDACIÓN**
+    // **FUNCIONES DE VALIDACIÓN**
     puedeEditarCampo,
     puedeEditarLicenciaConducir,
     puedeEditarSeguroUnidad,
     puedeEditarTargetaCirculacion,
+    puedeEditarPlacas, // 🆕
 
     // Métodos de unidades
     obtenerUnidades,
@@ -836,5 +1025,8 @@ export function useConductoresFirebase() {
     // Utilidades
     conductoresPorGrupo,
     contarConductoresPorGrupo,
+
+    // Nueva implementacion
+    desasignarUnidadYLimpiarMapa,
   }
 }

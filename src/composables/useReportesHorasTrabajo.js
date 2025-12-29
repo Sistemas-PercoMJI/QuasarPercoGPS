@@ -288,7 +288,7 @@ export function useReportesHorasTrabajo() {
           idUnidad: trayecto.idUnidad,
           conductorNombre: trayecto.conductorNombre || 'Sin conductor',
           unidadNombre: trayecto.unidadNombre,
-          unidadPlaca: trayecto.unidadPlaca || 'N/A',
+          Placa: trayecto.Placa || trayecto.placa || trayecto.unidadPlaca || 'Sin placa',
           horaInicioTrabajo: new Date(primeraCoordenada.timestamp).toLocaleString('es-MX', {
             hour: '2-digit',
             minute: '2-digit',

@@ -1143,6 +1143,15 @@ watch(
   },
   { deep: true },
 )
+watch(
+  () => router.currentRoute.value.path,
+  (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      cerrarTodosLosDialogs()
+      limpiarBusqueda()
+    }
+  },
+)
 
 // Watch adicional por si algo intenta cerrarlo
 watch(leftDrawerOpen, (newVal) => {

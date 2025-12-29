@@ -20,369 +20,468 @@
     <q-tab-panels v-model="tab" animated>
       <!-- Tab de Crear Reporte -->
       <q-tab-panel name="crear">
-        <div class="text-h5 q-mb-lg">Generar nuevo informe</div>
-
-        <!-- 🔥 NUEVO: Selector de tipo de informe -->
+        <!-- 🎯 HEADER CON TÍTULO Y SUBTÍTULO -->
         <div class="q-mb-lg">
-          <div class="text-subtitle2 q-mb-sm">Tipo de informe</div>
-          <q-select
-            v-model="tipoInformeSeleccionado"
-            :options="listaTiposInforme"
-            outlined
-            dense
-            emit-value
-            map-options
-            @update:model-value="cambiarTipoInforme"
-          >
-            <template v-slot:option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section avatar>
-                  <q-icon :name="scope.opt.icon" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          <div class="text-h5 text-weight-bold">
+            <q-icon name="description" size="sm" class="q-mr-sm" />
+            Generar nuevo informe
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Configura los parámetros de tu reporte personalizado
+          </div>
         </div>
+
+        <!-- 📋 CARD: TIPO DE INFORME -->
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section class="bg-grey-2">
+            <div class="text-h6">
+              <q-icon name="assessment" class="q-mr-sm" color="primary" />
+              Tipo de informe
+            </div>
+          </q-card-section>
+
+          <q-card-section>
+            <q-select
+              v-model="tipoInformeSeleccionado"
+              :options="listaTiposInforme"
+              outlined
+              dense
+              emit-value
+              map-options
+              @update:model-value="cambiarTipoInforme"
+            >
+              <template v-slot:option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section avatar>
+                    <q-icon :name="scope.opt.icon" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </q-card-section>
+        </q-card>
 
         <div class="row q-col-gutter-md">
-          <!-- Columna izquierda -->
+          <!-- COLUMNA IZQUIERDA -->
           <div class="col-12 col-md-6">
-            <!-- Reportar por (SIEMPRE visible) -->
-            <div class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Reportar por</div>
-              <q-select
-                v-model="reportarPor"
-                :options="opcionesReportar"
-                outlined
-                dense
-                label="Unidades"
-                @update:model-value="cargarOpcionesSelector"
-              />
-            </div>
+            <!-- 🎯 CARD: CONFIGURACIÓN BÁSICA -->
+            <q-card flat bordered class="q-mb-md">
+              <q-card-section class="bg-grey-2">
+                <div class="text-h6">
+                  <q-icon name="settings" class="q-mr-sm" color="primary" />
+                  Configuración Básica
+                </div>
+              </q-card-section>
 
-            <!-- 🔥 MEJORADO: Selector dinámico con búsqueda -->
-            <div class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
-              <q-select
-                ref="selectorElementos"
-                v-model="elementosSeleccionados"
-                :options="opcionesSelectorFiltradas"
-                outlined
-                dense
-                use-input
-                use-chips
-                multiple
-                input-debounce="300"
-                :placeholder="`Buscar ${reportarPor.toLowerCase()}...`"
-                :loading="loadingOpciones"
-                @filter="filtrarOpcionesSelector"
-              >
-                <template v-slot:no-option>
-                  <q-item>
-                    <q-item-section class="text-grey">
-                      No se encontraron resultados
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-            </div>
+              <q-card-section>
+                <!-- Reportar por -->
+                <div class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Reportar por</div>
+                  <q-select
+                    v-model="reportarPor"
+                    :options="opcionesReportar"
+                    outlined
+                    dense
+                    label="Unidades"
+                    @update:model-value="cargarOpcionesSelector"
+                  />
+                </div>
 
-            <!-- 🔥 MEJORADO: Eventos con búsqueda -->
-            <div v-if="tieneOpcion('seleccionarEventos')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Eventos</div>
-              <q-select
-                ref="selectorEventos"
-                v-model="eventos"
-                :options="eventosDisponiblesFiltrados"
-                outlined
-                dense
-                use-input
-                use-chips
-                multiple
-                input-debounce="300"
-                placeholder="Buscar eventos..."
-                :loading="loadingEventos"
-                @filter="filtrarEventos"
-              >
-                <template v-slot:no-option>
-                  <q-item>
-                    <q-item-section class="text-grey"> No se encontraron eventos </q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-            </div>
+                <!-- Selector dinámico -->
+                <div class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">{{ etiquetaSelector }}</div>
+                  <q-select
+                    ref="selectorElementos"
+                    v-model="elementosSeleccionados"
+                    :options="opcionesSelectorFiltradas"
+                    outlined
+                    dense
+                    use-input
+                    use-chips
+                    multiple
+                    input-debounce="300"
+                    :placeholder="`Buscar ${reportarPor.toLowerCase()}...`"
+                    :loading="loadingOpciones"
+                    @filter="filtrarOpcionesSelector"
+                  >
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          No se encontraron resultados
+                        </q-item-section>
+                      </q-item>
+                    </template>
+                  </q-select>
+                </div>
 
-            <!-- 🔥 Método de agrupación (solo para Informe de Eventos) -->
-            <div v-if="tieneOpcion('metodoAgrupacion')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Agrupar por</div>
-              <q-select
-                v-model="metodoAgrupacion"
-                :options="METODOS_AGRUPACION"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
+                <!-- Rango de fecha -->
+                <div class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
+                  <q-input
+                    :model-value="rangoFechaFormateado"
+                    outlined
+                    dense
+                    placeholder="Elegir rango de fechas"
+                    readonly
+                  >
+                    <template v-slot:append>
+                      <q-icon name="event" class="cursor-pointer">
+                        <q-popup-proxy
+                          ref="dateProxy"
+                          cover
+                          transition-show="scale"
+                          transition-hide="scale"
+                        >
+                          <q-date v-model="rangoFechaTemporal" range>
+                            <div class="row items-center justify-end q-gutter-sm">
+                              <q-btn label="Cancelar" color="grey-7" flat v-close-popup />
+                              <q-btn
+                                label="Aceptar"
+                                color="primary"
+                                flat
+                                v-close-popup
+                                @click="aplicarRangoFecha"
+                              />
+                            </div>
+                          </q-date>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </div>
+              </q-card-section>
+            </q-card>
 
-            <!-- 🔥 Días laborables (solo para Horas de Trabajo) -->
-            <div v-if="tieneOpcion('diasLaborables')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Días laborables</div>
-              <div class="row q-gutter-sm">
-                <q-checkbox
-                  v-for="dia in DIAS_SEMANA"
-                  :key="dia.value"
-                  v-model="diasLaborablesSeleccionados"
-                  :val="dia.value"
-                  :label="dia.abrev"
+            <!-- 🎯 CARD: FILTROS (solo si tiene eventos) -->
+            <q-card v-if="tieneOpcion('seleccionarEventos')" flat bordered class="q-mb-md">
+              <q-card-section class="bg-grey-2">
+                <div class="text-h6">
+                  <q-icon name="filter_alt" class="q-mr-sm" color="primary" />
+                  Filtros
+                </div>
+              </q-card-section>
+
+              <q-card-section>
+                <div class="text-subtitle2 q-mb-sm">Eventos</div>
+                <q-select
+                  ref="selectorEventos"
+                  v-model="eventos"
+                  :options="eventosDisponiblesFiltrados"
+                  outlined
                   dense
-                />
-              </div>
-            </div>
+                  use-input
+                  use-chips
+                  multiple
+                  input-debounce="300"
+                  placeholder="Buscar eventos..."
+                  :loading="loadingEventos"
+                  @filter="filtrarEventos"
+                >
+                  <template v-slot:no-option>
+                    <q-item>
+                      <q-item-section class="text-grey"> No se encontraron eventos </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </q-card-section>
+            </q-card>
 
-            <!-- 🔥 Horario laboral (solo para Horas de Trabajo) -->
-            <div v-if="tieneOpcion('horarioLaboral')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Horario laboral</div>
-              <div class="row q-col-gutter-sm">
-                <div class="col-6">
-                  <q-input
-                    v-model="horarioInicio"
+            <!-- 🎯 CARD: OPCIONES ESPECÍFICAS -->
+            <q-card
+              v-if="
+                tieneOpcion('metodoAgrupacion') ||
+                tieneOpcion('diasLaborables') ||
+                tieneOpcion('horarioLaboral') ||
+                tieneOpcion('tipoInformeComercial') ||
+                tieneOpcion('tipoDetalle')
+              "
+              flat
+              bordered
+              class="q-mb-md"
+            >
+              <q-card-section class="bg-grey-2">
+                <div class="text-h6">
+                  <q-icon name="tune" class="q-mr-sm" color="primary" />
+                  Opciones Específicas
+                </div>
+              </q-card-section>
+
+              <q-card-section>
+                <!-- Método de agrupación -->
+                <div v-if="tieneOpcion('metodoAgrupacion')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Agrupar por</div>
+                  <q-select
+                    v-model="metodoAgrupacion"
+                    :options="METODOS_AGRUPACION"
                     outlined
                     dense
-                    label="Hora inicio"
-                    mask="time"
-                    :rules="['time']"
-                  >
-                    <template v-slot:append>
-                      <q-icon name="access_time" class="cursor-pointer">
-                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                          <q-time v-model="horarioInicio" format24h>
-                            <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                            </div>
-                          </q-time>
-                        </q-popup-proxy>
-                      </q-icon>
-                    </template>
-                  </q-input>
+                    emit-value
+                    map-options
+                  />
                 </div>
-                <div class="col-6">
-                  <q-input
-                    v-model="horarioFin"
+
+                <!-- Días laborables -->
+                <div v-if="tieneOpcion('diasLaborables')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Días laborables</div>
+                  <div class="row q-gutter-sm">
+                    <q-checkbox
+                      v-for="dia in DIAS_SEMANA"
+                      :key="dia.value"
+                      v-model="diasLaborablesSeleccionados"
+                      :val="dia.value"
+                      :label="dia.abrev"
+                      dense
+                    />
+                  </div>
+                </div>
+
+                <!-- Horario laboral -->
+                <div v-if="tieneOpcion('horarioLaboral')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Horario laboral</div>
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-6">
+                      <q-input
+                        v-model="horarioInicio"
+                        outlined
+                        dense
+                        label="Hora inicio"
+                        mask="time"
+                        :rules="['time']"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="access_time" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-time v-model="horarioInicio" format24h>
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-time>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                      </q-input>
+                    </div>
+                    <div class="col-6">
+                      <q-input
+                        v-model="horarioFin"
+                        outlined
+                        dense
+                        label="Hora fin"
+                        mask="time"
+                        :rules="['time']"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="access_time" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-time v-model="horarioFin" format24h>
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-time>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                      </q-input>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tipo de informe comercial -->
+                <div v-if="tieneOpcion('tipoInformeComercial')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Tipo de informe comercial</div>
+                  <q-select
+                    v-model="tipoInformeComercial"
+                    :options="TIPOS_INFORME_COMERCIAL"
                     outlined
                     dense
-                    label="Hora fin"
-                    mask="time"
-                    :rules="['time']"
-                  >
-                    <template v-slot:append>
-                      <q-icon name="access_time" class="cursor-pointer">
-                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                          <q-time v-model="horarioFin" format24h>
-                            <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                            </div>
-                          </q-time>
-                        </q-popup-proxy>
-                      </q-icon>
-                    </template>
-                  </q-input>
+                    emit-value
+                    map-options
+                  />
                 </div>
-              </div>
-            </div>
 
-            <!-- 🔥 Tipo de informe comercial (solo para Horas de Trabajo) -->
-            <div v-if="tieneOpcion('tipoInformeComercial')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Tipo de informe comercial</div>
-              <q-select
-                v-model="tipoInformeComercial"
-                :options="TIPOS_INFORME_COMERCIAL"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
-
-            <!-- 🔥 Tipo de detalle (solo para Horas de Trabajo) -->
-            <div v-if="tieneOpcion('tipoDetalle')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Datos del informe proporcionados</div>
-              <q-select
-                v-model="tipoDetalle"
-                :options="TIPOS_DETALLE"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
+                <!-- Tipo de detalle -->
+                <div v-if="tieneOpcion('tipoDetalle')">
+                  <div class="text-subtitle2 q-mb-sm">Datos del informe proporcionados</div>
+                  <q-select
+                    v-model="tipoDetalle"
+                    :options="TIPOS_DETALLE"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
 
-          <!-- Columna derecha -->
+          <!-- COLUMNA DERECHA -->
           <div class="col-12 col-md-6">
-            <!-- Rango de fecha (SIEMPRE visible) -->
-            <div class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
-              <q-input
-                :model-value="rangoFechaFormateado"
-                outlined
-                dense
-                placeholder="Elegir rango de fechas"
-                readonly
-              >
-                <template v-slot:append>
-                  <q-icon name="event" class="cursor-pointer">
-                    <q-popup-proxy
-                      ref="dateProxy"
-                      cover
-                      transition-show="scale"
-                      transition-hide="scale"
+            <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
+            <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
+            <q-card
+              v-if="
+                (tieneOpcion('mostrarMapaTrayecto') || tieneOpcion('mostrarMapaZona')) &&
+                tipoInformeSeleccionado !== 'eventos'
+              "
+              flat
+              bordered
+              class="q-mb-md"
+            >
+              <q-card-section class="bg-grey-2">
+                <div class="text-h6">
+                  <q-icon name="visibility" class="q-mr-sm" color="primary" />
+                  Opciones de Visualización
+                </div>
+              </q-card-section>
+
+              <q-card-section>
+                <!-- Opciones de mapa para Trayectos -->
+                <div v-if="tieneOpcion('mostrarMapaTrayecto')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Opciones de mapa</div>
+                  <q-checkbox
+                    v-model="mostrarMapaTrayecto"
+                    label="Mostrar mapa del trayecto"
+                    class="q-mb-sm"
+                  />
+                  <q-checkbox
+                    v-model="mostrarUnidadesMapa"
+                    label="Mostrar unidades en el mapa"
+                    class="q-mb-sm"
+                    :disable="!mostrarMapaTrayecto"
+                  />
+                  <q-checkbox
+                    v-model="mostrarPlacaMapa"
+                    label="Mostrar número de placa"
+                    :disable="!mostrarMapaTrayecto"
+                  />
+                </div>
+
+                <!-- Opción de mapa para Horas de Trabajo -->
+                <div v-if="tieneOpcion('mostrarMapaZona')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Opciones del informe</div>
+                  <div class="column q-gutter-sm">
+                    <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
+                    <q-checkbox
+                      v-if="tipoInformeSeleccionado === 'horas_trabajo'"
+                      v-model="remarcarHorasExtra"
+                      label="Remarcar horas fuera de horario laboral"
+                    />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- 🎯 CARD: PERSONALIZACIÓN DE COLUMNAS -->
+            <q-card v-if="tieneOpcion('seleccionColumnas')" flat bordered class="q-mb-md">
+              <q-card-section class="bg-grey-2">
+                <div class="row items-center justify-between">
+                  <div class="text-h6">
+                    <q-icon name="view_column" class="q-mr-sm" color="primary" />
+                    Personalización de Columnas
+                  </div>
+                  <q-btn
+                    flat
+                    dense
+                    size="sm"
+                    icon="refresh"
+                    color="primary"
+                    label="Restaurar"
+                    @click="onResetearColumnas"
+                  >
+                    <q-tooltip>Volver a las columnas por defecto</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-card-section>
+
+              <q-card-section>
+                <!-- Buscador de columnas -->
+                <q-select
+                  v-model="columnasSeleccionadas"
+                  :options="columnasDisponiblesFiltradas"
+                  outlined
+                  dense
+                  use-input
+                  multiple
+                  input-debounce="0"
+                  placeholder="Buscar y agregar columnas..."
+                  @filter="filtrarColumnas"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="add" />
+                  </template>
+
+                  <template v-slot:selected>
+                    <span></span>
+                  </template>
+                </q-select>
+
+                <!-- Columnas seleccionadas (chips externos) -->
+                <div v-if="columnasSeleccionadas.length > 0" class="q-mt-md">
+                  <div class="text-caption text-grey-7 q-mb-sm">
+                    {{ columnasSeleccionadas.length }} columnas seleccionadas
+                  </div>
+                  <div class="q-gutter-sm">
+                    <q-chip
+                      v-for="col in columnasSeleccionadas"
+                      :key="col"
+                      removable
+                      @remove="removerColumna(col)"
+                      color="primary"
+                      text-color="white"
                     >
-                      <q-date v-model="rangoFechaTemporal" range>
-                        <div class="row items-center justify-end q-gutter-sm">
-                          <q-btn label="Cancelar" color="grey-7" flat v-close-popup />
-                          <q-btn
-                            label="Aceptar"
-                            color="primary"
-                            flat
-                            v-close-popup
-                            @click="aplicarRangoFecha"
-                          />
-                        </div>
-                      </q-date>
-                    </q-popup-proxy>
-                  </q-icon>
-                </template>
-              </q-input>
-            </div>
+                      {{ col }}
+                    </q-chip>
+                  </div>
+                </div>
 
-            <!-- 🔥 Opciones de mapa para Trayectos -->
-            <div v-if="tieneOpcion('mostrarMapaTrayecto')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Opciones de mapa</div>
-              <q-checkbox
-                v-model="mostrarMapaTrayecto"
-                label="Mostrar mapa del trayecto"
-                class="q-mb-sm"
-              />
-              <q-checkbox
-                v-model="mostrarUnidadesMapa"
-                label="Mostrar unidades en el mapa"
-                class="q-mb-sm"
-                :disable="!mostrarMapaTrayecto"
-              />
-              <q-checkbox
-                v-model="mostrarPlacaMapa"
-                label="Mostrar número de placa"
-                :disable="!mostrarMapaTrayecto"
-              />
-            </div>
-            <!-- 🔥 Opción de mapa para Horas de Trabajo -->
-            <div v-if="tieneOpcion('mostrarMapaZona')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Opciones del informe</div>
-              <div class="column q-gutter-sm">
-                <q-checkbox v-model="mostrarMapaZona" label="Mostrar mapa de la zona" />
-                <q-checkbox
-                  v-if="tipoInformeSeleccionado === 'horas_trabajo'"
-                  v-model="remarcarHorasExtra"
-                  label="Remarcar horas fuera de horario laboral"
-                />
-              </div>
-            </div>
-            <!-- 🔥 Lista de columnas (para Eventos, Trayectos y Horas de Trabajo) -->
-            <div v-if="tieneOpcion('seleccionColumnas')" class="q-mb-md">
-              <div class="text-subtitle2 q-mb-sm">Lista de columnas</div>
-              <!-- 🆕 HEADER CON BOTÓN DE RESETEAR -->
-              <div class="columnas-header q-mb-sm">
-                <q-btn
-                  flat
-                  dense
-                  size="sm"
-                  icon="refresh"
-                  color="primary"
-                  label="Restaurar por defecto"
-                  @click="onResetearColumnas"
-                >
-                  <q-tooltip>Volver a las columnas por defecto</q-tooltip>
-                </q-btn>
-              </div>
-              <!-- Buscador de columnas -->
-              <q-select
-                v-model="columnasSeleccionadas"
-                :options="columnasDisponiblesFiltradas"
-                outlined
-                dense
-                use-input
-                multiple
-                input-debounce="0"
-                placeholder="Buscar y agregar columnas..."
-                @filter="filtrarColumnas"
-              >
-                <template v-slot:prepend>
-                  <q-icon name="add" />
-                </template>
+                <q-separator class="q-my-md" />
 
-                <!-- 🔥 OCULTAR los chips internos del q-select -->
-                <template v-slot:selected>
-                  <span></span>
-                </template>
-              </q-select>
-              <!-- Columnas seleccionadas (chips externos) -->
-              <div class="q-gutter-sm q-mt-md">
-                <q-chip
-                  v-for="col in columnasSeleccionadas"
-                  :key="col"
-                  removable
-                  @remove="removerColumna(col)"
-                  color="primary"
-                  text-color="white"
-                >
-                  {{ col }}
-                </q-chip>
-              </div>
-
-              <q-checkbox
-                v-model="mostrarResumen"
-                label="Mostrar resumen del informe"
-                class="q-mt-md"
-              />
-            </div>
+                <q-checkbox v-model="mostrarResumen" label="Mostrar resumen del informe" />
+              </q-card-section>
+            </q-card>
           </div>
         </div>
 
-        <!-- Botones de acción (SIEMPRE visibles) -->
-        <div class="row q-gutter-md q-mt-lg">
-          <q-btn
-            color="primary"
-            label="Generar PDF"
-            icon="picture_as_pdf"
-            unelevated
-            style="width: 200px"
-            @click="generarReporte"
-            :loading="generando"
-            :disable="generando"
-          />
-          <q-btn
-            color="positive"
-            label="Generar Excel"
-            icon="table_chart"
-            unelevated
-            style="width: 200px"
-            @click="generarExcel"
-            :loading="generando"
-            :disable="generando"
-          />
-          <q-btn
-            outline
-            color="grey-7"
-            label="Cancelar"
-            style="width: 200px"
-            @click="cancelarReporte"
-          />
-        </div>
+        <!-- 🎯 BOTONES DE ACCIÓN (SIEMPRE VISIBLES) -->
+        <q-card flat bordered class="q-mt-lg">
+          <q-card-section class="bg-grey-1">
+            <div class="row q-gutter-md justify-center">
+              <q-btn
+                color="negative"
+                label="Generar PDF"
+                icon="picture_as_pdf"
+                unelevated
+                style="min-width: 200px"
+                @click="generarReporte"
+                :loading="generando"
+                :disable="generando"
+              />
+              <q-btn
+                color="positive"
+                label="Generar Excel"
+                icon="table_chart"
+                unelevated
+                style="min-width: 200px"
+                @click="generarExcel"
+                :loading="generando"
+                :disable="generando"
+              />
+              <q-btn
+                outline
+                color="grey-7"
+                label="Cancelar"
+                icon="close"
+                style="min-width: 200px"
+                @click="cancelarReporte"
+              />
+            </div>
+          </q-card-section>
+        </q-card>
       </q-tab-panel>
 
       <!-- Tab de Historial -->
@@ -447,7 +546,6 @@
     </q-tab-panels>
   </q-page>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
@@ -1162,6 +1260,31 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
+    console.log(
+      '🔍 PRIMER TRAYECTO RAW:',
+      datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
+        : null,
+    )
+
+    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
+      duracion: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
+        : null,
+      duracionHoras: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
+        : null,
+      kilometrajeInicio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
+        : null,
+      kilometrajeFinal: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
+        : null,
+      velocidadPromedio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
+        : null,
+    })
+
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
@@ -1178,12 +1301,18 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (mostrarMapaTrayecto.value) {
-        $q.notify({
-          type: 'info',
-          message: 'Generando mapa de trayectos...',
-          icon: 'map',
-          timeout: 2000,
+      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
+      console.log('📊 datosReales completo:', datosReales)
+      if (datosReales.eventosAgrupados) {
+        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
+          console.log(
+            `📦 ${nombre}:`,
+            trayectos.map((t) => ({
+              unidad: t.unidadNombre,
+              placa: t.Placa,
+              todasLasPropiedades: Object.keys(t),
+            })),
+          )
         })
       }
 

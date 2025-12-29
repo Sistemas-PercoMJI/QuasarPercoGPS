@@ -730,7 +730,7 @@ export function useReporteExcel() {
               fecha: registro.fecha,
               conductorNombre: registro.conductorNombre,
               unidadNombre: registro.unidadNombre,
-              unidadPlaca: registro.unidadPlaca,
+              Placa: registro.Placa,
               totalViajes: registro.totalViajes,
               viajesDentroHorario: registro.viajesDentroHorario,
               viajesFueraHorario: registro.viajesFueraHorario,
@@ -836,7 +836,7 @@ export function useReporteExcel() {
       const primerRegistro = registros[0]
       let subtitulo = ''
       if (config.reportarPor === 'Unidades') {
-        const placa = primerRegistro.unidadPlaca || 'Sin placa'
+        const placa = primerRegistro.Placa || 'Sin placa'
         const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
         subtitulo = `Placa: ${placa} | Conductores: ${conductores.join(', ')}`
       } else {
@@ -954,7 +954,7 @@ export function useReporteExcel() {
                   fecha: registro.fecha,
                   conductorNombre: registro.conductorNombre,
                   unidadNombre: registro.unidadNombre,
-                  unidadPlaca: registro.unidadPlaca,
+                  Placa: registro.Placa,
                 }
 
                 const rowData = columnasParaTabla.map((nombreCol) => {
@@ -1352,7 +1352,7 @@ export function useReporteExcel() {
         const primerTrayecto = trayectos[0]
         let subtitulo = ''
         if (config.reportarPor === 'Unidades') {
-          const placa = primerTrayecto.unidadPlaca || 'Sin placa'
+          const placa = primerTrayecto.Placa || 'Sin placa'
           const conductores = [...new Set(trayectos.map((t) => t.conductorNombre).filter(Boolean))]
           subtitulo = `Placa: ${placa} | Conductores: ${conductores.join(', ')}`
         } else {
