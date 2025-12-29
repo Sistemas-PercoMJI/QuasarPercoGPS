@@ -622,7 +622,6 @@
                       </template>
                     </q-input>
                   </div>
-
                   <!-- 🆕 FOTOS DE TARJETA AQUÍ -->
                   <div class="col-12">
                     <div class="detalle-label">
@@ -698,10 +697,136 @@
                         </div>
                       </div>
                     </div>
+
                     <div v-else class="no-fotos">
                       <q-icon name="image_not_supported" size="32px" color="grey-4" />
                       <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
                     </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="detalle-label">Número de placas</div>
+                    <q-input
+                      v-model="unidadAsociada.Placa"
+                      outlined
+                      dense
+                      placeholder="Ingrese número de placas"
+                      :disable="placasDeshabilitada"
+                      @blur="actualizarCampoUnidad('Placa', unidadAsociada.Placa)"
+                    >
+                      <template v-slot:append>
+                        <q-badge
+                          v-if="unidadAsociada?.PlacasFecha"
+                          :color="esPlacasVigente ? 'positive' : 'negative'"
+                          :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
+                        />
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="detalle-label">Vencimiento de placas</div>
+                  <q-input :model-value="placasFechaFormato || 'Sin fecha'" outlined dense readonly>
+                    <template v-slot:append>
+                      <q-icon name="event" class="cursor-pointer">
+                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                          <q-date
+                            :model-value="placasFechaFormato"
+                            mask="DD/MM/YYYY"
+                            @update:model-value="actualizarFechaPlacas"
+                          >
+                            <div class="row items-center justify-end">
+                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                            </div>
+                          </q-date>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                    <template v-slot:after>
+                      <q-badge
+                        v-if="unidadAsociada?.PlacasFecha"
+                        :color="esPlacasVigente ? 'positive' : 'negative'"
+                        :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
+                      />
+                    </template>
+                  </q-input>
+                </div>
+
+                <!-- 🆕 FOTOS DE PLACAS AQUÍ -->
+                <div class="col-12">
+                  <div class="detalle-label">
+                    <q-icon name="image" class="q-mr-xs" />
+                    Fotos de Placas
+                    <q-space />
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="add_photo_alternate"
+                      size="sm"
+                      color="primary"
+                      @click="abrirSelectorFotoPlacas"
+                    >
+                      <q-tooltip>Subir nueva foto</q-tooltip>
+                    </q-btn>
+                    <input
+                      ref="inputFotoPlacas"
+                      type="file"
+                      accept="image/*"
+                      style="display: none"
+                      @change="subirNuevaFotoPlacas"
+                    />
+                  </div>
+                  <div v-if="cargandoFotosPlacas" class="text-center q-pa-md">
+                    <q-spinner color="primary" size="30px" />
+                  </div>
+                  <div v-else-if="fotosPlacas.length > 0" class="fotos-grid">
+                    <div v-for="foto in fotosPlacas" :key="foto.fullPath" class="foto-card">
+                      <q-img
+                        :src="foto.url"
+                        class="foto-thumbnail"
+                        @click="verFotoEnGrande(foto.url)"
+                        style="cursor: pointer"
+                      />
+                      <div class="foto-actions">
+                        <q-btn
+                          flat
+                          dense
+                          icon="visibility"
+                          size="sm"
+                          color="primary"
+                          @click="verFotoEnGrande(foto.url)"
+                        >
+                          <q-tooltip>Ver</q-tooltip>
+                        </q-btn>
+                        <q-btn
+                          flat
+                          dense
+                          icon="download"
+                          size="sm"
+                          color="positive"
+                          @click="descargarFotoHandler(foto.url, foto.name)"
+                        >
+                          <q-tooltip>Descargar</q-tooltip>
+                        </q-btn>
+                        <q-btn
+                          flat
+                          dense
+                          icon="delete"
+                          size="sm"
+                          :color="esPlacasVigente ? 'grey-5' : 'negative'"
+                          :disable="esPlacasVigente"
+                          @click="eliminarFotoPlacasHandler(foto.url)"
+                        >
+                          <q-tooltip>{{
+                            esPlacasVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                          }}</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="no-fotos">
+                    <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                    <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de las placas</div>
                   </div>
                 </div>
               </q-card-section>
@@ -995,6 +1120,10 @@ const {
   puedeEditarLicenciaConducir,
   puedeEditarSeguroUnidad,
   puedeEditarTargetaCirculacion,
+  obtenerFotosPlacas,
+  subirFotoPlacas,
+  eliminarFotoPlacas,
+  puedeEditarPlacas,
 } = composable
 
 // Funciones de fotos
@@ -1033,14 +1162,17 @@ const fotoSeleccionada = ref('')
 const fotosLicencia = ref([])
 const fotosSeguro = ref([])
 const fotosTargeta = ref([])
+const fotosPlacas = ref([])
 const cargandoFotosLicencia = ref(false)
 const cargandoFotosSeguro = ref(false)
 const cargandoFotosTargeta = ref(false)
+const cargandoFotosPlacas = ref(false)
 
 // Referencias para inputs de archivo
 const inputFotoLicencia = ref(null)
 const inputFotoSeguro = ref(null)
 const inputFotoTargeta = ref(null)
+const inputFotoPlacas = ref(null)
 const opcionesUnidadesFiltradas = ref([])
 
 // Listeners de Firebase
@@ -1050,6 +1182,11 @@ let unsubscribeGrupos = null
 const nuevoGrupo = ref({
   Nombre: '',
   ConductoresIds: [],
+})
+
+const placasDeshabilitada = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarPlacas(unidadAsociada.value)
 })
 
 const conductoresFiltrados = computed(() => {
@@ -1237,6 +1374,32 @@ watch(conductorEditando, async (newValue) => {
   }
 })
 
+const placasFechaFormato = computed(() => {
+  if (!unidadAsignadaData.value?.PlacasFecha) return ''
+
+  let fecha
+  if (unidadAsignadaData.value.PlacasFecha.toDate) {
+    fecha = unidadAsignadaData.value.PlacasFecha.toDate()
+  } else {
+    fecha = new Date(unidadAsignadaData.value.PlacasFecha)
+  }
+
+  return date.formatDate(fecha, 'DD/MM/YYYY')
+})
+
+const esPlacasVigente = computed(() => {
+  if (!unidadAsignadaData.value?.PlacasFecha) return false
+
+  let fechaVencimiento
+  if (unidadAsignadaData.value.PlacasFecha.toDate) {
+    fechaVencimiento = unidadAsignadaData.value.PlacasFecha.toDate()
+  } else {
+    fechaVencimiento = new Date(unidadAsignadaData.value.PlacasFecha)
+  }
+
+  return fechaVencimiento > new Date()
+})
+
 // Methods
 function obtenerIniciales(nombre) {
   if (!nombre) return '??'
@@ -1421,6 +1584,43 @@ async function actualizarFechaTarjeta(fecha) {
   }
 }
 
+async function actualizarFechaPlacas(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      PlacasFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.PlacasFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de placas actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
 async function actualizarFechaVencimiento(fecha) {
   if (!conductorEditando.value?.id) return
 
@@ -1592,6 +1792,16 @@ async function cargarFotosConductor() {
       cargandoFotosSeguro.value = false
     }
 
+    cargandoFotosPlacas.value = true
+    try {
+      fotosPlacas.value = await obtenerFotosPlacas(unidadAsignadaData.value.id)
+    } catch (error) {
+      console.error('Error al cargar fotos de placas:', error)
+      fotosPlacas.value = []
+    } finally {
+      cargandoFotosPlacas.value = false
+    }
+
     cargandoFotosTargeta.value = true
     try {
       fotosTargeta.value = await obtenerFotosTargetaCirculacion(unidadAsignadaData.value.id)
@@ -1604,6 +1814,7 @@ async function cargarFotosConductor() {
   } else {
     fotosSeguro.value = []
     fotosTargeta.value = []
+    fotosPlacas.value = []
   }
 }
 
@@ -1641,6 +1852,10 @@ function abrirSelectorFotoSeguro() {
 
 function abrirSelectorFotoTargeta() {
   inputFotoTargeta.value?.click()
+}
+
+function abrirSelectorFotoPlacas() {
+  inputFotoPlacas.value?.click()
 }
 
 async function subirNuevaFotoLicencia(event) {
@@ -1748,6 +1963,44 @@ async function subirNuevaFotoTargeta(event) {
   }
 }
 
+async function subirNuevaFotoPlacas(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosPlacas.value = true
+    await subirFotoPlacas(unidadAsignadaData.value.id, file)
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de placas subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosPlacas.value = false
+    if (inputFotoPlacas.value) {
+      inputFotoPlacas.value.value = ''
+    }
+  }
+}
+
 // === FUNCIONES PARA ELIMINAR FOTOS ===
 
 async function eliminarFotoLicenciaHandler(fotoUrl) {
@@ -1811,6 +2064,30 @@ async function eliminarFotoTargetaHandler(fotoUrl) {
     Notify.create({
       type: 'positive',
       message: 'Foto de tarjeta eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoPlacasHandler(fotoUrl) {
+  try {
+    await eliminarFotoPlacas(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.PlacasFecha,
+    )
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de placas eliminada correctamente',
       icon: 'check_circle',
     })
   } catch (error) {
