@@ -35,7 +35,7 @@ export function useRutaDiaria() {
       verificarAutenticacion()
       const fecha = obtenerIdRutaDiaria()
 
-      // 🔥 FILTRO: Solo agregar si pasaron al menos 15 segundos
+      // 🔥 FILTRO: Solo agregar si pasaron al menos 8 segundos
       const MIN_INTERVALO_MS = 8000
 
       // 1. Obtener la ruta actual de Firestore
@@ -95,11 +95,39 @@ export function useRutaDiaria() {
       const { guardarCoordenadasEnStorage } = useRutasStorage()
       const nuevaUrl = await guardarCoordenadasEnStorage(unidadId, fecha, todasLasCoordenadas)
 
-      // 6. Actualizar Firestore
+      // 🆕 6. Calcular duración y velocidad promedio
+      let duracionMinutos = 0
+      let velocidadPromedio = '0'
+
+      if (rutaSnapshot.exists()) {
+        const rutaData = rutaSnapshot.data()
+        const fechaInicio = rutaData.fecha_hora_inicio?.toDate?.()
+        const fechaFin = new Date()
+
+        if (fechaInicio) {
+          const duracionMs = fechaFin - fechaInicio
+          duracionMinutos = Math.floor(duracionMs / 60000)
+
+          // Calcular velocidad promedio si hay distancia y duración
+          const distanciaKm = parseFloat(rutaData.distancia_recorrida_km || '0')
+          if (duracionMinutos > 0 && distanciaKm > 0) {
+            const duracionHoras = duracionMinutos / 60
+            const velocidadCalculada = distanciaKm / duracionHoras
+
+            if (isFinite(velocidadCalculada) && velocidadCalculada >= 0) {
+              velocidadPromedio = velocidadCalculada.toFixed(2)
+            }
+          }
+        }
+      }
+
+      // 7. Actualizar Firestore
       const datosFirestore = {
         rutas_url: nuevaUrl,
         fecha_hora_fin: serverTimestamp(),
         total_coordenadas: todasLasCoordenadas.length,
+        duracion_total_minutos: duracionMinutos, // ← 🆕 AGREGADO
+        velocidad_promedio: velocidadPromedio, // ← 🆕 AGREGADO
       }
 
       // Agregar info del conductor si es primera coordenada
@@ -126,7 +154,7 @@ export function useRutaDiaria() {
           conductor_id: datosCoordenada.conductor_id || '',
           conductor_nombre: limpiarNombreConductor(datosCoordenada.conductor_nombre || ''),
           velocidad_maxima: datosCoordenada.velocidad_actual || '0',
-          velocidad_promedio: datosCoordenada.velocidad_actual || '0',
+          velocidad_promedio: '0',
           odometro_inicio: '0',
           odometro_fin: '0',
         })
