@@ -1260,6 +1260,31 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
+    console.log(
+      '🔍 PRIMER TRAYECTO RAW:',
+      datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
+        : null,
+    )
+
+    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
+      duracion: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
+        : null,
+      duracionHoras: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
+        : null,
+      kilometrajeInicio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
+        : null,
+      kilometrajeFinal: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
+        : null,
+      velocidadPromedio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
+        : null,
+    })
+
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,

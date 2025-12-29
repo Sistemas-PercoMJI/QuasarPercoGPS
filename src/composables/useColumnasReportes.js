@@ -431,11 +431,20 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeInicio',
     label: 'Kilometraje al inicio',
     obtenerValor: (trayecto) => {
-      // Los trayectos no tienen kilometraje al inicio/fin en Firebase
-      // Mostrar odómetro virtual si está disponible
+      // 🔥 PRIORIDAD 1: Usar odómetro del hardware si existe
+      if (
+        trayecto.odometroInicio !== null &&
+        trayecto.odometroInicio !== undefined &&
+        trayecto.odometroInicio > 0
+      ) {
+        return `${trayecto.odometroInicio} km`
+      }
+
+      // 🔥 PRIORIDAD 2: Usar odómetro virtual como fallback
       if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
         return `${trayecto.odometroVirtual} km`
       }
+
       return 'N/A'
     },
     ancho: 150,
@@ -479,12 +488,26 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeFinal',
     label: 'Kilometraje al final',
     obtenerValor: (trayecto) => {
-      // Los trayectos no tienen kilometraje final
-      // Calcular: odómetro inicial + km recorridos
-      if (trayecto.odometroVirtual && trayecto.kilometrajeRecorrido) {
+      // 🔥 PRIORIDAD 1: Usar odómetro del hardware si existe
+      if (
+        trayecto.odometroFin !== null &&
+        trayecto.odometroFin !== undefined &&
+        trayecto.odometroFin > 0
+      ) {
+        return `${trayecto.odometroFin} km`
+      }
+
+      // 🔥 PRIORIDAD 2: Calcular con odómetro virtual
+      if (
+        trayecto.odometroVirtual !== null &&
+        trayecto.odometroVirtual !== undefined &&
+        trayecto.kilometrajeRecorrido !== null &&
+        trayecto.kilometrajeRecorrido !== undefined
+      ) {
         const kmFinal = trayecto.odometroVirtual + trayecto.kilometrajeRecorrido
         return `${kmFinal.toFixed(2)} km`
       }
+
       return 'N/A'
     },
     ancho: 150,
@@ -496,20 +519,23 @@ const COLUMNAS_TRAYECTOS = {
     key: 'duracionTrayecto',
     label: 'Duración del trayecto',
     obtenerValor: (trayecto) => {
-      // Prioridad: duracion en ms, duracionHoras, o calcular desde timestamps
-      if (trayecto.duracion) {
+      // 🔥 PRIORIDAD 1: duracion en milisegundos
+      if (trayecto.duracion && trayecto.duracion > 0) {
         const duracionMs = trayecto.duracion
         const horas = Math.floor(duracionMs / 3600000)
         const minutos = Math.floor((duracionMs % 3600000) / 60000)
-        return `${horas}h ${minutos}m`
+        const segundos = Math.floor((duracionMs % 60000) / 1000)
+        return `${horas}h ${minutos}m ${segundos}s`
       }
 
+      // 🔥 PRIORIDAD 2: duracionHoras
       if (trayecto.duracionHoras) {
         const horas = Math.floor(parseFloat(trayecto.duracionHoras))
         const minutos = Math.floor((parseFloat(trayecto.duracionHoras) - horas) * 60)
         return `${horas}h ${minutos}m`
       }
 
+      // 🔥 PRIORIDAD 3: calcular desde timestamps
       if (trayecto.inicioTimestamp && trayecto.finTimestamp) {
         const inicio =
           trayecto.inicioTimestamp instanceof Date
@@ -523,7 +549,8 @@ const COLUMNAS_TRAYECTOS = {
         const duracionMs = fin - inicio
         const horas = Math.floor(duracionMs / 3600000)
         const minutos = Math.floor((duracionMs % 3600000) / 60000)
-        return `${horas}h ${minutos}m`
+        const segundos = Math.floor((duracionMs % 60000) / 1000)
+        return `${horas}h ${minutos}m ${segundos}s`
       }
 
       return 'N/A'
@@ -531,7 +558,6 @@ const COLUMNAS_TRAYECTOS = {
     ancho: 120,
     formato: 'texto',
   },
-
   'Kilometraje recorrido': {
     key: 'kilometrajeRecorrido',
     label: 'Kilometraje recorrido',
@@ -568,16 +594,24 @@ const COLUMNAS_TRAYECTOS = {
     formato: 'numero',
   },
 
-  'Odómetro virtual': {
-    key: 'odometroVirtual',
-    label: 'Odómetro virtual',
+  'Tipo de odómetro': {
+    key: 'tipoOdometro',
+    label: 'Tipo de odómetro',
     obtenerValor: (trayecto) => {
-      return trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined
-        ? `${trayecto.odometroVirtual} km`
-        : 'N/A'
+      // 🔥 Detectar si tiene datos del hardware
+      if (trayecto.odometroInicio > 0 && trayecto.odometroFin > 0) {
+        return 'Hardware'
+      }
+
+      // 🔥 Si no, es virtual
+      if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
+        return 'Virtual'
+      }
+
+      return 'N/A'
     },
-    ancho: 150,
-    formato: 'numero',
+    ancho: 120,
+    formato: 'texto',
   },
 
   // Incluir columnas compartidas
