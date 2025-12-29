@@ -24,6 +24,19 @@ export function useRutaDiaria() {
   const limpiarNombreConductor = (nombre) => {
     return nombre.replace(/\s+undefined$/i, '').trim()
   }
+  const calcularDistanciaHaversine = (coord1, coord2) => {
+    const R = 6371 // Radio de la Tierra en km
+    const dLat = ((coord2.lat - coord1.lat) * Math.PI) / 180
+    const dLng = ((coord2.lng - coord1.lng) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((coord1.lat * Math.PI) / 180) *
+        Math.cos((coord2.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Distancia en km
+  }
 
   /**
    * 🔥 FUNCIÓN PRINCIPAL: Agrega coordenada en formato SIMPLE
@@ -98,6 +111,7 @@ export function useRutaDiaria() {
       // 🆕 6. Calcular duración y velocidad promedio
       let duracionMinutos = 0
       let velocidadPromedio = '0'
+      let distanciaRecorridaReal = 0
 
       if (rutaSnapshot.exists()) {
         const rutaData = rutaSnapshot.data()
@@ -108,11 +122,19 @@ export function useRutaDiaria() {
           const duracionMs = fechaFin - fechaInicio
           duracionMinutos = Math.floor(duracionMs / 60000)
 
+          // 🔥 CALCULAR DISTANCIA REAL del día usando coordenadas
+          if (todasLasCoordenadas.length >= 2) {
+            for (let i = 1; i < todasLasCoordenadas.length; i++) {
+              const coord1 = todasLasCoordenadas[i - 1]
+              const coord2 = todasLasCoordenadas[i]
+              distanciaRecorridaReal += calcularDistanciaHaversine(coord1, coord2)
+            }
+          }
+
           // Calcular velocidad promedio si hay distancia y duración
-          const distanciaKm = parseFloat(rutaData.distancia_recorrida_km || '0')
-          if (duracionMinutos > 0 && distanciaKm > 0) {
+          if (duracionMinutos > 0 && distanciaRecorridaReal > 0) {
             const duracionHoras = duracionMinutos / 60
-            const velocidadCalculada = distanciaKm / duracionHoras
+            const velocidadCalculada = distanciaRecorridaReal / duracionHoras
 
             if (isFinite(velocidadCalculada) && velocidadCalculada >= 0) {
               velocidadPromedio = velocidadCalculada.toFixed(2)
@@ -128,6 +150,7 @@ export function useRutaDiaria() {
         total_coordenadas: todasLasCoordenadas.length,
         duracion_total_minutos: duracionMinutos, // ← 🆕 AGREGADO
         velocidad_promedio: velocidadPromedio, // ← 🆕 AGREGADO
+        distancia_recorrida_km: distanciaRecorridaReal.toFixed(2),
       }
 
       // Agregar info del conductor si es primera coordenada
