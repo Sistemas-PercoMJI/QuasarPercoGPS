@@ -1,3 +1,4 @@
+/*Este es mi IndexPage.vue*/
 <template>
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>

@@ -1,3 +1,4 @@
+/*EstadoFlota.vue */
 <template>
   <div class="estado-flota-wrapper">
     <!-- Header principal -->
@@ -519,7 +520,8 @@ import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
 import { useEventosUnidad } from 'src/composables/useEventosUnidad'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
-const { cargarUsuarioActual } = useMultiTenancy()
+// 🆕 IMPORTAR idEmpresaActual
+const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 // Composables
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
@@ -537,7 +539,7 @@ const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
 const tabActual = ref('resumen')
 
-// ✅ NUEVO: Estado para conductores
+// Estado para conductores
 const conductoresLista = ref([])
 const cargandoConductores = ref(false)
 
@@ -560,15 +562,12 @@ const loadingEventos = ref(false)
 
 // ==================== FUNCIONES PARA CONDUCTORES ====================
 
-// ✅ NUEVO: Cargar conductores desde Firebase
 const cargarConductoresFirebase = async () => {
   cargandoConductores.value = true
   try {
-    // 🔥 REEMPLAZAR TODO EL CONTENIDO DE ESTA FUNCIÓN POR ESTO:
-
     const { query, orderBy, getDocs } = await import('firebase/firestore')
 
-    // 🔥 APLICAR FILTRO DE EMPRESA
+    // Aplicar filtro de empresa
     const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
     const qOrdenado = query(q, orderBy('Nombre'))
 
@@ -589,7 +588,6 @@ const cargarConductoresFirebase = async () => {
   }
 }
 
-// ✅ NUEVO: Función para buscar el conductor asignado a una unidad
 const obtenerConductorDeUnidad = (unidadId) => {
   if (!unidadId || !conductoresLista.value.length) return null
 
@@ -608,12 +606,31 @@ const obtenerConductorDeUnidad = (unidadId) => {
 
   return null
 }
+
 // ==================== COMPUTED ====================
+
+// 🔥 VALIDACIÓN ADICIONAL: Filtrar unidades por empresa
+const unidadesFiltradas = computed(() => {
+  if (!idEmpresaActual.value) {
+    console.warn('⚠️ No hay IdEmpresa, no se muestran unidades')
+    return []
+  }
+
+  // 🔥 Filtrar por IdEmpresaUnidad (seguridad adicional)
+  return unidadesActivas.value.filter((unidad) => {
+    // Si es array de empresas (multi-tenant)
+    if (Array.isArray(idEmpresaActual.value)) {
+      return idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
+    }
+
+    // Si es string simple
+    return unidad.IdEmpresaUnidad === idEmpresaActual.value
+  })
+})
 
 // Computed - Convertir unidades activas a formato de vehículos
 const vehiculos = computed(() => {
-  return unidadesActivas.value.map((unidad) => {
-    // ✅ CORREGIDO: Usar la función correcta
+  return unidadesFiltradas.value.map((unidad) => {
     const infoConductor = obtenerConductorDeUnidad(unidad.id)
 
     return {
@@ -625,7 +642,7 @@ const vehiculos = computed(() => {
       velocidad: `${unidad.velocidad} km/h`,
       estado: unidad.estado,
 
-      // INFORMACIÓN DEL CONDUCTOR (nuevo)
+      // INFORMACIÓN DEL CONDUCTOR
       conductor: infoConductor ? infoConductor.nombre : 'Sin conductor',
       conductorId: infoConductor ? infoConductor.id : null,
       conductorTelefono: infoConductor ? infoConductor.telefono : null,
@@ -708,7 +725,6 @@ const trayectosFiltradosPorHora = computed(() => {
     return []
   }
 
-  // Si no hay filtros de hora, mostrar todos
   if (!horaInicio.value || !horaFin.value) {
     return trayectosDia.value
   }
@@ -720,22 +736,18 @@ const trayectosFiltradosPorHora = computed(() => {
   const minutosFin = horaFinNum * 60 + minFinNum
 
   return trayectosDia.value.filter((trayecto) => {
-    // Extraer hora del formato "09:24 a.m." o "10:48 a.m."
     const horaStr = trayecto.horaInicio.toLowerCase().trim()
-
-    // Regex para capturar hora:minuto am/pm
     const match = horaStr.match(/(\d+):(\d+)\s*(a\.?m\.?|p\.?m\.?)/i)
 
     if (!match) {
       console.warn('⚠️ No se pudo parsear la hora:', horaStr)
-      return true // Incluir si no se puede parsear
+      return true
     }
 
     let hora = parseInt(match[1])
     const minuto = parseInt(match[2])
-    const periodo = match[3].toLowerCase().replace(/\./g, '') // 'am' o 'pm'
+    const periodo = match[3].toLowerCase().replace(/\./g, '')
 
-    // Convertir a formato 24 horas
     if (periodo === 'pm' && hora !== 12) {
       hora += 12
     } else if (periodo === 'am' && hora === 12) {
@@ -743,15 +755,10 @@ const trayectosFiltradosPorHora = computed(() => {
     }
 
     const minutosTrayecto = hora * 60 + minuto
-
-    // Verificar si está en el rango
-    const enRango = minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
-
-    return enRango
+    return minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
   })
 })
 
-// Computed para eventos filtrados
 const eventosFiltrados = computed(() => {
   if (!eventosUnidad.value || eventosUnidad.value.length === 0) {
     return []
@@ -780,7 +787,6 @@ const eventosFiltrados = computed(() => {
 
 // ==================== FUNCIONES ====================
 
-// Cargar estadísticas
 const cargarEstadisticasVehiculo = async (unidadId) => {
   loadingEstadisticas.value = true
   try {
@@ -792,7 +798,6 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
   }
 }
 
-// Cargar trayectos del día
 const cargarTrayectosDia = async () => {
   if (!vehiculoSeleccionado.value) return
 
@@ -816,7 +821,6 @@ const cargarTrayectosDia = async () => {
   }
 }
 
-// Cargar eventos de la unidad
 const cargarEventosUnidad = async (unidadId) => {
   loadingEventos.value = true
   try {
@@ -832,7 +836,6 @@ const cargarEventosUnidad = async (unidadId) => {
   }
 }
 
-// Navegación de fechas
 const cambiarDia = (dias) => {
   const nuevaFecha = new Date(fechaSeleccionada.value)
   nuevaFecha.setDate(nuevaFecha.getDate() + dias)
@@ -850,7 +853,6 @@ const resetearFiltroHoras = () => {
   horaFin.value = '23:59'
 }
 
-// Funciones de vista
 function seleccionarEstado(estado) {
   estadoSeleccionado.value = estado.tipo
 }
@@ -934,22 +936,17 @@ function getEstadoTexto(estado) {
 
 // ==================== WATCHERS ====================
 
-// 🔥 ÚNICO WATCH para vehiculoSeleccionado - Carga todo lo necesario
 watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
   if (nuevoVehiculo) {
-    // Cargar estadísticas (Tab Resumen)
     await cargarEstadisticasVehiculo(nuevoVehiculo.id)
 
-    // Resetear y cargar trayectos (Tab Hoy)
     fechaSeleccionada.value = new Date()
     horaInicio.value = '00:00'
     horaFin.value = '23:59'
     await cargarTrayectosDia()
 
-    // Cargar eventos (Tab Notificaciones)
     await cargarEventosUnidad(nuevoVehiculo.id)
   } else {
-    // Limpiar todo al deseleccionar
     estadisticasVehiculo.value = null
     trayectosDia.value = []
     resumenDia.value = null
@@ -957,7 +954,6 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
   }
 })
 
-// Watch para recargar trayectos cuando cambia la fecha
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
     cargarTrayectosDia()
@@ -967,11 +963,21 @@ watch(fechaSeleccionada, () => {
 // ==================== LIFECYCLE ====================
 
 onMounted(async () => {
-  // ✅ NUEVO: Cargar conductores primero
-  await cargarConductoresFirebase()
+  // ✅ Cargar usuario y empresa primero
   await cargarUsuarioActual()
 
-  iniciarTracking()
+  // ✅ Esperar a que el IdEmpresa esté disponible
+  if (!idEmpresaActual.value) {
+    console.warn('⚠️ Esperando IdEmpresa...')
+    // Intentar de nuevo en 1 segundo
+    setTimeout(async () => {
+      await cargarConductoresFirebase()
+      iniciarTracking()
+    }, 1000)
+  } else {
+    await cargarConductoresFirebase()
+    iniciarTracking()
+  }
 })
 </script>
 

@@ -1,4 +1,5 @@
 <!-- eslint-disable vue/multi-word-component-names -->
+/*COnductores.vue */
 <template>
   <div class="conductores-drawer">
     <!-- Header con gradiente y estadísticas -->
