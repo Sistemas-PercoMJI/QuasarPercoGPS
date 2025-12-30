@@ -300,7 +300,7 @@ export function useSimuladorUnidades() {
         ultimaActualizacion: new Date().toISOString(),
         ultimoPuntoTiempo: Date.now(),
         conductorId: conductor.id,
-        conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
+        conductorNombre: [conductor.Nombre, conductor.Apellido].filter(Boolean).join(' '),
         conductorFoto: conductor.LicenciaConducirFoto || null,
       })
       // Iniciar intervalo
@@ -322,7 +322,7 @@ export function useSimuladorUnidades() {
     const estado = {
       id: unidad.id,
       conductorId: conductor.id,
-      conductorNombre: `${conductor.Nombre} ${conductor.Apellido}`,
+      conductorNombre: [conductor.Nombre, conductor.Apellido].filter(Boolean).join(' '),
       conductorFoto: conductor.LicenciaConducirFoto || null,
       unidadId: unidad.id,
       unidadNombre: unidad.Unidad,
@@ -350,7 +350,7 @@ export function useSimuladorUnidades() {
       try {
         await agregarCoordenadaSimple(unidad.id, {
           conductor_id: conductor.id,
-          conductor_nombre: `${conductor.Nombre} ${conductor.Apellido}`,
+          conductor_nombre: [conductor.Nombre, conductor.Apellido].filter(Boolean).join(' '), // ✅ AQUÍ
           odometro_inicio: '0',
           velocidad_actual: String(velocidadBase),
           nuevaCoordenada: {
