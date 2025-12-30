@@ -1131,16 +1131,7 @@ const linksList = [
     title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    click: () => {
-      if (router.currentRoute.value.path !== '/') {
-        router.push('/')
-        setTimeout(() => {
-          geozonaDrawerOpen.value = true
-        }, 300)
-      } else {
-        geozonaDrawerOpen.value = true
-      }
-    },
+    action: 'open-geozonas', // ✅ Cambiar a action
   },
   {
     title: 'Eventos',
@@ -1256,14 +1247,29 @@ function handleLinkClick(link) {
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
-
-    // 🔥 SOLUCIÓN: Usar nextTick en lugar de setTimeout
     nextTick(() => {
       conductoresDrawerOpen.value = true
     })
   } else if (link.action === 'open-geozonas') {
+    // ✅ MEJORADO: Mejor sincronización
     cerrarTodosLosDialogs()
-    geozonaDrawerOpen.value = true
+
+    if (router.currentRoute.value.path !== '/') {
+      // Si necesitamos cambiar de ruta
+      router.push('/').then(() => {
+        // Esperar a que Vue termine de renderizar
+        nextTick(() => {
+          setTimeout(() => {
+            geozonaDrawerOpen.value = true
+          }, 100) // Pequeño delay adicional para animaciones
+        })
+      })
+    } else {
+      // Si ya estamos en la ruta correcta, abrir inmediatamente
+      nextTick(() => {
+        geozonaDrawerOpen.value = true
+      })
+    }
   } else if (link.action === 'open-eventos') {
     cerrarTodosLosDialogs()
     eventosDrawerOpen.value = true
