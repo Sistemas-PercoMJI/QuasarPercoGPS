@@ -1515,6 +1515,24 @@ export function useMapboxGL() {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
   }
 
+  const eliminarMarcadorUnidad = (unidadId) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
+
+    if (marcadoresUnidades.value[unidadId]) {
+      // Eliminar el marcador del mapa
+      marcadoresUnidades.value[unidadId].remove()
+
+      // Eliminar de la cache
+      delete marcadoresUnidades.value[unidadId]
+      ultimasPosiciones.delete(unidadId)
+
+      console.log(`✅ Marcador ${unidadId} eliminado del mapa`)
+    }
+  }
+
   return {
     map,
     initMap,
@@ -1582,5 +1600,6 @@ export function useMapboxGL() {
     limpiarMarcadoresUnidades,
     centrarEnUnidad,
     setPuntosSeleccionados,
+    eliminarMarcadorUnidad,
   }
 }

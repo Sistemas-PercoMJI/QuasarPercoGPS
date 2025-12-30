@@ -517,12 +517,11 @@ export function useSimuladorUnidades() {
   const detenerSimulacion = async () => {
     intervalos.value.forEach(({ intervalo }) => clearInterval(intervalo))
 
-    // 🆕 Corregido: solo usamos unidadId en lugar de desestructurar unidadIdReal que no se usa
     for (const { unidadId } of unidadesSimuladas.value) {
       try {
-        // 🆕 Ya no necesitamos llamar a iniciarOActualizarRutaDiaria aquí
-        // porque forzarEnvioDeTodosLosBatches ya se encargó
+        // 🔍 VERIFICAR QUE ESTA LÍNEA ESTÉ PRESENTE
         await remove(dbRef(realtimeDb, `unidades_activas/${unidadId}`))
+        console.log(`✅ Unidad ${unidadId} eliminada del simulador`)
       } catch (err) {
         console.error(`Error finalizando ${unidadId}:`, err)
       }

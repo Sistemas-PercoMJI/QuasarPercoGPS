@@ -5,12 +5,14 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { signInWithEmailAndPassword } from 'firebase/auth'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
 const router = useRouter()
 const $q = useQuasar()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const { cargarUsuarioActual } = useMultiTenancy()
 
 const login = async () => {
   // Validar campos
@@ -27,6 +29,8 @@ const login = async () => {
   try {
     // Intentar login con Firebase
     const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
+    await cargarUsuarioActual()
+    console.log('✅ Usuario y empresa cargados')
 
     // Login exitoso
     console.log('Usuario logueado:', userCredential.user)

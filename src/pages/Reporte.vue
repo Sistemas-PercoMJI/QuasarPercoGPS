@@ -1260,6 +1260,31 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
+    console.log(
+      '🔍 PRIMER TRAYECTO RAW:',
+      datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
+        : null,
+    )
+
+    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
+      duracion: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
+        : null,
+      duracionHoras: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
+        : null,
+      kilometrajeInicio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
+        : null,
+      kilometrajeFinal: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
+        : null,
+      velocidadPromedio: datosReales.eventosAgrupados
+        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
+        : null,
+    })
+
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
@@ -1276,12 +1301,18 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (mostrarMapaTrayecto.value) {
-        $q.notify({
-          type: 'info',
-          message: 'Generando mapa de trayectos...',
-          icon: 'map',
-          timeout: 2000,
+      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
+      console.log('📊 datosReales completo:', datosReales)
+      if (datosReales.eventosAgrupados) {
+        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
+          console.log(
+            `📦 ${nombre}:`,
+            trayectos.map((t) => ({
+              unidad: t.unidadNombre,
+              placa: t.Placa,
+              todasLasPropiedades: Object.keys(t),
+            })),
+          )
         })
       }
 

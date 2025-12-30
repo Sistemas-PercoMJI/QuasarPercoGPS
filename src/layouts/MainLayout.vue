@@ -463,6 +463,7 @@ import { signOut } from 'firebase/auth'
 import { useNotifications } from 'src/composables/useNotifications.js'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
@@ -475,6 +476,8 @@ const router = useRouter()
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()
 const userId = ref(auth.currentUser?.uid || '')
+
+const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 // ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
@@ -1028,6 +1031,19 @@ function getColorTipo(tipo) {
 }
 
 onMounted(() => {
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      console.log('✅ Usuario autenticado:', user.uid)
+
+      try {
+        // Cargar datos del usuario y su empresa
+        await cargarUsuarioActual()
+        console.log('🏢 Empresa cargada:', idEmpresaActual.value)
+      } catch (error) {
+        console.error('❌ Error cargando usuario:', error)
+      }
+    }
+  })
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
   })
@@ -1142,6 +1158,15 @@ watch(
     }
   },
   { deep: true },
+)
+watch(
+  () => router.currentRoute.value.path,
+  (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      cerrarTodosLosDialogs()
+      limpiarBusqueda()
+    }
+  },
 )
 
 // Watch adicional por si algo intenta cerrarlo
