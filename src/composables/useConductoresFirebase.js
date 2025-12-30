@@ -13,8 +13,11 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db, auth } from 'src/firebase/firebaseConfig'
+import { useMultiTenancy } from './useMultiTenancy'
 
 export function useConductoresFirebase() {
+  const { crearQueryConEmpresa } = useMultiTenancy()
+
   // Estado reactivo
   const conductores = ref([])
   const unidades = ref([])
@@ -44,12 +47,16 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      const q = query(conductoresRef, orderBy('Nombre'))
-      const snapshot = await getDocs(q)
+      const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
+      const qOrdenado = query(q, orderBy('Nombre'))
+
+      const snapshot = await getDocs(qOrdenado)
       conductores.value = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
+
+      console.log(`✅ ${conductores.value.length} conductores de la empresa cargados`)
       return conductores.value
     } catch (err) {
       console.error('Error al obtener conductores:', err)
@@ -61,14 +68,17 @@ export function useConductoresFirebase() {
   }
 
   const escucharConductores = () => {
-    const q = query(conductoresRef, orderBy('Nombre'))
+    const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
+    const qOrdenado = query(q, orderBy('Nombre'))
+
     return onSnapshot(
-      q,
+      qOrdenado,
       (snapshot) => {
         conductores.value = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }))
+        console.log(`🔄 ${conductores.value.length} conductores actualizados`)
       },
       (err) => {
         console.error('Error en listener de conductores:', err)
@@ -705,12 +715,16 @@ export function useConductoresFirebase() {
     loading.value = true
     error.value = null
     try {
-      const q = query(unidadesRef, orderBy('Unidad'))
-      const snapshot = await getDocs(q)
+      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad')
+      const qOrdenado = query(q, orderBy('Unidad'))
+
+      const snapshot = await getDocs(qOrdenado)
       unidades.value = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
+
+      console.log(`✅ ${unidades.value.length} unidades de la empresa cargadas`)
       return unidades.value
     } catch (err) {
       console.error('Error al obtener unidades:', err)

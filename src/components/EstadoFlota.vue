@@ -517,12 +517,16 @@ import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
 import { useEventosUnidad } from 'src/composables/useEventosUnidad'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+
+const { cargarUsuarioActual } = useMultiTenancy()
 
 // Composables
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
 const { obtenerEventosDiarios } = useEventosUnidad()
+const { crearQueryConEmpresa } = useMultiTenancy()
 
 // Props y emits
 const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
@@ -560,19 +564,22 @@ const loadingEventos = ref(false)
 const cargarConductoresFirebase = async () => {
   cargandoConductores.value = true
   try {
-    const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
-    const { db } = await import('src/firebase/firebaseConfig')
+    // 🔥 REEMPLAZAR TODO EL CONTENIDO DE ESTA FUNCIÓN POR ESTO:
 
-    const conductoresRef = collection(db, 'Conductores')
-    const q = query(conductoresRef, orderBy('Nombre'))
-    const snapshot = await getDocs(q)
+    const { query, orderBy, getDocs } = await import('firebase/firestore')
+
+    // 🔥 APLICAR FILTRO DE EMPRESA
+    const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
+    const qOrdenado = query(q, orderBy('Nombre'))
+
+    const snapshot = await getDocs(qOrdenado)
 
     conductoresLista.value = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }))
 
-    console.log(`✅ ${conductoresLista.value.length} conductores cargados`)
+    console.log(`✅ ${conductoresLista.value.length} conductores de la empresa cargados`)
     return conductoresLista.value
   } catch (error) {
     console.error('❌ Error cargando conductores:', error)
@@ -962,8 +969,8 @@ watch(fechaSeleccionada, () => {
 onMounted(async () => {
   // ✅ NUEVO: Cargar conductores primero
   await cargarConductoresFirebase()
+  await cargarUsuarioActual()
 
-  // Luego iniciar el tracking
   iniciarTracking()
 })
 </script>

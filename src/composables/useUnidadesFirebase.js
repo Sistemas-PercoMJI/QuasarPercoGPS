@@ -1,13 +1,15 @@
 // composables/useUnidadesFirebase.js
 import { ref } from 'vue'
-import { collection, getDocs } from 'firebase/firestore'
-import { db, auth } from 'src/firebase/firebaseConfig'
+import { getDocs, orderBy, query } from 'firebase/firestore'
+import { auth } from 'src/firebase/firebaseConfig'
+import { useMultiTenancy } from './useMultiTenancy'
 
 const unidades = ref([])
 const cargando = ref(false)
 const error = ref(null)
 
 export function useUnidadesFirebase() {
+  const { crearQueryConEmpresa } = useMultiTenancy()
   const getCurrentUserId = () => {
     return auth.currentUser?.uid || null
   }
@@ -26,14 +28,16 @@ export function useUnidadesFirebase() {
         return []
       }
 
-      const unidadesRef = collection(db, 'Unidades')
-      const snapshot = await getDocs(unidadesRef)
+      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad')
+      const qOrdenado = query(q, orderBy('Unidad'))
+      const snapshot = await getDocs(qOrdenado)
 
       unidades.value = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
 
+      console.log(`✅ ${unidades.value.length} unidades de la empresa cargadas`)
       return unidades.value
     } catch (err) {
       console.error('Error al obtener unidades:', err)

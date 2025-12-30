@@ -1014,8 +1014,10 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 import { useEventBus } from 'src/composables/useEventBus.js'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
 const { estadoCompartido, resetAbrirConductores } = useEventBus()
+const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 if (!estadoCompartido.value) {
   console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
@@ -2248,6 +2250,14 @@ async function quitarDeGrupo() {
 
 // Lifecycle
 onMounted(async () => {
+  if (!idEmpresaActual.value) {
+    await cargarUsuarioActual()
+  }
+
+  console.log('🏢 Empresa:', idEmpresaActual.value)
+
+  // Ahora sí cargar conductores
+  await obtenerConductores()
   try {
     await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
