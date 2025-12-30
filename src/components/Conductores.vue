@@ -73,8 +73,8 @@
             </q-item-label>
           </q-item-section>
 
+          <!-- Menú contextual para grupos -->
           <q-item-section side>
-            <!-- ✅ IMPORTANTE: Debe tener @click.stop -->
             <q-btn
               flat
               dense
@@ -85,6 +85,31 @@
               @click.stop="mostrarMenuGrupo($event, grupo)"
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
+
+              <!-- ✅ EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
+              <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+                <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+                  <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
+                    <q-item-section avatar>
+                      <q-icon name="edit" size="sm" color="primary" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Editar grupo</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-separator spaced inset />
+
+                  <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
+                    <q-item-section avatar>
+                      <q-icon name="delete" size="sm" color="negative" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-negative">Eliminar grupo</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
             </q-btn>
           </q-item-section>
         </q-item>
@@ -939,37 +964,6 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu
-      v-model="menuGrupoVisible"
-      anchor="top right"
-      self="top left"
-      :offset="[8, 0]"
-      transition-show="scale"
-      transition-hide="scale"
-      no-parent-event
-    >
-      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
-        <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
-          <q-item-section avatar>
-            <q-icon name="edit" size="sm" color="primary" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Editar grupo</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-separator spaced inset />
-
-        <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
-          <q-item-section avatar>
-            <q-icon name="delete" size="sm" color="negative" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label class="text-negative">Eliminar grupo</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
 
     <!-- Menú contextual para conductores -->
     <q-menu
