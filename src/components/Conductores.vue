@@ -73,8 +73,8 @@
             </q-item-label>
           </q-item-section>
 
+          <!-- Menú contextual para grupos -->
           <q-item-section side>
-            <!-- ✅ IMPORTANTE: Debe tener @click.stop -->
             <q-btn
               flat
               dense
@@ -85,6 +85,31 @@
               @click.stop="mostrarMenuGrupo($event, grupo)"
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
+
+              <!-- ✅ EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
+              <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+                <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+                  <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
+                    <q-item-section avatar>
+                      <q-icon name="edit" size="sm" color="primary" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>Editar grupo</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-separator spaced inset />
+
+                  <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
+                    <q-item-section avatar>
+                      <q-icon name="delete" size="sm" color="negative" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-negative">Eliminar grupo</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
             </q-btn>
           </q-item-section>
         </q-item>
@@ -939,37 +964,6 @@
     </q-dialog>
 
     <!-- Menú contextual para grupos -->
-    <q-menu
-      v-model="menuGrupoVisible"
-      anchor="top right"
-      self="top left"
-      :offset="[8, 0]"
-      transition-show="scale"
-      transition-hide="scale"
-      no-parent-event
-    >
-      <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
-        <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
-          <q-item-section avatar>
-            <q-icon name="edit" size="sm" color="primary" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Editar grupo</q-item-label>
-          </q-item-section>
-        </q-item>
-
-        <q-separator spaced inset />
-
-        <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
-          <q-item-section avatar>
-            <q-icon name="delete" size="sm" color="negative" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label class="text-negative">Eliminar grupo</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
 
     <!-- Menú contextual para conductores -->
     <q-menu
@@ -2149,6 +2143,7 @@ async function guardarGrupo() {
       return
     }
 
+    // ✅ MODO EDICIÓN
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -2160,12 +2155,32 @@ async function guardarGrupo() {
         message: 'Grupo actualizado correctamente',
         icon: 'check_circle',
       })
-    } else {
+    }
+    // ✅ MODO CREACIÓN
+    else {
+      const { collection, addDoc, Timestamp } = await import('firebase/firestore')
+      const { db, auth } = await import('src/firebase/firebaseConfig')
+
+      // ✅ IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
+      const userId = auth.currentUser.uid
+
+      const grupoData = {
+        Nombre: nuevoGrupo.value.Nombre,
+        ConductoresIds: conductoresSeleccionados.value,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      }
+
+      // 🔥 Ruta correcta: /Usuarios/{userId}/GruposConductores
+      await addDoc(collection(db, `Usuarios/${userId}/GruposConductores`), grupoData)
+
       Notify.create({
-        type: 'warning',
-        message: 'No se pueden crear nuevos grupos desde aquí',
-        icon: 'warning',
+        type: 'positive',
+        message: 'Grupo creado correctamente',
+        icon: 'check_circle',
       })
+
+      await obtenerGruposConductores()
     }
 
     dialogNuevoGrupo.value = false
@@ -2178,7 +2193,6 @@ async function guardarGrupo() {
     })
   }
 }
-
 function mostrarMenuGrupo(event, grupo) {
   event.preventDefault()
   event.stopPropagation()

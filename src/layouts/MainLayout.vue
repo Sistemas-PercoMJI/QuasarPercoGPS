@@ -286,6 +286,10 @@
             @click="handleLinkClick(link)"
             v-ripple
             class="nav-item"
+            :class="{
+              'nav-item-active-page': esRutaActiva(link) && !link.action && !link.click,
+              'nav-item-active-component': esRutaActiva(link) && (link.action || link.click),
+            }"
           >
             <q-item-section avatar>
               <q-icon :name="link.icon" size="24px" />
@@ -315,13 +319,12 @@
         <q-item clickable v-ripple class="config-item">
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
-              <q-icon name="settings" />
+              <q-icon name="logout" />
             </q-avatar>
           </q-item-section>
 
           <q-item-section v-if="drawerExpanded && !dialogAbierto">
-            <q-item-label class="text-weight-medium">Configuración</q-item-label>
-            <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
+            <q-item-label class="text-weight-medium">Cerrar Sesión</q-item-label>
           </q-item-section>
 
           <q-item-section side v-if="drawerExpanded && !dialogAbierto">
@@ -812,6 +815,33 @@ function seleccionarBusquedaReciente(reciente) {
   if (reciente.length >= 3) {
     realizarBusqueda(reciente)
   }
+}
+
+function esRutaActiva(link) {
+  const rutaActual = router.currentRoute.value.path
+
+  // Si el link tiene una acción (drawer), verificar si el drawer está abierto
+  if (link.action === 'open-estado-flota') {
+    return estadoFlotaDrawerOpen.value
+  }
+  if (link.action === 'open-conductores') {
+    return conductoresDrawerOpen.value
+  }
+  if (link.action === 'open-eventos') {
+    return eventosDrawerOpen.value
+  }
+
+  // Para el drawer de geozonas (que usa click)
+  if (link.title === 'GeoZonas y Puntos de interés') {
+    return geozonaDrawerOpen.value
+  }
+
+  // Para links normales, comparar con la ruta
+  if (link.link) {
+    return rutaActual === link.link
+  }
+
+  return false
 }
 
 // Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
@@ -1539,6 +1569,78 @@ function procesarResultado(resultado) {
 }
 </script>
 <style scoped>
+.nav-item {
+  border-radius: 12px;
+  margin: 4px 8px;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+  background-color: rgba(187, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+/* 🔴 ESTILO PARA PÁGINAS ACTIVAS (ROJO) */
+.nav-item-active-page {
+  background-color: rgba(187, 0, 0, 0.15) !important;
+  border-left: 4px solid #bb0000;
+}
+
+.nav-item-active-page :deep(.q-item__section--avatar) {
+  color: #bb0000 !important;
+}
+
+.nav-item-active-page :deep(.q-icon) {
+  color: #bb0000 !important;
+}
+
+.nav-item-active-page :deep(.q-item__label) {
+  color: #bb0000 !important;
+  font-weight: 600 !important;
+}
+
+/* 🟢 ESTILO PARA COMPONENTES/DRAWERS ACTIVOS (VERDE AZULADO) */
+.nav-item-active-component {
+  background: linear-gradient(
+    90deg,
+    rgba(145, 198, 188, 0.2) 0%,
+    rgba(5, 150, 105, 0.15) 100%
+  ) !important;
+  border-left: 4px solid #059669;
+}
+
+.nav-item-active-component :deep(.q-item__section--avatar) {
+  color: #059669 !important;
+}
+
+.nav-item-active-component :deep(.q-icon) {
+  color: #059669 !important;
+}
+
+.nav-item-active-component :deep(.q-item__label) {
+  color: #059669 !important;
+  font-weight: 600 !important;
+}
+
+/* ✅ RESETEAR COLOR CUANDO NO ESTÁ ACTIVO */
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component)
+  :deep(.q-item__section--avatar) {
+  color: #616161 !important;
+}
+
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component) :deep(.q-icon) {
+  color: #616161 !important;
+}
+
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component) :deep(.q-item__label) {
+  color: inherit !important;
+}
+
+/* Hover especial para cada tipo */
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component):hover {
+  background-color: rgba(187, 0, 0, 0.05);
+}
+
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
