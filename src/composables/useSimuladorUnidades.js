@@ -548,7 +548,7 @@ export function useSimuladorUnidades() {
 
     simulacionActiva.value = true
 
-    // 🆕 MONITOREAR CAMBIOS EN UNIDADES
+    // MONITOREAR CAMBIOS EN UNIDADES
     iniciarMonitoreoUnidades(async (cambio) => {
       if (cambio.tipo === 'cambio-empresa-unidad') {
         console.log(`🚨 Detectado cambio de empresa en UNIDAD ${cambio.unidadId}`)
@@ -563,17 +563,59 @@ export function useSimuladorUnidades() {
       }
     })
 
-    // 🆕 MONITOREAR CAMBIOS EN CONDUCTORES
+    // MONITOREAR CAMBIOS EN CONDUCTORES
     iniciarMonitoreoConductores(async (cambio) => {
+      // Cambio de empresa del conductor
       if (cambio.tipo === 'cambio-empresa-conductor') {
         console.log(`🚨 Detectado cambio de empresa en CONDUCTOR ${cambio.conductorId}`)
 
-        // Buscar si este conductor tiene una unidad asignada
         const conductor = cambio.conductor
         if (conductor.UnidadAsignada) {
           const unidad = unidades.find((u) => u.id === conductor.UnidadAsignada)
           if (unidad) {
             await reiniciarUnidadEspecifica(unidad, conductor)
+          }
+        }
+      }
+
+      // 🆕 CAMBIO DE ASIGNACIÓN DE UNIDAD
+      if (cambio.tipo === 'cambio-asignacion-unidad') {
+        console.log(`🚗 Detectado cambio de asignación en CONDUCTOR ${cambio.conductorId}`)
+
+        // CASO 1: Se quitó la unidad (unidadNueva = null)
+        if (!cambio.unidadNueva && cambio.unidadAnterior) {
+          console.log(`🗑️ Removiendo unidad ${cambio.unidadAnterior} del conductor`)
+          await detenerUnidadEspecifica(cambio.unidadAnterior)
+        }
+        // CASO 2: Se asignó una unidad nueva
+        else if (cambio.unidadNueva) {
+          // Si había una unidad anterior, primero detenerla
+          if (cambio.unidadAnterior && cambio.unidadAnterior !== cambio.unidadNueva) {
+            console.log(`🗑️ Removiendo unidad anterior ${cambio.unidadAnterior}`)
+            await detenerUnidadEspecifica(cambio.unidadAnterior)
+          }
+
+          // Buscar la nueva unidad en Firestore
+          console.log(`🆕 Asignando nueva unidad ${cambio.unidadNueva}`)
+
+          // Recargar unidades desde Firestore para obtener la más reciente
+          const { collection, query, where, getDocs } = await import('firebase/firestore')
+          const { db } = await import('src/firebase/firebaseConfig')
+
+          const unidadesRef = collection(db, 'Unidades')
+          const q = query(unidadesRef, where('__name__', '==', cambio.unidadNueva))
+          const snapshot = await getDocs(q)
+
+          if (!snapshot.empty) {
+            const unidadDoc = snapshot.docs[0]
+            const unidadData = { id: unidadDoc.id, ...unidadDoc.data() }
+
+            // Iniciar simulación con la nueva unidad
+            await iniciarSimulacionUnidad(cambio.conductor, unidadData)
+
+            console.log(`✅ Unidad ${cambio.unidadNueva} iniciada en el simulador`)
+          } else {
+            console.error(`❌ No se encontró la unidad ${cambio.unidadNueva} en Firestore`)
           }
         }
       }

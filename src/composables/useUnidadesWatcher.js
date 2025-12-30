@@ -1,4 +1,4 @@
-// src/composables/useUnidadesWatcher.js - VERSIÓN MEJORADA
+// src/composables/useUnidadesWatcher.js - VERSIÓN COMPLETA
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, onSnapshot } from 'firebase/firestore'
 
@@ -37,7 +37,6 @@ export function useUnidadesWatcher() {
           }
         }
 
-        // Actualizar cache
         unidadesCache.set(unidad.id, {
           IdEmpresaUnidad: unidad.IdEmpresaUnidad,
           Unidad: unidad.Unidad,
@@ -49,7 +48,7 @@ export function useUnidadesWatcher() {
   }
 
   /**
-   * 🆕 Iniciar monitoreo de cambios en Conductores
+   * Iniciar monitoreo de cambios en Conductores
    */
   const iniciarMonitoreoConductores = (callback) => {
     const conductoresRef = collection(db, 'Conductores')
@@ -61,6 +60,7 @@ export function useUnidadesWatcher() {
         if (change.type === 'modified') {
           const conductorAnterior = conductoresCache.get(conductor.id)
 
+          // 🆕 DETECTAR CAMBIO DE IdEmpresaConductor
           if (
             conductorAnterior &&
             conductorAnterior.IdEmpresaConductor !== conductor.IdEmpresaConductor
@@ -78,9 +78,24 @@ export function useUnidadesWatcher() {
               conductor: conductor,
             })
           }
+
+          // 🆕 DETECTAR CAMBIO DE ASIGNACIÓN DE UNIDAD
+          if (conductorAnterior && conductorAnterior.UnidadAsignada !== conductor.UnidadAsignada) {
+            console.log(
+              `🚗 CAMBIO DE ASIGNACIÓN EN CONDUCTOR ${conductor.id}:`,
+              `"${conductorAnterior.UnidadAsignada || 'Sin unidad'}" → "${conductor.UnidadAsignada || 'Sin unidad'}"`,
+            )
+
+            callback({
+              tipo: 'cambio-asignacion-unidad',
+              conductorId: conductor.id,
+              unidadAnterior: conductorAnterior.UnidadAsignada,
+              unidadNueva: conductor.UnidadAsignada,
+              conductor: conductor,
+            })
+          }
         }
 
-        // Actualizar cache
         conductoresCache.set(conductor.id, {
           IdEmpresaConductor: conductor.IdEmpresaConductor,
           Nombre: conductor.Nombre,
