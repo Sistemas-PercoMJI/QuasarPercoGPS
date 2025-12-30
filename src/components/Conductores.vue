@@ -2143,6 +2143,7 @@ async function guardarGrupo() {
       return
     }
 
+    // ✅ MODO EDICIÓN
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -2154,12 +2155,32 @@ async function guardarGrupo() {
         message: 'Grupo actualizado correctamente',
         icon: 'check_circle',
       })
-    } else {
+    }
+    // ✅ MODO CREACIÓN
+    else {
+      const { collection, addDoc, Timestamp } = await import('firebase/firestore')
+      const { db, auth } = await import('src/firebase/firebaseConfig')
+
+      // ✅ IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
+      const userId = auth.currentUser.uid
+
+      const grupoData = {
+        Nombre: nuevoGrupo.value.Nombre,
+        ConductoresIds: conductoresSeleccionados.value,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      }
+
+      // 🔥 Ruta correcta: /Usuarios/{userId}/GruposConductores
+      await addDoc(collection(db, `Usuarios/${userId}/GruposConductores`), grupoData)
+
       Notify.create({
-        type: 'warning',
-        message: 'No se pueden crear nuevos grupos desde aquí',
-        icon: 'warning',
+        type: 'positive',
+        message: 'Grupo creado correctamente',
+        icon: 'check_circle',
       })
+
+      await obtenerGruposConductores()
     }
 
     dialogNuevoGrupo.value = false
@@ -2172,7 +2193,6 @@ async function guardarGrupo() {
     })
   }
 }
-
 function mostrarMenuGrupo(event, grupo) {
   event.preventDefault()
   event.stopPropagation()
