@@ -456,6 +456,7 @@
                 label="Generar PDF"
                 icon="picture_as_pdf"
                 unelevated
+                class="btn-report-action btn-pdf"
                 style="min-width: 200px"
                 @click="generarReporte"
                 :loading="generando"
@@ -466,6 +467,7 @@
                 label="Generar Excel"
                 icon="table_chart"
                 unelevated
+                class="btn-report-action btn-excel"
                 style="min-width: 200px"
                 @click="generarExcel"
                 :loading="generando"
@@ -476,6 +478,7 @@
                 color="grey-7"
                 label="Cancelar"
                 icon="close"
+                class="btn-report-action btn-cancel"
                 style="min-width: 200px"
                 @click="cancelarReporte"
               />
@@ -1628,6 +1631,101 @@ watch(eventos, () => {
 </script>
 
 <style scoped>
+/*Estilos para los botones de generar*/
+/*Estilos para los botones de generar*/
+.btn-report-action {
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover general - MÁS ESPECÍFICO */
+.btn-report-action.btn-pdf:not(:disabled):hover,
+.btn-report-action.btn-excel:not(:disabled):hover,
+.btn-report-action.btn-cancel:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Active (al hacer click) */
+.btn-report-action.btn-pdf:not(:disabled):active,
+.btn-report-action.btn-excel:not(:disabled):active,
+.btn-report-action.btn-cancel:active {
+  transform: translateY(-1px) scale(0.98) !important;
+}
+
+/* Botón PDF - Rojo con sombra específica */
+.btn-report-action.btn-pdf:not(:disabled):hover {
+  box-shadow: 0 8px 24px rgba(211, 47, 47, 0.4) !important;
+}
+
+.btn-report-action.btn-pdf:not(:disabled):hover .q-icon {
+  animation: pulse-icon 0.6s ease;
+}
+
+/* Botón Excel - Verde con sombra específica */
+.btn-report-action.btn-excel:not(:disabled):hover {
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4) !important;
+}
+
+.btn-report-action.btn-excel:not(:disabled):hover .q-icon {
+  animation: bounce-icon 0.6s ease;
+}
+
+/* Botón Cancelar */
+.btn-report-action.btn-cancel:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Animaciones de iconos */
+@keyframes pulse-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes bounce-icon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Estado de carga - MÁS ESPECÍFICO */
+.btn-report-action.q-btn--loading,
+.btn-report-action.btn-pdf.q-btn--loading,
+.btn-report-action.btn-excel.q-btn--loading {
+  transform: none !important;
+}
+
+/* Estado deshabilitado - MÁS ESPECÍFICO */
+.btn-report-action:disabled,
+.btn-report-action.btn-pdf:disabled,
+.btn-report-action.btn-excel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Efecto ripple mejorado */
+.btn-report-action :deep(.q-focus-helper) {
+  background: currentColor;
+  opacity: 0.15;
+}
 /* 🆕 ESTILOS PARA EL HEADER DE COLUMNAS */
 .columnas-header {
   display: flex;
