@@ -411,8 +411,8 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="mostrarConfirmacionSalir">
-      <q-card style="min-width: 350px; border-radius: 12px; overflow: hidden">
+    <q-dialog v-model="mostrarConfirmacionSalir" transition-show="scale" transition-hide="scale">
+      <q-card style="min-width: 350px; border-radius: 16px; overflow: hidden">
         <!-- Header con gradiente -->
         <q-card-section
           class="row items-center q-pa-md"
@@ -433,15 +433,16 @@
         </q-card-section>
 
         <!-- Acciones -->
-        <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="q-px-lg" />
+        <!-- Acciones -->
+        <q-card-actions align="right" class="q-px-md q-pb-md q-gutter-sm">
+          <q-btn outline label="Cancelar" color="grey-7" v-close-popup class="btn-dialog-cancel" />
           <q-btn
             unelevated
             label="Cerrar sesión"
             color="negative"
             @click="ejecutarCierreSesion"
             v-close-popup
-            class="q-px-lg"
+            class="btn-dialog-confirm"
           />
         </q-card-actions>
       </q-card>
@@ -1579,6 +1580,36 @@ function procesarResultado(resultado) {
 }
 </script>
 <style scoped>
+:deep(.q-dialog__inner > .q-card) {
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+.btn-dialog-cancel,
+.btn-dialog-confirm {
+  border-radius: 10px;
+  padding: 8px 24px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.btn-dialog-cancel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-dialog-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.btn-dialog-cancel:active,
+.btn-dialog-confirm:active {
+  transform: translateY(0) scale(0.98);
+}
+
 .nav-item {
   border-radius: 12px;
   margin: 4px 8px;
