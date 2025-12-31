@@ -1631,6 +1631,56 @@ watch(eventos, () => {
 </script>
 
 <style scoped>
+/*estilos para los tabs*/
+:deep(.q-tab) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+/* Hover en tabs no activos */
+:deep(.q-tab):not(.q-tab--active):hover {
+  transform: translateY(-2px);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Tab activo con efecto especial */
+:deep(.q-tab--active) {
+  transform: scale(1.05);
+  font-weight: 600;
+}
+
+/* Animación del icono al hacer hover */
+:deep(.q-tab):hover .q-icon {
+  animation: tab-icon-bounce 0.5s ease;
+}
+
+/* Animación del indicador inferior */
+:deep(.q-tabs__indicator) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 3px !important;
+}
+
+/* Animación de rebote para iconos de tabs */
+@keyframes tab-icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Efecto al hacer click (active state) */
+:deep(.q-tab):active {
+  transform: scale(0.98);
+}
+
+/* Mejorar la transición del tab activo */
+:deep(.q-tab--active):hover {
+  transform: scale(1.05) translateY(-1px);
+}
 /*Estilos para los botones de generar*/
 /*Estilos para los botones de generar*/
 .btn-report-action {
