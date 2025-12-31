@@ -2507,24 +2507,69 @@ function navegarAUnidad() {
 </script>
 
 <style scoped>
-/* Animaciones y transiciones */
+/* ============================================ */
+/* === ANIMACIONES Y TRANSICIONES === */
+/* ============================================ */
 .conductor-card {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-bottom: 12px;
   border-radius: 12px;
   overflow: hidden;
+  position: relative;
+}
+
+/* Efecto de brillo deslizante */
+.conductor-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
 }
 
 .conductor-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.conductor-card:hover::before {
+  transform: translateX(100%);
+}
+
+/* Avatar que crece y rota */
+.conductor-card:hover .card-avatar {
+  animation: avatar-bounce-rotate 0.6s ease;
+}
+
+@keyframes avatar-bounce-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .conductor-selected {
   border: 2px solid #1976d2;
   background-color: #e3f2fd;
+  box-shadow: 0 8px 20px rgba(25, 118, 210, 0.3);
 }
 
+/* Flash highlight para notificaciones */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -2547,7 +2592,9 @@ function navegarAUnidad() {
   }
 }
 
-/* Estilos del contenedor principal */
+/* ============================================ */
+/* === LAYOUT PRINCIPAL === */
+/* ============================================ */
 .conductores-drawer {
   width: 100%;
   height: 100%;
@@ -2556,20 +2603,42 @@ function navegarAUnidad() {
   background: #f8f9fa;
 }
 
-/* Header mejorado con estadísticas */
+/* ============================================ */
+/* === HEADER MEJORADO === */
+/* ============================================ */
 .drawer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+  background-size: 200% 200%;
+  animation: gradientFlow 8s ease infinite;
   color: white;
   box-shadow: 0 4px 12px rgba(187, 0, 0, 0.2);
+  min-height: 64px;
+}
+
+@keyframes gradientFlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .header-content {
   display: flex;
   flex-direction: column;
+  flex: 1;
+}
+
+.header-content .text-h6 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .header-stats {
@@ -2582,6 +2651,11 @@ function navegarAUnidad() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: scale(1.1);
 }
 
 .stat-number {
@@ -2594,36 +2668,129 @@ function navegarAUnidad() {
   opacity: 0.8;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-actions .q-btn {
+  transition: all 0.3s ease;
+}
+
+.header-actions .q-btn:hover {
+  transform: scale(1.2) rotate(15deg);
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
 
-/* Tabs de navegación */
-.tabs-container {
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
+/* ============================================ */
+/* === BÚSQUEDA MEJORADA === */
+/* ============================================ */
+.search-input {
+  border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
-/* Lista de grupos resaltada */
+.search-input:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-input:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(187, 0, 0, 0.2);
+}
+
+.search-input:focus-within .q-icon {
+  animation: search-pulse 1.5s ease infinite;
+  color: #bb0000;
+}
+
+@keyframes search-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* ============================================ */
+/* === GRUPOS LISTA === */
+/* ============================================ */
 .grupos-lista {
   background-color: #f5f5f5;
   border-radius: 8px;
   margin-top: 8px;
   padding: 8px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .group-item {
-  border-radius: 4px;
-  margin-bottom: 4px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Borde lateral animado */
+.group-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
+  transition: width 0.3s ease;
+}
+
+.group-item:hover {
+  background-color: #e3f2fd;
+  transform: translateX(8px);
+}
+
+.group-item:hover::before {
+  width: 4px;
 }
 
 .group-item.q-item--active {
-  background-color: #e3f2fd;
-  font-weight: 500;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 
-/* Lista de conductores con diseño de tarjetas */
+.group-item.q-item--active::before {
+  width: 4px;
+}
+
+/* Avatar del grupo animado */
+.group-item:hover .q-avatar {
+  animation: avatar-grow-rotate 0.6s ease;
+}
+
+@keyframes avatar-grow-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* ============================================ */
+/* === LISTA DE CONDUCTORES (TARJETAS) === */
+/* ============================================ */
 .conductores-list {
   flex: 1;
   padding: 16px;
@@ -2632,7 +2799,7 @@ function navegarAUnidad() {
 .conductores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 0px;
+  gap: 16px;
   padding-top: 5px;
 }
 
@@ -2640,18 +2807,40 @@ function navegarAUnidad() {
   display: flex;
   align-items: center;
   padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+.conductor-card:hover .card-header {
+  padding-left: 20px;
 }
 
 .card-avatar {
   margin-right: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.conductor-card:hover .card-avatar {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .card-info {
   flex: 1;
+  transition: transform 0.3s ease;
+}
+
+.conductor-card:hover .card-info {
+  transform: translateX(4px);
 }
 
 .card-menu {
   opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.conductor-card:hover .card-menu {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 .card-body {
@@ -2661,9 +2850,16 @@ function navegarAUnidad() {
 .unit-badge {
   display: flex;
   justify-content: center;
+  transition: transform 0.3s ease;
 }
 
-/* Estilos para las fotos */
+.conductor-card:hover .unit-badge {
+  transform: scale(1.05);
+}
+
+/* ============================================ */
+/* === FOTOS GRID === */
+/* ============================================ */
 .fotos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -2676,18 +2872,41 @@ function navegarAUnidad() {
   border-radius: 8px;
   overflow: hidden;
   background: white;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Efecto de elevación 3D */
+.foto-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
 }
 
 .foto-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.foto-card:hover::after {
+  left: 100%;
 }
 
 .foto-thumbnail {
   width: 100%;
   height: 120px;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.foto-card:hover .foto-thumbnail {
+  transform: scale(1.1);
 }
 
 .foto-actions {
@@ -2695,6 +2914,14 @@ function navegarAUnidad() {
   justify-content: space-around;
   padding: 4px;
   background: #f5f5f5;
+}
+
+.foto-actions .q-btn {
+  transition: all 0.3s ease;
+}
+
+.foto-actions .q-btn:hover {
+  transform: scale(1.2);
 }
 
 .no-fotos {
@@ -2706,9 +2933,37 @@ function navegarAUnidad() {
   background: #fafafa;
   border-radius: 8px;
   margin-top: 8px;
+  animation: fadeInScale 0.6s ease-out;
 }
 
-/* Estilos para los detalles */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.no-fotos .q-icon {
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ============================================ */
+/* === DETALLES === */
+/* ============================================ */
 .detalle-section {
   margin-bottom: 16px;
 }
@@ -2720,6 +2975,11 @@ function navegarAUnidad() {
   font-weight: 500;
   display: flex;
   align-items: center;
+  transition: color 0.3s ease;
+}
+
+.detalle-label:hover {
+  color: #1976d2;
 }
 
 .detalle-valor {
@@ -2733,7 +2993,9 @@ function navegarAUnidad() {
   border-radius: 4px;
 }
 
-/* Estilos para el mensaje sin datos */
+/* ============================================ */
+/* === NO DATA === */
+/* ============================================ */
 .no-data {
   display: flex;
   flex-direction: column;
@@ -2741,30 +3003,46 @@ function navegarAUnidad() {
   justify-content: center;
   min-height: 200px;
   grid-column: 1 / -1;
+  animation: fadeInScale 0.6s ease-out;
 }
 
-/* Mejoras para el input de búsqueda */
-.search-input {
-  border-radius: 8px;
+.no-data .q-icon {
+  animation: float-empty 3s ease-in-out infinite;
 }
 
-/* Mejoras para la lista de grupos */
-.grupos-lista {
-  max-height: 200px;
-  overflow-y: auto;
+@keyframes float-empty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-10px) rotate(5deg);
+  }
 }
 
-/* Mejoras para el scroll */
-.q-scrollarea {
-  border-radius: 8px;
-}
-
-/* Estilos para el diálogo de detalles mejorado */
+/* ============================================ */
+/* === DIÁLOGO DE DETALLES === */
+/* ============================================ */
 .detalle-card {
   width: 100%;
   max-width: 600px;
   display: flex;
   flex-direction: column;
+  animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes dialog-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateX(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
 }
 
 .detalle-content {
@@ -2773,6 +3051,11 @@ function navegarAUnidad() {
 
 .expansion-item {
   border-bottom: 1px solid #eee;
+  transition: all 0.3s ease;
+}
+
+.expansion-item:hover {
+  background-color: #fafafa;
 }
 
 .expansion-item:last-child {
@@ -2782,10 +3065,16 @@ function navegarAUnidad() {
 .expansion-item .q-item {
   font-weight: 500;
   color: #424242;
+  transition: all 0.3s ease;
 }
 
-/* Estilos para los menús contextuales */
+.expansion-item:hover .q-item {
+  padding-left: 20px;
+}
 
+/* ============================================ */
+/* === MENÚS CONTEXTUALES === */
+/* ============================================ */
 .menu-contextual {
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -2797,10 +3086,29 @@ function navegarAUnidad() {
   padding: 12px 16px;
   transition: all 0.2s ease;
   min-height: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de slide */
+.menu-item::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(25, 118, 210, 0.1), transparent);
+  transition: left 0.4s ease;
 }
 
 .menu-item:hover {
   background: linear-gradient(90deg, #f5f5f5 0%, #fafafa 100%);
+  padding-left: 20px;
+}
+
+.menu-item:hover::before {
+  left: 100%;
 }
 
 .menu-item .q-item__section--avatar {
@@ -2809,45 +3117,37 @@ function navegarAUnidad() {
 
 .menu-item .q-icon {
   font-size: 18px;
+  transition: transform 0.3s ease;
 }
 
-/* Mejorar el separador */
+.menu-item:hover .q-icon {
+  animation: icon-bounce 0.6s ease;
+}
+
+@keyframes icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
 .q-separator--inset {
   margin-left: 48px;
 }
 
-.rounded-borders {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-}
-
-.grupos-lista .q-item {
-  border-radius: 8px;
-  padding-top: 10px;
-  margin-bottom: 6px;
-  transition: all 0.2s ease;
-}
-
-.grupos-lista .q-item:hover {
-  background-color: #e3f2fd;
-  transform: translateX(4px);
-  padding-bottom: 8px;
-}
-
-.grupos-lista .q-item.q-item--active {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
-  padding-bottom: 8px;
-}
-
+/* ============================================ */
+/* === SCROLLBAR PERSONALIZADO === */
+/* ============================================ */
 .conductores-list :deep(.q-scrollarea__thumb) {
   width: 5px !important;
   background-color: #9e9e9e !important;
   border-radius: 2.5px !important;
   opacity: 0.6 !important;
   right: 2px !important;
+  transition: all 0.3s ease !important;
 }
 
 .conductores-list :deep(.q-scrollarea__bar) {
@@ -2859,5 +3159,64 @@ function navegarAUnidad() {
 .conductores-list:hover :deep(.q-scrollarea__thumb) {
   opacity: 0.8 !important;
   background-color: #757575 !important;
+  width: 6px !important;
+}
+
+/* ============================================ */
+/* === BOTONES DE ACCIÓN === */
+/* ============================================ */
+.q-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.q-btn:hover {
+  transform: translateY(-2px);
+}
+
+.q-btn:active {
+  transform: translateY(0);
+}
+
+/* Botón flotante crear grupo */
+.q-btn[icon='create_new_folder']:hover {
+  transform: scale(1.15) rotate(10deg);
+}
+
+/* ============================================ */
+/* === BADGES === */
+/* ============================================ */
+.q-badge {
+  transition: all 0.3s ease;
+}
+
+.q-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================ */
+/* === INPUTS === */
+/* ============================================ */
+.q-input:focus-within {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
+}
+
+/* ============================================ */
+/* === RESPONSIVE === */
+/* ============================================ */
+@media (max-width: 600px) {
+  .conductores-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .drawer-header {
+    padding: 12px 16px;
+    min-height: 56px;
+  }
+
+  .header-content .text-h6 {
+    font-size: 16px;
+  }
 }
 </style>
