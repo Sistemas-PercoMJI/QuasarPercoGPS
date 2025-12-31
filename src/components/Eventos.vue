@@ -1066,16 +1066,32 @@ async function cargarDatos() {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
-  color: white;
   min-height: 48px;
+  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+  color: white;
 }
 
+@keyframes gradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
 .drawer-header .text-h6 {
   color: white;
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 20px; /* 🔥 Aumentado de 16px a 20px */
+  font-weight: 600; /* 🔥 Más bold (era 500) */
+  letter-spacing: 0.5px; /* 🔥 Espaciado para mejor legibilidad */
+  flex: 1;
+}
+.drawer-header .q-btn {
+  flex-shrink: 0; /* No permite que el botón se encoja */
 }
 
 /* 🆕 ANIMACIONES PARA STATS */
@@ -1086,14 +1102,60 @@ async function cargarDatos() {
 }
 
 .stat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.stat-item::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+.stat-item-animated:hover::before {
+  transform: translateX(100%);
+}
+.stat-item-animated:hover .stat-number {
+  animation: heartbeat 0.6s ease;
+}
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.15);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  75% {
+    transform: scale(1.15);
+  }
+}
+
+/* Icono que pulsa */
+.stat-item-animated:hover .q-icon {
+  animation: pulse-icon 0.8s ease;
+}
+
+@keyframes pulse-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
 }
 
 .stat-item-animated:hover {
@@ -1121,8 +1183,53 @@ async function cargarDatos() {
 }
 
 .btn-nuevo {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px; /* 🔥 Aumentado para esquinas más curvas */
   min-width: 80px;
   font-size: 12px;
+  font-weight: 600;
+  padding: 8px 20px; /* 🔥 Más padding horizontal */
+}
+.btn-nuevo::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.6s,
+    height 0.6s;
+}
+
+.btn-hover-effect:hover::after {
+  width: 300px;
+  height: 300px;
+}
+
+.btn-hover-effect:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.4);
+}
+
+.btn-hover-effect:active {
+  transform: translateY(-2px) scale(1.02);
+}
+.btn-hover-effect:hover .q-icon {
+  animation: rotate-icon 0.6s ease;
+}
+
+@keyframes rotate-icon {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-hover-effect {
@@ -1139,12 +1246,35 @@ async function cargarDatos() {
 }
 
 .search-compact {
-  flex: 1;
-  background: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-compact :deep(.q-field__control) {
   min-height: 32px;
+}
+.search-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+.search-compact:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(187, 0, 0, 0.2);
+}
+
+/* Icono de búsqueda que se agranda */
+.search-compact:focus-within .q-icon {
+  animation: pulse-search 1.5s ease infinite;
+  color: #bb0000;
+}
+
+@keyframes pulse-search {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 .filtro-compact :deep(.q-field__control) {
@@ -1176,17 +1306,25 @@ async function cargarDatos() {
   transition: all 0.3s ease;
 }
 
+.evento-item-hover {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
 .evento-item-hover:hover {
-  transform: translateY(-3px);
-  background-color: #f5f8fc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  margin: 2px 4px;
-  padding: 8px 12px;
+  transform: translateY(-5px) rotateX(2deg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.evento-item::before {
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 50%, #90caf9 100%);
+  background-size: 100% 200%;
+  transition: all 0.3s ease;
 }
 
 .evento-item-hover:hover::before {
-  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
+  width: 4px;
+  background-position: 0% 100%;
+  box-shadow: 2px 0 8px rgba(25, 118, 210, 0.5);
 }
 
 .evento-item.q-item--active {
@@ -1200,7 +1338,334 @@ async function cargarDatos() {
 
 /* 🆕 ANIMACIÓN PARA AVATAR */
 .avatar-bounce {
+  position: relative;
+}
+.evento-item-hover:hover .avatar-bounce {
+  animation: bounce-rotate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounce-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.2) rotate(-10deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(10deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1.1) rotate(0deg);
+  }
+}
+
+/* Sombra que crece */
+.evento-item-hover:hover .avatar-bounce {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* 7. NOMBRE Y UBICACIÓN QUE SE DESLIZAN */
+.evento-nombre,
+.evento-ubicacion {
+  transition: all 0.3s ease;
+}
+
+.evento-item-hover:hover .evento-nombre {
+  transform: translateX(8px);
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.evento-item-hover:hover .evento-ubicacion {
+  transform: translateX(6px);
+}
+
+/* Icono de ubicación que pulsa */
+.evento-item-hover:hover .evento-ubicacion .q-icon {
+  animation: pulse-location 1s ease infinite;
+}
+
+@keyframes pulse-location {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+/* 8. TOGGLE CON ANIMACIÓN SUAVE */
+.evento-actions .q-toggle {
   transition: transform 0.3s ease;
+}
+
+.evento-item-hover:hover .q-toggle {
+  transform: scale(1.1);
+}
+
+/* 9. BOTÓN MENÚ CON ROTACIÓN Y COLOR */
+.btn-menu-hover {
+  border-radius: 50%;
+  background: transparent;
+}
+
+.btn-menu-hover:hover {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  transform: rotate(180deg) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-menu-hover:active {
+  transform: rotate(180deg) scale(1.05);
+}
+
+/* 10. ITEMS DEL MENÚ CON EFECTOS */
+.menu-item-hover {
+  border-left: 3px solid transparent;
+}
+
+.menu-item-hover:hover {
+  border-left-color: #1976d2;
+  background: linear-gradient(90deg, #f5f8fc 0%, transparent 100%);
+  padding-left: 20px;
+}
+
+.menu-item-hover:hover .q-icon {
+  animation: swing 0.5s ease;
+}
+
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+}
+
+/* 11. CONDICIONES CON EFECTOS ESPECIALES */
+.condicion-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Borde animado */
+.condicion-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  padding: 2px;
+  background: linear-gradient(45deg, #1976d2, #42a5f5, #90caf9);
+  background-size: 200% 200%;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: gradient-border 3s ease infinite;
+}
+
+.condicion-card:hover::before {
+  opacity: 1;
+}
+
+@keyframes gradient-border {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* 12. BOTÓN DELETE CON EXPLOSIÓN */
+.btn-delete-hover:hover {
+  animation: shake-explode 0.5s ease;
+  background-color: rgba(244, 67, 54, 0.15);
+}
+
+@keyframes shake-explode {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(10deg) scale(1.15);
+  }
+  75% {
+    transform: rotate(-10deg) scale(1.1);
+  }
+}
+
+/* 13. SELECT CON ICONOS ANIMADOS */
+.q-select:hover :deep(.q-field__prepend .q-icon) {
+  animation: bounce-icon 0.6s ease;
+}
+
+@keyframes bounce-icon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Items del dropdown con efecto */
+.q-menu .q-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.q-menu .q-item::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(25, 118, 210, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.q-menu .q-item:hover::before {
+  left: 100%;
+}
+
+/* Iconos del dropdown que rotan */
+.q-menu .q-item:hover .q-icon {
+  animation: rotate-small 0.6s ease;
+}
+
+@keyframes rotate-small {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 14. DIÁLOGO CON ENTRADA DRAMÁTICA */
+.dialog-evento {
+  animation: dialog-entrance 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes dialog-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 15. LOADING CON PULSO */
+.loading-compact {
+  animation: pulse-loading 2s ease infinite;
+}
+
+@keyframes pulse-loading {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.loading-compact .q-spinner {
+  animation: rotate-spinner 1s linear infinite;
+}
+
+@keyframes rotate-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 16. NO DATA CON BOUNCE */
+.no-data-compact {
+  animation: fadeInUp 0.6s ease;
+}
+
+.no-data-compact .q-icon {
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+/* 17. FILTRO CON TRANSFORMACIÓN */
+.filtro-compact {
+  transition: all 0.3s ease;
+}
+
+.filtro-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.filtro-compact:focus-within {
+  box-shadow: 0 4px 16px rgba(187, 0, 0, 0.2);
+}
+
+/* 18. RIPPLE MEJORADO */
+.evento-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.evento-item::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(25, 118, 210, 0.3);
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.6s,
+    height 0.6s;
+}
+
+.evento-item:active::after {
+  width: 600px;
+  height: 600px;
 }
 
 .evento-item-hover:hover .avatar-bounce {
