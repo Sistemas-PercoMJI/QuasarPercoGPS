@@ -314,9 +314,10 @@
       </q-list>
 
       <!-- Botón de configuración en la parte inferior -->
+      <!-- Botón de cerrar sesión en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
-        <q-item clickable v-ripple class="config-item">
+        <q-item clickable v-ripple class="config-item" @click="confirmarCierreSesion">
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
               <q-icon name="logout" />
@@ -327,10 +328,6 @@
             <q-item-label class="text-weight-medium">Cerrar Sesión</q-item-label>
           </q-item-section>
 
-          <q-item-section side v-if="drawerExpanded && !dialogAbierto">
-            <q-icon name="expand_less" color="grey-5" />
-          </q-item-section>
-
           <!-- Tooltip cuando está minimizado -->
           <q-tooltip
             v-if="!drawerExpanded || dialogAbierto"
@@ -338,43 +335,8 @@
             self="center left"
             :offset="[10, 0]"
           >
-            Configuración
+            Cerrar Sesión
           </q-tooltip>
-
-          <!-- Menu de configuración -->
-          <q-menu
-            anchor="top left"
-            self="bottom left"
-            :offset="[0, 10]"
-            transition-show="jump-up"
-            transition-hide="jump-down"
-          >
-            <q-card style="width: 300px; max-width: 90vw" class="rounded-borders">
-              <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6 text-weight-bold">Configuración</div>
-                <q-space />
-                <q-btn icon="close" flat round dense v-close-popup />
-              </q-card-section>
-
-              <q-separator class="q-my-sm" />
-
-              <q-list dense>
-                <q-separator class="q-my-sm" />
-
-                <q-item clickable v-ripple @click="cerrarSesionDesdeConfig" v-close-popup>
-                  <q-item-section avatar>
-                    <q-avatar color="negative" text-color="white" size="sm">
-                      <q-icon name="logout" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Cerrar Sesión</q-item-label>
-                    <q-item-label class="q-pb-md" caption>Salir de tu cuenta</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card>
-          </q-menu>
         </q-item>
       </div>
     </q-drawer>
@@ -449,6 +411,41 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="mostrarConfirmacionSalir">
+      <q-card style="min-width: 350px; border-radius: 12px; overflow: hidden">
+        <!-- Header con gradiente -->
+        <q-card-section
+          class="row items-center q-pa-md"
+          style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%)"
+        >
+          <q-avatar icon="logout" color="white" text-color="red-7" size="42px" />
+          <span class="q-ml-sm text-h6 text-white text-weight-bold">¿Seguro de salir?</span>
+          <q-space />
+          <q-btn icon="close" flat round dense color="white" v-close-popup />
+        </q-card-section>
+
+        <!-- Separador visual -->
+        <q-separator />
+
+        <!-- Contenido -->
+        <q-card-section class="q-pt-lg q-pb-md">
+          <p class="text-body1 text-grey-8 q-mb-none">¿Estás seguro de que deseas cerrar sesión?</p>
+        </q-card-section>
+
+        <!-- Acciones -->
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup class="q-px-lg" />
+          <q-btn
+            unelevated
+            label="Cerrar sesión"
+            color="negative"
+            @click="ejecutarCierreSesion"
+            v-close-popup
+            class="q-px-lg"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -1104,9 +1101,6 @@ function handleClickOutside(event) {
     mostrarSugerencias.value = false
   }
 }
-function cerrarSesionDesdeConfig() {
-  logout()
-}
 
 const linksList = [
   {
@@ -1154,6 +1148,7 @@ const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
 const eventosDrawerOpen = ref(false)
+const mostrarConfirmacionSalir = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
@@ -1299,6 +1294,15 @@ function cerrarGeozonas() {
 
 function cerrarEventos() {
   eventosDrawerOpen.value = false
+}
+
+// ✅ FUNCIÓN PARA MOSTRAR EL DIALOG
+function confirmarCierreSesion() {
+  mostrarConfirmacionSalir.value = true
+}
+
+function ejecutarCierreSesion() {
+  logout()
 }
 
 const logout = async () => {
