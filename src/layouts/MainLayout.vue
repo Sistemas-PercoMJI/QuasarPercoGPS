@@ -15,6 +15,7 @@
             dense
             @keyup.enter="buscar"
             @focus="onFocus"
+            style="box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
@@ -314,9 +315,10 @@
       </q-list>
 
       <!-- Botón de configuración en la parte inferior -->
+      <!-- Botón de cerrar sesión en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
-        <q-item clickable v-ripple class="config-item">
+        <q-item clickable v-ripple class="config-item" @click="confirmarCierreSesion">
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
               <q-icon name="logout" />
@@ -327,10 +329,6 @@
             <q-item-label class="text-weight-medium">Cerrar Sesión</q-item-label>
           </q-item-section>
 
-          <q-item-section side v-if="drawerExpanded && !dialogAbierto">
-            <q-icon name="expand_less" color="grey-5" />
-          </q-item-section>
-
           <!-- Tooltip cuando está minimizado -->
           <q-tooltip
             v-if="!drawerExpanded || dialogAbierto"
@@ -338,43 +336,8 @@
             self="center left"
             :offset="[10, 0]"
           >
-            Configuración
+            Cerrar Sesión
           </q-tooltip>
-
-          <!-- Menu de configuración -->
-          <q-menu
-            anchor="top left"
-            self="bottom left"
-            :offset="[0, 10]"
-            transition-show="jump-up"
-            transition-hide="jump-down"
-          >
-            <q-card style="width: 300px; max-width: 90vw" class="rounded-borders">
-              <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6 text-weight-bold">Configuración</div>
-                <q-space />
-                <q-btn icon="close" flat round dense v-close-popup />
-              </q-card-section>
-
-              <q-separator class="q-my-sm" />
-
-              <q-list dense>
-                <q-separator class="q-my-sm" />
-
-                <q-item clickable v-ripple @click="cerrarSesionDesdeConfig" v-close-popup>
-                  <q-item-section avatar>
-                    <q-avatar color="negative" text-color="white" size="sm">
-                      <q-icon name="logout" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Cerrar Sesión</q-item-label>
-                    <q-item-label class="q-pb-md" caption>Salir de tu cuenta</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card>
-          </q-menu>
         </q-item>
       </div>
     </q-drawer>
@@ -449,6 +412,42 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="mostrarConfirmacionSalir" transition-show="scale" transition-hide="scale">
+      <q-card style="min-width: 350px; border-radius: 16px; overflow: hidden">
+        <!-- Header con gradiente -->
+        <q-card-section
+          class="row items-center q-pa-md"
+          style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%)"
+        >
+          <q-avatar icon="logout" color="white" text-color="red-7" size="42px" />
+          <span class="q-ml-sm text-h6 text-white text-weight-bold">¿Seguro de salir?</span>
+          <q-space />
+          <q-btn icon="close" flat round dense color="white" v-close-popup />
+        </q-card-section>
+
+        <!-- Separador visual -->
+        <q-separator />
+
+        <!-- Contenido -->
+        <q-card-section class="q-pt-lg q-pb-md">
+          <p class="text-body1 text-grey-8 q-mb-none">¿Estás seguro de que deseas cerrar sesión?</p>
+        </q-card-section>
+
+        <!-- Acciones -->
+        <!-- Acciones -->
+        <q-card-actions align="right" class="q-px-md q-pb-md q-gutter-sm">
+          <q-btn outline label="Cancelar" color="grey-7" v-close-popup class="btn-dialog-cancel" />
+          <q-btn
+            unelevated
+            label="Cerrar sesión"
+            color="negative"
+            @click="ejecutarCierreSesion"
+            v-close-popup
+            class="btn-dialog-confirm"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -1104,9 +1103,6 @@ function handleClickOutside(event) {
     mostrarSugerencias.value = false
   }
 }
-function cerrarSesionDesdeConfig() {
-  logout()
-}
 
 const linksList = [
   {
@@ -1131,16 +1127,7 @@ const linksList = [
     title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    click: () => {
-      if (router.currentRoute.value.path !== '/') {
-        router.push('/')
-        setTimeout(() => {
-          geozonaDrawerOpen.value = true
-        }, 300)
-      } else {
-        geozonaDrawerOpen.value = true
-      }
-    },
+    action: 'open-geozonas', // ✅ Cambiar a action
   },
   {
     title: 'Eventos',
@@ -1163,6 +1150,7 @@ const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
 const eventosDrawerOpen = ref(false)
+const mostrarConfirmacionSalir = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
@@ -1256,14 +1244,29 @@ function handleLinkClick(link) {
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
-
-    // 🔥 SOLUCIÓN: Usar nextTick en lugar de setTimeout
     nextTick(() => {
       conductoresDrawerOpen.value = true
     })
   } else if (link.action === 'open-geozonas') {
+    // ✅ MEJORADO: Mejor sincronización
     cerrarTodosLosDialogs()
-    geozonaDrawerOpen.value = true
+
+    if (router.currentRoute.value.path !== '/') {
+      // Si necesitamos cambiar de ruta
+      router.push('/').then(() => {
+        // Esperar a que Vue termine de renderizar
+        nextTick(() => {
+          setTimeout(() => {
+            geozonaDrawerOpen.value = true
+          }, 100) // Pequeño delay adicional para animaciones
+        })
+      })
+    } else {
+      // Si ya estamos en la ruta correcta, abrir inmediatamente
+      nextTick(() => {
+        geozonaDrawerOpen.value = true
+      })
+    }
   } else if (link.action === 'open-eventos') {
     cerrarTodosLosDialogs()
     eventosDrawerOpen.value = true
@@ -1293,6 +1296,15 @@ function cerrarGeozonas() {
 
 function cerrarEventos() {
   eventosDrawerOpen.value = false
+}
+
+// ✅ FUNCIÓN PARA MOSTRAR EL DIALOG
+function confirmarCierreSesion() {
+  mostrarConfirmacionSalir.value = true
+}
+
+function ejecutarCierreSesion() {
+  logout()
 }
 
 const logout = async () => {
@@ -1569,6 +1581,36 @@ function procesarResultado(resultado) {
 }
 </script>
 <style scoped>
+:deep(.q-dialog__inner > .q-card) {
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+.btn-dialog-cancel,
+.btn-dialog-confirm {
+  border-radius: 10px;
+  padding: 8px 24px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.btn-dialog-cancel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-dialog-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.btn-dialog-cancel:active,
+.btn-dialog-confirm:active {
+  transform: translateY(0) scale(0.98);
+}
+
 .nav-item {
   border-radius: 12px;
   margin: 4px 8px;
@@ -1663,7 +1705,6 @@ function procesarResultado(resultado) {
   position: relative; /* Importante para el posicionamiento absoluto */
 }
 
-/* ESTILOS ESPECÍFICOS Y AISLADOS PARA LOS BOTONES DEL HEADER */
 .info-btn,
 .notif-btn {
   position: relative;
@@ -1672,24 +1713,95 @@ function procesarResultado(resultado) {
   min-width: 40px !important;
   min-height: 40px !important;
   margin: 0 4px;
-  transform: none !important;
-  transition: background-color 0.2s ease !important;
+  transition: all 0.3s ease !important;
+  border-radius: 50%;
 }
 
-/* Resetear cualquier transformación heredada */
+/* ✅ HOVER mejorado con mayor especificidad */
 .info-btn:hover,
 .notif-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  transform: none !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Asegurar que los iconos estén centrados y tengan tamaño consistente */
+/* ✅ ACTIVE al hacer click */
+.info-btn:active,
+.notif-btn:active {
+  transform: scale(1.05) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Iconos centrados con transición */
 .info-btn .q-icon,
 .notif-btn .q-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
   margin: 0 auto;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Rotar icono de info */
+.info-btn:hover .q-icon {
+  transform: rotate(15deg);
+}
+
+/* ✅ Animar icono de notificaciones */
+.notif-btn:hover .q-icon {
+  animation: swing 0.6s ease;
+}
+
+/* ✅ Animación de campana */
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+}
+
+/* Badge de notificaciones */
+.notif-btn :deep(.q-badge--floating) {
+  top: 2px;
+  right: 2px;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Badge se agranda al hover */
+.notif-btn:hover :deep(.q-badge--floating) {
+  transform: scale(0.95);
+}
+
+/* ✅ IMPORTANTE: Resetear estilos EXCEPTO para info-btn y notif-btn */
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn) {
+  transform: none !important;
+}
+
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn):hover {
+  transform: none !important;
+}
+.search-input {
+  background: white;
+  border-radius: 500px;
+  transition: all 0.3s ease;
+}
+
+.search-input:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+.search-input:focus-within {
+  box-shadow: 0 4px 16px rgba(187, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
 }
 
 /* Contener el área del badge */
@@ -1750,15 +1862,6 @@ function procesarResultado(resultado) {
 .nav-item:hover .q-icon,
 .config-item:hover .q-icon {
   transform: scale(1.1);
-}
-
-/* Resetear estilos para otros botones en el toolbar */
-:deep(.q-toolbar .q-btn) {
-  transform: none !important;
-}
-
-:deep(.q-toolbar .q-btn:hover) {
-  transform: none !important;
 }
 
 .search-input {

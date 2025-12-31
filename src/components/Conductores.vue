@@ -1,4 +1,5 @@
 <!-- eslint-disable vue/multi-word-component-names -->
+/*COnductores.vue */
 <template>
   <div class="conductores-drawer">
     <!-- Header con gradiente y estadísticas -->
@@ -1733,21 +1734,6 @@ async function asignarUnidadAConductor(unidadId) {
     // Recargar datos primero
     await obtenerConductores()
     await obtenerUnidades()
-
-    // 🆕 SOLUCIÓN MEJORADA: Notificar al usuario
-    Notify.create({
-      type: 'info',
-      message: 'Unidad asignada correctamente',
-      caption: 'Reinicia el simulador para verla en el mapa',
-      icon: 'info',
-      timeout: 4000,
-      actions: [
-        {
-          label: 'Entendido',
-          color: 'white',
-        },
-      ],
-    })
   } catch (error) {
     console.error('❌ Error al gestionar unidad:', error)
 
