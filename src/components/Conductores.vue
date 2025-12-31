@@ -60,9 +60,9 @@
             <q-avatar
               :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
               text-color="white"
-              size="36px"
+              size="32px"
             >
-              <q-icon name="folder" size="20px" />
+              <q-icon name="folder" size="16px" />
             </q-avatar>
           </q-item-section>
 
@@ -2867,9 +2867,10 @@ function navegarAUnidad() {
 .group-item {
   border-radius: 8px;
   margin-bottom: 6px;
+  padding: 8px 12px;
   transition: all 0.3s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Borde lateral animado */
@@ -2886,7 +2887,11 @@ function navegarAUnidad() {
 
 .group-item:hover {
   background-color: #e3f2fd;
-  transform: translateX(8px);
+  transform: translateX(4px);
+}
+.group-item .q-avatar {
+  transition: all 0.3s ease;
+  flex-shrink: 0; /* 🔥 No se encoge */
 }
 
 .group-item:hover::before {
@@ -2905,9 +2910,11 @@ function navegarAUnidad() {
 
 /* Avatar del grupo animado */
 .group-item:hover .q-avatar {
-  animation: avatar-grow-rotate 0.6s ease;
+  transform: scale(1.08);
 }
-
+.group-item .q-avatar .q-icon {
+  font-size: 18px !important; /* 🔥 Tamaño fijo del icono */
+}
 @keyframes avatar-grow-rotate {
   0% {
     transform: scale(1) rotate(0deg);
