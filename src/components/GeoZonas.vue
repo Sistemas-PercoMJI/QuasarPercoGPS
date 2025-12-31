@@ -2364,6 +2364,296 @@ defineExpose({
 </script>
 
 <style scoped>
+/* 🎨 ANIMACIONES PARA LOS TABS MODERNOS */
+.tab-item {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de hover mejorado */
+.tab-item:not(.active):hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Tab activo con escala */
+.tab-item.active {
+  animation: tab-activate 0.3s ease-out;
+}
+
+@keyframes tab-activate {
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Iconos que rebotan al hover */
+.tab-item:hover .q-icon {
+  animation: icon-bounce 0.5s ease;
+}
+
+@keyframes icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* 🎨 ANIMACIONES PARA STAT CARDS */
+.stat-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Número que crece al hover */
+.stat-card:hover .stat-number {
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+/* Icono que rota al hover */
+.stat-card:hover .q-icon {
+  animation: rotate-grow 0.6s ease;
+}
+
+@keyframes rotate-grow {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+/* 🎨 ANIMACIONES MEJORADAS PARA CARDS */
+.poi-card,
+.geozona-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de brillo al pasar el mouse */
+.poi-card::before,
+.geozona-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.poi-card:hover::before,
+.geozona-card:hover::before {
+  transform: translateX(100%);
+}
+
+/* Avatar que pulsa al hover */
+.poi-card:hover .q-avatar,
+.geozona-card:hover .q-avatar {
+  animation: pulse-avatar 0.6s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse-avatar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* Texto que se desliza */
+.poi-card:hover .text-subtitle1,
+.geozona-card:hover .text-subtitle1 {
+  transform: translateX(4px);
+  transition: transform 0.3s ease;
+}
+
+/* 🎨 BOTÓN FLOTANTE MEJORADO */
+.floating-btn {
+  animation: float 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.floating-btn:hover {
+  transform: scale(1.15) translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.floating-btn:active {
+  transform: scale(1.05);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Icono que rota al hacer hover */
+.floating-btn:hover .q-icon {
+  animation: rotate-icon 0.6s ease;
+}
+
+@keyframes rotate-icon {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🎨 CHIPS DE FILTROS CON ANIMACIONES */
+.chips-container .q-chip {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chips-container .q-chip:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chips-container .q-chip:active {
+  transform: scale(0.98);
+}
+
+/* Avatar del chip que aparece con escala */
+.chips-container .q-chip .q-avatar {
+  animation: chip-avatar-appear 0.3s ease-out;
+}
+
+@keyframes chip-avatar-appear {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* 🎨 BÚSQUEDA MEJORADA */
+.modern-search {
+  transition: all 0.3s ease;
+}
+
+.modern-search:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.modern-search:focus-within {
+  box-shadow: 0 4px 20px rgba(187, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Icono de búsqueda que pulsa */
+.modern-search:focus-within .q-icon {
+  animation: pulse-search 1s ease infinite;
+}
+
+@keyframes pulse-search {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+/* 🎨 SLIDER FLOTANTE CON ENTRADA DRAMÁTICA */
+.slider-flotante-card {
+  animation: slide-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slide-bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateX(200px) scale(0.8);
+  }
+  60% {
+    transform: translateX(-10px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Botones de atajo que crecen */
+.slider-flotante-card .q-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+/* 🎨 COLOR CHIPS MEJORADOS */
+.color-chip {
+  position: relative;
+}
+
+.color-chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 10px;
+  background: inherit;
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 0.3s ease;
+}
+
+.color-chip:hover::after {
+  opacity: 0.4;
+}
+
+/* Check que aparece con rebote */
+.color-chip-selected .q-icon {
+  animation: check-bounce 0.4s ease-out;
+}
+
+@keyframes check-bounce {
+  0% {
+    transform: scale(0) rotate(-45deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
 .geozonas-drawer {
   width: 100%;
   height: 100%;
