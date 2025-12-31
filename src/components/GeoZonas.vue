@@ -778,79 +778,134 @@
     </q-dialog>
 
     <!-- Menú contextual MODIFICADO en GeoZonas.vue -->
+    <!-- Menú contextual MODERNO -->
     <q-dialog
       v-model="menuContextualVisible"
       position="bottom"
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
-        <!-- Header -->
-        <q-card-section class="q-pa-md bg-grey-1">
-          <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
+      <q-card class="menu-contextual-moderno">
+        <!-- Header con gradiente -->
+        <q-card-section class="menu-header">
+          <div class="header-content">
+            <q-avatar size="48px" :color="getColorGrupo(itemMenu?.grupoId)" text-color="white">
+              <q-icon :name="itemMenu?.tipo === 'poi' ? 'place' : 'layers'" size="28px" />
+            </q-avatar>
+            <div class="header-info">
+              <div class="header-title">{{ itemMenu?.nombre }}</div>
+              <div class="header-subtitle">
+                {{ itemMenu?.tipo === 'poi' ? 'Punto de Interés' : 'Geozona' }}
+              </div>
+            </div>
+          </div>
         </q-card-section>
 
         <q-separator />
 
-        <!-- Opciones -->
-        <q-list padding>
-          <!-- 🆕 NUEVA OPCIÓN: Crear Evento -->
-          <q-item clickable v-ripple @click="crearEventoParaUbicacion()">
+        <!-- Opciones del menú -->
+        <q-list class="menu-options">
+          <!-- Crear Evento -->
+          <q-item
+            clickable
+            v-ripple
+            @click="crearEventoParaUbicacion()"
+            class="menu-option-item crear-evento"
+          >
             <q-item-section avatar>
-              <q-avatar color="deep-orange" text-color="white">
-                <q-icon name="notifications_active" />
-              </q-avatar>
+              <div class="option-icon-wrapper evento">
+                <q-icon name="notifications_active" size="24px" />
+              </div>
             </q-item-section>
             <q-item-section>
-              <q-item-label>Crear Evento</q-item-label>
-              <q-item-label caption>Nuevo evento para esta ubicación</q-item-label>
+              <q-item-label class="option-label">Crear Evento</q-item-label>
+              <q-item-label caption class="option-caption">
+                Configurar alertas para esta ubicación
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Editar -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(editarItem(), (menuContextualVisible = false))"
+            class="menu-option-item editar"
+          >
+            <q-item-section avatar>
+              <div class="option-icon-wrapper editar">
+                <q-icon name="edit" size="24px" />
+              </div>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="option-label">Editar</q-item-label>
+              <q-item-label caption class="option-caption">Modificar información</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Ver en Mapa -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(verEnMapa(), (menuContextualVisible = false))"
+            class="menu-option-item ver-mapa"
+          >
+            <q-item-section avatar>
+              <div class="option-icon-wrapper ver-mapa">
+                <q-icon name="map" size="24px" />
+              </div>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="option-label">Ver en Mapa</q-item-label>
+              <q-item-label caption class="option-caption">Centrar en ubicación</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
             </q-item-section>
           </q-item>
 
           <q-separator class="q-my-sm" />
 
-          <q-item clickable v-ripple @click="(editarItem(), (menuContextualVisible = false))">
+          <!-- Eliminar -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(eliminarItem(), (menuContextualVisible = false))"
+            class="menu-option-item eliminar"
+          >
             <q-item-section avatar>
-              <q-avatar color="primary" text-color="white">
-                <q-icon name="edit" />
-              </q-avatar>
+              <div class="option-icon-wrapper eliminar">
+                <q-icon name="delete" size="24px" />
+              </div>
             </q-item-section>
             <q-item-section>
-              <q-item-label>Editar</q-item-label>
-              <q-item-label caption>Modificar información</q-item-label>
+              <q-item-label class="option-label text-negative">Eliminar</q-item-label>
+              <q-item-label caption class="option-caption text-negative">
+                Eliminar permanentemente
+              </q-item-label>
             </q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple @click="(verEnMapa(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="positive" text-color="white">
-                <q-icon name="map" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Ver en mapa</q-item-label>
-              <q-item-label caption>Centrar en ubicación</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-separator class="q-my-sm" />
-
-          <q-item clickable v-ripple @click="(eliminarItem(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="negative" text-color="white">
-                <q-icon name="delete" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-negative">Eliminar</q-item-label>
-              <q-item-label caption>Eliminar permanentemente</q-item-label>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="negative" />
             </q-item-section>
           </q-item>
         </q-list>
 
-        <!-- Botón cancelar -->
-        <q-card-actions class="q-pa-md">
-          <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
+        <!-- Botón Cancelar -->
+        <q-card-actions class="menu-actions">
+          <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            class="full-width cancel-btn"
+            v-close-popup
+            size="md"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -2364,6 +2419,69 @@ defineExpose({
 </script>
 
 <style scoped>
+.option-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.option-icon-wrapper.evento {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  color: white;
+}
+
+.option-icon-wrapper.editar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.option-icon-wrapper.ver-mapa {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+}
+
+.option-icon-wrapper.eliminar {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: white;
+}
+.menu-option-item:hover .option-icon-wrapper {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.menu-option-item.eliminar:hover .option-icon-wrapper.eliminar {
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: scale(1.1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+.menu-contextual-moderno {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+}
+.menu-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  color: white;
+}
+
 /* 🎨 ANIMACIONES PARA LOS TABS MODERNOS */
 .tab-item {
   position: relative;
@@ -2670,9 +2788,11 @@ defineExpose({
 
 .header-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  gap: 16px;
+}
+.header-info {
+  flex: 1;
 }
 
 .header-content .text-h6 {
@@ -2681,7 +2801,43 @@ defineExpose({
   font-size: 18px;
   font-weight: 600;
 }
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.header-subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+}
+.menu-options {
+  padding: 8px 0;
+}
+.menu-option-item {
+  padding: 16px 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.menu-option-item::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+  transition: left 0.4s ease;
+}
 
+.menu-option-item:hover::before {
+  left: 100%;
+}
+
+.menu-option-item:hover {
+  background-color: #f5f7fa;
+  padding-left: 24px;
+}
 .modern-tabs {
   display: flex;
   background: rgba(255, 255, 255, 0.1);
@@ -3036,5 +3192,63 @@ defineExpose({
   border-radius: 6px;
   border: 2px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.option-label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.option-caption {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+/* Chevron que se mueve */
+.menu-option-item:hover .q-item__section--side .q-icon {
+  transform: translateX(4px);
+  transition: transform 0.3s ease;
+}
+
+.menu-actions {
+  padding: 16px 20px 24px;
+  background: #fafafa;
+}
+
+.cancel-btn {
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .menu-contextual-moderno {
+    max-width: 100vw;
+  }
+
+  .menu-header {
+    padding: 16px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .menu-option-item {
+    padding: 14px 16px;
+  }
+
+  .option-icon-wrapper {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>
