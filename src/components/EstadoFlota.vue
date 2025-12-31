@@ -982,7 +982,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ============================================ */
 /* === LAYOUT PRINCIPAL === */
+/* ============================================ */
 .estado-flota-wrapper {
   width: 100%;
   height: 100vh;
@@ -992,16 +994,30 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+/* ============================================ */
 /* === HEADER === */
+/* ============================================ */
 .flota-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
   background: linear-gradient(135deg, #c62828 0%, #d84315 100%);
+  background-size: 200% 200%;
+  animation: gradientFlow 8s ease infinite;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   min-height: 64px;
   z-index: 10;
+}
+
+@keyframes gradientFlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .header-content {
@@ -1016,6 +1032,7 @@ onMounted(async () => {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.3px;
+  flex: 1;
 }
 
 .vehiculo-nombre {
@@ -1025,15 +1042,24 @@ onMounted(async () => {
 
 .back-btn,
 .close-btn {
-  transition: transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
 }
 
 .back-btn:hover,
 .close-btn:hover {
+  transform: scale(1.2) rotate(15deg);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.back-btn:active,
+.close-btn:active {
   transform: scale(1.1);
 }
 
+/* ============================================ */
 /* === VISTA LISTA === */
+/* ============================================ */
 .vista-lista {
   flex: 1;
   display: flex;
@@ -1042,7 +1068,9 @@ onMounted(async () => {
   background: white;
 }
 
+/* ============================================ */
 /* === ESTADOS GRID === */
+/* ============================================ */
 .estados-container {
   padding: 12px 20px;
   background: white;
@@ -1068,6 +1096,25 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 60px;
+  overflow: hidden;
+}
+
+.compact-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
 }
 
 .compact-card:hover {
@@ -1077,19 +1124,24 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
 
+.compact-card:hover::before {
+  transform: translateX(100%);
+}
+
 .compact-card.estado-activo {
   border-color: #2196f3;
   background: #e3f2fd;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
+/* Estado Badge - FIJO sin movimiento */
 .estado-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1098,9 +1150,37 @@ onMounted(async () => {
   font-size: 11px;
   padding: 0 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  transition: transform 0.3s ease;
 }
 
+.compact-card:hover .estado-badge {
+  transform: scale(1.2);
+}
+
+/* Icono animado */
+.compact-card:hover .q-icon {
+  animation: icon-rotate-shake 0.6s ease;
+}
+
+@keyframes icon-rotate-shake {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-10deg) scale(1.2);
+  }
+  75% {
+    transform: rotate(10deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+/* ============================================ */
 /* === BÚSQUEDA === */
+/* ============================================ */
 .search-container {
   padding: 0 20px 16px 20px;
   background: white;
@@ -1110,9 +1190,37 @@ onMounted(async () => {
 .search-input {
   background: white;
   border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
+.search-input:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.search-input:focus-within {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(198, 40, 40, 0.2);
+}
+
+.search-input:focus-within .q-icon {
+  animation: search-pulse 1.5s ease infinite;
+  color: #c62828;
+}
+
+@keyframes search-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* ============================================ */
 /* === TABLA HEADER === */
+/* ============================================ */
 .tabla-header {
   display: flex;
   align-items: center;
@@ -1141,7 +1249,9 @@ onMounted(async () => {
   min-width: 60px;
 }
 
+/* ============================================ */
 /* === LISTA VEHÍCULOS === */
+/* ============================================ */
 .vehiculos-scroll-area {
   flex: 1;
   height: 100%;
@@ -1156,11 +1266,44 @@ onMounted(async () => {
   border-bottom: 1px solid #f0f0f0;
   transition: all 0.2s ease;
   cursor: pointer;
+  position: relative;
+}
+
+.vehiculo-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(180deg, #2196f3 0%, #1976d2 100%);
+  transition: width 0.3s ease;
 }
 
 .vehiculo-item:hover {
   background-color: #f5f9ff;
-  border-left: 4px solid #2196f3;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.vehiculo-item:hover::before {
+  width: 4px;
+}
+
+.vehiculo-item:hover .q-avatar {
+  animation: avatar-grow-rotate 0.6s ease;
+}
+
+@keyframes avatar-grow-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .vehiculo-nombre-item {
@@ -1171,6 +1314,13 @@ onMounted(async () => {
 }
 
 .vehiculo-ubicacion {
+  font-size: 12px;
+  color: #757575;
+  display: flex;
+  align-items: center;
+}
+
+.vehiculo-conductor {
   font-size: 12px;
   color: #757575;
   display: flex;
@@ -1189,6 +1339,28 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 13px;
   text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.velocidad-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.4));
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.vehiculo-item:hover .velocidad-badge {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+}
+
+.vehiculo-item:hover .velocidad-badge::after {
+  transform: translateX(100%);
 }
 
 .acciones-section {
@@ -1196,7 +1368,7 @@ onMounted(async () => {
 }
 
 .btn-detalles {
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-detalles:hover {
@@ -1204,7 +1376,23 @@ onMounted(async () => {
   transform: scale(1.1);
 }
 
+.btn-detalles:hover .q-icon {
+  animation: arrow-bounce 0.6s ease infinite;
+}
+
+@keyframes arrow-bounce {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+/* ============================================ */
 /* === VISTA DETALLES === */
+/* ============================================ */
 .vista-detalles {
   position: absolute;
   right: 0;
@@ -1219,7 +1407,7 @@ onMounted(async () => {
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
 }
 
-/* === ANIMACIÓN SLIDE === */
+/* Animaciones Slide */
 .slide-right-enter-active {
   animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1250,22 +1438,9 @@ onMounted(async () => {
   }
 }
 
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-down-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
+/* ============================================ */
 /* === TABS === */
+/* ============================================ */
 .tabs-vehiculo {
   background: white;
   border-bottom: 2px solid #e0e0e0;
@@ -1277,6 +1452,28 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.tab-item:hover {
+  transform: translateY(-2px);
+  background: rgba(33, 150, 243, 0.05);
+}
+
+.tab-item .q-badge {
+  animation: badge-alert 1.5s ease infinite;
+}
+
+@keyframes badge-alert {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 6px rgba(244, 67, 54, 0);
+  }
 }
 
 .tab-content-scroll {
@@ -1294,7 +1491,9 @@ onMounted(async () => {
   padding: 20px;
 }
 
+/* ============================================ */
 /* === CARDS GENERALES === */
+/* ============================================ */
 .info-card {
   display: flex;
   gap: 16px;
@@ -1303,6 +1502,28 @@ onMounted(async () => {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.info-card:hover .info-icon-wrapper .q-icon {
+  animation: icon-spin 0.8s ease;
+}
+
+@keyframes icon-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
 }
 
 .ubicacion-card {
@@ -1344,7 +1565,9 @@ onMounted(async () => {
   font-family: 'Courier New', monospace;
 }
 
+/* ============================================ */
 /* === DETALLES GRID === */
+/* ============================================ */
 .detalles-grid {
   background: white;
   border-radius: 12px;
@@ -1386,7 +1609,9 @@ onMounted(async () => {
   background: #e0e0e0;
 }
 
-/* === TAB HOY - SELECTOR DE FECHA === */
+/* ============================================ */
+/* === SELECTOR DE FECHA === */
+/* ============================================ */
 .filtro-dia-card {
   display: flex;
   justify-content: space-between;
@@ -1396,11 +1621,26 @@ onMounted(async () => {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.filtro-dia-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.filtro-dia-card .q-btn:hover {
+  background: rgba(33, 150, 243, 0.1);
+  transform: scale(1.15);
 }
 
 .dia-actual {
   text-align: center;
   flex: 1;
+  transition: transform 0.3s ease;
+}
+
+.filtro-dia-card:hover .dia-actual {
+  transform: scale(1.05);
 }
 
 .dia-label {
@@ -1418,13 +1658,20 @@ onMounted(async () => {
   margin-top: 4px;
 }
 
+/* ============================================ */
 /* === FILTRO DE HORAS === */
+/* ============================================ */
 .filtro-horas-card {
   background: white;
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.filtro-horas-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .filtro-horas-header {
@@ -1463,6 +1710,12 @@ onMounted(async () => {
 
 .hora-input {
   background: white;
+  transition: all 0.3s ease;
+}
+
+.hora-input:focus-within {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
 .filtro-resultados {
@@ -1473,9 +1726,23 @@ onMounted(async () => {
   padding: 8px;
   background: #e3f2fd;
   border-radius: 8px;
+  animation: slide-in 0.5s ease;
 }
 
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================ */
 /* === RESUMEN DÍA === */
+/* ============================================ */
 .resumen-dia-card {
   background: white;
   border-radius: 12px;
@@ -1553,7 +1820,9 @@ onMounted(async () => {
   margin-top: 2px;
 }
 
+/* ============================================ */
 /* === TIMELINE COMPACTO === */
+/* ============================================ */
 .timeline-section-compact {
   background: white;
   border-radius: 12px;
@@ -1590,12 +1859,35 @@ onMounted(async () => {
   padding: 12px;
   border-left: 3px solid #2196f3;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.trayecto-card-compact::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
 }
 
 .trayecto-card-compact:hover {
   background: #f0f4ff;
   border-left-color: #1565c0;
   transform: translateX(4px);
+}
+
+.trayecto-card-compact:hover::after {
+  left: 100%;
+}
+
+.trayecto-card-compact:hover .q-avatar {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .trayecto-header {
@@ -1641,6 +1933,11 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.trayecto-card-compact:hover .stat-item {
+  transform: translateY(-2px);
 }
 
 .stat-item .stat-valor {
@@ -1648,7 +1945,9 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+/* ============================================ */
 /* === TAB NOTIFICACIONES === */
+/* ============================================ */
 .filtro-container {
   margin-bottom: 16px;
 }
@@ -1658,74 +1957,10 @@ onMounted(async () => {
   border-radius: 8px;
 }
 
-.eventos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.evento-card {
-  position: relative;
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 16px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.evento-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.evento-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.evento-titulo {
-  font-size: 14px;
-  font-weight: 600;
-  color: #212121;
-  margin-bottom: 4px;
-}
-
-.evento-descripcion {
-  font-size: 13px;
-  color: #616161;
-  margin-bottom: 6px;
-  line-height: 1.4;
-}
-
-.evento-fecha {
-  font-size: 12px;
-  color: #757575;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.evento-detalles-wrapper {
-  width: 100%;
-  margin-top: 12px;
-}
-
 .eventos-container {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-/* === EVENTOS COMO NOTIFICACIONES === */
-.evento-detalles {
-  width: 100%;
-  background: #f5f5f5;
-  padding: 12px;
-  border-radius: 8px;
 }
 
 .evento-notification-card {
@@ -1733,8 +1968,10 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-left: 4px solid;
+  border-left: 4px solid #2196f3;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .evento-notification-card:hover {
@@ -1742,29 +1979,20 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Colores de borde según tipo */
-.evento-notification-card:has(
-  .evento-header .q-avatar[style*='background-color: rgb(76, 175, 80)']
-) {
-  border-left-color: #4caf50; /* Verde - Entrada */
+.evento-notification-card:hover .evento-header .q-avatar {
+  animation: avatar-pulse-glow 0.8s ease;
 }
 
-.evento-notification-card:has(
-  .evento-header .q-avatar[style*='background-color: rgb(244, 67, 54)']
-) {
-  border-left-color: #f44336; /* Rojo - Salida */
-}
-
-.evento-notification-card:has(
-  .evento-header .q-avatar[style*='background-color: rgb(255, 152, 0)']
-) {
-  border-left-color: #ff9800; /* Naranja - Alerta */
-}
-
-.evento-notification-card:has(
-  .evento-header .q-avatar[style*='background-color: rgb(0, 188, 212)']
-) {
-  border-left-color: #00bcd4; /* Cyan - Info */
+@keyframes avatar-pulse-glow {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    box-shadow: 0 0 20px 10px rgba(33, 150, 243, 0);
+  }
 }
 
 .evento-header {
@@ -1820,48 +2048,9 @@ onMounted(async () => {
   color: #757575;
 }
 
-/* Animación del icono */
-.evento-notification-card .q-avatar {
-  transition: transform 0.3s ease;
-}
-
-.evento-notification-card:hover .q-avatar {
-  transform: scale(1.1) rotate(5deg);
-}
-
-/*
-.evento-detalles {
-  width: 100%;
-  margin-top: 12px;
-  background: #f5f5f5;
-  padding: 12px;
-  border-radius: 8px;
-}
-  */
-
-.detalle-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.detalle-item:last-child {
-  margin-bottom: 0;
-}
-
-.detalle-label {
-  color: #757575;
-  font-weight: 500;
-}
-
-.detalle-valor {
-  color: #212121;
-  flex: 1;
-}
-
+/* ============================================ */
 /* === LOADING & EMPTY STATE === */
+/* ============================================ */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -1869,6 +2058,17 @@ onMounted(async () => {
   justify-content: center;
   padding: 60px 20px;
   gap: 16px;
+  animation: pulse-opacity 2s ease infinite;
+}
+
+@keyframes pulse-opacity {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .loading-text {
@@ -1886,6 +2086,35 @@ onMounted(async () => {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  animation: fadeInScale 0.6s ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.empty-state .q-icon {
+  animation: float-empty 3s ease-in-out infinite;
+}
+
+@keyframes float-empty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-10px) rotate(5deg);
+  }
 }
 
 .empty-title {
@@ -1902,7 +2131,9 @@ onMounted(async () => {
   max-width: 300px;
 }
 
+/* ============================================ */
 /* === RESPONSIVE === */
+/* ============================================ */
 @media (max-width: 600px) {
   .flota-header {
     padding: 12px 16px;
