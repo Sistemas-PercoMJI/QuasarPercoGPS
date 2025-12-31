@@ -173,16 +173,29 @@
     </q-inner-loading>
 
     <!-- Dialog: Detalles del Conductor (Interfaz Mejorada) -->
-    <q-dialog v-model="dialogDetallesConductor" position="right" seamless maximized>
-      <q-card class="detalle-card">
-        <!-- Header del card con avatar -->
-        <q-card-section class="bg-gradient text-white row items-center q-pa-none">
-          <q-avatar color="white" text-color="primary" size="80px" class="q-ma-md">
-            {{ obtenerIniciales(conductorSeleccionado?.Nombre) }}
-          </q-avatar>
-          <div class="col">
-            <div class="text-h5">{{ conductorSeleccionado?.Nombre }}</div>
-            <div class="text-subtitle2">{{ conductorSeleccionado?.Telefono }}</div>
+
+    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada COMPLETA) -->
+    <q-dialog
+      v-model="dialogDetallesConductor"
+      position="right"
+      seamless
+      maximized
+      :persistent="false"
+    >
+      <q-card class="detalle-card-fixed">
+        <!-- Header del card con avatar MEJORADO -->
+        <q-card-section class="detalle-header">
+          <div class="header-left">
+            <q-avatar color="white" text-color="primary" size="64px" class="header-avatar">
+              {{ obtenerIniciales(conductorSeleccionado?.Nombre) }}
+            </q-avatar>
+            <div class="header-info">
+              <div class="header-name">{{ conductorSeleccionado?.Nombre }}</div>
+              <div class="header-phone">
+                <q-icon name="phone" size="14px" />
+                {{ conductorSeleccionado?.Telefono }}
+              </div>
+            </div>
           </div>
           <q-btn
             flat
@@ -191,597 +204,143 @@
             icon="close"
             color="white"
             @click="dialogDetallesConductor = false"
-            class="q-mr-md"
+            class="header-close-btn"
           />
         </q-card-section>
 
         <q-separator />
 
-        <!-- Contenido con Expansion Items -->
-        <q-card-section class="scroll detalle-content">
-          <!-- Información Personal -->
-          <q-expansion-item
-            icon="person"
-            label="Información Personal"
-            class="expansion-item"
-            default-opened
-          >
-            <q-card flat bordered class="q-ma-md">
-              <q-card-section>
-                <div class="row q-gutter-md">
-                  <div class="col-12">
-                    <div class="detalle-label">Nombre completo</div>
-                    <q-input
-                      v-model="conductorEditando.Nombre"
-                      outlined
-                      dense
-                      @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
-                    />
-                  </div>
-                  <div class="col-12">
-                    <div class="detalle-label">Teléfono</div>
-                    <q-input
-                      v-model="conductorEditando.Telefono"
-                      outlined
-                      dense
-                      mask="(###) ### ####"
-                      @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
-
-          <!-- Licencia de Conducir -->
-          <q-expansion-item icon="badge" label="Licencia de Conducir" class="expansion-item">
-            <q-card flat bordered class="q-ma-md">
-              <q-card-section>
-                <div class="row q-gutter-md">
-                  <div class="col-12 col-md-6">
-                    <div class="detalle-label">Nùmero de licencia</div>
-                    <q-input
-                      v-model="conductorEditando.LicenciaConducir"
-                      outlined
-                      dense
-                      placeholder="Ej: A1234567"
-                      :disable="licenciaDeshabilitada"
-                      @blur="
-                        actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
-                      "
-                    >
-                      <template v-slot:append>
-                        <q-badge
-                          v-if="conductorEditando?.LicenciaConducirFecha"
-                          :color="esLicenciaVigente ? 'positive' : 'negative'"
-                          :label="esLicenciaVigente ? 'Vigente' : 'Expirado'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="detalle-label">Fecha de vencimiento</div>
-                    <q-input :model-value="fechaVencimientoFormato" outlined dense readonly>
-                      <template v-slot:append>
-                        <q-icon name="event" class="cursor-pointer">
-                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                            <q-date
-                              :model-value="fechaVencimientoFormato"
-                              mask="DD/MM/YYYY"
-                              @update:model-value="actualizarFechaVencimiento"
-                            >
-                              <div class="row items-center justify-end">
-                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                              </div>
-                            </q-date>
-                          </q-popup-proxy>
-                        </q-icon>
-                      </template>
-                      <template v-slot:after>
-                        <q-badge
-                          v-if="conductorEditando?.LicenciaConducirFecha"
-                          :color="esLicenciaVigente ? 'positive' : 'negative'"
-                          :label="esLicenciaVigente ? 'Vigente' : 'Expirada'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-                </div>
-                <q-separator class="q-my-md" />
-                <div class="detalle-label">
-                  <q-icon name="image" class="q-mr-xs" />
-                  Fotos de Licencia
-                  <q-space />
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="add_photo_alternate"
-                    size="sm"
-                    color="primary"
-                    @click="abrirSelectorFotoLicencia"
-                  >
-                    <q-tooltip>Subir nueva foto</q-tooltip>
-                  </q-btn>
-                  <input
-                    ref="inputFotoLicencia"
-                    type="file"
-                    accept="image/*"
-                    style="display: none"
-                    @change="subirNuevaFotoLicencia"
-                  />
-                </div>
-                <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
-                  <q-spinner color="primary" size="30px" />
-                </div>
-                <div v-else-if="fotosLicencia.length > 0" class="fotos-grid">
-                  <div v-for="foto in fotosLicencia" :key="foto.fullPath" class="foto-card">
-                    <q-img
-                      :src="foto.url"
-                      class="foto-thumbnail"
-                      @click="verFotoEnGrande(foto.url)"
-                      style="cursor: pointer"
-                    />
-                    <div class="foto-actions">
-                      <q-btn
-                        flat
-                        dense
-                        icon="visibility"
-                        size="sm"
-                        color="primary"
-                        @click="verFotoEnGrande(foto.url)"
-                      >
-                        <q-tooltip>Ver</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="download"
-                        size="sm"
-                        color="positive"
-                        @click="descargarFotoHandler(foto.url, foto.name)"
-                      >
-                        <q-tooltip>Descargar</q-tooltip>
-                      </q-btn>
-                      <q-btn
-                        flat
-                        dense
-                        icon="delete"
-                        size="sm"
-                        :color="esLicenciaVigente ? 'grey-5' : 'negative'"
-                        :disable="esLicenciaVigente"
-                        @click="eliminarFotoLicenciaHandler(foto.url)"
-                      >
-                        <q-tooltip>{{
-                          esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
-                        }}</q-tooltip>
-                      </q-btn>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="no-fotos">
-                  <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                  <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de licencia</div>
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
-
-          <!-- Unidad Asignada -->
-          <q-expansion-item icon="directions_car" label="Unidad Asignada" class="expansion-item">
-            <q-card flat bordered class="q-ma-md">
-              <q-card-section>
-                <div class="detalle-label">Asignar unidad</div>
-                <q-select
-                  v-model="conductorEditando.UnidadAsignada"
-                  :options="opcionesUnidadesFiltradas"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  label="Seleccionar unidad"
-                  :option-disable="(opt) => opt.disabled"
-                  @update:model-value="asignarUnidadAConductor"
-                  use-input
-                  input-debounce="300"
-                  @filter="filtrarUnidades"
-                  behavior="menu"
-                >
-                  <!-- 🔥 NO USES clearable NI clear-icon -->
-                  <!-- Esto elimina la X con círculo gris -->
-
-                  <template v-slot:prepend>
-                    <q-icon name="directions_car" />
-                  </template>
-
-                  <template v-slot:no-option>
-                    <q-item>
-                      <q-item-section class="text-grey">
-                        No se encontraron unidades
-                      </q-item-section>
-                    </q-item>
-                  </template>
-
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section avatar>
-                        <q-icon
-                          :name="scope.opt.disabled ? 'lock' : 'check_circle'"
-                          :color="scope.opt.disabled ? 'negative' : 'positive'"
-                        />
-                      </q-item-section>
-
-                      <q-item-section>
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                        <q-item-label v-if="scope.opt.conductorActual" caption class="text-orange">
-                          Ocupada por: {{ scope.opt.conductorActual }}
-                        </q-item-label>
-                        <q-item-label v-else caption class="text-positive">
-                          Disponible
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </template>
-
-                  <!-- ✅ Solo esta X (sin círculo gris) -->
-                  <template v-slot:append>
-                    <q-icon
-                      v-if="conductorEditando.UnidadAsignada"
-                      name="close"
-                      @click.stop="asignarUnidadAConductor(null)"
-                      class="cursor-pointer"
-                    >
-                      <q-tooltip>Quitar unidad</q-tooltip>
-                    </q-icon>
-                  </template>
-                </q-select>
-              </q-card-section>
-
-              <q-card-section v-if="unidadAsociada">
-                <q-btn
-                  color="primary"
-                  icon="my_location"
-                  label="Ver ubicación de la unidad"
-                  class="full-width"
-                  @click="navegarAUnidad"
-                  size="md"
-                  outline
-                >
-                  <q-tooltip>Centrar mapa en la ubicación de la unidad GPS</q-tooltip>
-                </q-btn>
-              </q-card-section>
-
-              <q-separator v-if="unidadAsociada" />
-              <q-card-section v-if="unidadAsociada">
-                <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
-                <div class="row q-gutter-md">
-                  <!-- SEGURO DE UNIDAD -->
-                  <div class="col-12">
-                    <div class="detalle-label">Número de seguro</div>
-                    <q-input
-                      v-model="unidadAsociada.SeguroUnidad"
-                      outlined
-                      dense
-                      placeholder="Ingrese código de seguro"
-                      :disable="seguroDeshabilitado"
-                      @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
-                    >
-                      <template v-slot:append>
-                        <q-badge
-                          v-if="unidadAsociada?.SeguroUnidadFecha"
-                          :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
-                          :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-
-                  <div class="col-12">
-                    <div class="detalle-label">Vencimiento del seguro</div>
-                    <q-input
-                      :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
-                      outlined
-                      dense
-                      readonly
-                    >
-                      <template v-slot:append>
-                        <q-icon name="event" class="cursor-pointer">
-                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                            <q-date
-                              :model-value="seguroUnidadFechaFormato"
-                              mask="DD/MM/YYYY"
-                              @update:model-value="actualizarFechaSeguro"
-                            >
-                              <div class="row items-center justify-end">
-                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                              </div>
-                            </q-date>
-                          </q-popup-proxy>
-                        </q-icon>
-                      </template>
-                      <template v-slot:after>
-                        <q-badge
-                          v-if="unidadAsociada?.SeguroUnidadFecha"
-                          :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
-                          :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-
-                  <!-- 🆕 FOTOS DEL SEGURO AQUÍ -->
-                  <div class="col-12">
-                    <div class="detalle-label">
-                      <q-icon name="image" class="q-mr-xs" />
-                      Fotos del Seguro
-                      <q-space />
-                      <q-btn
-                        flat
-                        dense
-                        round
-                        icon="add_photo_alternate"
-                        size="sm"
-                        color="primary"
-                        @click="abrirSelectorFotoSeguro"
-                      >
-                        <q-tooltip>Subir nueva foto</q-tooltip>
-                      </q-btn>
-                      <input
-                        ref="inputFotoSeguro"
-                        type="file"
-                        accept="image/*"
-                        style="display: none"
-                        @change="subirNuevaFotoSeguro"
-                      />
-                    </div>
-                    <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
-                      <q-spinner color="primary" size="30px" />
-                    </div>
-                    <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
-                      <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
-                        <q-img
-                          :src="foto.url"
-                          class="foto-thumbnail"
-                          @click="verFotoEnGrande(foto.url)"
-                          style="cursor: pointer"
-                        />
-                        <div class="foto-actions">
-                          <q-btn
-                            flat
-                            dense
-                            icon="visibility"
-                            size="sm"
-                            color="primary"
-                            @click="verFotoEnGrande(foto.url)"
-                          >
-                            <q-tooltip>Ver</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            flat
-                            dense
-                            icon="download"
-                            size="sm"
-                            color="positive"
-                            @click="descargarFotoHandler(foto.url, foto.name)"
-                          >
-                            <q-tooltip>Descargar</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            flat
-                            dense
-                            icon="delete"
-                            size="sm"
-                            :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
-                            :disable="esSeguroUnidadVigente"
-                            @click="eliminarFotoSeguroHandler(foto.url)"
-                          >
-                            <q-tooltip>{{
-                              esSeguroUnidadVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
-                            }}</q-tooltip>
-                          </q-btn>
-                        </div>
+        <!-- Contenido con Expansion Items CON SCROLL FIJO -->
+        <q-scroll-area class="detalle-scroll-area">
+          <div class="detalle-content-wrapper">
+            <!-- ========================================= -->
+            <!-- Información Personal -->
+            <!-- ========================================= -->
+            <q-expansion-item
+              icon="person"
+              label="Información Personal"
+              class="expansion-item-enhanced"
+              default-opened
+              header-class="expansion-header"
+            >
+              <q-card flat bordered class="expansion-card">
+                <q-card-section>
+                  <div class="info-row">
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="badge" size="16px" class="q-mr-xs" />
+                        Nombre completo
                       </div>
-                    </div>
-                    <div v-else class="no-fotos">
-                      <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                      <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
-                    </div>
-                  </div>
-
-                  <q-separator class="col-12" />
-
-                  <!-- TARJETA DE CIRCULACIÓN -->
-                  <div class="col-12">
-                    <div class="detalle-label">Número de tarjeta de circulación</div>
-                    <q-input
-                      v-model="unidadAsociada.TargetaCirculacion"
-                      outlined
-                      dense
-                      placeholder="Ingrese código de tarjeta"
-                      :disable="tarjetaDeshabilitada"
-                      @blur="
-                        actualizarCampoUnidad(
-                          'TargetaCirculacion',
-                          unidadAsociada.TargetaCirculacion,
-                        )
-                      "
-                    >
-                      <template v-slot:append>
-                        <q-badge
-                          v-if="unidadAsociada?.TargetaCirculacionFecha"
-                          :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
-                          :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-
-                  <div class="col-12">
-                    <div class="detalle-label">Vencimiento de tarjeta</div>
-                    <q-input
-                      :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
-                      outlined
-                      dense
-                      readonly
-                    >
-                      <template v-slot:append>
-                        <q-icon name="event" class="cursor-pointer">
-                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                            <q-date
-                              :model-value="tarjetaCirculacionFechaFormato"
-                              mask="DD/MM/YYYY"
-                              @update:model-value="actualizarFechaTarjeta"
-                            >
-                              <div class="row items-center justify-end">
-                                <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                              </div>
-                            </q-date>
-                          </q-popup-proxy>
-                        </q-icon>
-                      </template>
-                      <template v-slot:after>
-                        <q-badge
-                          v-if="unidadAsociada?.TargetaCirculacionFecha"
-                          :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
-                          :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-                  <!-- 🆕 FOTOS DE TARJETA AQUÍ -->
-                  <div class="col-12">
-                    <div class="detalle-label">
-                      <q-icon name="image" class="q-mr-xs" />
-                      Fotos de Tarjeta de Circulación
-                      <q-space />
-                      <q-btn
-                        flat
+                      <q-input
+                        v-model="conductorEditando.Nombre"
+                        outlined
                         dense
-                        round
-                        icon="add_photo_alternate"
-                        size="sm"
-                        color="primary"
-                        @click="abrirSelectorFotoTargeta"
-                      >
-                        <q-tooltip>Subir nueva foto</q-tooltip>
-                      </q-btn>
-                      <input
-                        ref="inputFotoTargeta"
-                        type="file"
-                        accept="image/*"
-                        style="display: none"
-                        @change="subirNuevaFotoTargeta"
+                        @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
+                        class="field-input"
                       />
                     </div>
-                    <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
-                      <q-spinner color="primary" size="30px" />
-                    </div>
-                    <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
-                      <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
-                        <q-img
-                          :src="foto.url"
-                          class="foto-thumbnail"
-                          @click="verFotoEnGrande(foto.url)"
-                          style="cursor: pointer"
-                        />
-                        <div class="foto-actions">
-                          <q-btn
-                            flat
-                            dense
-                            icon="visibility"
-                            size="sm"
-                            color="primary"
-                            @click="verFotoEnGrande(foto.url)"
-                          >
-                            <q-tooltip>Ver</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            flat
-                            dense
-                            icon="download"
-                            size="sm"
-                            color="positive"
-                            @click="descargarFotoHandler(foto.url, foto.name)"
-                          >
-                            <q-tooltip>Descargar</q-tooltip>
-                          </q-btn>
-                          <q-btn
-                            flat
-                            dense
-                            icon="delete"
-                            size="sm"
-                            :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
-                            :disable="esTarjetaCirculacionVigente"
-                            @click="eliminarFotoTargetaHandler(foto.url)"
-                          >
-                            <q-tooltip>{{
-                              esTarjetaCirculacionVigente
-                                ? 'No se puede eliminar (vigente)'
-                                : 'Eliminar'
-                            }}</q-tooltip>
-                          </q-btn>
-                        </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="phone" size="16px" class="q-mr-xs" />
+                        Teléfono
                       </div>
-                    </div>
-
-                    <div v-else class="no-fotos">
-                      <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                      <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de la tarjeta</div>
-                    </div>
-                  </div>
-                  <div class="col-12">
-                    <div class="detalle-label">Número de placas</div>
-                    <q-input
-                      v-model="unidadAsociada.Placa"
-                      outlined
-                      dense
-                      placeholder="Ingrese número de placas"
-                      :disable="placasDeshabilitada"
-                      @blur="actualizarCampoUnidad('Placa', unidadAsociada.Placa)"
-                    >
-                      <template v-slot:append>
-                        <q-badge
-                          v-if="unidadAsociada?.PlacasFecha"
-                          :color="esPlacasVigente ? 'positive' : 'negative'"
-                          :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
-                        />
-                      </template>
-                    </q-input>
-                  </div>
-                </div>
-                <div class="col-12">
-                  <div class="detalle-label">Vencimiento de placas</div>
-                  <q-input :model-value="placasFechaFormato || 'Sin fecha'" outlined dense readonly>
-                    <template v-slot:append>
-                      <q-icon name="event" class="cursor-pointer">
-                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                          <q-date
-                            :model-value="placasFechaFormato"
-                            mask="DD/MM/YYYY"
-                            @update:model-value="actualizarFechaPlacas"
-                          >
-                            <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                            </div>
-                          </q-date>
-                        </q-popup-proxy>
-                      </q-icon>
-                    </template>
-                    <template v-slot:after>
-                      <q-badge
-                        v-if="unidadAsociada?.PlacasFecha"
-                        :color="esPlacasVigente ? 'positive' : 'negative'"
-                        :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
+                      <q-input
+                        v-model="conductorEditando.Telefono"
+                        outlined
+                        dense
+                        mask="(###) ### ####"
+                        @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
+                        class="field-input"
                       />
-                    </template>
-                  </q-input>
-                </div>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </q-expansion-item>
 
-                <!-- 🆕 FOTOS DE PLACAS AQUÍ -->
-                <div class="col-12">
-                  <div class="detalle-label">
+            <!-- ========================================= -->
+            <!-- Licencia de Conducir -->
+            <!-- ========================================= -->
+            <q-expansion-item
+              icon="badge"
+              label="Licencia de Conducir"
+              class="expansion-item-enhanced"
+              header-class="expansion-header"
+            >
+              <q-card flat bordered class="expansion-card">
+                <q-card-section>
+                  <div class="info-row">
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="edit_document" size="16px" class="q-mr-xs" />
+                        Número de licencia
+                      </div>
+                      <q-input
+                        v-model="conductorEditando.LicenciaConducir"
+                        outlined
+                        dense
+                        placeholder="Ej: A1234567"
+                        :disable="licenciaDeshabilitada"
+                        @blur="
+                          actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
+                        "
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-badge
+                            v-if="conductorEditando?.LicenciaConducirFecha"
+                            :color="esLicenciaVigente ? 'positive' : 'negative'"
+                            :label="esLicenciaVigente ? 'Vigente' : 'Expirado'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="event" size="16px" class="q-mr-xs" />
+                        Fecha de vencimiento
+                      </div>
+                      <q-input
+                        :model-value="fechaVencimientoFormato"
+                        outlined
+                        dense
+                        readonly
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="fechaVencimientoFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaVencimiento"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                        <template v-slot:after>
+                          <q-badge
+                            v-if="conductorEditando?.LicenciaConducirFecha"
+                            :color="esLicenciaVigente ? 'positive' : 'negative'"
+                            :label="esLicenciaVigente ? 'Vigente' : 'Expirada'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+                  </div>
+
+                  <q-separator class="q-my-md" />
+
+                  <!-- Fotos de Licencia -->
+                  <div class="field-label">
                     <q-icon name="image" class="q-mr-xs" />
-                    Fotos de Placas
+                    Fotos de Licencia
                     <q-space />
                     <q-btn
                       flat
@@ -790,23 +349,25 @@
                       icon="add_photo_alternate"
                       size="sm"
                       color="primary"
-                      @click="abrirSelectorFotoPlacas"
+                      @click="abrirSelectorFotoLicencia"
                     >
                       <q-tooltip>Subir nueva foto</q-tooltip>
                     </q-btn>
                     <input
-                      ref="inputFotoPlacas"
+                      ref="inputFotoLicencia"
                       type="file"
                       accept="image/*"
                       style="display: none"
-                      @change="subirNuevaFotoPlacas"
+                      @change="subirNuevaFotoLicencia"
                     />
                   </div>
-                  <div v-if="cargandoFotosPlacas" class="text-center q-pa-md">
+
+                  <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
                     <q-spinner color="primary" size="30px" />
                   </div>
-                  <div v-else-if="fotosPlacas.length > 0" class="fotos-grid">
-                    <div v-for="foto in fotosPlacas" :key="foto.fullPath" class="foto-card">
+
+                  <div v-else-if="fotosLicencia.length > 0" class="fotos-grid">
+                    <div v-for="foto in fotosLicencia" :key="foto.fullPath" class="foto-card">
                       <q-img
                         :src="foto.url"
                         class="foto-thumbnail"
@@ -839,26 +400,582 @@
                           dense
                           icon="delete"
                           size="sm"
-                          :color="esPlacasVigente ? 'grey-5' : 'negative'"
-                          :disable="esPlacasVigente"
-                          @click="eliminarFotoPlacasHandler(foto.url)"
+                          :color="esLicenciaVigente ? 'grey-5' : 'negative'"
+                          :disable="esLicenciaVigente"
+                          @click="eliminarFotoLicenciaHandler(foto.url)"
                         >
                           <q-tooltip>{{
-                            esPlacasVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                            esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
                           }}</q-tooltip>
                         </q-btn>
                       </div>
                     </div>
                   </div>
+
                   <div v-else class="no-fotos">
                     <q-icon name="image_not_supported" size="32px" color="grey-4" />
-                    <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de las placas</div>
+                    <div class="text-grey-6 text-caption q-mt-sm">No hay fotos de licencia</div>
                   </div>
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
-        </q-card-section>
+                </q-card-section>
+              </q-card>
+            </q-expansion-item>
+
+            <!-- ========================================= -->
+            <!-- Unidad Asignada -->
+            <!-- ========================================= -->
+            <q-expansion-item
+              icon="directions_car"
+              label="Unidad Asignada"
+              class="expansion-item-enhanced"
+              header-class="expansion-header"
+            >
+              <q-card flat bordered class="expansion-card">
+                <q-card-section>
+                  <div class="field-label">
+                    <q-icon name="directions_car" size="16px" class="q-mr-xs" />
+                    Asignar unidad
+                  </div>
+                  <q-select
+                    v-model="conductorEditando.UnidadAsignada"
+                    :options="opcionesUnidadesFiltradas"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    label="Seleccionar unidad"
+                    :option-disable="(opt) => opt.disabled"
+                    @update:model-value="asignarUnidadAConductor"
+                    use-input
+                    input-debounce="300"
+                    @filter="filtrarUnidades"
+                    behavior="menu"
+                    class="field-input"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="directions_car" />
+                    </template>
+
+                    <template v-slot:no-option>
+                      <q-item>
+                        <q-item-section class="text-grey">
+                          No se encontraron unidades
+                        </q-item-section>
+                      </q-item>
+                    </template>
+
+                    <template v-slot:option="scope">
+                      <q-item v-bind="scope.itemProps">
+                        <q-item-section avatar>
+                          <q-icon
+                            :name="scope.opt.disabled ? 'lock' : 'check_circle'"
+                            :color="scope.opt.disabled ? 'negative' : 'positive'"
+                          />
+                        </q-item-section>
+
+                        <q-item-section>
+                          <q-item-label>{{ scope.opt.label }}</q-item-label>
+                          <q-item-label
+                            v-if="scope.opt.conductorActual"
+                            caption
+                            class="text-orange"
+                          >
+                            Ocupada por: {{ scope.opt.conductorActual }}
+                          </q-item-label>
+                          <q-item-label v-else caption class="text-positive">
+                            Disponible
+                          </q-item-label>
+                        </q-item-section>
+                      </q-item>
+                    </template>
+
+                    <template v-slot:append>
+                      <q-icon
+                        v-if="conductorEditando.UnidadAsignada"
+                        name="close"
+                        @click.stop="asignarUnidadAConductor(null)"
+                        class="cursor-pointer"
+                      >
+                        <q-tooltip>Quitar unidad</q-tooltip>
+                      </q-icon>
+                    </template>
+                  </q-select>
+                </q-card-section>
+
+                <q-card-section v-if="unidadAsociada">
+                  <q-btn
+                    color="primary"
+                    icon="my_location"
+                    label="Ver ubicación de la unidad"
+                    class="full-width"
+                    @click="navegarAUnidad"
+                    size="md"
+                    outline
+                  >
+                    <q-tooltip>Centrar mapa en la ubicación de la unidad GPS</q-tooltip>
+                  </q-btn>
+                </q-card-section>
+
+                <!-- Información de la unidad -->
+                <q-separator v-if="unidadAsociada" />
+                <q-card-section v-if="unidadAsociada">
+                  <div class="text-subtitle2 text-primary q-mb-sm">Información de la unidad</div>
+
+                  <div class="info-row">
+                    <!-- SEGURO DE UNIDAD -->
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="shield" size="16px" class="q-mr-xs" />
+                        Número de seguro
+                      </div>
+                      <q-input
+                        v-model="unidadAsociada.SeguroUnidad"
+                        outlined
+                        dense
+                        placeholder="Ingrese código de seguro"
+                        :disable="seguroDeshabilitado"
+                        @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-badge
+                            v-if="unidadAsociada?.SeguroUnidadFecha"
+                            :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                            :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="event" size="16px" class="q-mr-xs" />
+                        Vencimiento del seguro
+                      </div>
+                      <q-input
+                        :model-value="seguroUnidadFechaFormato || 'Sin fecha'"
+                        outlined
+                        dense
+                        readonly
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="seguroUnidadFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaSeguro"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                        <template v-slot:after>
+                          <q-badge
+                            v-if="unidadAsociada?.SeguroUnidadFecha"
+                            :color="esSeguroUnidadVigente ? 'positive' : 'negative'"
+                            :label="esSeguroUnidadVigente ? 'Vigente' : 'Expirado'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <!-- FOTOS DEL SEGURO -->
+                    <div class="info-field full-width">
+                      <div class="field-label">
+                        <q-icon name="image" class="q-mr-xs" />
+                        Fotos del Seguro
+                        <q-space />
+                        <q-btn
+                          flat
+                          dense
+                          round
+                          icon="add_photo_alternate"
+                          size="sm"
+                          color="primary"
+                          @click="abrirSelectorFotoSeguro"
+                        >
+                          <q-tooltip>Subir nueva foto</q-tooltip>
+                        </q-btn>
+                        <input
+                          ref="inputFotoSeguro"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoSeguro"
+                        />
+                      </div>
+
+                      <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
+                        <q-spinner color="primary" size="30px" />
+                      </div>
+
+                      <div v-else-if="fotosSeguro.length > 0" class="fotos-grid">
+                        <div v-for="foto in fotosSeguro" :key="foto.fullPath" class="foto-card">
+                          <q-img
+                            :src="foto.url"
+                            class="foto-thumbnail"
+                            @click="verFotoEnGrande(foto.url)"
+                            style="cursor: pointer"
+                          />
+                          <div class="foto-actions">
+                            <q-btn
+                              flat
+                              dense
+                              icon="visibility"
+                              size="sm"
+                              color="primary"
+                              @click="verFotoEnGrande(foto.url)"
+                            >
+                              <q-tooltip>Ver</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="download"
+                              size="sm"
+                              color="positive"
+                              @click="descargarFotoHandler(foto.url, foto.name)"
+                            >
+                              <q-tooltip>Descargar</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
+                              :disable="esSeguroUnidadVigente"
+                              @click="eliminarFotoSeguroHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esSeguroUnidadVigente
+                                  ? 'No se puede eliminar (vigente)'
+                                  : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-else class="no-fotos">
+                        <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                        <div class="text-grey-6 text-caption q-mt-sm">No hay fotos del seguro</div>
+                      </div>
+                    </div>
+
+                    <q-separator class="full-width q-my-md" />
+
+                    <!-- TARJETA DE CIRCULACIÓN -->
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="credit_card" size="16px" class="q-mr-xs" />
+                        Número de tarjeta de circulación
+                      </div>
+                      <q-input
+                        v-model="unidadAsociada.TargetaCirculacion"
+                        outlined
+                        dense
+                        placeholder="Ingrese código de tarjeta"
+                        :disable="tarjetaDeshabilitada"
+                        @blur="
+                          actualizarCampoUnidad(
+                            'TargetaCirculacion',
+                            unidadAsociada.TargetaCirculacion,
+                          )
+                        "
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-badge
+                            v-if="unidadAsociada?.TargetaCirculacionFecha"
+                            :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                            :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="event" size="16px" class="q-mr-xs" />
+                        Vencimiento de tarjeta
+                      </div>
+                      <q-input
+                        :model-value="tarjetaCirculacionFechaFormato || 'Sin fecha'"
+                        outlined
+                        dense
+                        readonly
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="tarjetaCirculacionFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaTarjeta"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                        <template v-slot:after>
+                          <q-badge
+                            v-if="unidadAsociada?.TargetaCirculacionFecha"
+                            :color="esTarjetaCirculacionVigente ? 'positive' : 'negative'"
+                            :label="esTarjetaCirculacionVigente ? 'Vigente' : 'Expirada'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <!-- FOTOS DE TARJETA -->
+                    <div class="info-field full-width">
+                      <div class="field-label">
+                        <q-icon name="image" class="q-mr-xs" />
+                        Fotos de Tarjeta de Circulación
+                        <q-space />
+                        <q-btn
+                          flat
+                          dense
+                          round
+                          icon="add_photo_alternate"
+                          size="sm"
+                          color="primary"
+                          @click="abrirSelectorFotoTargeta"
+                        >
+                          <q-tooltip>Subir nueva foto</q-tooltip>
+                        </q-btn>
+                        <input
+                          ref="inputFotoTargeta"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoTargeta"
+                        />
+                      </div>
+
+                      <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
+                        <q-spinner color="primary" size="30px" />
+                      </div>
+
+                      <div v-else-if="fotosTargeta.length > 0" class="fotos-grid">
+                        <div v-for="foto in fotosTargeta" :key="foto.fullPath" class="foto-card">
+                          <q-img
+                            :src="foto.url"
+                            class="foto-thumbnail"
+                            @click="verFotoEnGrande(foto.url)"
+                            style="cursor: pointer"
+                          />
+                          <div class="foto-actions">
+                            <q-btn
+                              flat
+                              dense
+                              icon="visibility"
+                              size="sm"
+                              color="primary"
+                              @click="verFotoEnGrande(foto.url)"
+                            >
+                              <q-tooltip>Ver</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="download"
+                              size="sm"
+                              color="positive"
+                              @click="descargarFotoHandler(foto.url, foto.name)"
+                            >
+                              <q-tooltip>Descargar</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
+                              :disable="esTarjetaCirculacionVigente"
+                              @click="eliminarFotoTargetaHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esTarjetaCirculacionVigente
+                                  ? 'No se puede eliminar (vigente)'
+                                  : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-else class="no-fotos">
+                        <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                        <div class="text-grey-6 text-caption q-mt-sm">
+                          No hay fotos de la tarjeta
+                        </div>
+                      </div>
+                    </div>
+
+                    <q-separator class="full-width q-my-md" />
+
+                    <!-- PLACAS -->
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="Pin" size="16px" class="q-mr-xs" />
+                        Número de placas
+                      </div>
+                      <q-input
+                        v-model="unidadAsociada.Placa"
+                        outlined
+                        dense
+                        placeholder="Ingrese número de placas"
+                        :disable="placasDeshabilitada"
+                        @blur="actualizarCampoUnidad('Placa', unidadAsociada.Placa)"
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-badge
+                            v-if="unidadAsociada?.PlacasFecha"
+                            :color="esPlacasVigente ? 'positive' : 'negative'"
+                            :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="event" size="16px" class="q-mr-xs" />
+                        Vencimiento de placas
+                      </div>
+                      <q-input
+                        :model-value="placasFechaFormato || 'Sin fecha'"
+                        outlined
+                        dense
+                        readonly
+                        class="field-input"
+                      >
+                        <template v-slot:append>
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="placasFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaPlacas"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                        <template v-slot:after>
+                          <q-badge
+                            v-if="unidadAsociada?.PlacasFecha"
+                            :color="esPlacasVigente ? 'positive' : 'negative'"
+                            :label="esPlacasVigente ? 'Vigente' : 'Expirado'"
+                          />
+                        </template>
+                      </q-input>
+                    </div>
+
+                    <!-- FOTOS DE PLACAS -->
+                    <div class="info-field full-width">
+                      <div class="field-label">
+                        <q-icon name="image" class="q-mr-xs" />
+                        Fotos de Placas
+                        <q-space />
+                        <q-btn
+                          flat
+                          dense
+                          round
+                          icon="add_photo_alternate"
+                          size="sm"
+                          color="primary"
+                          @click="abrirSelectorFotoPlacas"
+                        >
+                          <q-tooltip>Subir nueva foto</q-tooltip>
+                        </q-btn>
+                        <input
+                          ref="inputFotoPlacas"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoPlacas"
+                        />
+                      </div>
+
+                      <div v-if="cargandoFotosPlacas" class="text-center q-pa-md">
+                        <q-spinner color="primary" size="30px" />
+                      </div>
+
+                      <div v-else-if="fotosPlacas.length > 0" class="fotos-grid">
+                        <div v-for="foto in fotosPlacas" :key="foto.fullPath" class="foto-card">
+                          <q-img
+                            :src="foto.url"
+                            class="foto-thumbnail"
+                            @click="verFotoEnGrande(foto.url)"
+                            style="cursor: pointer"
+                          />
+                          <div class="foto-actions">
+                            <q-btn
+                              flat
+                              dense
+                              icon="visibility"
+                              size="sm"
+                              color="primary"
+                              @click="verFotoEnGrande(foto.url)"
+                            >
+                              <q-tooltip>Ver</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="download"
+                              size="sm"
+                              color="positive"
+                              @click="descargarFotoHandler(foto.url, foto.name)"
+                            >
+                              <q-tooltip>Descargar</q-tooltip>
+                            </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esPlacasVigente ? 'grey-5' : 'negative'"
+                              :disable="esPlacasVigente"
+                              @click="eliminarFotoPlacasHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esPlacasVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-else class="no-fotos">
+                        <q-icon name="image_not_supported" size="32px" color="grey-4" />
+                        <div class="text-grey-6 text-caption q-mt-sm">
+                          No hay fotos de las placas
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </q-expansion-item>
+          </div>
+          <!-- 🔥 CIERRE detalle-content-wrapper -->
+        </q-scroll-area>
       </q-card>
     </q-dialog>
 
@@ -3033,7 +3150,28 @@ function navegarAUnidad() {
   flex-direction: column;
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
-
+.detalle-card-fixed {
+  width: 480px !important; /* 🔥 ANCHO FIJO */
+  max-width: 480px !important;
+  min-width: 480px !important;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden; /* 🔥 IMPORTANTE */
+}
+.detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #bb0000 0%, #d84315 100%);
+  background-size: 200% 200%;
+  animation: gradientFlow 8s ease infinite;
+  color: white;
+  min-height: 100px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
 @keyframes dialog-entrance {
   0% {
     opacity: 0;
@@ -3047,6 +3185,22 @@ function navegarAUnidad() {
 
 .detalle-content {
   padding: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+.header-avatar {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 3px solid white;
+  transition: all 0.3s ease;
+}
+
+.header-avatar:hover {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .expansion-item {
@@ -3217,6 +3371,152 @@ function navegarAUnidad() {
 
   .header-content .text-h6 {
     font-size: 16px;
+  }
+}
+.header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.header-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-phone {
+  font-size: 14px;
+  opacity: 0.95;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.header-close-btn {
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.header-close-btn:hover {
+  transform: scale(1.2) rotate(90deg);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Scroll area CON ALTURA FIJA */
+.detalle-scroll-area {
+  flex: 1;
+  height: 100%; /* 🔥 IMPORTANTE */
+  overflow-y: auto;
+  overflow-x: hidden; /* 🔥 Evita scroll horizontal */
+}
+
+.detalle-content-wrapper {
+  padding: 0;
+  width: 100%; /* 🔥 IMPORTANTE */
+}
+
+/* Expansion items mejorados */
+.expansion-item-enhanced {
+  border-bottom: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.expansion-item-enhanced:hover {
+  background-color: #fafafa;
+}
+
+.expansion-item-enhanced:last-child {
+  border-bottom: none;
+}
+
+.expansion-header {
+  font-weight: 600;
+  color: #424242;
+  padding: 16px 20px;
+  transition: all 0.3s ease;
+}
+
+.expansion-item-enhanced:hover .expansion-header {
+  padding-left: 24px;
+  color: #1976d2;
+}
+
+.expansion-card {
+  margin: 0 16px 16px 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  animation: card-appear 0.4s ease-out;
+}
+
+@keyframes card-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Info fields mejorados */
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-field.full-width {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #616161;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.3px;
+}
+
+.field-input {
+  transition: all 0.3s ease;
+}
+
+.field-input:hover {
+  transform: translateX(4px);
+}
+
+.field-input:focus-within {
+  transform: translateX(6px);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+}
+
+/* Responsive para pantallas pequeñas */
+@media (max-width: 600px) {
+  .detalle-card-fixed {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 100vw !important;
+  }
+
+  .header-name {
+    font-size: 18px;
+  }
+
+  .header-avatar {
+    size: 56px;
+  }
+
+  .expansion-header {
+    padding: 12px 16px;
   }
 }
 </style>
