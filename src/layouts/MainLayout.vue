@@ -15,6 +15,7 @@
             dense
             @keyup.enter="buscar"
             @focus="onFocus"
+            style="box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
@@ -1704,7 +1705,6 @@ function procesarResultado(resultado) {
   position: relative; /* Importante para el posicionamiento absoluto */
 }
 
-/* ESTILOS ESPECÍFICOS Y AISLADOS PARA LOS BOTONES DEL HEADER */
 .info-btn,
 .notif-btn {
   position: relative;
@@ -1713,24 +1713,95 @@ function procesarResultado(resultado) {
   min-width: 40px !important;
   min-height: 40px !important;
   margin: 0 4px;
-  transform: none !important;
-  transition: background-color 0.2s ease !important;
+  transition: all 0.3s ease !important;
+  border-radius: 50%;
 }
 
-/* Resetear cualquier transformación heredada */
+/* ✅ HOVER mejorado con mayor especificidad */
 .info-btn:hover,
 .notif-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  transform: none !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Asegurar que los iconos estén centrados y tengan tamaño consistente */
+/* ✅ ACTIVE al hacer click */
+.info-btn:active,
+.notif-btn:active {
+  transform: scale(1.05) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Iconos centrados con transición */
 .info-btn .q-icon,
 .notif-btn .q-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
   margin: 0 auto;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Rotar icono de info */
+.info-btn:hover .q-icon {
+  transform: rotate(15deg);
+}
+
+/* ✅ Animar icono de notificaciones */
+.notif-btn:hover .q-icon {
+  animation: swing 0.6s ease;
+}
+
+/* ✅ Animación de campana */
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+}
+
+/* Badge de notificaciones */
+.notif-btn :deep(.q-badge--floating) {
+  top: 2px;
+  right: 2px;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Badge se agranda al hover */
+.notif-btn:hover :deep(.q-badge--floating) {
+  transform: scale(0.95);
+}
+
+/* ✅ IMPORTANTE: Resetear estilos EXCEPTO para info-btn y notif-btn */
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn) {
+  transform: none !important;
+}
+
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn):hover {
+  transform: none !important;
+}
+.search-input {
+  background: white;
+  border-radius: 500px;
+  transition: all 0.3s ease;
+}
+
+.search-input:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+.search-input:focus-within {
+  box-shadow: 0 4px 16px rgba(187, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
 }
 
 /* Contener el área del badge */
@@ -1791,15 +1862,6 @@ function procesarResultado(resultado) {
 .nav-item:hover .q-icon,
 .config-item:hover .q-icon {
   transform: scale(1.1);
-}
-
-/* Resetear estilos para otros botones en el toolbar */
-:deep(.q-toolbar .q-btn) {
-  transform: none !important;
-}
-
-:deep(.q-toolbar .q-btn:hover) {
-  transform: none !important;
 }
 
 .search-input {
