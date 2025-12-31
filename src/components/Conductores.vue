@@ -827,7 +827,7 @@
                     <!-- PLACAS -->
                     <div class="info-field">
                       <div class="field-label">
-                        <q-icon name="Pin" size="16px" class="q-mr-xs" />
+                        <q-icon name="badge" size="16px" class="q-mr-xs" />
                         Número de placas
                       </div>
                       <q-input
@@ -2629,10 +2629,13 @@ function navegarAUnidad() {
 /* ============================================ */
 .conductor-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 12px;
+  margin-bottom: 0; /* 🔥 Quitamos margin porque ya hay gap */
   border-radius: 12px;
   overflow: hidden;
   position: relative;
+  border: 2px solid transparent;
+  /* 🔥 IMPORTANTE: esto permite que la sombra se vea completa */
+  will-change: transform;
 }
 
 /* Efecto de brillo deslizante */
@@ -2658,7 +2661,12 @@ function navegarAUnidad() {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
-
+.conductor-card:hover:not(.conductor-selected) {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  border-color: #42a5f5;
+  z-index: 10; /* 🔥 Eleva la tarjeta por encima de las demás */
+}
 .conductor-card:hover::before {
   transform: translateX(100%);
 }
@@ -2684,6 +2692,13 @@ function navegarAUnidad() {
   border: 2px solid #1976d2;
   background-color: #e3f2fd;
   box-shadow: 0 8px 20px rgba(25, 118, 210, 0.3);
+}
+.conductor-card.conductor-selected:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 16px 32px rgba(25, 118, 210, 0.5) !important;
+  border-color: #0d47a1 !important;
+  background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%) !important;
+  z-index: 10; /* 🔥 Eleva la tarjeta */
 }
 
 /* Flash highlight para notificaciones */
@@ -2909,17 +2924,17 @@ function navegarAUnidad() {
 /* === LISTA DE CONDUCTORES (TARJETAS) === */
 /* ============================================ */
 .conductores-list {
+  padding: 20px; /* 🔥 Más padding */
+  overflow: visible;
   flex: 1;
-  padding: 16px;
 }
 
 .conductores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  padding-top: 5px;
+  gap: 20px;
+  padding: 10px 10px 40px 5px; /* 🔥 24px arriba, 20px a los lados, 40px abajo */
 }
-
 .card-header {
   display: flex;
   align-items: center;
@@ -3411,7 +3426,7 @@ function navegarAUnidad() {
 }
 
 .detalle-content-wrapper {
-  padding: 0;
+  padding: 0 0 24px 0;
   width: 100%; /* 🔥 IMPORTANTE */
 }
 
