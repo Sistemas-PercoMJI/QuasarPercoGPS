@@ -4,7 +4,7 @@
     <!-- Header compacto -->
     <div class="drawer-header">
       <div class="text-h6 text-weight-medium">Eventos</div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" />
+      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="btn-cerrar" />
     </div>
 
     <!-- 🐛 DEBUG: Info temporal - ACTUALIZADO -->
@@ -2214,5 +2214,16 @@ async function cargarDatos() {
   .header-title {
     font-size: 18px;
   }
+}
+.btn-cerrar {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+.btn-cerrar:hover {
+  transform: scale(1.2) rotate(15deg);
+  background: rgba(255, 255, 255, 0.2);
+}
+.btn-cerrar:active {
+  transform: scale(1.1);
 }
 </style>
