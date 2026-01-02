@@ -787,17 +787,20 @@
     >
       <q-card class="menu-contextual-moderno">
         <!-- Header con gradiente -->
+        <!-- Header minimalista y elegante -->
         <q-card-section class="menu-header">
-          <div class="header-content">
-            <q-avatar size="48px" :color="getColorGrupo(itemMenu?.grupoId)" text-color="white">
-              <q-icon :name="itemMenu?.tipo === 'poi' ? 'place' : 'layers'" size="28px" />
-            </q-avatar>
-            <div class="header-info">
-              <div class="header-title">{{ itemMenu?.nombre }}</div>
-              <div class="header-subtitle">
-                {{ itemMenu?.tipo === 'poi' ? 'Punto de Interés' : 'Geozona' }}
-              </div>
+          <div class="header-content-minimal">
+            <div class="header-top">
+              <q-chip
+                dense
+                :color="itemMenu?.tipo === 'poi' ? 'blue-6' : 'teal-6'"
+                text-color="white"
+                :icon="itemMenu?.tipo === 'poi' ? 'place' : 'layers'"
+              >
+                {{ itemMenu?.tipo === 'poi' ? 'POI' : 'Geozona' }}
+              </q-chip>
             </div>
+            <div class="header-title-minimal">{{ itemMenu?.nombre }}</div>
           </div>
         </q-card-section>
 
@@ -2477,9 +2480,14 @@ defineExpose({
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
 }
 .menu-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
   padding: 20px;
   color: white;
+}
+.header-content-minimal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* 🎨 ANIMACIONES PARA LOS TABS MODERNOS */
@@ -2788,11 +2796,23 @@ defineExpose({
 
 .header-content {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  padding: 16px 20px; /* 🔥 Agregar padding horizontal */
+  min-height: 64px; /* 🔥 Altura mínima */
 }
 .header-info {
   flex: 1;
+}
+.header-top {
+  display: flex;
+  justify-content: flex-start;
+}
+.header-title-minimal {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
 }
 
 .header-content .text-h6 {
@@ -2800,15 +2820,18 @@ defineExpose({
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  flex: 1;
 }
 .header-title {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 4px;
+  color: white;
 }
 .header-subtitle {
   font-size: 13px;
   opacity: 0.9;
+  color: white;
 }
 .menu-options {
   padding: 8px 0;
