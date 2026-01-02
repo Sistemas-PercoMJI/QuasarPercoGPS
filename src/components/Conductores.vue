@@ -83,6 +83,7 @@
               icon="more_vert"
               size="sm"
               color="grey-7"
+              class="btn-menu-hover"
               @click.stop="mostrarMenuGrupo($event, grupo)"
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
@@ -3540,5 +3541,20 @@ function navegarAUnidad() {
   .expansion-header {
     padding: 12px 16px;
   }
+}
+
+.btn-menu-hover {
+  border-radius: 50%;
+  background: transparent;
+}
+
+.btn-menu-hover:hover {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-menu-hover:active {
+  transform: rotate(90deg) scale(1.05);
 }
 </style>
