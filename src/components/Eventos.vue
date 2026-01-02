@@ -1969,19 +1969,20 @@ async function cargarDatos() {
   padding: 20px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   flex-shrink: 0; /* 🔥 No se encoge */
 }
 .header-content {
   display: flex;
-  align-items: left;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   flex: 1;
+  min-width: 0;
 }
 .header-icon-wrapper {
-  width: 56px;
-  height: 56px;
+  width: 48px; /* 🔥 Un poco más pequeño */
+  height: 48px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   display: flex;
@@ -1993,9 +1994,10 @@ async function cargarDatos() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* 🔥 Alineado a la izquierda */
+  align-items: flex-start;
   justify-content: center;
   min-width: 0;
+  padding-left: 0; /* 🔥 Sin padding extra */
 }
 .header-title {
   font-size: 20px;
@@ -2004,14 +2006,16 @@ async function cargarDatos() {
   color: white;
   text-align: left;
   width: 100%;
+  line-height: 1.2;
 }
 
 .header-subtitle {
   font-size: 13px;
   opacity: 0.95;
   color: white;
-  text-align: left; /* 🔥 Texto alineado a la izquierda */
+  text-align: left;
   width: 100%;
+  line-height: 1.3;
 }
 
 .header-close-btn {
