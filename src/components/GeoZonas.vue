@@ -778,79 +778,137 @@
     </q-dialog>
 
     <!-- Menú contextual MODIFICADO en GeoZonas.vue -->
+    <!-- Menú contextual MODERNO -->
     <q-dialog
       v-model="menuContextualVisible"
       position="bottom"
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card style="width: 100%; max-width: 400px; border-radius: 16px 16px 0 0">
-        <!-- Header -->
-        <q-card-section class="q-pa-md bg-grey-1">
-          <div class="text-subtitle2 text-grey-8">{{ itemMenu?.nombre }}</div>
+      <q-card class="menu-contextual-moderno">
+        <!-- Header con gradiente -->
+        <!-- Header minimalista y elegante -->
+        <q-card-section class="menu-header">
+          <div class="header-content-minimal">
+            <div class="header-top">
+              <q-chip
+                dense
+                :color="itemMenu?.tipo === 'poi' ? 'blue-6' : 'teal-6'"
+                text-color="white"
+                :icon="itemMenu?.tipo === 'poi' ? 'place' : 'layers'"
+              >
+                {{ itemMenu?.tipo === 'poi' ? 'POI' : 'Geozona' }}
+              </q-chip>
+            </div>
+            <div class="header-title-minimal">{{ itemMenu?.nombre }}</div>
+          </div>
         </q-card-section>
 
         <q-separator />
 
-        <!-- Opciones -->
-        <q-list padding>
-          <!-- 🆕 NUEVA OPCIÓN: Crear Evento -->
-          <q-item clickable v-ripple @click="crearEventoParaUbicacion()">
+        <!-- Opciones del menú -->
+        <q-list class="menu-options">
+          <!-- Crear Evento -->
+          <q-item
+            clickable
+            v-ripple
+            @click="crearEventoParaUbicacion()"
+            class="menu-option-item crear-evento"
+          >
             <q-item-section avatar>
-              <q-avatar color="deep-orange" text-color="white">
-                <q-icon name="notifications_active" />
-              </q-avatar>
+              <div class="option-icon-wrapper evento">
+                <q-icon name="notifications_active" size="24px" />
+              </div>
             </q-item-section>
             <q-item-section>
-              <q-item-label>Crear Evento</q-item-label>
-              <q-item-label caption>Nuevo evento para esta ubicación</q-item-label>
+              <q-item-label class="option-label">Crear Evento</q-item-label>
+              <q-item-label caption class="option-caption">
+                Configurar alertas para esta ubicación
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Editar -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(editarItem(), (menuContextualVisible = false))"
+            class="menu-option-item editar"
+          >
+            <q-item-section avatar>
+              <div class="option-icon-wrapper editar">
+                <q-icon name="edit" size="24px" />
+              </div>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="option-label">Editar</q-item-label>
+              <q-item-label caption class="option-caption">Modificar información</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
+            </q-item-section>
+          </q-item>
+
+          <!-- Ver en Mapa -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(verEnMapa(), (menuContextualVisible = false))"
+            class="menu-option-item ver-mapa"
+          >
+            <q-item-section avatar>
+              <div class="option-icon-wrapper ver-mapa">
+                <q-icon name="map" size="24px" />
+              </div>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="option-label">Ver en Mapa</q-item-label>
+              <q-item-label caption class="option-caption">Centrar en ubicación</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-5" />
             </q-item-section>
           </q-item>
 
           <q-separator class="q-my-sm" />
 
-          <q-item clickable v-ripple @click="(editarItem(), (menuContextualVisible = false))">
+          <!-- Eliminar -->
+          <q-item
+            clickable
+            v-ripple
+            @click="(eliminarItem(), (menuContextualVisible = false))"
+            class="menu-option-item eliminar"
+          >
             <q-item-section avatar>
-              <q-avatar color="primary" text-color="white">
-                <q-icon name="edit" />
-              </q-avatar>
+              <div class="option-icon-wrapper eliminar">
+                <q-icon name="delete" size="24px" />
+              </div>
             </q-item-section>
             <q-item-section>
-              <q-item-label>Editar</q-item-label>
-              <q-item-label caption>Modificar información</q-item-label>
+              <q-item-label class="option-label text-negative">Eliminar</q-item-label>
+              <q-item-label caption class="option-caption text-negative">
+                Eliminar permanentemente
+              </q-item-label>
             </q-item-section>
-          </q-item>
-
-          <q-item clickable v-ripple @click="(verEnMapa(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="positive" text-color="white">
-                <q-icon name="map" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Ver en mapa</q-item-label>
-              <q-item-label caption>Centrar en ubicación</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-separator class="q-my-sm" />
-
-          <q-item clickable v-ripple @click="(eliminarItem(), (menuContextualVisible = false))">
-            <q-item-section avatar>
-              <q-avatar color="negative" text-color="white">
-                <q-icon name="delete" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-negative">Eliminar</q-item-label>
-              <q-item-label caption>Eliminar permanentemente</q-item-label>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="negative" />
             </q-item-section>
           </q-item>
         </q-list>
 
-        <!-- Botón cancelar -->
-        <q-card-actions class="q-pa-md">
-          <q-btn flat label="Cancelar" color="grey-7" class="full-width" v-close-popup />
+        <!-- Botón Cancelar -->
+        <q-card-actions class="menu-actions">
+          <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            class="full-width cancel-btn"
+            v-close-popup
+            size="md"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -2364,6 +2422,364 @@ defineExpose({
 </script>
 
 <style scoped>
+.option-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.option-icon-wrapper.evento {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  color: white;
+}
+
+.option-icon-wrapper.editar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.option-icon-wrapper.ver-mapa {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+  color: white;
+}
+
+.option-icon-wrapper.eliminar {
+  background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+  color: white;
+}
+.menu-option-item:hover .option-icon-wrapper {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.menu-option-item.eliminar:hover .option-icon-wrapper.eliminar {
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: scale(1.1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+.menu-contextual-moderno {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+}
+.menu-header {
+  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
+  padding: 20px;
+  color: white;
+}
+.header-content-minimal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 🎨 ANIMACIONES PARA LOS TABS MODERNOS */
+.tab-item {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de hover mejorado */
+.tab-item:not(.active):hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Tab activo con escala */
+.tab-item.active {
+  animation: tab-activate 0.3s ease-out;
+}
+
+@keyframes tab-activate {
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Iconos que rebotan al hover */
+.tab-item:hover .q-icon {
+  animation: icon-bounce 0.5s ease;
+}
+
+@keyframes icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* 🎨 ANIMACIONES PARA STAT CARDS */
+.stat-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Número que crece al hover */
+.stat-card:hover .stat-number {
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+/* Icono que rota al hover */
+.stat-card:hover .q-icon {
+  animation: rotate-grow 0.6s ease;
+}
+
+@keyframes rotate-grow {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+/* 🎨 ANIMACIONES MEJORADAS PARA CARDS */
+.poi-card,
+.geozona-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de brillo al pasar el mouse */
+.poi-card::before,
+.geozona-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.poi-card:hover::before,
+.geozona-card:hover::before {
+  transform: translateX(100%);
+}
+
+/* Avatar que pulsa al hover */
+.poi-card:hover .q-avatar,
+.geozona-card:hover .q-avatar {
+  animation: pulse-avatar 0.6s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse-avatar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* Texto que se desliza */
+.poi-card:hover .text-subtitle1,
+.geozona-card:hover .text-subtitle1 {
+  transform: translateX(4px);
+  transition: transform 0.3s ease;
+}
+
+/* 🎨 BOTÓN FLOTANTE MEJORADO */
+.floating-btn {
+  animation: float 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.floating-btn:hover {
+  transform: scale(1.15) translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.floating-btn:active {
+  transform: scale(1.05);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Icono que rota al hacer hover */
+.floating-btn:hover .q-icon {
+  animation: rotate-icon 0.6s ease;
+}
+
+@keyframes rotate-icon {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🎨 CHIPS DE FILTROS CON ANIMACIONES */
+.chips-container .q-chip {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chips-container .q-chip:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chips-container .q-chip:active {
+  transform: scale(0.98);
+}
+
+/* Avatar del chip que aparece con escala */
+.chips-container .q-chip .q-avatar {
+  animation: chip-avatar-appear 0.3s ease-out;
+}
+
+@keyframes chip-avatar-appear {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* 🎨 BÚSQUEDA MEJORADA */
+.modern-search {
+  transition: all 0.3s ease;
+}
+
+.modern-search:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.modern-search:focus-within {
+  box-shadow: 0 4px 20px rgba(187, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Icono de búsqueda que pulsa */
+.modern-search:focus-within .q-icon {
+  animation: pulse-search 1s ease infinite;
+}
+
+@keyframes pulse-search {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+/* 🎨 SLIDER FLOTANTE CON ENTRADA DRAMÁTICA */
+.slider-flotante-card {
+  animation: slide-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slide-bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateX(200px) scale(0.8);
+  }
+  60% {
+    transform: translateX(-10px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Botones de atajo que crecen */
+.slider-flotante-card .q-btn:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+/* 🎨 COLOR CHIPS MEJORADOS */
+.color-chip {
+  position: relative;
+}
+
+.color-chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 10px;
+  background: inherit;
+  opacity: 0;
+  filter: blur(8px);
+  transition: opacity 0.3s ease;
+}
+
+.color-chip:hover::after {
+  opacity: 0.4;
+}
+
+/* Check que aparece con rebote */
+.color-chip-selected .q-icon {
+  animation: check-bounce 0.4s ease-out;
+}
+
+@keyframes check-bounce {
+  0% {
+    transform: scale(0) rotate(-45deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
 .geozonas-drawer {
   width: 100%;
   height: 100%;
@@ -2382,7 +2798,21 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 16px 20px; /* 🔥 Agregar padding horizontal */
+  min-height: 64px; /* 🔥 Altura mínima */
+}
+.header-info {
+  flex: 1;
+}
+.header-top {
+  display: flex;
+  justify-content: flex-start;
+}
+.header-title-minimal {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
 }
 
 .header-content .text-h6 {
@@ -2390,8 +2820,47 @@ defineExpose({
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+  flex: 1;
+}
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: white;
+}
+.header-subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+  color: white;
+}
+.menu-options {
+  padding: 8px 0;
+}
+.menu-option-item {
+  padding: 16px 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.menu-option-item::before {
+  content: '';
+  position: absolute;
+  left: -100%;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+  transition: left 0.4s ease;
 }
 
+.menu-option-item:hover::before {
+  left: 100%;
+}
+
+.menu-option-item:hover {
+  background-color: #f5f7fa;
+  padding-left: 24px;
+}
 .modern-tabs {
   display: flex;
   background: rgba(255, 255, 255, 0.1);
@@ -2746,5 +3215,63 @@ defineExpose({
   border-radius: 6px;
   border: 2px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.option-label {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.option-caption {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+/* Chevron que se mueve */
+.menu-option-item:hover .q-item__section--side .q-icon {
+  transform: translateX(4px);
+  transition: transform 0.3s ease;
+}
+
+.menu-actions {
+  padding: 16px 20px 24px;
+  background: #fafafa;
+}
+
+.cancel-btn {
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .menu-contextual-moderno {
+    max-width: 100vw;
+  }
+
+  .menu-header {
+    padding: 16px;
+  }
+
+  .header-title {
+    font-size: 16px;
+  }
+
+  .menu-option-item {
+    padding: 14px 16px;
+  }
+
+  .option-icon-wrapper {
+    width: 44px;
+    height: 44px;
+  }
 }
 </style>

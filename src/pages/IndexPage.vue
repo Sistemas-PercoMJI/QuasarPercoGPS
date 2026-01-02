@@ -1,3 +1,4 @@
+/*Este es mi IndexPage.vue*/
 <template>
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
@@ -349,6 +350,7 @@ import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
 const {
   initMap,
@@ -359,6 +361,8 @@ const {
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
+
+const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
@@ -461,6 +465,23 @@ function detenerEvaluacionEventos() {
 const iniciarSimuladorAutomatico = async () => {
   if (simuladorYaIniciado || simulacionActiva.value) {
     return
+  }
+
+  try {
+    // 🔥 CARGAR USUARIO PRIMERO
+    if (!idEmpresaActual.value) {
+      console.log('⏳ Cargando empresa...')
+      await cargarUsuarioActual()
+    }
+    console.log('🏢 Empresa:', idEmpresaActual.value)
+
+    // Ahora sí cargar conductores
+    await obtenerConductores()
+    await obtenerUnidades()
+
+    // ... resto del código ...
+  } catch (error) {
+    console.error('❌ Error:', error)
   }
 
   try {
@@ -1357,6 +1378,7 @@ const recentrarEnUsuario = () => {
 }
 
 onMounted(async () => {
+  await cargarUsuarioActual()
   try {
     // ✅ PASO 1: Inicializar mapa INMEDIATAMENTE (sin esperar GPS)
     const defaultCoords = [32.504421823945805, -116.9514484543167]
@@ -1673,6 +1695,9 @@ onMounted(async () => {
 
     console.log('✅ Mapa redibujado completamente')
   })
+  setTimeout(() => {
+    iniciarSimuladorAutomatico()
+  }, 1000)
 
   iniciarTracking()
 })
