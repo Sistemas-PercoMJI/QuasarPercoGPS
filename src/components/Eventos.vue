@@ -193,236 +193,368 @@
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card class="dialog-evento" style="width: 600px; max-width: 90vw">
-        <!-- Header del Diálogo -->
-        <q-card-section class="row items-center q-pb-none bg-primary text-white">
-          <div class="text-h6">{{ modoEdicion ? 'Editar Evento' : 'Nuevo Evento' }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup @click="cancelarFormulario" />
+      <q-card class="dialog-evento-moderno">
+        <!-- 🎨 Header Moderno con Gradiente -->
+        <q-card-section class="evento-header">
+          <div class="header-content">
+            <div class="header-icon-wrapper">
+              <q-icon :name="modoEdicion ? 'edit_notifications' : 'add_alert'" size="32px" />
+            </div>
+            <div class="header-info">
+              <div class="header-title">
+                {{ modoEdicion ? 'Editar Evento' : 'Nuevo Evento' }}
+              </div>
+              <div class="header-subtitle">Configura las alertas para tus ubicaciones</div>
+            </div>
+          </div>
+          <q-btn
+            icon="close"
+            flat
+            round
+            dense
+            v-close-popup
+            @click="cancelarFormulario"
+            class="header-close-btn"
+          />
         </q-card-section>
 
-        <!-- Cuerpo del Formulario -->
-        <q-card-section class="scroll" style="max-height: 70vh">
-          <div class="q-gutter-md">
-            <!-- Nombre y Descripción -->
-            <q-input
-              v-model="nuevoEvento.nombre"
-              label="Nombre del evento *"
-              outlined
-              maxlength="100"
-              :rules="[(val) => !!val || 'El nombre es obligatorio']"
-            />
-            <q-input
-              v-model="nuevoEvento.descripcion"
-              label="Descripción (opcional)"
-              outlined
-              type="textarea"
-              rows="2"
-            />
+        <!-- Cuerpo del Formulario con Scroll -->
+        <div class="evento-body-scroll">
+          <q-card-section class="evento-content">
+            <!-- 📝 Información Básica -->
+            <div class="form-section">
+              <div class="section-header">
+                <q-icon name="edit_note" size="20px" color="primary" />
+                <span class="section-title">Información Básica</span>
+              </div>
 
-            <!-- Condiciones de Activación -->
-            <q-separator />
-            <div class="text-subtitle2 q-mt-sm">Condiciones de Activación</div>
-            <div
-              v-for="(condicion, index) in nuevoEvento.condiciones"
-              :key="index"
-              class="q-mb-md condicion-card"
-            >
-              <div class="row q-gutter-sm items-center">
-                <q-select
-                  v-model="condicion.tipo"
-                  :options="opcionesCondicion"
-                  label="Tipo"
+              <div class="form-fields">
+                <q-input
+                  v-model="nuevoEvento.nombre"
+                  label="Nombre del evento"
                   outlined
                   dense
-                  class="col"
-                  emit-value
-                  map-options
-                />
-                <q-select
-                  v-model="condicion.activacion"
-                  :options="opcionesActivacion"
-                  label="Activación"
-                  outlined
-                  dense
-                  class="col"
-                  emit-value
-                  map-options
-                />
-
-                <!-- 🆕 SELECTOR MEJORADO CON BÚSQUEDA E ICONOS -->
-                <q-select
-                  v-model="condicion.ubicacionId"
-                  :options="opcionesFiltradas[index] || []"
-                  label="Seleccionar ubicación"
-                  outlined
-                  dense
-                  class="col-12"
-                  emit-value
-                  map-options
-                  clearable
-                  use-input
-                  input-debounce="300"
-                  @filter="(val, update) => filtrarUbicaciones(val, update, index)"
+                  maxlength="100"
+                  :rules="[(val) => !!val || 'El nombre es obligatorio']"
+                  class="modern-input"
                 >
                   <template v-slot:prepend>
-                    <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
+                    <q-icon name="label" />
                   </template>
+                </q-input>
 
-                  <template v-slot:option="scope">
-                    <q-item v-bind="scope.itemProps">
-                      <q-item-section avatar>
-                        <q-icon
-                          :name="scope.opt.icono"
-                          :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
-                          size="20px"
-                        />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label>{{ scope.opt.label }}</q-item-label>
-                        <q-item-label caption>{{ scope.opt.tipo }}</q-item-label>
-                      </q-item-section>
-                    </q-item>
+                <q-input
+                  v-model="nuevoEvento.descripcion"
+                  label="Descripción (opcional)"
+                  outlined
+                  dense
+                  type="textarea"
+                  rows="2"
+                  class="modern-input"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="description" />
                   </template>
+                </q-input>
+              </div>
+            </div>
 
-                  <template v-slot:selected-item="scope">
-                    <div class="row items-center no-wrap q-gutter-xs">
-                      <q-icon
-                        :name="scope.opt.icono"
-                        :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
-                        size="18px"
-                      />
-                      <span>{{ scope.opt.label }}</span>
+            <!-- 🎯 Condiciones de Activación -->
+            <div class="form-section">
+              <div class="section-header">
+                <q-icon name="rule" size="20px" color="orange" />
+                <span class="section-title">Condiciones de Activación</span>
+              </div>
+
+              <div class="condiciones-container">
+                <div
+                  v-for="(condicion, index) in nuevoEvento.condiciones"
+                  :key="index"
+                  class="condicion-card-modern"
+                >
+                  <div class="condicion-header">
+                    <q-chip dense color="primary" text-color="white" size="sm">
+                      Condición {{ index + 1 }}
+                    </q-chip>
+                    <q-btn
+                      v-if="nuevoEvento.condiciones.length > 1"
+                      flat
+                      dense
+                      round
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click="eliminarCondicion(index)"
+                    >
+                      <q-tooltip>Eliminar condición</q-tooltip>
+                    </q-btn>
+                  </div>
+
+                  <div class="condicion-fields">
+                    <div class="row q-col-gutter-sm">
+                      <div class="col-6">
+                        <q-select
+                          v-model="condicion.tipo"
+                          :options="opcionesCondicion"
+                          label="Tipo"
+                          outlined
+                          dense
+                          emit-value
+                          map-options
+                          class="modern-select"
+                        >
+                          <template v-slot:prepend>
+                            <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
+                          </template>
+                        </q-select>
+                      </div>
+
+                      <div class="col-6">
+                        <q-select
+                          v-model="condicion.activacion"
+                          :options="opcionesActivacion"
+                          label="Activación"
+                          outlined
+                          dense
+                          emit-value
+                          map-options
+                          class="modern-select"
+                        >
+                          <template v-slot:prepend>
+                            <q-icon name="radio_button_checked" />
+                          </template>
+                        </q-select>
+                      </div>
                     </div>
-                  </template>
 
-                  <template v-slot:no-option>
-                    <q-item>
-                      <q-item-section class="text-grey"> </q-item-section>No se encontraron
-                      ubicaciones
-                    </q-item>
+                    <!-- Selector de Ubicación Mejorado -->
+                    <q-select
+                      v-model="condicion.ubicacionId"
+                      :options="opcionesFiltradas[index] || []"
+                      label="Seleccionar ubicación"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      clearable
+                      use-input
+                      input-debounce="300"
+                      @filter="(val, update) => filtrarUbicaciones(val, update, index)"
+                      class="modern-select q-mt-sm"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon :name="getIconoTipoCondicion(condicion.tipo)" />
+                      </template>
+
+                      <template v-slot:option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section avatar>
+                            <q-avatar
+                              size="32px"
+                              :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
+                              text-color="white"
+                            >
+                              <q-icon :name="scope.opt.icono" size="18px" />
+                            </q-avatar>
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label>{{ scope.opt.label }}</q-item-label>
+                            <q-item-label caption>
+                              <q-badge
+                                :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
+                                :label="scope.opt.tipo"
+                              />
+                            </q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+
+                      <template v-slot:selected-item="scope">
+                        <div class="row items-center no-wrap q-gutter-xs">
+                          <q-icon
+                            :name="scope.opt.icono"
+                            :color="scope.opt.tipo === 'POI' ? 'red' : 'blue'"
+                            size="18px"
+                          />
+                          <span>{{ scope.opt.label }}</span>
+                        </div>
+                      </template>
+
+                      <template v-slot:no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">
+                            No se encontraron ubicaciones
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Operador Lógico -->
+                  <div v-if="index < nuevoEvento.condiciones.length - 1" class="operador-logico">
+                    <div class="operador-label">Siguiente condición debe cumplir:</div>
+                    <q-btn-toggle
+                      v-model="nuevoEvento.operadoresLogicos[index]"
+                      :options="[
+                        { label: 'Y (Todas)', value: 'AND', icon: 'done_all' },
+                        { label: 'O (Alguna)', value: 'OR', icon: 'done' },
+                      ]"
+                      unelevated
+                      dense
+                      toggle-color="primary"
+                      class="operador-toggle"
+                    />
+                  </div>
+                </div>
+
+                <!-- Botón Agregar Condición -->
+                <q-btn
+                  outline
+                  icon="add_circle"
+                  label="Agregar otra condición"
+                  color="primary"
+                  @click="agregarCondicion"
+                  class="add-condicion-btn full-width"
+                />
+              </div>
+            </div>
+
+            <!-- 🔔 Opciones de Alerta -->
+            <div class="form-section">
+              <div class="section-header">
+                <q-icon name="notifications_active" size="20px" color="deep-orange" />
+                <span class="section-title">Opciones de Alerta</span>
+              </div>
+
+              <div class="form-fields">
+                <q-select
+                  v-model="nuevoEvento.activacionAlerta"
+                  :options="opcionesActivacionAlerta"
+                  label="Frecuencia de alerta"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  class="modern-select"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="repeat" />
                   </template>
                 </q-select>
 
-                <q-btn
-                  v-if="nuevoEvento.condiciones.length > 1"
-                  flat
+                <q-select
+                  v-model="nuevoEvento.aplicacion"
+                  :options="opcionesAplicacion"
+                  label="Aplicación del evento"
+                  outlined
                   dense
-                  round
-                  icon="delete"
-                  color="negative"
-                  @click="eliminarCondicion(index)"
-                  class="q-ml-sm btn-delete-hover"
-                />
-              </div>
-              <!-- Operador Lógico entre condiciones -->
-              <div v-if="index < nuevoEvento.condiciones.length - 1" class="q-mt-sm q-ml-sm">
-                <q-btn-toggle
-                  v-model="nuevoEvento.operadoresLogicos[index]"
-                  :options="[
-                    { label: 'Y (AND)', value: 'AND' },
-                    { label: 'O (OR)', value: 'OR' },
-                  ]"
-                  unelevated
-                  dense
-                  toggle-color="primary"
-                />
+                  emit-value
+                  map-options
+                  class="modern-select"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="schedule" />
+                  </template>
+                </q-select>
               </div>
             </div>
 
-            <!-- Botón para agregar más condiciones -->
-            <q-btn
-              flat
-              icon="add_circle"
-              label="Agregar otra condición"
-              color="primary"
-              @click="agregarCondicion"
-              class="btn-hover-effect"
-            />
+            <!-- ⏰ Configuración de Horario (Condicional) -->
+            <div v-if="nuevoEvento.aplicacion === 'horario'" class="form-section horario-section">
+              <div class="section-header">
+                <q-icon name="access_time" size="20px" color="blue" />
+                <span class="section-title">Días y Horarios</span>
+              </div>
 
-            <!-- Opciones de Alerta y Aplicación -->
-            <q-separator class="q-mt-md" />
-            <div class="text-subtitle2 q-mt-sm">Opciones de Alerta</div>
-            <q-select
-              v-model="nuevoEvento.activacionAlerta"
-              :options="opcionesActivacionAlerta"
-              label="Frecuencia de alerta"
-              outlined
-              emit-value
-              map-options
-            />
-
-            <q-select
-              v-model="nuevoEvento.aplicacion"
-              :options="opcionesAplicacion"
-              label="Aplicación del evento"
-              outlined
-              emit-value
-              map-options
-            />
-
-            <!-- Configuración de Horario -->
-            <div v-if="nuevoEvento.aplicacion === 'horario'" class="q-gutter-sm q-mt-md">
-              <div class="text-subtitle2">Días y Horas</div>
-              <q-select
-                v-model="nuevoEvento.diasSemana"
-                :options="opcionesDiasSemana"
-                label="Días de la semana"
-                outlined
-                multiple
-                emit-value
-                map-options
-                use-chips
-              />
-              <div class="row q-gutter-sm">
-                <q-input
-                  v-model="nuevoEvento.horaInicio"
-                  label="Hora de inicio"
+              <div class="form-fields">
+                <q-select
+                  v-model="nuevoEvento.diasSemana"
+                  :options="opcionesDiasSemana"
+                  label="Días de la semana"
                   outlined
                   dense
-                  class="col"
-                  mask="time"
-                  :rules="['time']"
+                  multiple
+                  emit-value
+                  map-options
+                  use-chips
+                  class="modern-select"
                 >
-                  <template v-slot:append>
-                    <q-icon name="access_time" class="cursor-pointer">
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <q-time v-model="nuevoEvento.horaInicio" />
-                      </q-popup-proxy>
-                    </q-icon>
+                  <template v-slot:prepend>
+                    <q-icon name="calendar_today" />
                   </template>
-                </q-input>
-                <q-input
-                  v-model="nuevoEvento.horaFin"
-                  label="Hora de fin"
-                  outlined
-                  dense
-                  class="col"
-                  mask="time"
-                  :rules="['time']"
-                >
-                  <template v-slot:append>
-                    <q-icon name="access_time" class="cursor-pointer">
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <q-time v-model="nuevoEvento.horaFin" />
-                      </q-popup-proxy>
-                    </q-icon>
-                  </template>
-                </q-input>
+                </q-select>
+
+                <div class="row q-col-gutter-sm">
+                  <div class="col-6">
+                    <q-input
+                      v-model="nuevoEvento.horaInicio"
+                      label="Hora de inicio"
+                      outlined
+                      dense
+                      mask="time"
+                      :rules="['time']"
+                      class="modern-input"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="schedule" />
+                      </template>
+                      <template v-slot:append>
+                        <q-icon name="access_time" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-time v-model="nuevoEvento.horaInicio" />
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
+                    </q-input>
+                  </div>
+
+                  <div class="col-6">
+                    <q-input
+                      v-model="nuevoEvento.horaFin"
+                      label="Hora de fin"
+                      outlined
+                      dense
+                      mask="time"
+                      :rules="['time']"
+                      class="modern-input"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="schedule" />
+                      </template>
+                      <template v-slot:append>
+                        <q-icon name="access_time" class="cursor-pointer">
+                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                            <q-time v-model="nuevoEvento.horaFin" />
+                          </q-popup-proxy>
+                        </q-icon>
+                      </template>
+                    </q-input>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </q-card-section>
+          </q-card-section>
+        </div>
 
-        <!-- Footer del Diálogo -->
-        <q-card-actions align="right" class="bg-grey-2">
-          <q-btn flat label="Cancelar" @click="cancelarFormulario" v-close-popup />
+        <!-- Footer con Acciones -->
+        <q-card-actions class="evento-footer">
           <q-btn
+            flat
+            label="Cancelar"
+            color="grey-7"
+            @click="cancelarFormulario"
+            v-close-popup
+            class="cancel-btn"
+          />
+          <q-btn
+            unelevated
+            label="Guardar Evento"
             color="primary"
-            label="Guardar"
             @click="guardarEvento"
             :disable="!esFormularioValido"
             :loading="loading"
+            icon-right="save"
+            class="save-btn"
           />
         </q-card-actions>
       </q-card>
@@ -1053,6 +1185,15 @@ async function cargarDatos() {
 </script>
 
 <style scoped>
+.dialog-evento-moderno {
+  width: 650px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+}
 .eventos-drawer-compact {
   width: 100%;
   height: 100%;
@@ -1821,5 +1962,253 @@ async function cargarDatos() {
 /* 🆕 RIPPLE EFFECT MEJORADO */
 .evento-item:active {
   transform: scale(0.98);
+}
+.evento-header {
+  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0; /* 🔥 No se encoge */
+}
+.header-content {
+  display: flex;
+  align-items: left;
+  gap: 10px;
+  flex: 1;
+}
+.header-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* 🔥 Alineado a la izquierda */
+  justify-content: center;
+  min-width: 0;
+}
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: white;
+  text-align: left;
+  width: 100%;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  opacity: 0.95;
+  color: white;
+  text-align: left; /* 🔥 Texto alineado a la izquierda */
+  width: 100%;
+}
+
+.header-close-btn {
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  margin-left: auto;
+}
+
+.header-close-btn:hover {
+  transform: scale(1.1) rotate(90deg);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Scroll Area */
+.evento-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f5f5f5;
+}
+
+.evento-content {
+  padding: 24px;
+  min-height: 100%; /* 🔥 IMPORTANTE */
+}
+.form-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.form-section:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-color: #d0d0d0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Inputs y Selects Modernos */
+.modern-input,
+.modern-select {
+  transition: all 0.3s ease;
+}
+
+.modern-input:hover,
+.modern-select:hover {
+  transform: translateX(4px);
+}
+
+.modern-input:focus-within,
+.modern-select:focus-within {
+  transform: translateX(6px);
+}
+
+/* Tarjetas de Condición */
+.condiciones-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.condicion-card-modern {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 2px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.condicion-card-modern:hover {
+  border-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.15);
+  transform: translateY(-2px);
+}
+
+.condicion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.condicion-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Operador Lógico */
+.operador-logico {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px dashed #dee2e6;
+  text-align: center;
+}
+
+.operador-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.operador-toggle {
+  display: inline-flex;
+}
+
+/* Botón Agregar Condición */
+.add-condicion-btn {
+  border: 2px dashed #1976d2;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.add-condicion-btn:hover {
+  background: rgba(25, 118, 210, 0.08);
+  border-style: solid;
+  transform: translateY(-2px);
+}
+
+/* Sección de Horario */
+.horario-section {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-color: #90caf9;
+}
+
+/* Footer */
+.evento-footer {
+  padding: 16px 24px;
+  background: #fafafa;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel-btn {
+  border-radius: 8px;
+  padding: 8px 20px;
+}
+
+.save-btn {
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .dialog-evento-moderno {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 0;
+  }
+
+  .evento-content {
+    padding: 16px;
+  }
+
+  .form-section {
+    padding: 16px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
 }
 </style>
