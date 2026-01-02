@@ -93,7 +93,7 @@
                 <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
                   <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
                     <q-item-section avatar>
-                      <q-icon name="edit" size="sm" color="primary" />
+                      <q-icon name="edit" size="sm" color="black" />
                     </q-item-section>
                     <q-item-section>
                       <q-item-label>Editar grupo</q-item-label>

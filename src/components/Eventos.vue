@@ -1576,7 +1576,20 @@ async function cargarDatos() {
 }
 
 .menu-item-hover:hover .q-icon {
-  animation: swing 0.5s ease;
+  animation: icon-bounce 0.6s ease;
+}
+.menu-item-hover.q-icon {
+  transition: transform 0.3s ease;
+}
+
+@keyframes icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes swing {
@@ -1690,20 +1703,6 @@ async function cargarDatos() {
 
 .q-menu .q-item:hover::before {
   left: 100%;
-}
-
-/* Iconos del dropdown que rotan */
-.q-menu .q-item:hover .q-icon {
-  animation: rotate-small 0.6s ease;
-}
-
-@keyframes rotate-small {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 /* 14. DIÁLOGO CON ENTRADA DRAMÁTICA */
