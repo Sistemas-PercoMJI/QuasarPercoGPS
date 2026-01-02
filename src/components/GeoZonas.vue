@@ -917,7 +917,7 @@
 
 <script setup>
 // MODIFICAR esta línea existente:
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 //import mapboxgl from 'mapbox-gl'
@@ -1171,35 +1171,35 @@ function contarEventos(ubicacionId, tipo) {
   })
   return count
 }
-let timeoutVistaPrevia = null
+let ultimaPosicionMouse = null
+let frameId = null
+
 const manejarMovimientoMouse = (e) => {
-  // Obtener mapaAPI
   const mapPage = document.querySelector('#map-page')
-  if (!mapPage || !mapPage._mapaAPI) {
-    return
-  }
+  if (!mapPage || !mapPage._mapaAPI) return
 
   const mapaAPI = mapPage._mapaAPI
-
-  // Obtener puntos directamente del mapaAPI (en tiempo real)
   const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
 
-  // Solo mostrar preview si hay al menos 1 punto
-  if (!puntosActuales || puntosActuales.length === 0) {
-    return
-  }
+  if (!puntosActuales || puntosActuales.length === 0) return
 
-  posicionMouseActual.value = {
+  // ✅ Guardar posición sin actualizar reactive (más rápido)
+  ultimaPosicionMouse = {
     lat: e.lngLat.lat,
     lng: e.lngLat.lng,
   }
-  if (timeoutVistaPrevia) return
-  timeoutVistaPrevia = setTimeout(() => {
-    actualizarVistaPrevia()
-    timeoutVistaPrevia = null
-  }, 16) // 60fps
 
-  actualizarVistaPrevia()
+  // ✅ Cancelar frame anterior si existe
+  if (frameId) {
+    cancelAnimationFrame(frameId)
+  }
+
+  // ✅ Usar requestAnimationFrame (automático 60fps)
+  frameId = requestAnimationFrame(() => {
+    posicionMouseActual.value = ultimaPosicionMouse
+    actualizarVistaPrevia()
+    frameId = null
+  })
 }
 // 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
 const actualizarVistaPrevia = () => {
@@ -1212,11 +1212,30 @@ const actualizarVistaPrevia = () => {
   const map = mapaAPI.map
 
   const puntosActuales = mapaAPI.getPuntosSeleccionados ? mapaAPI.getPuntosSeleccionados() : []
-
   if (!puntosActuales || puntosActuales.length === 0) return
 
-  // ✅ Obtener color seleccionado
   const colorSeleccionado = nuevaGeozona.value?.color || '#4ECDC4'
+  watch(
+    () => nuevaGeozona.value.color,
+    (nuevoColor) => {
+      if (!modoSeleccionGeozonaPoligonal.value) return
+
+      const mapPage = document.querySelector('#map-page')
+      if (!mapPage || !mapPage._mapaAPI) return
+
+      // ✅ Usar la nueva función que agregamos
+      if (mapPage._mapaAPI.actualizarColorPoligonoTemporal) {
+        mapPage._mapaAPI.actualizarColorPoligonoTemporal(nuevoColor)
+      }
+
+      // ✅ Actualizar preview también
+      if (posicionMouseActual.value) {
+        actualizarVistaPrevia()
+      }
+    },
+  )
+
+  // 🎨 Función para oscurecer color (inline para performance)
   const oscurecerColor = (hex, porcentaje = 30) => {
     hex = hex.replace('#', '')
     let r = parseInt(hex.substring(0, 2), 16)
@@ -1227,12 +1246,12 @@ const actualizarVistaPrevia = () => {
     b = Math.floor(b * (1 - porcentaje / 100))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
   }
-  const borderColor = oscurecerColor(colorSeleccionado, 30)
 
+  const borderColor = oscurecerColor(colorSeleccionado, 30)
   const ultimoPunto = puntosActuales[puntosActuales.length - 1]
   const mouseCoords = [posicionMouseActual.value.lng, posicionMouseActual.value.lat]
 
-  // ✅ LÍNEA DE PREVIEW
+  // ✅ LÍNEA DE PREVIEW - Solo actualizar data
   const lineData = {
     type: 'Feature',
     geometry: {
@@ -1242,10 +1261,10 @@ const actualizarVistaPrevia = () => {
   }
 
   if (map.getSource('preview-line')) {
+    // ✅ SOLO actualizar datos - RÁPIDO
     map.getSource('preview-line').setData(lineData)
-    // ✅ Actualizar color de la línea
-    map.setPaintProperty('preview-line', 'line-color', borderColor)
   } else {
+    // Primera vez - crear source y layer
     map.addSource('preview-line', {
       type: 'geojson',
       data: lineData,
@@ -1281,11 +1300,10 @@ const actualizarVistaPrevia = () => {
     }
 
     if (map.getSource('preview-polygon')) {
+      // ✅ SOLO actualizar datos - RÁPIDO
       map.getSource('preview-polygon').setData(polygonData)
-      // ✅ Actualizar colores del polígono
-      map.setPaintProperty('preview-polygon', 'fill-color', colorSeleccionado)
-      map.setPaintProperty('preview-polygon-outline', 'line-color', borderColor)
     } else {
+      // Primera vez - crear source y layers
       map.addSource('preview-polygon', {
         type: 'geojson',
         data: polygonData,
@@ -1314,6 +1332,7 @@ const actualizarVistaPrevia = () => {
       })
     }
   } else {
+    // Remover polígono si hay menos de 2 puntos
     if (map.getSource('preview-polygon')) {
       if (map.getLayer('preview-polygon')) map.removeLayer('preview-polygon')
       if (map.getLayer('preview-polygon-outline')) map.removeLayer('preview-polygon-outline')
@@ -1753,6 +1772,11 @@ const limpiarPreviewCompleto = () => {
 
   const map = mapPage._mapaAPI.map
 
+  // 🆕 CANCELAR CUALQUIER FRAME PENDIENTE
+  if (frameId) {
+    cancelAnimationFrame(frameId)
+    frameId = null
+  }
   // ✅ Limpiar capas de preview de Mapbox GL
   if (map.getSource('preview-line')) {
     if (map.getLayer('preview-line')) {
@@ -1797,6 +1821,7 @@ const limpiarPreviewCompleto = () => {
   }
 
   // Resetear referencias
+  posicionMouseActual.value = null
   posicionMouseActual.value = null
   lineaPreview.value = null
   poligonoPreview.value = null
