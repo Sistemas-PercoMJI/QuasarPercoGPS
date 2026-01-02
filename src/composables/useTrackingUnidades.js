@@ -40,10 +40,6 @@ export function useTrackingUnidades() {
       return perteneceAEmpresa
     })
 
-    console.log(
-      `🔍 Filtrado: ${unidadesFiltradas.length}/${unidadesRaw.length} unidades para empresa "${idEmpresaActual.value}"`,
-    )
-
     return unidadesFiltradas
   }
 
@@ -142,8 +138,6 @@ export function useTrackingUnidades() {
         const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
         unidadesActivasGlobal.value = unidadesFiltradas
         window._unidadesTrackeadas = unidadesFiltradas
-
-        console.log('🔄 Re-filtrado automático aplicado')
       }
     },
     { deep: true },

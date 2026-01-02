@@ -362,6 +362,9 @@ const {
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
 
+const geozonasDibujadas = ref(new Set())
+const poisDibujados = ref(new Set())
+
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
@@ -831,6 +834,7 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
 
   return markerEl
 }
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -839,7 +843,8 @@ const dibujarTodosEnMapa = async () => {
   }
 
   mapaAPI = mapPage._mapaAPI
-  limpiarCapasDelMapa()
+
+  // limpiarCapasDelMapa()
 
   try {
     const eventosActivos = await obtenerEventos()
@@ -848,12 +853,19 @@ const dibujarTodosEnMapa = async () => {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
 
-    // ✅ DIBUJAR POIs
+    // ✅ DIBUJAR SOLO POIs NUEVOS
     pois.forEach((poi) => {
       if (poi.coordenadas) {
+        const poiKey = `poi-${poi.id}`
+
+        // ✅ Si ya está dibujado, saltar
+        if (poisDibujados.value.has(poiKey)) {
+          return
+        }
+
         const { lat, lng } = poi.coordenadas
         const radio = poi.radio || 100
-        const color = poi.color || '#FF5252' // ✅ Obtener color del POI
+        const color = poi.color || '#FF5252'
 
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
@@ -884,41 +896,40 @@ const dibujarTodosEnMapa = async () => {
                 ],
                 base: 2,
               },
-              'circle-color': color, // ✅ USAR EL COLOR DEL POI (antes era '#2196F3')
+              'circle-color': color,
               'circle-opacity': 0.15,
               'circle-stroke-width': 2,
-              'circle-stroke-color': color, // ✅ USAR EL COLOR DEL POI (antes era '#2196F3')
+              'circle-stroke-color': color,
             },
           })
         }
 
         const popupContent = `
-      <div class="poi-popup-container">
-        <div class="poi-popup-header">
-          <div class="header-info">
-            <div class="header-title">${poi.nombre}</div>
-            <div class="header-divider"></div>
-            <div class="header-subtitle">Radio: ${radio}m</div>
+          <div class="poi-popup-container">
+            <div class="poi-popup-header">
+              <div class="header-info">
+                <div class="header-title">${poi.nombre}</div>
+                <div class="header-divider"></div>
+                <div class="header-subtitle">Radio: ${radio}m</div>
+              </div>
+            </div>
+
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-icon"></div>
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+
+              <button
+                onclick="window.verDetallesPOI('${poi.id}')"
+                class="details-btn"
+              >
+                Ver más detalles
+              </button>
+            </div>
           </div>
-        </div>
+        `
 
-        <div class="poi-popup-body">
-          <div class="address-info">
-            <div class="address-icon"></div>
-            <div class="address-text">${poi.direccion}</div>
-          </div>
-
-          <button
-            onclick="window.verDetallesPOI('${poi.id}')"
-            class="details-btn"
-          >
-            Ver más detalles
-          </button>
-        </div>
-      </div>
-    `
-
-        // ✅ Pasar el color a la función
         const markerEl = crearIconoPOI(tieneEventos, color, poi.nombre)
 
         const popup = new mapboxgl.Popup({
@@ -941,14 +952,24 @@ const dibujarTodosEnMapa = async () => {
         })
 
         marcadoresPOIs.value.push(marker)
+
+        // ✅ MARCAR COMO DIBUJADO
+        poisDibujados.value.add(poiKey)
       }
     })
 
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
 
-    // ✅ DIBUJAR GEOZONAS
+    // ✅ DIBUJAR SOLO GEOZONAS NUEVAS
     for (const geozona of geozonas) {
+      const geozonaKey = `geozona-${geozona.id}`
+
+      // ✅ Si ya está dibujada, saltar
+      if (geozonasDibujadas.value.has(geozonaKey)) {
+        continue
+      }
+
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
 
@@ -969,7 +990,7 @@ const dibujarTodosEnMapa = async () => {
             <div class="header-info">
               <div class="header-title">${geozona.nombre}</div>
               <div class="header-divider"></div>
-              <div class="header-subtitle">${geozona.puntos.length} puntos definidos</div>
+              <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
             </div>
             <button
               id="toggle-btn-geo-${geozona.id}"
@@ -1058,28 +1079,31 @@ const dibujarTodosEnMapa = async () => {
         }
 
         if (!tieneEventos) {
-          mapaAPI.map.on('click', circleId, (e) => {
-            if (popupGlobalActivo) {
-              popupGlobalActivo.remove()
-            }
+          // ✅ Verificar si ya tiene listener antes de agregar
+          if (!mapaAPI.map._listeners || !mapaAPI.map._listeners[`click:${circleId}`]) {
+            mapaAPI.map.on('click', circleId, (e) => {
+              if (popupGlobalActivo) {
+                popupGlobalActivo.remove()
+              }
 
-            popupGlobalActivo = new mapboxgl.Popup({
-              closeButton: true,
-              closeOnClick: false,
-              className: 'popup-animated',
+              popupGlobalActivo = new mapboxgl.Popup({
+                closeButton: true,
+                closeOnClick: false,
+                className: 'popup-animated',
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(popupContent)
+                .addTo(mapaAPI.map)
             })
-              .setLngLat(e.lngLat)
-              .setHTML(popupContent)
-              .addTo(mapaAPI.map)
-          })
 
-          mapaAPI.map.on('mouseenter', circleId, () => {
-            mapaAPI.map.getCanvas().style.cursor = 'pointer'
-          })
+            mapaAPI.map.on('mouseenter', circleId, () => {
+              mapaAPI.map.getCanvas().style.cursor = 'pointer'
+            })
 
-          mapaAPI.map.on('mouseleave', circleId, () => {
-            mapaAPI.map.getCanvas().style.cursor = ''
-          })
+            mapaAPI.map.on('mouseleave', circleId, () => {
+              mapaAPI.map.getCanvas().style.cursor = ''
+            })
+          }
         }
 
         const markerEl = crearIconoGeozona('circular', tieneEventos, fillColor)
@@ -1091,7 +1115,6 @@ const dibujarTodosEnMapa = async () => {
           closeOnClick: false,
         }).setHTML(popupContent)
 
-        // ✅ GUARDAR la referencia del marcador
         const marker = new mapboxgl.Marker({ element: markerEl })
           .setLngLat([lng, lat])
           .setPopup(popup)
@@ -1104,7 +1127,10 @@ const dibujarTodosEnMapa = async () => {
           popupGlobalActivo = popup
         })
 
-        marcadoresPOIs.value.push(marker) // ✅ AGREGAR al array
+        marcadoresPOIs.value.push(marker)
+
+        // ✅ MARCAR COMO DIBUJADA
+        geozonasDibujadas.value.add(geozonaKey)
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
         const fillColor = geozona.color || '#4ECDC4'
         const borderColor = oscurecerColor(fillColor, 30)
@@ -1174,15 +1200,15 @@ const dibujarTodosEnMapa = async () => {
 
         marcadoresPOIs.value.push(marker)
 
-        // ✅ SOLO para geozonas SIN eventos
+        // ✅ MARCAR COMO DIBUJADA
+        geozonasDibujadas.value.add(geozonaKey)
+
         if (!tieneEventos) {
-          // Función compartida para toggle del popup
           const togglePopupGeozona = (e) => {
             if (e && e.originalEvent) {
               e.originalEvent.stopPropagation()
             }
 
-            // ✅ Usar directamente setLngLat y addTo/remove en lugar de togglePopup
             if (popup.isOpen()) {
               popup.remove()
             } else {
@@ -1193,13 +1219,11 @@ const dibujarTodosEnMapa = async () => {
             }
           }
 
-          // Agregar listener al MARCADOR (para el icono)
           markerEl.addEventListener('click', (e) => {
             e.stopPropagation()
             togglePopupGeozona(e)
           })
 
-          // Agregar listener al polígono (para el área)
           mapaAPI.map.on('click', polygonId, togglePopupGeozona)
 
           mapaAPI.map.on('mouseenter', polygonId, () => {
@@ -1222,6 +1246,145 @@ const dibujarTodosEnMapa = async () => {
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
+}
+
+// 🆕 FUNCIÓN PARA RESTAURAR SOLO LAS CAPAS (sin marcadores)
+const restaurarCapasDespuesEstilo = async () => {
+  if (!mapaAPI || !mapaAPI.map) return
+
+  console.log('🔄 Restaurando capas después de cambio de estilo...')
+
+  // Recorrer POIs dibujados y recrear solo las capas (círculos)
+  for (const poiKey of poisDibujados.value) {
+    const poiId = poiKey.replace('poi-', '')
+    const poi = poisCargados.value.find((p) => p.id === poiId)
+
+    if (!poi) continue
+
+    const { lat, lng } = poi.coordenadas
+    const radio = poi.radio || 100
+    const color = poi.color || '#FF5252'
+    const circleId = `poi-circle-${poi.id}`
+
+    if (!mapaAPI.map.getSource(circleId)) {
+      mapaAPI.map.addSource(circleId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [lng, lat],
+          },
+        },
+      })
+
+      mapaAPI.map.addLayer({
+        id: circleId,
+        type: 'circle',
+        source: circleId,
+        paint: {
+          'circle-radius': {
+            stops: [
+              [0, 0],
+              [20, metersToPixelsAtMaxZoom(radio, lat)],
+            ],
+            base: 2,
+          },
+          'circle-color': color,
+          'circle-opacity': 0.15,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': color,
+        },
+      })
+    }
+  }
+
+  // Recorrer geozonas dibujadas y recrear capas
+  for (const geozonaKey of geozonasDibujadas.value) {
+    const geozonaId = geozonaKey.replace('geozona-', '')
+    const geozona = geozonasCargadas.value.find((g) => g.id === geozonaId)
+
+    if (!geozona) continue
+
+    const fillColor = geozona.color || '#4ECDC4'
+    const borderColor = oscurecerColor(fillColor, 30)
+
+    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+      const { lat, lng } = geozona.centro
+      const circleId = `geozona-circle-${geozona.id}`
+
+      if (!mapaAPI.map.getSource(circleId)) {
+        mapaAPI.map.addSource(circleId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [lng, lat],
+            },
+          },
+        })
+
+        mapaAPI.map.addLayer({
+          id: circleId,
+          type: 'circle',
+          source: circleId,
+          paint: {
+            'circle-radius': {
+              stops: [
+                [0, 0],
+                [20, metersToPixelsAtMaxZoom(geozona.radio, lat)],
+              ],
+              base: 2,
+            },
+            'circle-color': fillColor,
+            'circle-opacity': 0.35,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': borderColor,
+          },
+        })
+      }
+    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+      const polygonId = `geozona-polygon-${geozona.id}`
+      const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
+      coordinates.push(coordinates[0])
+
+      if (!mapaAPI.map.getSource(polygonId)) {
+        mapaAPI.map.addSource(polygonId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [coordinates],
+            },
+          },
+        })
+
+        mapaAPI.map.addLayer({
+          id: polygonId,
+          type: 'fill',
+          source: polygonId,
+          paint: {
+            'fill-color': fillColor,
+            'fill-opacity': 0.35,
+          },
+        })
+
+        mapaAPI.map.addLayer({
+          id: `${polygonId}-outline`,
+          type: 'line',
+          source: polygonId,
+          paint: {
+            'line-color': borderColor,
+            'line-width': 3,
+          },
+        })
+      }
+    }
+  }
+
+  console.log('✅ Capas restauradas')
 }
 
 const limpiarCapasDelMapa = () => {
@@ -1275,7 +1438,11 @@ const limpiarCapasDelMapa = () => {
     }
   })
 
-  console.log('✅ Capas y marcadores limpiados')
+  // ✅ LIMPIAR CACHE
+  geozonasDibujadas.value.clear()
+  poisDibujados.value.clear()
+
+  console.log('✅ Capas, marcadores y cache limpiados')
 }
 /*const inicializarMapaConUbicacion = async () => {
   // ✅ Coordenadas por defecto (MJ Industrias como fallback)
@@ -1635,13 +1802,15 @@ onMounted(async () => {
       if (mapPage && mapPage._mapaAPI && mapPage._mapaAPI.map) {
         mapPage._mapaAPI.resize(true)
       }
-    }, 250)
+    }, 500) // ✅ Aumentado de 250ms a 500ms
   }
 
   window.addEventListener('resize', handleResize)
   window._resizeHandler = handleResize
 
   window.addEventListener('mostrarBotonConfirmarGeozona', handleMostrarBoton)
+  // 🆕 AGREGAR ESTE LISTENER
+  window.addEventListener('restaurarCapasEstilo', restaurarCapasDespuesEstilo)
 
   window.toggleGeozonaPopup = (geozonaId) => {
     const body = document.getElementById(`geozona-popup-body-${geozonaId}`)
@@ -1660,20 +1829,8 @@ onMounted(async () => {
 
     await nextTick()
 
-    // ✅ PASO 1: Limpiar marcadores de POIs existentes
-    if (marcadoresPOIs.value && marcadoresPOIs.value.length > 0) {
-      marcadoresPOIs.value.forEach((marker) => {
-        try {
-          marker.remove()
-        } catch (e) {
-          console.warn('⚠️ Error al remover marcador:', e)
-        }
-      })
-      marcadoresPOIs.value = []
-    }
-
-    // ✅ PASO 2: Limpiar capas del mapa
-    limpiarCapasDelMapa()
+    // ✅ LIMPIAR TODO (incluyendo cache) Y REDIBUJAR
+    limpiarCapasDelMapa() // Esto limpia marcadores, layers, sources Y cache
 
     // ✅ PASO 3: Esperar un momento para asegurar limpieza
     await nextTick()

@@ -767,6 +767,7 @@ export function useMapboxGL() {
     const borderColor = oscurecerColor(color, 30)
 
     if (map.value.getSource(sourceId)) {
+      // ✅ SOLO actualizar datos - esto es RÁPIDO
       map.value.getSource(sourceId).setData({
         type: 'Feature',
         geometry: {
@@ -774,14 +775,9 @@ export function useMapboxGL() {
           coordinates: [coordinates],
         },
       })
-
-      if (map.value.getLayer(`${sourceId}-fill`)) {
-        map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
-      }
-      if (map.value.getLayer(`${sourceId}-outline`)) {
-        map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
-      }
+      // ⚠️ NO actualizar paint properties aquí
     } else {
+      // Primera vez - crear source y layers
       map.value.addSource(sourceId, {
         type: 'geojson',
         data: {
@@ -812,6 +808,22 @@ export function useMapboxGL() {
           'line-width': 2,
         },
       })
+    }
+  }
+
+  // 🆕 NUEVA FUNCIÓN: Actualizar solo el color (llamar explícitamente cuando cambie el color)
+  const actualizarColorPoligonoTemporal = (color) => {
+    if (!map.value) return
+
+    colorPoligonoTemporal = color
+    const borderColor = oscurecerColor(color, 30)
+    const sourceId = 'geozona-temporal'
+
+    if (map.value.getLayer(`${sourceId}-fill`)) {
+      map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
+    }
+    if (map.value.getLayer(`${sourceId}-outline`)) {
+      map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
     }
   }
 
@@ -1089,7 +1101,7 @@ export function useMapboxGL() {
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
         // Dar tiempo para que el mapa se estabilice
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('redibujarMapa'))
+          window.dispatchEvent(new CustomEvent('restaurarCapasEstilo'))
         }, 100)
       })
 
@@ -1369,6 +1381,7 @@ export function useMapboxGL() {
         confirmarPoligonoTemporal,
         actualizarPoligono,
         actualizarPoligonoTemporal,
+        actualizarColorPoligonoTemporal,
         eliminarPoligono: (id) => {
           console.log(`Eliminando polígono con ID: ${id}`)
         },
