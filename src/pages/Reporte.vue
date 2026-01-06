@@ -531,16 +531,24 @@
               >
                 <q-tooltip>Descargar</q-tooltip>
               </q-btn>
+
+              <!-- 🆕 Botón con lógica condicional -->
               <q-btn
                 flat
                 dense
                 icon="open_in_new"
                 color="primary"
                 size="sm"
-                :href="props.row.downloadURL"
-                target="_blank"
+                :loading="loadingPreview[props.row.id]"
+                @click="abrirVistaPrevia(props.row)"
               >
-                <q-tooltip>Ver en nueva pestaña</q-tooltip>
+                <q-tooltip>
+                  {{
+                    props.row.tipoArchivo === 'pdf'
+                      ? 'Ver en nueva pestaña'
+                      : 'Vista previa en Google Sheets'
+                  }}
+                </q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -553,6 +561,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
+import { useExcelPreview } from 'src/composables/useExcelPreview'
 
 // 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
@@ -669,6 +678,11 @@ const columnasHistorial = [
   { name: 'tamaño', label: 'Tamaño', field: 'tamaño', align: 'left' },
   { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
+
+const { obtenerVistaPrevia, descargarArchivo } = useExcelPreview()
+
+// 🆕 NUEVO REF para manejar loading por fila
+const loadingPreview = ref({})
 
 // Computed
 const etiquetaSelector = computed(() => {
@@ -1596,7 +1610,67 @@ const cargarHistorialReportes = async () => {
     loading.value = false
   }
 }
+/**
+ * 🆕 Abre vista previa según tipo de archivo
+ */
+const abrirVistaPrevia = async (reporte) => {
+  // Si es PDF, abrir directamente en nueva pestaña
+  if (reporte.tipoArchivo === 'pdf') {
+    window.open(reporte.downloadURL, '_blank')
+    return
+  }
 
+  // Si es Excel, mostrar vista previa en modal
+  if (reporte.tipoArchivo === 'excel') {
+    loadingPreview.value[reporte.id] = true
+
+    try {
+      console.log('📥 Descargando Excel...')
+
+      // 1. Descargar el Excel desde Firebase Storage
+      const excelBlob = await descargarArchivo(reporte.downloadURL)
+
+      console.log('🔄 Convirtiendo a HTML...')
+
+      // 2. Convertir a HTML
+      const htmlContent = await obtenerVistaPrevia(excelBlob)
+
+      // 3. Mostrar en un diálogo de Quasar
+      $q.dialog({
+        title: '📊 Vista Previa del Reporte Excel',
+        message: htmlContent,
+        html: true,
+        fullWidth: true,
+        fullHeight: true,
+        maximized: true,
+        ok: {
+          label: 'Cerrar',
+          color: 'primary',
+          flat: true,
+        },
+        class: 'excel-preview-dialog',
+      })
+
+      $q.notify({
+        type: 'positive',
+        message: 'Vista previa generada',
+        icon: 'visibility',
+        position: 'top',
+      })
+    } catch (error) {
+      console.error('❌ Error al generar vista previa:', error)
+      $q.notify({
+        type: 'negative',
+        message: 'Error al generar vista previa',
+        caption: error.message,
+        icon: 'error',
+        position: 'top',
+      })
+    } finally {
+      loadingPreview.value[reporte.id] = false
+    }
+  }
+}
 // Lifecycle
 onMounted(() => {
   auth.onAuthStateChanged((user) => {
