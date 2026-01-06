@@ -767,6 +767,7 @@ export function useMapboxGL() {
     const borderColor = oscurecerColor(color, 30)
 
     if (map.value.getSource(sourceId)) {
+      // ✅ SOLO actualizar datos - esto es RÁPIDO
       map.value.getSource(sourceId).setData({
         type: 'Feature',
         geometry: {
@@ -774,14 +775,9 @@ export function useMapboxGL() {
           coordinates: [coordinates],
         },
       })
-
-      if (map.value.getLayer(`${sourceId}-fill`)) {
-        map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
-      }
-      if (map.value.getLayer(`${sourceId}-outline`)) {
-        map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
-      }
+      // ⚠️ NO actualizar paint properties aquí
     } else {
+      // Primera vez - crear source y layers
       map.value.addSource(sourceId, {
         type: 'geojson',
         data: {
@@ -812,6 +808,22 @@ export function useMapboxGL() {
           'line-width': 2,
         },
       })
+    }
+  }
+
+  // 🆕 NUEVA FUNCIÓN: Actualizar solo el color (llamar explícitamente cuando cambie el color)
+  const actualizarColorPoligonoTemporal = (color) => {
+    if (!map.value) return
+
+    colorPoligonoTemporal = color
+    const borderColor = oscurecerColor(color, 30)
+    const sourceId = 'geozona-temporal'
+
+    if (map.value.getLayer(`${sourceId}-fill`)) {
+      map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
+    }
+    if (map.value.getLayer(`${sourceId}-outline`)) {
+      map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
     }
   }
 
@@ -1089,7 +1101,7 @@ export function useMapboxGL() {
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
         // Dar tiempo para que el mapa se estabilice
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('redibujarMapa'))
+          window.dispatchEvent(new CustomEvent('restaurarCapasEstilo'))
         }, 100)
       })
 
@@ -1103,11 +1115,22 @@ export function useMapboxGL() {
   // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
+      // 🔥 Limpiar listeners antiguos si el mapa ya existe
       if (map.value) {
+        // Remover TODOS los event listeners antes de destruir
         map.value.remove()
+        map.value = null
       }
 
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      // 🔥 Limpiar flags globales
+      if (window._mapListenersRegistered) {
+        delete window._mapListenersRegistered
+        delete window._mapMoveStartHandler
+        delete window._mapMoveEndHandler
+      }
+
+      mapboxgl.accessToken =
+        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1263,17 +1286,32 @@ export function useMapboxGL() {
             el.style.transition = 'none'
           }
         })
+
+        // 🎯 Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        const layersToHide = [
+          'pois-combined',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (map.value.getLayer(layerId)) {
+            map.value.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
-        // 🆕 REDUCIDO DE 150ms A 50ms
         PanTimeout = setTimeout(() => {
           isPanning = false
+
           if (map.value.getCanvas()) {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
+
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
             if (el) {
@@ -1281,15 +1319,30 @@ export function useMapboxGL() {
             }
           })
 
+          // 🎯 Mostrar layers combinados de nuevo
+          const layersToShow = [
+            'pois-combined',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (map.value.getLayer(layerId)) {
+              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
+
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
+
           if (map.value) {
             requestAnimationFrame(() => {
               map.value.triggerRepaint()
             })
           }
-        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+        }, 50)
       })
 
       let zoomTimeout
@@ -1369,6 +1422,7 @@ export function useMapboxGL() {
         confirmarPoligonoTemporal,
         actualizarPoligono,
         actualizarPoligonoTemporal,
+        actualizarColorPoligonoTemporal,
         eliminarPoligono: (id) => {
           console.log(`Eliminando polígono con ID: ${id}`)
         },
