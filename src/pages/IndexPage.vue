@@ -1208,6 +1208,231 @@ function crearIconoGeozona(tipo = 'circular', tieneEventos = false, color = null
   return markerEl
 }
 
+// 🔥 SOLUCIÓN: Combinar TODAS las geozonas en UN SOLO layer por tipo
+const dibujarGeozonasCombinadas = async (geozonas) => {
+  if (!mapaAPI?.map) return
+
+  const eventosActivos = await obtenerEventos()
+  const eventosFiltrados = eventosActivos.filter((e) => e.activo)
+
+  // Arrays para features combinados
+  const circularesFeatures = []
+  const poligonalesFeatures = []
+
+  geozonas.forEach((geozona) => {
+    const tieneEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
+    const color = geozona.color || '#4ECDC4'
+    const borderColor = oscurecerColor(color, 30)
+
+    if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+      circularesFeatures.push({
+        type: 'Feature',
+        properties: {
+          id: geozona.id,
+          nombre: geozona.nombre,
+          color: color,
+          borderColor: borderColor,
+          radio: geozona.radio,
+          lat: geozona.centro.lat,
+          tieneEventos: tieneEventos,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [geozona.centro.lng, geozona.centro.lat],
+        },
+      })
+    } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+      const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
+      coordinates.push(coordinates[0]) // Cerrar polígono
+
+      poligonalesFeatures.push({
+        type: 'Feature',
+        properties: {
+          id: geozona.id,
+          nombre: geozona.nombre,
+          color: color,
+          borderColor: borderColor,
+          tieneEventos: tieneEventos,
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coordinates],
+        },
+      })
+    }
+  })
+
+  // 🎯 LAYER 1: Todas las geozonas circulares en UN SOLO layer
+  if (circularesFeatures.length > 0) {
+    const sourceId = 'geozonas-circulares-combined'
+
+    if (mapaAPI.map.getSource(sourceId)) {
+      mapaAPI.map.getSource(sourceId).setData({
+        type: 'FeatureCollection',
+        features: circularesFeatures,
+      })
+    } else {
+      mapaAPI.map.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: circularesFeatures,
+        },
+      })
+
+      mapaAPI.map.addLayer({
+        id: sourceId,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            0,
+            0,
+            20,
+            [
+              '/',
+              ['get', 'radio'],
+              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
+            ],
+          ],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.35,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': ['get', 'borderColor'],
+        },
+      })
+    }
+  }
+
+  // 🎯 LAYER 2 y 3: Todas las geozonas poligonales en DOS layers (fill + outline)
+  if (poligonalesFeatures.length > 0) {
+    const sourceId = 'geozonas-poligonales-combined'
+
+    if (mapaAPI.map.getSource(sourceId)) {
+      mapaAPI.map.getSource(sourceId).setData({
+        type: 'FeatureCollection',
+        features: poligonalesFeatures,
+      })
+    } else {
+      mapaAPI.map.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: poligonalesFeatures,
+        },
+      })
+
+      // Fill layer
+      mapaAPI.map.addLayer({
+        id: `${sourceId}-fill`,
+        type: 'fill',
+        source: sourceId,
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': 0.35,
+        },
+      })
+
+      // Outline layer
+      mapaAPI.map.addLayer({
+        id: `${sourceId}-outline`,
+        type: 'line',
+        source: sourceId,
+        paint: {
+          'line-color': ['get', 'borderColor'],
+          'line-width': 3,
+        },
+      })
+    }
+  }
+
+  console.log(
+    `✅ Geozonas combinadas: ${circularesFeatures.length} circulares + ${poligonalesFeatures.length} poligonales`,
+  )
+}
+
+// 🔥 Combinar TODOS los POIs en UN SOLO layer
+const dibujarPOIsCombinados = async (pois) => {
+  if (!mapaAPI?.map) return
+
+  const eventosActivos = await obtenerEventos()
+  const eventosFiltrados = eventosActivos.filter((e) => e.activo)
+
+  const poisFeatures = pois
+    .filter((poi) => poi.coordenadas)
+    .map((poi) => {
+      const { lat, lng } = poi.coordenadas
+      const radio = poi.radio || 100
+      const color = poi.color || '#FF5252'
+      const tieneEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
+
+      return {
+        type: 'Feature',
+        properties: {
+          id: poi.id,
+          nombre: poi.nombre,
+          color: color,
+          radio: radio,
+          lat: lat,
+          tieneEventos: tieneEventos,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+      }
+    })
+
+  if (poisFeatures.length > 0) {
+    const sourceId = 'pois-combined'
+
+    if (mapaAPI.map.getSource(sourceId)) {
+      mapaAPI.map.getSource(sourceId).setData({
+        type: 'FeatureCollection',
+        features: poisFeatures,
+      })
+    } else {
+      mapaAPI.map.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: poisFeatures,
+        },
+      })
+
+      mapaAPI.map.addLayer({
+        id: sourceId,
+        type: 'circle',
+        source: sourceId,
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            0,
+            0,
+            20,
+            [
+              '/',
+              ['get', 'radio'],
+              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
+            ],
+          ],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.15,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': ['get', 'color'],
+        },
+      })
+    }
+  }
+
+  console.log(`✅ POIs combinados: ${poisFeatures.length} POIs`)
+}
+
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
@@ -1217,65 +1442,25 @@ const dibujarTodosEnMapa = async () => {
 
   mapaAPI = mapPage._mapaAPI
 
-  // limpiarCapasDelMapa()
-
   try {
     const eventosActivos = await obtenerEventos()
     const eventosFiltrados = eventosActivos.filter((e) => e.activo)
 
+    // 🎯 PASO 1: Dibujar POIs combinados (círculos en 1 layer)
     const pois = await obtenerPOIs()
     poisCargados.value = pois
+    await dibujarPOIsCombinados(pois)
 
-    // ✅ DIBUJAR SOLO POIs NUEVOS
+    // 🎯 PASO 2: Dibujar marcadores de POIs (solo los íconos)
     pois.forEach((poi) => {
       if (poi.coordenadas) {
         const poiKey = `poi-${poi.id}`
-
-        // ✅ Si ya está dibujado, saltar
-        if (poisDibujados.value.has(poiKey)) {
-          return
-        }
+        if (poisDibujados.value.has(poiKey)) return
 
         const { lat, lng } = poi.coordenadas
-        const radio = poi.radio || 100
         const color = poi.color || '#FF5252'
-
         const cantidadEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
         const tieneEventos = cantidadEventos > 0
-
-        const circleId = `poi-circle-${poi.id}`
-
-        if (!mapaAPI.map.getSource(circleId)) {
-          mapaAPI.map.addSource(circleId, {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              geometry: {
-                type: 'Point',
-                coordinates: [lng, lat],
-              },
-            },
-          })
-
-          mapaAPI.map.addLayer({
-            id: circleId,
-            type: 'circle',
-            source: circleId,
-            paint: {
-              'circle-radius': {
-                stops: [
-                  [0, 0],
-                  [20, metersToPixelsAtMaxZoom(radio, lat)],
-                ],
-                base: 2,
-              },
-              'circle-color': color,
-              'circle-opacity': 0.15,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': color,
-            },
-          })
-        }
 
         const popupContent = `
           <div class="poi-popup-container">
@@ -1283,20 +1468,15 @@ const dibujarTodosEnMapa = async () => {
               <div class="header-info">
                 <div class="header-title">${poi.nombre}</div>
                 <div class="header-divider"></div>
-                <div class="header-subtitle">Radio: ${radio}m</div>
+                <div class="header-subtitle">Radio: ${poi.radio || 100}m</div>
               </div>
             </div>
-
             <div class="poi-popup-body">
               <div class="address-info">
                 <div class="address-icon"></div>
                 <div class="address-text">${poi.direccion}</div>
               </div>
-
-              <button
-                onclick="window.verDetallesPOI('${poi.id}')"
-                class="details-btn"
-              >
+              <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
                 Ver más detalles
               </button>
             </div>
@@ -1304,7 +1484,6 @@ const dibujarTodosEnMapa = async () => {
         `
 
         const markerEl = crearIconoPOI(tieneEventos, color, poi.nombre)
-
         const popup = new mapboxgl.Popup({
           offset: 25,
           className: 'popup-animated',
@@ -1325,31 +1504,27 @@ const dibujarTodosEnMapa = async () => {
         })
 
         marcadoresPOIs.value.push(marker)
-
-        // ✅ MARCAR COMO DIBUJADO
         poisDibujados.value.add(poiKey)
       }
     })
 
+    // 🎯 PASO 3: Dibujar geozonas combinadas (círculos + polígonos en 3 layers total)
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
     geozonasCacheCompleto.value = geozonas
+    await dibujarGeozonasCombinadas(geozonas)
 
-    // ✅ DIBUJAR SOLO GEOZONAS NUEVAS
+    // 🎯 PASO 4: Dibujar marcadores de geozonas (solo los íconos)
     for (const geozona of geozonas) {
       const geozonaKey = `geozona-${geozona.id}`
-
-      // ✅ Si ya está dibujada, saltar
-      if (geozonasDibujadas.value.has(geozonaKey)) {
-        continue
-      }
+      if (geozonasDibujadas.value.has(geozonaKey)) continue
 
       const cantidadEventos = tieneEventosAsignados(geozona.id, 'geozona', eventosFiltrados)
       const tieneEventos = cantidadEventos > 0
+      const fillColor = geozona.color || '#4ECDC4'
 
       let direccionesPuntos = []
-
-      if (geozona.tipoGeozona === 'poligono' && geozona.puntos && geozona.puntos.length > 0) {
+      if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
         direccionesPuntos = geozona.puntos.map((punto, index) => ({
           index: index,
           direccion: punto.direccion || 'Dirección no disponible',
@@ -1366,17 +1541,12 @@ const dibujarTodosEnMapa = async () => {
               <div class="header-divider"></div>
               <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
             </div>
-            <button
-              id="toggle-btn-geo-${geozona.id}"
-              class="toggle-geozona-btn"
-              onclick="toggleGeozonaPopup('${geozona.id}')"
-            >
+            <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
               <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
           </div>
-
           <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
             <div class="points-list-container">
               ${direccionesPuntos
@@ -1388,170 +1558,39 @@ const dibujarTodosEnMapa = async () => {
                     <div class="address-name">${punto.direccion}</div>
                   </div>
                   <div class="point-coords">
-                    <div>
-                      <span class="coord-label">Latitud:</span>
-                      <span class="coord-value">${punto.lat.toFixed(6)}</span>
-                    </div>
-                    <div>
-                      <span class="coord-label">Longitud:</span>
-                      <span class="coord-value">${punto.lng.toFixed(6)}</span>
-                    </div>
+                    <div><span class="coord-label">Latitud:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
+                    <div><span class="coord-label">Longitud:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
                   </div>
                 </div>
               `,
                 )
                 .join('')}
             </div>
-
-            <button
-              onclick="window.verDetallesGeozona('${geozona.id}')"
-              class="details-btn"
-            >
+            <button onclick="window.verDetallesGeozona('${geozona.id}')" class="details-btn">
               Ver más detalles
             </button>
           </div>
         </div>
       `
 
+      let markerLat, markerLng
+
       if (geozona.tipoGeozona === 'circular' && geozona.centro) {
-        const { lat, lng } = geozona.centro
-        const fillColor = geozona.color || '#4ECDC4'
-        const borderColor = oscurecerColor(fillColor, 30)
-
-        const circleId = `geozona-circle-${geozona.id}`
-
-        if (!mapaAPI.map.getSource(circleId)) {
-          mapaAPI.map.addSource(circleId, {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              geometry: {
-                type: 'Point',
-                coordinates: [lng, lat],
-              },
-            },
-          })
-
-          mapaAPI.map.addLayer({
-            id: circleId,
-            type: 'circle',
-            source: circleId,
-            paint: {
-              'circle-radius': {
-                stops: [
-                  [0, 0],
-                  [20, metersToPixelsAtMaxZoom(geozona.radio, lat)],
-                ],
-                base: 2,
-              },
-              'circle-color': fillColor,
-              'circle-opacity': 0.35,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': borderColor,
-            },
-          })
-        }
-
-        if (!tieneEventos) {
-          // ✅ Verificar si ya tiene listener antes de agregar
-          if (!mapaAPI.map._listeners || !mapaAPI.map._listeners[`click:${circleId}`]) {
-            mapaAPI.map.on('click', circleId, (e) => {
-              if (popupGlobalActivo) {
-                popupGlobalActivo.remove()
-              }
-
-              popupGlobalActivo = new mapboxgl.Popup({
-                closeButton: true,
-                closeOnClick: false,
-                className: 'popup-animated',
-              })
-                .setLngLat(e.lngLat)
-                .setHTML(popupContent)
-                .addTo(mapaAPI.map)
-            })
-
-            mapaAPI.map.on('mouseenter', circleId, () => {
-              mapaAPI.map.getCanvas().style.cursor = 'pointer'
-            })
-
-            mapaAPI.map.on('mouseleave', circleId, () => {
-              mapaAPI.map.getCanvas().style.cursor = ''
-            })
-          }
-        }
-
-        const markerEl = crearIconoGeozona('circular', tieneEventos, fillColor)
-
-        const popup = new mapboxgl.Popup({
-          offset: 25,
-          className: 'popup-animated',
-          closeButton: true,
-          closeOnClick: false,
-        }).setHTML(popupContent)
-
-        const marker = new mapboxgl.Marker({ element: markerEl })
-          .setLngLat([lng, lat])
-          .setPopup(popup)
-          .addTo(mapaAPI.map)
-
-        popup.on('open', () => {
-          if (popupGlobalActivo && popupGlobalActivo !== popup) {
-            popupGlobalActivo.remove()
-          }
-          popupGlobalActivo = popup
-        })
-
-        marcadoresPOIs.value.push(marker)
-
-        // ✅ MARCAR COMO DIBUJADA
-        geozonasDibujadas.value.add(geozonaKey)
+        markerLat = geozona.centro.lat
+        markerLng = geozona.centro.lng
       } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
-        const fillColor = geozona.color || '#4ECDC4'
-        const borderColor = oscurecerColor(fillColor, 30)
-
-        const polygonId = `geozona-polygon-${geozona.id}`
-        const coordinates = geozona.puntos.map((p) => [p.lng, p.lat])
-        coordinates.push(coordinates[0])
-
-        if (!mapaAPI.map.getSource(polygonId)) {
-          mapaAPI.map.addSource(polygonId, {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              geometry: {
-                type: 'Polygon',
-                coordinates: [coordinates],
-              },
-            },
-          })
-
-          mapaAPI.map.addLayer({
-            id: polygonId,
-            type: 'fill',
-            source: polygonId,
-            paint: {
-              'fill-color': fillColor,
-              'fill-opacity': 0.35,
-            },
-          })
-
-          mapaAPI.map.addLayer({
-            id: `${polygonId}-outline`,
-            type: 'line',
-            source: polygonId,
-            paint: {
-              'line-color': borderColor,
-              'line-width': 3,
-            },
-          })
-        }
-
         const lats = geozona.puntos.map((p) => p.lat)
         const lngs = geozona.puntos.map((p) => p.lng)
-        const centroLat = lats.reduce((a, b) => a + b) / lats.length
-        const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
+        markerLat = lats.reduce((a, b) => a + b) / lats.length
+        markerLng = lngs.reduce((a, b) => a + b) / lngs.length
+      }
 
-        const markerEl = crearIconoGeozona('poligonal', tieneEventos, fillColor)
+      if (markerLat && markerLng) {
+        const markerEl = crearIconoGeozona(
+          geozona.tipoGeozona === 'circular' ? 'circular' : 'poligonal',
+          tieneEventos,
+          fillColor,
+        )
 
         const popup = new mapboxgl.Popup({
           offset: 25,
@@ -1561,7 +1600,7 @@ const dibujarTodosEnMapa = async () => {
         }).setHTML(popupContent)
 
         const marker = new mapboxgl.Marker({ element: markerEl })
-          .setLngLat([centroLng, centroLat])
+          .setLngLat([markerLng, markerLat])
           .setPopup(popup)
           .addTo(mapaAPI.map)
 
@@ -1573,41 +1612,7 @@ const dibujarTodosEnMapa = async () => {
         })
 
         marcadoresPOIs.value.push(marker)
-
-        // ✅ MARCAR COMO DIBUJADA
         geozonasDibujadas.value.add(geozonaKey)
-
-        if (!tieneEventos) {
-          const togglePopupGeozona = (e) => {
-            if (e && e.originalEvent) {
-              e.originalEvent.stopPropagation()
-            }
-
-            if (popup.isOpen()) {
-              popup.remove()
-            } else {
-              if (popupGlobalActivo && popupGlobalActivo !== popup) {
-                popupGlobalActivo.remove()
-              }
-              popup.setLngLat([centroLng, centroLat]).addTo(mapaAPI.map)
-            }
-          }
-
-          markerEl.addEventListener('click', (e) => {
-            e.stopPropagation()
-            togglePopupGeozona(e)
-          })
-
-          mapaAPI.map.on('click', polygonId, togglePopupGeozona)
-
-          mapaAPI.map.on('mouseenter', polygonId, () => {
-            mapaAPI.map.getCanvas().style.cursor = 'pointer'
-          })
-
-          mapaAPI.map.on('mouseleave', polygonId, () => {
-            mapaAPI.map.getCanvas().style.cursor = ''
-          })
-        }
       }
     }
 
@@ -1616,12 +1621,13 @@ const dibujarTodosEnMapa = async () => {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
 
-    console.log(`✅ Dibujados ${marcadoresPOIs.value.length} marcadores totales`)
+    console.log(
+      `✅ Mapa optimizado: ${marcadoresPOIs.value.length} marcadores + ~6 layers de capas combinadas`,
+    )
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
-
 // 🆕 FUNCIÓN PARA RESTAURAR SOLO LAS CAPAS (sin marcadores)
 const restaurarCapasDespuesEstilo = async () => {
   if (!mapaAPI || !mapaAPI.map) return
@@ -1764,9 +1770,8 @@ const restaurarCapasDespuesEstilo = async () => {
 const limpiarCapasDelMapa = () => {
   if (!mapaAPI || !mapaAPI.map) return
 
-  // ✅ PASO 1: Limpiar MARCADORES de POIs y Geozonas
+  // Limpiar marcadores
   if (marcadoresPOIs.value && marcadoresPOIs.value.length > 0) {
-    console.log(`🧹 Limpiando ${marcadoresPOIs.value.length} marcadores`)
     marcadoresPOIs.value.forEach((marker) => {
       try {
         marker.remove()
@@ -1777,113 +1782,38 @@ const limpiarCapasDelMapa = () => {
     marcadoresPOIs.value = []
   }
 
-  // ✅ PASO 2: Limpiar CAPAS del mapa (círculos y polígonos)
-  const layers = mapaAPI.map.getStyle().layers
+  // 🎯 Limpiar layers combinados
+  const layersToRemove = [
+    'pois-combined',
+    'geozonas-circulares-combined',
+    'geozonas-poligonales-combined-fill',
+    'geozonas-poligonales-combined-outline',
+  ]
 
-  layers.forEach((layer) => {
-    if (
-      layer.id.startsWith('poi-circle-') ||
-      layer.id.startsWith('geozona-circle-') ||
-      layer.id.startsWith('geozona-polygon-')
-    ) {
-      try {
-        mapaAPI.map.removeLayer(layer.id)
-      } catch (e) {
-        console.warn(`⚠️ Error al eliminar layer ${layer.id}:`, e.message)
-      }
+  const sourcesToRemove = [
+    'pois-combined',
+    'geozonas-circulares-combined',
+    'geozonas-poligonales-combined',
+  ]
+
+  layersToRemove.forEach((layerId) => {
+    if (mapaAPI.map.getLayer(layerId)) {
+      mapaAPI.map.removeLayer(layerId)
     }
   })
 
-  // ✅ PASO 3: Limpiar SOURCES del mapa
-  const sources = Object.keys(mapaAPI.map.getStyle().sources)
-  sources.forEach((sourceId) => {
-    if (
-      sourceId.startsWith('poi-circle-') ||
-      sourceId.startsWith('geozona-circle-') ||
-      sourceId.startsWith('geozona-polygon-')
-    ) {
-      try {
-        if (mapaAPI.map.getSource(sourceId)) {
-          mapaAPI.map.removeSource(sourceId)
-        }
-      } catch (e) {
-        console.warn(`⚠️ Error al eliminar source ${sourceId}:`, e.message)
-      }
+  sourcesToRemove.forEach((sourceId) => {
+    if (mapaAPI.map.getSource(sourceId)) {
+      mapaAPI.map.removeSource(sourceId)
     }
   })
 
-  // ✅ LIMPIAR CACHE
+  // Limpiar cache
   geozonasDibujadas.value.clear()
   poisDibujados.value.clear()
 
-  console.log('✅ Capas, marcadores y cache limpiados')
+  console.log('✅ Capas combinadas limpiadas')
 }
-/*const inicializarMapaConUbicacion = async () => {
-  // ✅ Coordenadas por defecto (MJ Industrias como fallback)
-  const defaultCoords = [32.504421823945805, -116.9514484543167]
-  const defaultZoom = 13
-
-  if (!navigator.geolocation) {
-    // No hay GPS, usar ubicación por defecto
-    console.warn('⚠️ Geolocalización no disponible, usando ubicación por defecto')
-    await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
-    return
-  }
-
-  // ✅ Intentar obtener ubicación del usuario (RÁPIDO - solo 5 segundos)
-  return new Promise((resolve) => {
-    const timeoutId = setTimeout(async () => {
-      // Si tarda más de 5 segundos, usar ubicación por defecto
-      console.warn('⏱️ GPS tardando, iniciando con ubicación por defecto')
-      await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
-      resolve()
-    }, 5000)
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        clearTimeout(timeoutId)
-        const { latitude, longitude } = position.coords
-
-        // ✅ Inicializar mapa en la ubicación del usuario
-        await initMap('map', [latitude, longitude], 14) // ✅ Sin .then()
-
-        $q.notify({
-          type: 'positive',
-          message: '📍 Mapa centrado en tu ubicación',
-          position: 'top',
-          timeout: 2000,
-          icon: 'my_location',
-        })
-
-        resolve()
-      },
-      async (error) => {
-        clearTimeout(timeoutId)
-        console.warn('⚠️ No se pudo obtener ubicación:', error.message)
-
-        // Usar ubicación por defecto
-        await initMap('map', defaultCoords, defaultZoom) // ✅ Sin .then()
-
-        // Notificar al usuario
-        $q.notify({
-          type: 'info',
-          message: '📍 Usando ubicación por defecto',
-          caption: 'Permite el acceso a GPS para centrar en tu ubicación',
-          position: 'top',
-          timeout: 3000,
-          icon: 'map',
-        })
-
-        resolve()
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 4000,
-        maximumAge: 60000,
-      },
-    )
-  })
-}*/
 
 const recentrarEnUsuario = () => {
   if (!marcadorUsuario.value) {
@@ -1947,6 +1877,40 @@ onMounted(async () => {
     // ✅ PASO 4: AHORA sí, marcar como listo
     mapaListo.value = true
 
+    // 🔥 CRÍTICO: Sistema de listeners únicos (sin duplicación)
+    // Usar flag para asegurar que solo se registren UNA VEZ
+    if (!window._mapListenersRegistered) {
+      window._mapListenersRegistered = true
+
+      let moveStartHandler = () => {
+        // Ocultar marcadores
+        marcadoresPOIs.value.forEach((marker) => {
+          const el = marker.getElement()
+          if (el) {
+            el.style.visibility = 'hidden'
+          }
+        })
+      }
+
+      let moveEndHandler = () => {
+        setTimeout(() => {
+          // Mostrar marcadores
+          marcadoresPOIs.value.forEach((marker) => {
+            const el = marker.getElement()
+            if (el) {
+              el.style.visibility = 'visible'
+            }
+          })
+        }, 100)
+      }
+
+      // Guardar referencias para limpieza
+      window._mapMoveStartHandler = moveStartHandler
+      window._mapMoveEndHandler = moveEndHandler
+
+      console.log('✅ Listeners de mapa registrados (UNA SOLA VEZ)')
+    }
+
     // ✅ PASO 5: Configurar funciones globales
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {
@@ -1998,13 +1962,6 @@ onMounted(async () => {
 
     // 🆕 PASO 6.5: Configurar listeners de viewport (DESPUÉS de dibujar)
     let timeoutViewport = null
-
-    mapPage._mapaAPI.map.on('moveend', () => {
-      clearTimeout(timeoutViewport)
-      timeoutViewport = setTimeout(() => {
-        actualizarGeozonasPorViewport()
-      }, 300)
-    })
 
     mapPage._mapaAPI.map.on('zoomend', () => {
       clearTimeout(timeoutViewport)
@@ -2299,6 +2256,21 @@ const cancelarGeozona = () => {
 }
 
 onUnmounted(() => {
+  // 🔥 Limpiar listeners globales
+  const mapPage = document.getElementById('map-page')
+
+  if (window._mapMoveStartHandler && mapPage?._mapaAPI?.map) {
+    mapPage._mapaAPI.map.off('movestart', window._mapMoveStartHandler)
+  }
+  if (window._mapMoveEndHandler && mapPage?._mapaAPI?.map) {
+    mapPage._mapaAPI.map.off('moveend', window._mapMoveEndHandler)
+  }
+
+  // Limpiar flags
+  delete window._mapListenersRegistered
+  delete window._mapMoveStartHandler
+  delete window._mapMoveEndHandler
+
   detenerSeguimientoGPS()
 
   detenerEvaluacionEventos()
@@ -3378,5 +3350,31 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
   transform: translateZ(0);
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
+}
+
+/* 🎯 Optimización: Suavizar transiciones de opacidad */
+:deep(.custom-marker-unidad),
+:deep(.marker-container-poi),
+:deep(.marker-container-geozona) {
+  transition: opacity 0.2s ease-out;
+  will-change: opacity;
+}
+
+/* 🎯 Cursor durante panning */
+:deep(.mapboxgl-canvas-container.mapboxgl-touch-drag-pan) {
+  cursor: grabbing !important;
+}
+
+/* 🎯 Optimizar rendering del canvas durante movimiento */
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
+}
+
+/* 🎯 Reducir peso visual de hover effects */
+:deep(.icono-poi-hover:hover),
+:deep(.icono-geozona-hover:hover),
+:deep(.icono-unidad-hover:hover) {
+  transform: scale(1.08) translateZ(0) !important;
+  transition: transform 0.15s ease !important;
 }
 </style>
