@@ -1115,11 +1115,22 @@ export function useMapboxGL() {
   // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
+      // 🔥 Limpiar listeners antiguos si el mapa ya existe
       if (map.value) {
+        // Remover TODOS los event listeners antes de destruir
         map.value.remove()
+        map.value = null
       }
 
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      // 🔥 Limpiar flags globales
+      if (window._mapListenersRegistered) {
+        delete window._mapListenersRegistered
+        delete window._mapMoveStartHandler
+        delete window._mapMoveEndHandler
+      }
+
+      mapboxgl.accessToken =
+        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1275,17 +1286,32 @@ export function useMapboxGL() {
             el.style.transition = 'none'
           }
         })
+
+        // 🎯 Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        const layersToHide = [
+          'pois-combined',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (map.value.getLayer(layerId)) {
+            map.value.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
-        // 🆕 REDUCIDO DE 150ms A 50ms
         PanTimeout = setTimeout(() => {
           isPanning = false
+
           if (map.value.getCanvas()) {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
+
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
             if (el) {
@@ -1293,15 +1319,30 @@ export function useMapboxGL() {
             }
           })
 
+          // 🎯 Mostrar layers combinados de nuevo
+          const layersToShow = [
+            'pois-combined',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (map.value.getLayer(layerId)) {
+              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
+
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
+
           if (map.value) {
             requestAnimationFrame(() => {
               map.value.triggerRepaint()
             })
           }
-        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+        }, 50)
       })
 
       let zoomTimeout
