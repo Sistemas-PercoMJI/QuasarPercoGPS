@@ -1653,7 +1653,7 @@ const abrirVistaPrevia = async (reporte) => {
         })
       }
 
-      // 3. Mostrar en un diálogo de Quasar
+      // 3. Mostrar en un diálogo de Quasar con botones invertidos
       $q.dialog({
         title: 'Vista Previa del Reporte Excel',
         message: htmlContent,
@@ -1661,26 +1661,27 @@ const abrirVistaPrevia = async (reporte) => {
         fullWidth: true,
         fullHeight: true,
         maximized: true,
+
         ok: {
-          label: 'Cerrar',
+          push: true,
+          label: 'DESCARGAR',
+          color: 'positive',
+          icon: 'download',
+        },
+        cancel: {
+          label: 'CERRAR',
           color: 'grey-7',
           flat: true,
         },
-        // 🆕 AGREGAR BOTÓN DE DESCARGA
-        cancel: {
-          label: 'Descargar',
-          color: 'positive',
-          icon: 'download',
-          flat: false,
-        },
-        class: 'excel-preview-dialog',
+
+        // Clase personalizada para el diálogo
+        class: 'excel-preview-corners',
       })
         .onOk(() => {
-          // No hacer nada al cerrar
+          descargarExcel()
         })
         .onCancel(() => {
-          // Descargar cuando se presiona el botón "Descargar"
-          descargarExcel()
+          // No hacer nada al cerrar
         })
 
       $q.notify({
@@ -1888,4 +1889,29 @@ watch(eventos, () => {
   justify-content: space-between;
   align-items: center;
 }
+/* 🆕 ESTILOS LIMPIOS PARA BOTONES EN ESQUINAS OPUESTAS */
+:deep(.excel-preview-corners .q-card__actions) {
+  position: relative !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 20px 32px !important;
+  min-height: 70px !important;
+  border-top: 1px solid #e0e0e0 !important;
+  background: #fafafa !important;
+}
+
+:deep(.excel-preview-corners .q-card__actions > .q-btn) {
+  position: static !important;
+  margin: 0 !important;
+}
+
+/* Opcional: Efecto hover para botón de descarga */
+:deep(.excel-preview-corners .q-btn--push.bg-positive:hover) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+  transition: all 0.3s ease;
+}
+
+/* 🆕 INVERTIR BOTONES DEL DIÁLOGO */
 </style>
