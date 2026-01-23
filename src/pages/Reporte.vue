@@ -1635,9 +1635,27 @@ const abrirVistaPrevia = async (reporte) => {
       // 2. Convertir a HTML
       const htmlContent = await obtenerVistaPrevia(excelBlob)
 
+      const descargarExcel = () => {
+        const url = window.URL.createObjectURL(excelBlob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${reporte.tipo}_${reporte.fecha}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+
+        $q.notify({
+          type: 'positive',
+          message: 'Archivo descargado',
+          icon: 'download',
+          position: 'top',
+        })
+      }
+
       // 3. Mostrar en un diálogo de Quasar
       $q.dialog({
-        title: '📊 Vista Previa del Reporte Excel',
+        title: 'Vista Previa del Reporte Excel',
         message: htmlContent,
         html: true,
         fullWidth: true,
@@ -1645,11 +1663,25 @@ const abrirVistaPrevia = async (reporte) => {
         maximized: true,
         ok: {
           label: 'Cerrar',
-          color: 'primary',
+          color: 'grey-7',
           flat: true,
+        },
+        // 🆕 AGREGAR BOTÓN DE DESCARGA
+        cancel: {
+          label: 'Descargar',
+          color: 'positive',
+          icon: 'download',
+          flat: false,
         },
         class: 'excel-preview-dialog',
       })
+        .onOk(() => {
+          // No hacer nada al cerrar
+        })
+        .onCancel(() => {
+          // Descargar cuando se presiona el botón "Descargar"
+          descargarExcel()
+        })
 
       $q.notify({
         type: 'positive',

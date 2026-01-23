@@ -14,8 +14,6 @@ export function useExcelPreview() {
     error.value = null
 
     try {
-      console.log('📊 Convirtiendo Excel a HTML...')
-
       // Leer el Excel
       const arrayBuffer = await excelBlob.arrayBuffer()
       const workbook = XLSX.read(arrayBuffer, { type: 'array' })
@@ -33,7 +31,7 @@ export function useExcelPreview() {
             font-weight: bold;
             margin: 30px 0 15px 0;
             padding: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #bb0000 30%, #bb5e00 70%);
             color: white;
             border-radius: 8px;
           }
@@ -71,7 +69,7 @@ export function useExcelPreview() {
 
       workbook.SheetNames.forEach((sheetName, index) => {
         if (index > 0) html += '<br>'
-        html += `<div class="sheet-title">📄 ${sheetName}</div>`
+        html += `<div class="sheet-title">${sheetName}</div>`
         const worksheet = workbook.Sheets[sheetName]
         const tableHtml = XLSX.utils.sheet_to_html(worksheet, { header: '', footer: '' })
         // Reemplazar la tabla genérica con nuestra clase
@@ -80,10 +78,9 @@ export function useExcelPreview() {
 
       html += '</div>'
 
-      console.log('✅ Excel convertido a HTML')
       return html
     } catch (err) {
-      console.error('❌ Error al convertir Excel:', err)
+      console.error('Error al convertir Excel:', err)
       error.value = err.message
       throw err
     } finally {
