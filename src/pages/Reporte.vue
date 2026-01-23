@@ -1658,22 +1658,60 @@ const abrirVistaPrevia = async (reporte) => {
       window.descargarExcelActual = descargarExcel
       window.cerrarDialogoActual = null
 
-      // 4. Crear el diálogo con diseño optimizado
       const dialogRef = $q.dialog({
         title: 'Vista Previa del Reporte Excel',
         message: `
-    <div style="display: flex; flex-direction: column; height: 100%;">
-      <!-- Información del reporte -->
-      <div style="padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; flex-shrink: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="font-weight: 600; color: #333; font-size: 15px;">Informe de Trayectos</div>
-          <div style="color: #666; font-size: 13px;">${reporte.periodo || 'Sin período'}</div>
-        </div>
-        <div style="color: #777; font-size: 12px; margin-top: 4px;">
-          Reportar por: ${reporte.elementos || 'N/A'} | Generado: ${reporte.fecha}
-        </div>
-      </div>
+    <!-- Información del reporte -->
+<!-- Información del reporte -->
+<div style="padding: 12px 16px 12px 48px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; position: relative;">
+  <!-- ✨ BOTÓN X EN LA ESQUINA SUPERIOR DERECHA -->
+<button
+  onclick="window.cerrarDialogoActual()"
+  style="
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+  "
+  onmouseover="
+    this.style.background='rgba(0, 0, 0, 0.1)';
+    this.style.borderColor='#999';
+    this.style.color='#333';
+  "
+  onmouseout="
+    this.style.background='transparent';
+    this.style.borderColor='#ddd';
+    this.style.color='#666';
+  "
+>
+  <i class="material-icons" style="font-size: 20px;">close</i>
+</button>
 
+  <!-- Contenido del header -->
+  <div style="font-weight: 600; color: #333; font-size: 15px; margin-bottom: 8px;">
+    Informe de Trayectos
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; color: #777; font-size: 12px;">
+    <div>
+      Reportar por: ${reporte.elementos || 'N/A'} | Generado: ${reporte.fecha}
+    </div>
+    <div style="color: #666; font-size: 13px; font-weight: 500;">
+      ${reporte.periodo || 'Sin período'}
+    </div>
+  </div>
+</div>
       <!-- Contenido scrolleable -->
       <div style="flex: 1; overflow: auto; padding: 20px; background: #f5f5f5; min-height: 0;">
         ${htmlContent}
@@ -1684,42 +1722,76 @@ const abrirVistaPrevia = async (reporte) => {
         <button
           onclick="window.descargarExcelActual()"
           style="
-            padding: 10px 24px;
+            padding: 12px 24px;
             background: #4caf50;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-weight: 600;
+            font-size: 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 0.3px;
           "
-          onmouseover="this.style.background='#43a047'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(76,175,80,0.3)'"
-          onmouseout="this.style.background='#4caf50'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'"
+          onmouseover="
+            this.style.transform='translateY(-3px)';
+            this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.4)';
+          "
+          onmouseout="
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';
+          "
+          onmousedown="
+            this.style.transform='translateY(-1px) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-3px)';
+          "
         >
-          <i class="material-icons" style="font-size: 18px;">download</i>
-          <span>Descargar</span>
+          <i class="material-icons" style="font-size: 20px;">download</i>
+          <span>Descargar Excel</span>
         </button>
 
         <button
           onclick="window.cerrarDialogoActual()"
           style="
-            padding: 10px 24px;
-            background: transparent;
-            color: #666;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 12px 24px;
+            background: white;
+            color: #616161;
+            border: 1px solid #616161;
+            border-radius: 10px;
             font-weight: 600;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
           "
-          onmouseover="this.style.background='#f5f5f5'; this.style.borderColor='#999'"
-          onmouseout="this.style.background='transparent'; this.style.borderColor='#ddd'"
+          onmouseover="
+            this.style.background='rgba(0, 0, 0, 0.05)';
+            this.style.transform='translateY(-2px)';
+            this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.1)';
+          "
+          onmouseout="
+            this.style.background='white';
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='none';
+          "
+          onmousedown="
+            this.style.transform='translateY(0) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-2px)';
+          "
         >
-          Cerrar
+          <i class="material-icons" style="font-size: 20px;">close</i>
+          <span>Cancelar</span>
         </button>
       </div>
     </div>
