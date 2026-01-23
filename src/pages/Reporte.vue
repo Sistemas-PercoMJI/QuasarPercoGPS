@@ -1635,6 +1635,7 @@ const abrirVistaPrevia = async (reporte) => {
       // 2. Convertir a HTML
       const htmlContent = await obtenerVistaPrevia(excelBlob)
 
+      // 3. Función de descarga
       const descargarExcel = () => {
         const url = window.URL.createObjectURL(excelBlob)
         const link = document.createElement('a')
@@ -1653,36 +1654,90 @@ const abrirVistaPrevia = async (reporte) => {
         })
       }
 
-      // 3. Mostrar en un diálogo de Quasar con botones invertidos
-      $q.dialog({
+      // 🆕 EXPONER FUNCIONES GLOBALES
+      window.descargarExcelActual = descargarExcel
+      window.cerrarDialogoActual = null
+
+      // 4. Crear el diálogo con diseño optimizado
+      const dialogRef = $q.dialog({
         title: 'Vista Previa del Reporte Excel',
-        message: htmlContent,
+        message: `
+    <div style="display: flex; flex-direction: column; height: 100%;">
+      <!-- Información del reporte -->
+      <div style="padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; flex-shrink: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-weight: 600; color: #333; font-size: 15px;">Informe de Trayectos</div>
+          <div style="color: #666; font-size: 13px;">${reporte.periodo || 'Sin período'}</div>
+        </div>
+        <div style="color: #777; font-size: 12px; margin-top: 4px;">
+          Reportar por: ${reporte.elementos || 'N/A'} | Generado: ${reporte.fecha}
+        </div>
+      </div>
+
+      <!-- Contenido scrolleable -->
+      <div style="flex: 1; overflow: auto; padding: 20px; background: #f5f5f5; min-height: 0;">
+        ${htmlContent}
+      </div>
+
+      <!-- Footer fijo con botones separados -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid #e0e0e0; background: #fafafa; flex-shrink: 0;">
+        <button
+          onclick="window.descargarExcelActual()"
+          style="
+            padding: 10px 24px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          "
+          onmouseover="this.style.background='#43a047'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(76,175,80,0.3)'"
+          onmouseout="this.style.background='#4caf50'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'"
+        >
+          <i class="material-icons" style="font-size: 18px;">download</i>
+          <span>Descargar</span>
+        </button>
+
+        <button
+          onclick="window.cerrarDialogoActual()"
+          style="
+            padding: 10px 24px;
+            background: transparent;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+          "
+          onmouseover="this.style.background='#f5f5f5'; this.style.borderColor='#999'"
+          onmouseout="this.style.background='transparent'; this.style.borderColor='#ddd'"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  `,
         html: true,
         fullWidth: true,
         fullHeight: true,
         maximized: true,
-
-        ok: {
-          push: true,
-          label: 'DESCARGAR',
-          color: 'positive',
-          icon: 'download',
-        },
-        cancel: {
-          label: 'CERRAR',
-          color: 'grey-7',
-          flat: true,
-        },
-
-        // Clase personalizada para el diálogo
-        class: 'excel-preview-corners',
+        persistent: true,
+        noEscDismiss: false,
+        ok: false,
+        cancel: false,
+        class: 'excel-preview-dialog-fullscreen',
       })
-        .onOk(() => {
-          descargarExcel()
-        })
-        .onCancel(() => {
-          // No hacer nada al cerrar
-        })
+      // 🆕 ASIGNAR LA FUNCIÓN DE CERRAR
+      window.cerrarDialogoActual = () => {
+        dialogRef.hide()
+      }
 
       $q.notify({
         type: 'positive',
@@ -1889,29 +1944,26 @@ watch(eventos, () => {
   justify-content: space-between;
   align-items: center;
 }
-/* 🆕 ESTILOS LIMPIOS PARA BOTONES EN ESQUINAS OPUESTAS */
-:deep(.excel-preview-corners .q-card__actions) {
-  position: relative !important;
+:deep(.excel-preview-dialog-fullscreen .q-dialog__inner) {
+  padding: 0 !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card) {
   display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  padding: 20px 32px !important;
-  min-height: 70px !important;
-  border-top: 1px solid #e0e0e0 !important;
-  background: #fafafa !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
 }
 
-:deep(.excel-preview-corners .q-card__actions > .q-btn) {
-  position: static !important;
-  margin: 0 !important;
+:deep(.excel-preview-dialog-fullscreen .q-card__section) {
+  padding: 0 !important;
 }
 
-/* Opcional: Efecto hover para botón de descarga */
-:deep(.excel-preview-corners .q-btn--push.bg-positive:hover) {
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
-  transition: all 0.3s ease;
+:deep(.excel-preview-dialog-fullscreen .q-card__section--vert) {
+  padding: 0 !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
-
-/* 🆕 INVERTIR BOTONES DEL DIÁLOGO */
 </style>
