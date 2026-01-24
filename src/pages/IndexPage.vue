@@ -16,16 +16,13 @@
       <q-tooltip>Capas del Mapa</q-tooltip>
 
       <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
-        <q-list
-          style="
-            min-width: 280px;
-            background: linear-gradient(135deg, #ffffff 0%, #ddf4e7 100%) !important;
-          "
-        >
+        <q-list style="min-width: 320px">
           <!-- SECCIÓN: ESTILO DE MAPA -->
           <div class="map-styles-section">
-            <q-item-label header class="text-weight-bold text-black"> ESTILO DE MAPA </q-item-label>
-            <q-separator class="menu-separator" />
+            <q-item-label header class="section-header">
+              <q-icon name="map" size="18px" class="header-icon" />
+              ESTILO DE MAPA
+            </q-item-label>
 
             <div class="map-styles-container">
               <!-- OPCIÓN: VISTA SATELITAL -->
@@ -35,13 +32,12 @@
                 @click="cambiarEstiloDesdeMenu('satellite')"
               >
                 <div class="style-preview">
-                  <!-- SVG Inline Vista Satelital -->
+                  <!-- 🔥 SVG COMPLETO SATÉLITE -->
                   <svg
                     width="150"
                     height="100"
                     viewBox="0 0 150 100"
                     xmlns="http://www.w3.org/2000/svg"
-                    border-radius="20px"
                   >
                     <defs>
                       <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -54,7 +50,7 @@
                         <stop offset="100%" style="stop-color: #0d2a3d; stop-opacity: 1" />
                       </linearGradient>
                     </defs>
-                    <rect width="150" height="100" fill="url(#earthGradient)" rx="12" ry="12" />
+                    <rect width="150" height="100" fill="url(#earthGradient)" rx="8" ry="8" />
                     <path
                       d="M 0 60 Q 40 55, 80 60 T 150 55 L 150 100 L 0 100 Z"
                       fill="url(#waterGradient)"
@@ -97,11 +93,14 @@
                     <rect x="96" y="72" width="5" height="5" fill="#8a8a8a" opacity="0.9" />
                     <rect x="102" y="70" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
                   </svg>
-                  <div v-if="estiloMapa === 'satellite'" class="active-badge">
-                    <q-icon name="check_circle" size="20px" color="positive" />
-                  </div>
                 </div>
-                <div class="style-label">Satélite</div>
+                <div class="style-info">
+                  <div class="style-label">Satélite</div>
+                  <div class="style-description">Vista aérea</div>
+                </div>
+                <div v-if="estiloMapa === 'satellite'" class="active-indicator">
+                  <q-icon name="check_circle" size="22px" color="positive" />
+                </div>
               </div>
 
               <!-- OPCIÓN: VISTA CALLES -->
@@ -111,13 +110,12 @@
                 @click="cambiarEstiloDesdeMenu('streets')"
               >
                 <div class="style-preview">
-                  <!-- SVG Inline Vista Calles -->
+                  <!-- 🔥 SVG COMPLETO CALLES -->
                   <svg
                     width="150"
                     height="100"
                     viewBox="0 0 150 100"
                     xmlns="http://www.w3.org/2000/svg"
-                    border-radius="20px"
                   >
                     <defs>
                       <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -125,7 +123,7 @@
                         <stop offset="100%" style="stop-color: #e8e8e0; stop-opacity: 1" />
                       </linearGradient>
                     </defs>
-                    <rect width="150" height="100" fill="url(#bgGradient)" rx="12" ry="12" />
+                    <rect width="150" height="100" fill="url(#bgGradient)" rx="8" ry="8" />
                     <rect x="5" y="10" width="35" height="30" fill="#c8e6c9" opacity="0.8" />
                     <rect x="110" y="55" width="30" height="35" fill="#c8e6c9" opacity="0.8" />
                     <rect x="0" y="45" width="150" height="6" fill="#d0d0d0" />
@@ -256,39 +254,41 @@
                     <circle cx="128" cy="70" r="3" fill="#66bb6a" opacity="0.8" />
                     <circle cx="122" cy="80" r="3" fill="#66bb6a" opacity="0.8" />
                   </svg>
-                  <div v-if="estiloMapa === 'streets'" class="active-badge">
-                    <q-icon name="check_circle" size="20px" color="positive" />
-                  </div>
                 </div>
-                <div class="style-label">Calles</div>
+                <div class="style-info">
+                  <div class="style-label">Calles</div>
+                  <div class="style-description">Vista urbana</div>
+                </div>
+                <div v-if="estiloMapa === 'streets'" class="active-indicator">
+                  <q-icon name="check_circle" size="22px" color="positive" />
+                </div>
               </div>
             </div>
           </div>
 
           <!-- LÍNEA DIVISORIA -->
-          <q-separator class="menu-separator" />
+          <q-separator class="section-separator" />
 
           <!-- SECCIÓN: CAPAS ADICIONALES -->
           <div class="traffic-section">
-            <q-item-label header class="text-weight-bold text-black">
+            <q-item-label header class="section-header">
+              <q-icon name="add_road" size="18px" class="header-icon" />
               CAPAS ADICIONALES
             </q-item-label>
-            <q-separator class="menu-separator" />
 
             <q-item clickable @click="manejarToggleTrafico" class="traffic-toggle-item">
               <q-item-section avatar>
-                <q-checkbox
-                  :model-value="traficoActivo"
-                  color="positive"
-                  @update:model-value="manejarToggleTrafico"
+                <q-icon
+                  :name="traficoActivo ? 'toggle_on' : 'toggle_off'"
+                  :color="traficoActivo ? 'positive' : 'grey-5'"
+                  size="32px"
                 />
               </q-item-section>
               <q-item-section>
-                <q-item-label>Mostrar Tráfico</q-item-label>
-                <q-item-label caption> Visualiza el tráfico en tiempo real </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-icon name="traffic" :color="traficoActivo ? 'positive' : 'grey-5'" />
+                <q-item-label class="traffic-label">Tráfico en tiempo real</q-item-label>
+                <q-item-label caption class="traffic-caption">
+                  {{ traficoActivo ? 'Activado' : 'Desactivado' }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </div>
@@ -2789,10 +2789,29 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 :deep(.layers-menu .q-list) {
-  background: transparent !important;
-  border-radius: 16px !important;
+  padding: 0 !important;
+  background: #ffffff !important;
 }
-
+.section-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 16px 20px 12px 20px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  color: #374151 !important;
+  background: #f9fafb !important;
+  margin: 0 !important;
+}
+.header-icon {
+  color: #6b7280 !important;
+}
+.section-separator {
+  margin: 0 !important;
+  background-color: #e5e7eb !important;
+  height: 1px !important;
+}
 :deep(.layers-menu .q-menu__content) {
   background: linear-gradient(135deg, #ffffff 0%, #cceeff 100%) !important;
   border-radius: 16px !important;
@@ -2807,12 +2826,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 /* ✅ SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
-.map-styles-section .q-item__label--header {
-  background: white;
-  padding: 12px 16px;
-  margin: 0;
+.map-styles-section {
+  background: #f9fafb;
+  padding-bottom: 16px;
 }
-
 /* Container de tarjetas SIN fondo blanco (muestra degradado) */
 .map-styles-container {
   background: transparent;
@@ -2821,10 +2838,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* ✅ TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
 .traffic-section {
   background: white;
-  padding: 0;
-  margin: 0;
+  padding-bottom: 8px;
 }
-
 .traffic-section .q-item__label--header {
   padding: 12px 16px;
   margin: 0;
@@ -2839,51 +2854,57 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Container de las tarjetas de estilo */
 .map-styles-container {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px 16px;
-  justify-content: center;
+  padding: 0 16px;
 }
 
 /* Tarjeta individual de estilo */
 .map-style-card {
-  flex: 1;
-  cursor: pointer;
-  border-radius: 12px; /* ✅ Cambié de 8px a 12px */
-  overflow: hidden;
-  transition: all 0.2s ease;
-  border: 2px solid #e0e0e0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
   background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .map-style-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #bdbdbd;
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateX(2px);
 }
-
 .map-style-card.active {
-  border-color: #4caf50;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
 
 /* Preview de la imagen */
 .style-preview {
-  position: relative;
-  width: 100%;
-  height: 80px;
+  flex-shrink: 0;
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
   overflow: hidden;
   background: #f5f5f5;
-  padding: 4px; /* ✅ Agrega esto */
 }
 
 .style-preview svg {
   width: 100%;
   height: 100%;
   display: block;
-  border-radius: 12px; /* ✅ Agrega esto para redondear el SVG también */
-  clip-path: inset(0 round 12px);
 }
-
+.style-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 /* Badge de activo (checkmark) */
 .active-badge {
   position: absolute;
@@ -2901,26 +2922,42 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 /* Label del estilo */
 .style-label {
-  padding: 8px;
-  text-align: center;
+  font-size: 15px;
   font-weight: 600;
-  font-size: 13px;
-  color: #424242;
-  background: #f5f5f5;
+  color: #1f2937;
+  line-height: 1.2;
 }
-
+.style-description {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.2;
+}
+.active-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .map-style-card.active .style-label {
-  background: #e8f5e9;
-  color: #2e7d32;
+  color: #059669;
 }
-
 /* Item del toggle de tráfico */
 .traffic-toggle-item {
-  padding: 12px 16px;
+  padding: 12px 20px !important;
+  min-height: 64px !important;
 }
-
+.traffic-label {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
 .traffic-toggle-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f9fafb !important;
+}
+.traffic-caption {
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  margin-top: 2px !important;
 }
 
 :deep(.traffic-layer-blend) {
