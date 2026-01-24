@@ -915,6 +915,10 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         type: 'FeatureCollection',
         features: symbolsFeatures,
       })
+
+      if (mapaAPI.map.getLayer(sourceId)) {
+        mapaAPI.map.moveLayer(sourceId) // Mover al frente
+      }
     } else {
       mapaAPI.map.addSource(sourceId, {
         type: 'geojson',
@@ -1113,6 +1117,10 @@ const dibujarPOIsCombinados = async (pois) => {
         type: 'FeatureCollection',
         features: poisFeatures,
       })
+
+      if (mapaAPI.map.getLayer('pois-symbols')) {
+        mapaAPI.map.moveLayer('pois-symbols') // Mover al frente
+      }
     } else {
       mapaAPI.map.addSource(sourceId, {
         type: 'geojson',
