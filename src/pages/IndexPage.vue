@@ -297,15 +297,16 @@
     </q-btn>
     <q-btn
       fab
-      style="background: linear-gradient(135deg, #bb0000 30%, #bb5e00 70%) !important"
+      unelevated
+      style="background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%) !important"
       icon="my_location"
       text-color="white"
       class="recenter-btn"
-      padding="sm"
-      border-color="#000000"
       @click="recentrarEnUsuario"
     >
-      <q-tooltip>Centrar en mi ubicación</q-tooltip>
+      <q-tooltip class="bg-grey-9" transition-show="scale" transition-hide="scale">
+        Centrar en mi ubicación
+      </q-tooltip>
     </q-btn>
 
     <transition name="fade-scale">
@@ -2484,26 +2485,22 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 </style>
 
 <style scoped>
-.recenter-btn {
-  position: fixed !important;
-  top: 145px;
-  right: 20px;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-  width: 45px !important;
-  height: 45px !important;
-  border-radius: 12px !important;
-  border: 3px solid #ffffff !important;
+.recenter-btn:active {
+  transform: scale(0.95) !important;
+}
+.recenter-btn:hover :deep(.q-icon) {
+  animation: pulse-icon 0.6s ease-in-out;
 }
 
-.recenter-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  width: 45px !important;
-  height: 45px !important;
+@keyframes pulse-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
-
 .full-height {
   height: 100%;
   overflow: hidden;
@@ -2693,44 +2690,68 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 .layers-menu-btn {
   position: fixed !important;
   top: 80px;
-  right: 20px;
+  right: 20px; /* 🔥 DERECHA */
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-  border-radius: 12px !important;
-  border: 2px solid #ddf4e7 !important;
 
-  width: 45px !important;
-  height: 45px !important;
+  /* Glassmorphism */
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+
+  box-shadow:
+    0 8px 32px rgba(187, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2) !important;
+
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 50% !important;
+
+  width: 52px !important;
+  height: 52px !important;
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.recenter-btn {
+  position: fixed !important;
+  top: 150px; /* 🔥 80px + 52px (tamaño) + 18px (espacio) = 150px */
+  right: 20px; /* 🔥 DERECHA */
+  z-index: 1000;
+
+  /* Glassmorphism */
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+
+  box-shadow:
+    0 8px 32px rgba(187, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2) !important;
+
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 50% !important;
+
+  width: 52px !important;
+  height: 52px !important;
+
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* 🔲 Hacer el botón cuadrado con esquinas redondeadas - MÁS ESPECÍFICO */
-.layers-menu-btn.q-btn {
-  border-radius: 12px !important;
-  border: 3px solid #ffffff !important;
+.recenter-btn:hover {
+  transform: scale(1.1) translateY(-2px) !important;
+  box-shadow:
+    0 12px 40px rgba(187, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-.layers-menu-btn :deep(.q-btn__wrapper) {
-  border-radius: 12px !important;
-  padding: 12px !important;
-  border: 3px solid #ffffff !important;
+.recenter-btn:active {
+  transform: scale(0.95) !important;
 }
 
-.layers-menu-btn :deep(.q-btn__content) {
-  border-radius: 12px !important;
-  border-color: #ffffff;
+/* Animación del ícono */
+.recenter-btn:hover :deep(.q-icon) {
+  animation: pulse-icon 0.6s ease-in-out;
 }
-
-/* Asegurar que el ripple effect también sea redondeado */
-.layers-menu-btn :deep(.q-focus-helper),
-.layers-menu-btn :deep(.q-ripple) {
-  border-radius: 12px !important;
-  border-color: #ffffff;
-}
-
 .layers-menu-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transform: scale(1.1) translateY(-2px) !important;
+  box-shadow:
+    0 12px 40px rgba(187, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Estilos del menú desplegable */
@@ -2879,34 +2900,6 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
 
 .traffic-toggle-item:hover {
   background-color: #f5f5f5;
-}
-
-.traffic-toggle-btn {
-  position: fixed !important;
-  top: 150px;
-  right: 20px;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-}
-
-.traffic-toggle-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-}
-
-.traffic-toggle-btn.bg-positive {
-  animation: pulse-traffic 2s infinite;
-}
-
-@keyframes pulse-traffic {
-  0%,
-  100% {
-    box-shadow: 0 4px 12px rgba(33, 186, 69, 0.4);
-  }
-  50% {
-    box-shadow: 0 6px 20px rgba(33, 186, 69, 0.6);
-  }
 }
 
 :deep(.traffic-layer-blend) {
