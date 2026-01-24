@@ -77,7 +77,162 @@ const COLORES_ESTADO = {
   detenido: '#FF9800', // Naranja
   inactivo: '#607D8B', // Gris azulado
 }
+// useMapboxGL.js - REEMPLAZAR cargarIconosMapa COMPLETA
+const cargarIconosMapa = async (map) => {
+  if (!map.loaded()) {
+    await new Promise((resolve) => map.once('load', resolve))
+  }
 
+  // 🎨 ICONO POI - Crear canvas directamente (SIN SVG)
+  const createPOIIcon = (color = '#FF5252') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Dibujar pin manualmente (sin SVG)
+    // Borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 4)
+    ctx.bezierCurveTo(size / 2 - 15, size - 15, 8, size / 2 + 5, 8, size / 2 - 5)
+    ctx.bezierCurveTo(8, 15, 15, 8, size / 2, 8)
+    ctx.bezierCurveTo(size - 15, 8, size - 8, 15, size - 8, size / 2 - 5)
+    ctx.bezierCurveTo(size - 8, size / 2 + 5, size / 2 + 15, size - 15, size / 2, size - 4)
+    ctx.closePath()
+    ctx.fillStyle = 'white'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    // Pin con color
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 6)
+    ctx.bezierCurveTo(size / 2 - 13, size - 16, 10, size / 2 + 3, 10, size / 2 - 5)
+    ctx.bezierCurveTo(10, 17, 17, 10, size / 2, 10)
+    ctx.bezierCurveTo(size - 17, 10, size - 10, 17, size - 10, size / 2 - 5)
+    ctx.bezierCurveTo(size - 10, size / 2 + 3, size / 2 + 13, size - 16, size / 2, size - 6)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+
+    // Círculo interior
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2 - 5, 6, 0, Math.PI * 2)
+    ctx.fillStyle = 'white'
+    ctx.fill()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA CIRCULAR - Canvas directo
+  const createGeozonaCircularIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Círculo con borde blanco
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, 18, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA POLIGONAL - Canvas directo
+  const createGeozonaPoligonalIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Rombo con borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, 4)
+    ctx.lineTo(size - 4, size / 2)
+    ctx.lineTo(size / 2, size - 4)
+    ctx.lineTo(4, size / 2)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // 🆕 FUNCIÓN HELPER: Cargar icono si no existe
+  window._mapboxLoadIcon = (map, type, color) => {
+    const colorKey = color.replace('#', '')
+    const iconName = `${type}-${colorKey}`
+
+    if (map.hasImage(iconName)) {
+      return // Ya existe
+    }
+
+    let canvas
+    if (type === 'poi') {
+      canvas = createPOIIcon(color)
+    } else if (type === 'geozona-circular') {
+      canvas = createGeozonaCircularIcon(color)
+    } else if (type === 'geozona-poligonal') {
+      canvas = createGeozonaPoligonalIcon(color)
+    }
+
+    if (canvas) {
+      const imageData = canvas.getContext('2d').getImageData(0, 0, 48, 48)
+      map.addImage(iconName, {
+        width: 48,
+        height: 48,
+        data: imageData.data,
+      })
+    }
+  }
+
+  // Cargar iconos POI (colores comunes)
+  const coloresPOI = [
+    '#FF5252',
+    '#2196F3',
+    '#4CAF50',
+    '#FF9800',
+    '#9C27B0',
+    '#FFC107',
+    '#E91E63',
+    '#00BCD4',
+  ]
+
+  for (const color of coloresPOI) {
+    window._mapboxLoadIcon(map, 'poi', color)
+  }
+
+  // Cargar iconos Geozona (colores comunes)
+  const coloresGeozona = [
+    '#4ECDC4',
+    '#3498DB',
+    '#2ECC71',
+    '#9B59B6',
+    '#E67E22',
+    '#E74C3C',
+    '#F39C12',
+    '#FF6B9D',
+  ]
+
+  for (const color of coloresGeozona) {
+    window._mapboxLoadIcon(map, 'geozona-circular', color)
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color)
+  }
+
+  console.log('✅ Iconos de mapa cargados correctamente')
+}
 const cerrarPopupGlobal = () => {
   if (popupGlobalActivo) {
     try {
@@ -1175,7 +1330,7 @@ export function useMapboxGL() {
       map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
-      map.value.on('load', () => {
+      map.value.on('load', async () => {
         map.value.scrollZoom.setWheelZoomRate(1 / 150)
         map.value.scrollZoom.setZoomRate(1 / 100)
 
@@ -1185,6 +1340,8 @@ export function useMapboxGL() {
           maxSpeed: 1800,
           deceleration: 2200,
         })
+        await cargarIconosMapa(map.value)
+        console.log('✅ Iconos cargados después del load del mapa')
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
 
