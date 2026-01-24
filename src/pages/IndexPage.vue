@@ -733,9 +733,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
     // 🆕 CARGAR ICONO DINÁMICAMENTE si no existe
     if (window._mapboxLoadIcon) {
       if (geozona.tipoGeozona === 'circular') {
-        window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color)
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color, false)
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color, true) // 🆕 CON BADGE
       } else if (geozona.tipoGeozona === 'poligono') {
-        window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color)
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color, false)
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color, true) // 🆕 CON BADGE
       }
     }
 
@@ -757,13 +759,14 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         },
       })
 
+      const iconSuffix = tieneEventos ? '-badge' : '' // 🆕 AGREGAR ESTA LÍNEA
       symbolsFeatures.push({
         type: 'Feature',
         properties: {
           id: geozona.id,
           nombre: geozona.nombre,
           tipo: 'circular',
-          iconImage: `geozona-circular-${colorKey}`,
+          iconImage: `geozona-circular-${colorKey}${iconSuffix}`, // 🔥 MODIFICAR ESTA LÍNEA
           tieneEventos: tieneEventos,
           puntos: 0,
         },
@@ -796,13 +799,15 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       const centroLat = lats.reduce((a, b) => a + b) / lats.length
       const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
+      // 🔥 AQUÍ ESTÁ LO QUE DEBES MODIFICAR
+      const iconSuffix = tieneEventos ? '-badge' : '' // 🆕 AGREGAR ESTA LÍNEA
       symbolsFeatures.push({
         type: 'Feature',
         properties: {
           id: geozona.id,
           nombre: geozona.nombre,
           tipo: 'poligonal',
-          iconImage: `geozona-poligonal-${colorKey}`,
+          iconImage: `geozona-poligonal-${colorKey}${iconSuffix}`, // 🔥 MODIFICAR ESTA LÍNEA
           tieneEventos: tieneEventos,
           puntos: geozona.puntos.length,
         },
@@ -1074,6 +1079,11 @@ const dibujarPOIsCombinados = async (pois) => {
       const colorKey = color.replace('#', '')
       const tieneEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
 
+      if (window._mapboxLoadIcon) {
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, false)
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, true) // 🆕 AGREGAR ESTA LÍNEA
+      }
+      const iconSuffix = tieneEventos ? '-badge' : ''
       return {
         type: 'Feature',
         properties: {
@@ -1085,7 +1095,7 @@ const dibujarPOIsCombinados = async (pois) => {
           radio: radio,
           lat: lat,
           tieneEventos: tieneEventos,
-          iconImage: `poi-${colorKey}`, // 🆕 Nombre de la imagen a usar
+          iconImage: `poi-${colorKey}${iconSuffix}`,
         },
         geometry: {
           type: 'Point',

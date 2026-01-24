@@ -77,6 +77,30 @@ const COLORES_ESTADO = {
   detenido: '#FF9800', // Naranja
   inactivo: '#607D8B', // Gris azulado
 }
+const agregarBadgeACanvas = (canvas) => {
+  const ctx = canvas.getContext('2d')
+  const size = 48
+
+  // Badge amarillo en la esquina superior derecha
+  const badgeX = size - 10
+  const badgeY = 8
+  const badgeRadius = 6 // Un poco más pequeño
+
+  // Círculo amarillo con borde blanco
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius + 2, 0, Math.PI * 2)
+  ctx.fillStyle = 'white'
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2)
+  ctx.fillStyle = '#FFC107' // Amarillo
+  ctx.fill()
+
+  // ❌ ELIMINADO: Ya no agregamos el símbolo "!"
+
+  return canvas
+}
 // useMapboxGL.js - REEMPLAZAR cargarIconosMapa COMPLETA
 const cargarIconosMapa = async (map) => {
   if (!map.loaded()) {
@@ -171,9 +195,10 @@ const cargarIconosMapa = async (map) => {
   }
 
   // 🆕 FUNCIÓN HELPER: Cargar icono si no existe
-  window._mapboxLoadIcon = (map, type, color) => {
+  window._mapboxLoadIcon = (map, type, color, conBadge = false) => {
     const colorKey = color.replace('#', '')
-    const iconName = `${type}-${colorKey}`
+    const badgeSuffix = conBadge ? '-badge' : ''
+    const iconName = `${type}-${colorKey}${badgeSuffix}`
 
     if (map.hasImage(iconName)) {
       return // Ya existe
@@ -189,6 +214,11 @@ const cargarIconosMapa = async (map) => {
     }
 
     if (canvas) {
+      // 🆕 Si tiene badge, agregarlo
+      if (conBadge) {
+        canvas = agregarBadgeACanvas(canvas)
+      }
+
       const imageData = canvas.getContext('2d').getImageData(0, 0, 48, 48)
       map.addImage(iconName, {
         width: 48,
@@ -198,7 +228,7 @@ const cargarIconosMapa = async (map) => {
     }
   }
 
-  // Cargar iconos POI (colores comunes)
+  // Cargar iconos POI (colores comunes) - SIN y CON badge
   const coloresPOI = [
     '#FF5252',
     '#2196F3',
@@ -211,10 +241,11 @@ const cargarIconosMapa = async (map) => {
   ]
 
   for (const color of coloresPOI) {
-    window._mapboxLoadIcon(map, 'poi', color)
+    window._mapboxLoadIcon(map, 'poi', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'poi', color, true) // Con badge
   }
 
-  // Cargar iconos Geozona (colores comunes)
+  // Cargar iconos Geozona (colores comunes) - SIN y CON badge
   const coloresGeozona = [
     '#4ECDC4',
     '#3498DB',
@@ -227,11 +258,11 @@ const cargarIconosMapa = async (map) => {
   ]
 
   for (const color of coloresGeozona) {
-    window._mapboxLoadIcon(map, 'geozona-circular', color)
-    window._mapboxLoadIcon(map, 'geozona-poligonal', color)
+    window._mapboxLoadIcon(map, 'geozona-circular', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-circular', color, true) // Con badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, true) // Con badge
   }
-
-  console.log('✅ Iconos de mapa cargados correctamente')
 }
 const cerrarPopupGlobal = () => {
   if (popupGlobalActivo) {
