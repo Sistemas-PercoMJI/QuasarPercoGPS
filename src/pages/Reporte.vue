@@ -1031,7 +1031,7 @@ const obtenerDatosReporte = async () => {
 
       if (idsParaBuscar.length === 0) {
         throw new Error('Los conductores seleccionados no tienen unidades asignadas')
-      }
+      } //ola
     } else if (reportarPor.value === 'Unidades') {
       idsParaBuscar = unidadesIds.map((nombre) => {
         const id = window.unidadesMap?.[nombre] || nombre
@@ -1635,6 +1635,7 @@ const abrirVistaPrevia = async (reporte) => {
       // 2. Convertir a HTML
       const htmlContent = await obtenerVistaPrevia(excelBlob)
 
+      // 3. Función de descarga
       const descargarExcel = () => {
         const url = window.URL.createObjectURL(excelBlob)
         const link = document.createElement('a')
@@ -1653,35 +1654,162 @@ const abrirVistaPrevia = async (reporte) => {
         })
       }
 
-      // 3. Mostrar en un diálogo de Quasar
-      $q.dialog({
+      // 🆕 EXPONER FUNCIONES GLOBALES
+      window.descargarExcelActual = descargarExcel
+      window.cerrarDialogoActual = null
+
+      const dialogRef = $q.dialog({
         title: 'Vista Previa del Reporte Excel',
-        message: htmlContent,
+        message: `
+    <!-- Información del reporte -->
+<!-- Información del reporte -->
+<div style="padding: 12px 16px 12px 48px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; position: relative;">
+  <!-- ✨ BOTÓN X EN LA ESQUINA SUPERIOR DERECHA -->
+<button
+  onclick="window.cerrarDialogoActual()"
+  style="
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+  "
+  onmouseover="
+    this.style.background='rgba(0, 0, 0, 0.1)';
+    this.style.borderColor='#999';
+    this.style.color='#333';
+  "
+  onmouseout="
+    this.style.background='transparent';
+    this.style.borderColor='#ddd';
+    this.style.color='#666';
+  "
+>
+  <i class="material-icons" style="font-size: 20px;">close</i>
+</button>
+
+  <!-- Contenido del header -->
+  <div style="font-weight: 600; color: #333; font-size: 15px; margin-bottom: 8px;">
+    Informe de Trayectos
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; color: #777; font-size: 12px;">
+    <div>
+      Reportar por: ${reporte.elementos || 'N/A'} | Generado: ${reporte.fecha}
+    </div>
+    <div style="color: #666; font-size: 13px; font-weight: 500;">
+      ${reporte.periodo || 'Sin período'}
+    </div>
+  </div>
+</div>
+      <!-- Contenido scrolleable -->
+      <div style="flex: 1; overflow: auto; padding: 20px; background: #f5f5f5; min-height: 0;">
+        ${htmlContent}
+      </div>
+
+      <!-- Footer fijo con botones separados -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid #e0e0e0; background: #fafafa; flex-shrink: 0;">
+        <button
+          onclick="window.descargarExcelActual()"
+          style="
+            padding: 12px 24px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 0.3px;
+          "
+          onmouseover="
+            this.style.transform='translateY(-3px)';
+            this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.4)';
+          "
+          onmouseout="
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';
+          "
+          onmousedown="
+            this.style.transform='translateY(-1px) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-3px)';
+          "
+        >
+          <i class="material-icons" style="font-size: 20px;">download</i>
+          <span>Descargar Excel</span>
+        </button>
+
+        <button
+          onclick="window.cerrarDialogoActual()"
+          style="
+            padding: 12px 24px;
+            background: white;
+            color: #616161;
+            border: 1px solid #616161;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          "
+          onmouseover="
+            this.style.background='rgba(0, 0, 0, 0.05)';
+            this.style.transform='translateY(-2px)';
+            this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.1)';
+          "
+          onmouseout="
+            this.style.background='white';
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='none';
+          "
+          onmousedown="
+            this.style.transform='translateY(0) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-2px)';
+          "
+        >
+          <i class="material-icons" style="font-size: 20px;">close</i>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
+  `,
         html: true,
         fullWidth: true,
         fullHeight: true,
         maximized: true,
-        ok: {
-          label: 'Cerrar',
-          color: 'grey-7',
-          flat: true,
-        },
-        // 🆕 AGREGAR BOTÓN DE DESCARGA
-        cancel: {
-          label: 'Descargar',
-          color: 'positive',
-          icon: 'download',
-          flat: false,
-        },
-        class: 'excel-preview-dialog',
+        persistent: true,
+        noEscDismiss: false,
+        ok: false,
+        cancel: false,
+        class: 'excel-preview-dialog-fullscreen',
       })
-        .onOk(() => {
-          // No hacer nada al cerrar
-        })
-        .onCancel(() => {
-          // Descargar cuando se presiona el botón "Descargar"
-          descargarExcel()
-        })
+      // 🆕 ASIGNAR LA FUNCIÓN DE CERRAR
+      window.cerrarDialogoActual = () => {
+        dialogRef.hide()
+      }
 
       $q.notify({
         type: 'positive',
@@ -1887,5 +2015,27 @@ watch(eventos, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+:deep(.excel-preview-dialog-fullscreen .q-dialog__inner) {
+  padding: 0 !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card) {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card__section) {
+  padding: 0 !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card__section--vert) {
+  padding: 0 !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 </style>
