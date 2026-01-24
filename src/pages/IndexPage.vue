@@ -476,10 +476,8 @@ const iniciarSimuladorAutomatico = async () => {
   try {
     // 🔥 CARGAR USUARIO PRIMERO
     if (!idEmpresaActual.value) {
-      console.log('⏳ Cargando empresa...')
       await cargarUsuarioActual()
     }
-    console.log('🏢 Empresa:', idEmpresaActual.value)
 
     // Ahora sí cargar conductores
     await obtenerConductores()
@@ -941,7 +939,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
 
       // 🔥 AGREGAR LOGS
-      console.log('📍 Registrando evento click para geozonas-symbols')
 
       // 🆕 EVENTOS DE CLIC EN SÍMBOLOS DE GEOZONAS
       mapaAPI.map.on('click', sourceId, (e) => {
@@ -951,19 +948,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           e.originalEvent.stopPropagation()
         }
 
-        console.log('🔥 CLICK EN GEOZONA!')
-        console.log('Event:', e)
-        console.log('Features:', e.features)
-
         const feature = e.features[0]
-        console.log('Feature properties:', feature.properties)
 
         const geozona = geozonasCargadas.value.find((g) => g.id === feature.properties.id)
-        console.log('Geozona encontrada:', geozona)
 
         if (geozona) {
-          console.log('✅ Creando popup para:', geozona.nombre)
-
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -1014,14 +1003,9 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       </div>
     `
 
-          console.log('🎨 HTML del popup generado')
-
           if (popupGlobalActivo) {
-            console.log('🗑️ Removiendo popup anterior')
             popupGlobalActivo.remove()
           }
-
-          console.log('🆕 Creando nuevo popup en:', e.lngLat)
 
           popupGlobalActivo = new mapboxgl.Popup({
             offset: 25,
@@ -1032,23 +1016,10 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
             .setLngLat(e.lngLat)
             .setHTML(popupContent)
             .addTo(mapaAPI.map)
-          popupGlobalActivo.on('close', () => {
-            console.log('🚨 POPUP CERRADO! ¿Por qué?')
-            console.trace() // Esto muestra la pila de llamadas
-          })
-          console.log('✅ Popup agregado al DOM')
-
-          // 🆕 VERIFICAR QUE ESTÉ EN EL DOM
-          setTimeout(() => {
-            const popupsEnDOM = document.querySelectorAll('.mapboxgl-popup').length
-            console.log('🔍 Popups en DOM después de 100ms:', popupsEnDOM)
-          }, 100)
         } else {
           console.error('❌ Geozona NO encontrada')
         }
       })
-
-      console.log('✅ Evento click registrado') // 🆕 LOG
 
       // Cursor pointer al hover
       mapaAPI.map.on('mouseenter', sourceId, () => {
@@ -1060,10 +1031,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
     }
   }
-
-  console.log(
-    `✅ Geozonas combinadas: ${circularesFeatures.length} circulares + ${poligonalesFeatures.length} poligonales (Symbol Layers)`,
-  )
 }
 
 // 🔥 Combinar TODOS los POIs en UN SOLO layer
@@ -1228,8 +1195,6 @@ const dibujarPOIsCombinados = async (pois) => {
       })
     }
   }
-
-  console.log(`✅ POIs combinados: ${poisFeatures.length} POIs (Symbol Layers)`)
 }
 
 const dibujarTodosEnMapa = async () => {
@@ -1261,10 +1226,6 @@ const dibujarTodosEnMapa = async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
-
-    console.log(
-      `✅ Mapa optimizado: ${pois.length} POIs + ${geozonas.length} Geozonas (Symbol Layers)`,
-    )
   } catch (error) {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
@@ -1272,8 +1233,6 @@ const dibujarTodosEnMapa = async () => {
 // 🆕 FUNCIÓN PARA RESTAURAR SOLO LAS CAPAS (sin marcadores)
 const restaurarCapasDespuesEstilo = async () => {
   if (!mapaAPI || !mapaAPI.map) return
-
-  console.log('🔄 Restaurando capas después de cambio de estilo...')
 
   // Recorrer POIs dibujados y recrear solo las capas (círculos)
   for (const poiKey of poisDibujados.value) {
@@ -1404,8 +1363,6 @@ const restaurarCapasDespuesEstilo = async () => {
       }
     }
   }
-
-  console.log('✅ Capas restauradas')
 }
 
 const limpiarCapasDelMapa = () => {
@@ -1452,8 +1409,6 @@ const limpiarCapasDelMapa = () => {
   // Limpiar cache
   geozonasDibujadas.value.clear()
   poisDibujados.value.clear()
-
-  console.log('✅ Capas combinadas limpiadas')
 }
 
 const recentrarEnUsuario = () => {
@@ -1564,8 +1519,6 @@ onMounted(async () => {
       // Guardar referencias para limpieza
       window._mapMoveStartHandler = moveStartHandler
       window._mapMoveEndHandler = moveEndHandler
-
-      console.log('✅ Listeners de mapa registrados (UNA SOLA VEZ)')
     }
 
     // ✅ PASO 5: Configurar funciones globales
@@ -1759,15 +1712,7 @@ onMounted(async () => {
           feature.layer.id === 'pois-symbols', // 🆕 AGREGAR
       )
 
-      console.log(
-        '🔍 Click en capa:',
-        clickEnCapa,
-        'Layers:',
-        features.map((f) => f.layer.id),
-      )
-
       if (!clickEnCapa) {
-        console.log('❌ Click fuera - cerrando popups')
         if (popupGlobalActivo) {
           popupGlobalActivo.remove()
           popupGlobalActivo = null
@@ -1780,8 +1725,6 @@ onMounted(async () => {
             closeBtn.click()
           }
         })
-      } else {
-        console.log('✅ Click en capa válida - popup permitido')
       }
     })
 
@@ -1809,7 +1752,7 @@ onMounted(async () => {
           }
         },
         () => {
-          console.log('ℹ️ Ubicación GPS no disponible en carga inicial')
+          console.warn('⚠️ No se pudo obtener la ubicación GPS inicial')
         },
         {
           enableHighAccuracy: false,
@@ -1848,8 +1791,6 @@ onMounted(async () => {
   window.addEventListener('restaurarCapasEstilo', restaurarCapasDespuesEstilo)
 
   window.addEventListener('redibujarMapa', async () => {
-    console.log('🔄 Evento redibujarMapa recibido')
-
     await nextTick()
 
     // Limpiar todo (incluyendo cache)
@@ -1874,8 +1815,6 @@ onMounted(async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
-
-    console.log('✅ Mapa redibujado completamente')
   })
 })
 const handleMostrarBoton = (e) => {

@@ -775,7 +775,6 @@ export function useMapboxGL() {
     if (clickHandlerPoligonal) {
       map.value.off('click', clickHandlerPoligonal)
       clickHandlerPoligonal = null
-      console.log('✅ Event listener poligonal desactivado')
     }
 
     // Desactivar todos los modos
@@ -787,8 +786,6 @@ export function useMapboxGL() {
     if (map.value.getCanvas()) {
       map.value.getCanvas().style.cursor = ''
     }
-
-    console.log('✅ Todos los modos de selección desactivados')
   }
 
   // 🔵 MODO SELECCIÓN GEOZONA CIRCULAR
@@ -884,7 +881,6 @@ export function useMapboxGL() {
     if (clickHandlerPoligonal) {
       map.value.off('click', clickHandlerPoligonal)
       clickHandlerPoligonal = null
-      console.log('✅ Event listener anterior eliminado')
     }
 
     limpiarPoligonoTemporal()
@@ -938,8 +934,6 @@ export function useMapboxGL() {
 
     // 🆕 REGISTRAR EL LISTENER USANDO LA VARIABLE GLOBAL
     map.value.on('click', clickHandlerPoligonal)
-    console.log('✅ Nuevo event listener registrado')
-
     return true
   }
 
@@ -1033,7 +1027,6 @@ export function useMapboxGL() {
       if (clickHandlerPoligonal) {
         map.value.off('click', clickHandlerPoligonal)
         clickHandlerPoligonal = null
-        console.log('✅ Event listener eliminado en limpiarPoligonoTemporal')
       }
 
       // Limpiar capas del mapa
@@ -1068,8 +1061,6 @@ export function useMapboxGL() {
       if (map.value.getCanvas()) {
         map.value.getCanvas().style.cursor = ''
       }
-
-      console.log('✅ Polígono temporal limpiado completamente')
     } catch (error) {
       console.error('Error limpiando polígono temporal:', error)
     }
@@ -1372,7 +1363,7 @@ export function useMapboxGL() {
           deceleration: 2200,
         })
         await cargarIconosMapa(map.value)
-        console.log('✅ Iconos cargados después del load del mapa')
+
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
 
@@ -1771,8 +1762,6 @@ export function useMapboxGL() {
       // Eliminar de la cache
       delete marcadoresUnidades.value[unidadId]
       ultimasPosiciones.delete(unidadId)
-
-      console.log(`✅ Marcador ${unidadId} eliminado del mapa`)
     }
   }
 
