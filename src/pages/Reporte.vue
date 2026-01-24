@@ -1031,7 +1031,7 @@ const obtenerDatosReporte = async () => {
 
       if (idsParaBuscar.length === 0) {
         throw new Error('Los conductores seleccionados no tienen unidades asignadas')
-      }
+      } //ola
     } else if (reportarPor.value === 'Unidades') {
       idsParaBuscar = unidadesIds.map((nombre) => {
         const id = window.unidadesMap?.[nombre] || nombre
