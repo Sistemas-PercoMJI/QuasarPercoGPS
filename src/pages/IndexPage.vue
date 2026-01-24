@@ -513,7 +513,7 @@ const iniciarSimuladorAutomatico = async () => {
 
     $q.notify({
       type: 'positive',
-      message: `🎯 Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
+      message: `Simulador GPS iniciado: ${conductoresConUnidad.length} unidades`,
       position: 'top',
       timeout: 500,
       icon: 'explore',
@@ -582,7 +582,6 @@ function actualizarMarcadorUsuario(lat, lng) {
       "></div>
     `
 
-    // ✅ NUEVO: Popup mejorado con el estilo de tus POIs
     const popupContent = `
       <div class="ubicacion-popup-container">
         <div class="ubicacion-popup-header">
@@ -624,10 +623,6 @@ function actualizarMarcadorUsuario(lat, lng) {
       .addTo(map)
   }
 }
-
-// 🎯 FUNCIÓN CRÍTICA: Solo dibujar geozonas visibles en viewport
-
-// 🆕 FUNCIÓN: Dibujar una sola geozona
 
 function iniciarSeguimientoGPS() {
   if (!navigator.geolocation) {
@@ -712,7 +707,6 @@ function oscurecerColor(hex, porcentaje = 20) {
   return `#${rHex}${gHex}${bHex}`
 }
 
-// 🔥 SOLUCIÓN: Combinar TODAS las geozonas en UN SOLO layer por tipo
 const dibujarGeozonasCombinadas = async (geozonas) => {
   if (!mapaAPI?.map) return
 
@@ -728,15 +722,13 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
     const color = geozona.color || '#4ECDC4'
     const borderColor = oscurecerColor(color, 30)
     const colorKey = color.replace('#', '')
-
-    // 🆕 CARGAR ICONO DINÁMICAMENTE si no existe
     if (window._mapboxLoadIcon) {
       if (geozona.tipoGeozona === 'circular') {
         window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color, false)
-        window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color, true) // 🆕 CON BADGE
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-circular', color, true)
       } else if (geozona.tipoGeozona === 'poligono') {
         window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color, false)
-        window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color, true) // 🆕 CON BADGE
+        window._mapboxLoadIcon(mapaAPI.map, 'geozona-poligonal', color, true)
       }
     }
 
@@ -758,14 +750,14 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         },
       })
 
-      const iconSuffix = tieneEventos ? '-badge' : '' // 🆕 AGREGAR ESTA LÍNEA
+      const iconSuffix = tieneEventos ? '-badge' : ''
       symbolsFeatures.push({
         type: 'Feature',
         properties: {
           id: geozona.id,
           nombre: geozona.nombre,
           tipo: 'circular',
-          iconImage: `geozona-circular-${colorKey}${iconSuffix}`, // 🔥 MODIFICAR ESTA LÍNEA
+          iconImage: `geozona-circular-${colorKey}${iconSuffix}`,
           tieneEventos: tieneEventos,
           puntos: 0,
         },
@@ -798,16 +790,14 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       const centroLat = lats.reduce((a, b) => a + b) / lats.length
       const centroLng = lngs.reduce((a, b) => a + b) / lngs.length
 
-      // 🔥 AQUÍ ESTÁ LO QUE DEBES MODIFICAR
-      const iconSuffix = tieneEventos ? '-badge' : '' // 🆕 AGREGAR ESTA LÍNEA
+      const iconSuffix = tieneEventos ? '-badge' : ''
       symbolsFeatures.push({
         type: 'Feature',
         properties: {
           id: geozona.id,
           nombre: geozona.nombre,
           tipo: 'poligonal',
-          iconImage: `geozona-poligonal-${colorKey}${iconSuffix}`, // 🔥 MODIFICAR ESTA LÍNEA
-          tieneEventos: tieneEventos,
+          iconImage: `geozona-poligonal-${colorKey}${iconSuffix}`,
           puntos: geozona.puntos.length,
         },
         geometry: {
@@ -817,8 +807,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
     }
   })
-
-  // 🎯 LAYER 1: Geozonas circulares
   if (circularesFeatures.length > 0) {
     const sourceId = 'geozonas-circulares-combined'
 
@@ -862,8 +850,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
     }
   }
-
-  // 🎯 LAYER 2 y 3: Geozonas poligonales
   if (poligonalesFeatures.length > 0) {
     const sourceId = 'geozonas-poligonales-combined'
 
@@ -880,8 +866,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           features: poligonalesFeatures,
         },
       })
-
-      // Fill layer
       mapaAPI.map.addLayer({
         id: `${sourceId}-fill`,
         type: 'fill',
@@ -891,8 +875,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           'fill-opacity': 0.35,
         },
       })
-
-      // Outline layer
       mapaAPI.map.addLayer({
         id: `${sourceId}-outline`,
         type: 'line',
@@ -904,8 +886,6 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
     }
   }
-
-  // 🆕 LAYER 4: SÍMBOLOS DE GEOZONAS (REEMPLAZA MARCADORES HTML)
   if (symbolsFeatures.length > 0) {
     const sourceId = 'geozonas-symbols'
 
@@ -916,7 +896,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
       })
 
       if (mapaAPI.map.getLayer(sourceId)) {
-        mapaAPI.map.moveLayer(sourceId) // Mover al frente
+        mapaAPI.map.moveLayer(sourceId)
       }
     } else {
       mapaAPI.map.addSource(sourceId, {
@@ -938,12 +918,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           'icon-ignore-placement': false,
         },
       })
-
-      // 🔥 AGREGAR LOGS
-
-      // 🆕 EVENTOS DE CLIC EN SÍMBOLOS DE GEOZONAS
       mapaAPI.map.on('click', sourceId, (e) => {
-        // 🔥 DETENER PROPAGACIÓN DEL EVENTO
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
@@ -1033,15 +1008,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
     }
   }
 }
-
-// 🔥 Combinar TODOS los POIs en UN SOLO layer
 const dibujarPOIsCombinados = async (pois) => {
   if (!mapaAPI?.map) return
 
   const eventosActivos = await obtenerEventos()
   const eventosFiltrados = eventosActivos.filter((e) => e.activo)
-
-  // 🎯 PASO 1: Crear datos GeoJSON con propiedades para los iconos
   const poisFeatures = pois
     .filter((poi) => poi.coordenadas)
     .map((poi) => {
@@ -1053,7 +1024,7 @@ const dibujarPOIsCombinados = async (pois) => {
 
       if (window._mapboxLoadIcon) {
         window._mapboxLoadIcon(mapaAPI.map, 'poi', color, false)
-        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, true) // 🆕 AGREGAR ESTA LÍNEA
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, true)
       }
       const iconSuffix = tieneEventos ? '-badge' : ''
       return {
@@ -1079,7 +1050,6 @@ const dibujarPOIsCombinados = async (pois) => {
   if (poisFeatures.length > 0) {
     const sourceId = 'pois-combined'
 
-    // Actualizar o crear source
     if (mapaAPI.map.getSource(sourceId)) {
       mapaAPI.map.getSource(sourceId).setData({
         type: 'FeatureCollection',
@@ -1087,7 +1057,7 @@ const dibujarPOIsCombinados = async (pois) => {
       })
 
       if (mapaAPI.map.getLayer('pois-symbols')) {
-        mapaAPI.map.moveLayer('pois-symbols') // Mover al frente
+        mapaAPI.map.moveLayer('pois-symbols')
       }
     } else {
       mapaAPI.map.addSource(sourceId, {
@@ -1097,8 +1067,6 @@ const dibujarPOIsCombinados = async (pois) => {
           features: poisFeatures,
         },
       })
-
-      // 🎯 LAYER 1: Círculos de radio (igual que antes)
       mapaAPI.map.addLayer({
         id: 'pois-circles',
         type: 'circle',
@@ -1123,23 +1091,18 @@ const dibujarPOIsCombinados = async (pois) => {
           'circle-stroke-color': ['get', 'color'],
         },
       })
-
-      // 🆕 LAYER 2: ICONOS como Symbol Layer (REEMPLAZA MARCADORES HTML)
       mapaAPI.map.addLayer({
         id: 'pois-symbols',
         type: 'symbol',
         source: sourceId,
         layout: {
-          'icon-image': ['get', 'iconImage'], // Usa la propiedad iconImage
-          'icon-size': 0.75, // Ajustar tamaño
-          'icon-allow-overlap': true, // Permitir superposición
+          'icon-image': ['get', 'iconImage'],
+          'icon-size': 0.75,
+          'icon-allow-overlap': true,
           'icon-ignore-placement': false,
         },
       })
-
-      // 🆕 EVENTOS DE CLIC EN LOS SÍMBOLOS
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
-        // 🔥 DETENER PROPAGACIÓN DEL EVENTO
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
@@ -1208,20 +1171,14 @@ const dibujarTodosEnMapa = async () => {
   mapaAPI = mapPage._mapaAPI
 
   try {
-    // 🎯 PASO 1: Dibujar POIs combinados (círculos + símbolos)
     const pois = await obtenerPOIs()
     poisCargados.value = pois
     await dibujarPOIsCombinados(pois)
 
-    // ❌ PASO 2 ELIMINADO - Los Symbol Layers ya muestran los POIs
-
-    // 🎯 PASO 3: Dibujar geozonas combinadas
     const geozonas = await obtenerGeozonas()
     geozonasCargadas.value = geozonas
     geozonasCacheCompleto.value = geozonas
     await dibujarGeozonasCombinadas(geozonas)
-
-    // ❌ PASO 4 ELIMINADO - Los Symbol Layers ya muestran las geozonas
 
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
@@ -1231,11 +1188,9 @@ const dibujarTodosEnMapa = async () => {
     console.error('❌ Error al cargar y dibujar items:', error)
   }
 }
-// 🆕 FUNCIÓN PARA RESTAURAR SOLO LAS CAPAS (sin marcadores)
+
 const restaurarCapasDespuesEstilo = async () => {
   if (!mapaAPI || !mapaAPI.map) return
-
-  // Recorrer POIs dibujados y recrear solo las capas (círculos)
   for (const poiKey of poisDibujados.value) {
     const poiId = poiKey.replace('poi-', '')
     const poi = poisCargados.value.find((p) => p.id === poiId)
@@ -1280,7 +1235,6 @@ const restaurarCapasDespuesEstilo = async () => {
     }
   }
 
-  // Recorrer geozonas dibujadas y recrear capas
   for (const geozonaKey of geozonasDibujadas.value) {
     const geozonaId = geozonaKey.replace('geozona-', '')
     const geozona = geozonasCargadas.value.find((g) => g.id === geozonaId)
@@ -1380,8 +1334,6 @@ const limpiarCapasDelMapa = () => {
     })
     marcadoresPOIs.value = []
   }
-
-  // 🎯 Limpiar layers combinados
   const layersToRemove = [
     'pois-combined',
     'geozonas-circulares-combined',
@@ -1432,7 +1384,7 @@ const recentrarEnUsuario = () => {
   mapPage._mapaAPI.map.flyTo({
     center: [coords.lng, coords.lat],
     zoom: 15,
-    duration: 1500, // Animación suave de 1.5 segundos
+    duration: 1500,
     essential: true,
   })
 
@@ -1449,20 +1401,16 @@ onMounted(async () => {
   await cargarUsuarioActual()
 
   try {
-    // ✅ PASO 1: Inicializar mapa INMEDIATAMENTE (sin esperar GPS)
     const defaultCoords = [32.504421823945805, -116.9514484543167]
     const defaultZoom = 13
 
     await initMap('map', defaultCoords, defaultZoom)
 
-    // ✅ PASO 2: Esperar a que el mapa esté completamente cargado
     const mapPage = document.getElementById('map-page')
     if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
       console.error('❌ Error: Mapa no inicializado correctamente')
       return
     }
-
-    // ✅ PASO 3: Esperar al evento 'load' del mapa antes de continuar
     await new Promise((resolve) => {
       if (mapPage._mapaAPI.map.loaded()) {
         resolve()
@@ -1471,20 +1419,15 @@ onMounted(async () => {
       }
     })
 
-    // ✅ PASO 4: AHORA sí, marcar como listo
     mapaListo.value = true
-
-    // 🔥 CRÍTICO: Sistema de listeners únicos (sin duplicación)
-    // Usar flag para asegurar que solo se registren UNA VEZ
     if (!window._mapListenersRegistered) {
       window._mapListenersRegistered = true
 
       let moveStartHandler = () => {
-        // 🎯 Ocultar symbol layers (MUCHO más rápido que marcadores HTML)
         const layersToHide = [
           'pois-symbols',
           'pois-circles',
-          'geozonas-symbols', // 🆕 AGREGAR ESTA LÍNEA
+          'geozonas-symbols',
           'geozonas-circulares-combined',
           'geozonas-poligonales-combined-fill',
           'geozonas-poligonales-combined-outline',
@@ -1499,11 +1442,10 @@ onMounted(async () => {
 
       let moveEndHandler = () => {
         setTimeout(() => {
-          // 🎯 Mostrar symbol layers de nuevo
           const layersToShow = [
             'pois-symbols',
             'pois-circles',
-            'geozonas-symbols', // 🆕 AGREGAR ESTA LÍNEA
+            'geozonas-symbols',
             'geozonas-circulares-combined',
             'geozonas-poligonales-combined-fill',
             'geozonas-poligonales-combined-outline',
@@ -1516,13 +1458,9 @@ onMounted(async () => {
           })
         }, 100)
       }
-
-      // Guardar referencias para limpieza
       window._mapMoveStartHandler = moveStartHandler
       window._mapMoveEndHandler = moveEndHandler
     }
-
-    // ✅ PASO 5: Configurar funciones globales
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {
         if (ubicacionData.tipo === 'poi') {
@@ -1567,39 +1505,26 @@ onMounted(async () => {
         }
       }
     }
-
-    // ✅ PASO 6: Dibujar POIs y Geozonas
     await dibujarTodosEnMapa()
 
-    // 🆕 PASO 6.5: Configurar listeners de viewport (DESPUÉS de dibujar)
     let timeoutViewport = null
 
     mapPage._mapaAPI.map.on('zoomend', () => {
       clearTimeout(timeoutViewport)
-      timeoutViewport = setTimeout(() => {
-        //actualizarGeozonasPorViewport()
-      }, 300)
+      timeoutViewport = setTimeout(() => {}, 300)
     })
 
-    // 🆕 Llamar inicialmente para aplicar virtualización
-    //await actualizarGeozonasPorViewport()
-
-    // ✅ PASO 7: Inicializar sistema de detección
     await inicializarSistemaDeteccion()
     iniciarEvaluacionContinuaEventos()
 
-    // ✅ PASO 8: Iniciar seguimiento GPS (esto actualiza marcadorUsuario)
     iniciarSeguimientoGPS()
 
-    // ✅ PASO 9: Iniciar tracking de unidades
     iniciarTracking()
 
-    // ✅ PASO 10: Iniciar simulador (UN SOLO setTimeout)
     setTimeout(async () => {
       await iniciarSimuladorAutomatico()
     }, 1000)
 
-    // ✅ PASO 11: Configurar listener de clicks en mapPage
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
         console.warn('⚠️ Evento sin target válido')
@@ -1630,7 +1555,6 @@ onMounted(async () => {
         }
         return
       }
-
       const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
       if (detailsBtn) {
         const conductorId = detailsBtn.dataset.conductorId
@@ -1692,8 +1616,6 @@ onMounted(async () => {
         return
       }
     })
-
-    // ✅ PASO 12: Configurar listener de clicks en el mapa para cerrar popups
     mapPage._mapaAPI.map.on('click', (e) => {
       const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
 
@@ -1702,15 +1624,13 @@ onMounted(async () => {
       }
 
       const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
-
-      // 🔥 AGREGAR geozonas-symbols y pois-symbols
       const clickEnCapa = features.some(
         (feature) =>
           feature.layer.id.startsWith('poi-circle-') ||
           feature.layer.id.startsWith('geozona-circle-') ||
           feature.layer.id.startsWith('geozona-polygon-') ||
-          feature.layer.id === 'geozonas-symbols' || // 🆕 AGREGAR
-          feature.layer.id === 'pois-symbols', // 🆕 AGREGAR
+          feature.layer.id === 'geozonas-symbols' ||
+          feature.layer.id === 'pois-symbols',
       )
 
       if (!clickEnCapa) {
@@ -1728,8 +1648,6 @@ onMounted(async () => {
         })
       }
     })
-
-    // ✅ PASO 13: Intentar obtener ubicación GPS en segundo plano
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -1745,7 +1663,7 @@ onMounted(async () => {
 
             $q.notify({
               type: 'positive',
-              message: '📍 Mapa centrado en tu ubicación',
+              message: 'Mapa centrado en tu ubicación',
               position: 'top',
               timeout: 2000,
               icon: 'my_location',
@@ -1802,10 +1720,6 @@ onMounted(async () => {
     // Redibujar todo desde cero
     await dibujarTodosEnMapa()
 
-    // Aplicar virtualización
-    //await actualizarGeozonasPorViewport()
-
-    // Reinicializar sistema de detección
     resetear()
     await inicializarSistemaDeteccion()
     detenerEvaluacionEventos()
