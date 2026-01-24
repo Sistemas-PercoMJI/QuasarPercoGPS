@@ -348,15 +348,13 @@ import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
-const geozonasCacheCompleto = ref([]) // Todas las geozonas
-//const geozonasCargadasEnMapa = ref(new Set())
+const geozonasCacheCompleto = ref([])
 
 const {
   initMap,
-  // addMarker,
   cleanup,
   toggleTrafico,
-  cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
+  cambiarEstiloMapa,
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
@@ -470,16 +468,11 @@ const iniciarSimuladorAutomatico = async () => {
   }
 
   try {
-    // 🔥 CARGAR USUARIO PRIMERO
     if (!idEmpresaActual.value) {
       await cargarUsuarioActual()
     }
-
-    // Ahora sí cargar conductores
     await obtenerConductores()
     await obtenerUnidades()
-
-    // ... resto del código ...
   } catch (error) {
     console.error('❌ Error:', error)
   }
@@ -640,17 +633,17 @@ function iniciarSeguimientoGPS() {
     (error) => {
       switch (error.code) {
         case error.TIMEOUT:
-          console.warn('⏱️ GPS timeout - reintentando...')
+          console.warn('GPS timeout - reintentando...')
           break
         case error.PERMISSION_DENIED:
-          console.error('❌ Permiso de GPS denegado')
+          console.error('Permiso de GPS denegado')
           ubicacionActiva.value = false
           break
         case error.POSITION_UNAVAILABLE:
-          console.warn('⚠️ Posición GPS no disponible')
+          console.warn('Posición GPS no disponible')
           break
         default:
-          console.error('❌ Error de geolocalización:', error.message)
+          console.error('Error de geolocalización:', error.message)
       }
     },
     opciones,
@@ -677,7 +670,7 @@ async function inicializarSistemaDeteccion() {
 
     inicializar(eventosActivos, pois, geozonas)
   } catch (error) {
-    console.error('❌ Error al inicializar detección:', error)
+    console.error('Error al inicializar detección:', error)
   }
 }
 
