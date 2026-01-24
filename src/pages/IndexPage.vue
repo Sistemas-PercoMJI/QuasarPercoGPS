@@ -2,8 +2,6 @@
 <template>
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
-
-    <!-- 🗺️ BOTÓN DE CAPAS CON MENÚ DESPLEGABLE -->
     <q-btn
       unelevated
       style="background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%) !important"
@@ -25,14 +23,12 @@
             </q-item-label>
 
             <div class="map-styles-container">
-              <!-- OPCIÓN: VISTA SATELITAL -->
               <div
                 class="map-style-card"
                 :class="{ active: estiloMapa === 'satellite' }"
                 @click="cambiarEstiloDesdeMenu('satellite')"
               >
                 <div class="style-preview">
-                  <!-- 🔥 SVG COMPLETO SATÉLITE -->
                   <svg
                     width="150"
                     height="100"
