@@ -1915,7 +1915,7 @@ const manejarToggleTrafico = () => {
 }
 
 // ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
-const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
+const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   if (estiloMapa.value === nuevoEstilo) {
     return // Ya está en ese estilo
   }
@@ -1932,6 +1932,27 @@ const cambiarEstiloDesdeMenu = (nuevoEstilo) => {
       timeout: 1500,
       icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
     })
+
+    // 🆕 ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
+    const mapPage = document.getElementById('map-page')
+    if (mapPage?._mapaAPI?.map) {
+      mapPage._mapaAPI.map.once('styledata', async () => {
+        console.log('✅ Estilo cargado, redibujando capas...')
+
+        // 🎯 Esperar un momento para que el estilo termine de cargar completamente
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        // 🎯 Redibujar TODO (POIs, Geozonas, Unidades)
+        await dibujarTodosEnMapa()
+
+        // 🎯 Actualizar marcadores de unidades si existen
+        if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+          actualizarMarcadoresUnidades(unidadesActivas.value)
+        }
+
+        console.log('✅ Capas redibujadas después de cambio de estilo')
+      })
+    }
   }
 }
 </script>
