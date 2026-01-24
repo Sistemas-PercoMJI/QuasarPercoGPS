@@ -15,7 +15,6 @@
 
       <q-menu class="layers-menu" transition-show="jump-down" transition-hide="jump-up">
         <q-list style="min-width: 320px">
-          <!-- SECCIÓN: ESTILO DE MAPA -->
           <div class="map-styles-section">
             <q-item-label header class="section-header">
               <q-icon name="map" size="18px" class="header-icon" />
