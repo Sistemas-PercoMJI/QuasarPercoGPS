@@ -227,18 +227,6 @@ export function useTutorial() {
 
   // 🚀 Función para iniciar el tutorial
   function iniciarTutorial() {
-    // 🔥 Asegurar que el drawer esté expandido
-    const drawer = document.querySelector('.drawer-custom')
-    if (drawer) {
-      // Simular hover para expandir
-      const event = new MouseEvent('mouseenter', {
-        view: window,
-        bubbles: true,
-        cancelable: true,
-      })
-      drawer.dispatchEvent(event)
-    }
-
     // Iniciar tutorial después de un pequeño delay
     setTimeout(() => {
       driverObj.setSteps(pasosTutorial)
