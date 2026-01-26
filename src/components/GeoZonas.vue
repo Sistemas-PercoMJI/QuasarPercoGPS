@@ -1643,8 +1643,6 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
       return
     }
 
-    console.log('✅ Usuario confirmó eliminación')
-
     // 🗑️ Eliminar de Firebase
     if (itemMenu.value.tipo === 'poi') {
       await eliminarPOI(itemMenu.value.id)
