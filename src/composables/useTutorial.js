@@ -39,7 +39,7 @@ export function useTutorial() {
     {
       element: '#map-page',
       popover: {
-        title: '¡Bienvenido a MJ GPS! 🎉',
+        title: '¡Bienvenido a MJ GPS!',
         description:
           'Este es tu panel principal de rastreo de flotas. Aquí podrás ver en tiempo real la ubicación de todos tus vehículos.',
         side: 'bottom',
@@ -68,7 +68,7 @@ export function useTutorial() {
     {
       element: '.drawer-custom',
       popover: {
-        title: '📱 Menú de Navegación',
+        title: 'Menú de Navegación',
         description:
           'Este menú lateral contiene todas las funciones del sistema. Pasa el cursor sobre él para expandirlo.',
         side: 'right',
@@ -82,7 +82,7 @@ export function useTutorial() {
     {
       element: '.nav-item:first-child',
       popover: {
-        title: '🗺️ Vista del Mapa',
+        title: 'Vista del Mapa',
         description:
           'Vuelve a la vista principal del mapa en cualquier momento haciendo clic aquí.',
         side: 'right',
@@ -96,7 +96,7 @@ export function useTutorial() {
     {
       element: '.nav-item:nth-child(2)',
       popover: {
-        title: '🚗 Estado de la Flota',
+        title: 'Estado de la Flota',
         description: 'Monitorea en tiempo real el estado de todos tus vehículos.',
         side: 'right',
         align: 'start',
@@ -135,7 +135,7 @@ export function useTutorial() {
     {
       element: '.nav-item:nth-child(5)',
       popover: {
-        title: '🔔 Sistema de Eventos',
+        title: 'Sistema de Eventos',
         description:
           'Configura alertas personalizadas: entrada/salida de geozonas, exceso de velocidad, etc.',
         side: 'right',
@@ -149,8 +149,8 @@ export function useTutorial() {
     {
       element: '.nav-item:nth-child(6)',
       popover: {
-        title: '📄 Reportes',
-        description: 'Genera reportes detallados de rutas, tiempos, kilometraje y más.',
+        title: 'Reportes',
+        description: 'Genera reportes detallados de rutas, tiempos y más.',
         side: 'right',
         align: 'start',
       },
@@ -162,7 +162,7 @@ export function useTutorial() {
     {
       element: '.layers-menu-btn',
       popover: {
-        title: '🗂️ Control de Capas del Mapa',
+        title: 'Control de Capas del Mapa',
         description:
           'Cambia entre vista satélite y vista de calles, y activa/desactiva la capa de tráfico.',
         side: 'left',
@@ -176,7 +176,7 @@ export function useTutorial() {
     {
       element: '.recenter-btn',
       popover: {
-        title: '🎯 Centrar Mapa en Tu Ubicación',
+        title: 'Centrar Mapa en Tu Ubicación',
         description: 'Este botón centra el mapa automáticamente en tu posición GPS actual.',
         side: 'left',
         align: 'start',
@@ -189,7 +189,7 @@ export function useTutorial() {
     {
       element: '.info-btn',
       popover: {
-        title: 'ℹ️ Información del Sistema',
+        title: 'Información del Sistema',
         description:
           'Aquí encontrarás la versión del sistema, información de la empresa y acceso a este tutorial.',
         side: 'bottom',
@@ -203,7 +203,7 @@ export function useTutorial() {
     {
       element: '.notif-btn',
       popover: {
-        title: '🔔 Centro de Notificaciones',
+        title: 'Centro de Notificaciones',
         description:
           'Recibe alertas en tiempo real de eventos configurados. El badge rojo indica notificaciones nuevas.',
         side: 'bottom',
@@ -216,9 +216,9 @@ export function useTutorial() {
     // ================================
     {
       popover: {
-        title: '✅ ¡Tutorial Completado!',
+        title: '¡Tutorial Completado!',
         description:
-          '🎉 ¡Felicidades! Ya conoces las funciones principales de MJ GPS. Puedes volver a ver este tutorial desde el botón de información ℹ️.',
+          'Ya conoces las funciones principales de MJ GPS. Puedes volver a ver este tutorial desde el botón de información.',
         side: 'center',
         align: 'center',
       },
