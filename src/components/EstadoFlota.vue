@@ -1488,7 +1488,9 @@ onMounted(async () => {
 }
 
 .tab-panel-padding {
-  padding: 20px;
+  padding: 12px 8px !important;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ============================================ */
@@ -1614,9 +1616,10 @@ onMounted(async () => {
 /* ============================================ */
 .filtro-dia-card {
   display: flex;
+  max-width: 100%;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 10px 12px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -1663,8 +1666,9 @@ onMounted(async () => {
 /* ============================================ */
 .filtro-horas-card {
   background: white;
+  max-width: 100%;
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
   transition: all 0.3s ease;
@@ -1691,12 +1695,13 @@ onMounted(async () => {
 .filtro-horas-inputs {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
 .hora-input-wrapper {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1745,8 +1750,9 @@ onMounted(async () => {
 /* ============================================ */
 .resumen-dia-card {
   background: white;
+  max-width: 100%;
   border-radius: 12px;
-  padding: 20px;
+  padding: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
 }
@@ -1763,7 +1769,7 @@ onMounted(async () => {
 .resumen-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .resumen-item-card {
@@ -1825,8 +1831,9 @@ onMounted(async () => {
 /* ============================================ */
 .timeline-section-compact {
   background: white;
+  max-width: 100%;
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
 }
@@ -1856,7 +1863,8 @@ onMounted(async () => {
 .trayecto-card-compact {
   background: #f8f9fa;
   border-radius: 10px;
-  padding: 12px;
+  max-width: 100%;
+  padding: 10px;
   border-left: 3px solid #2196f3;
   transition: all 0.2s ease;
   position: relative;
@@ -1923,7 +1931,7 @@ onMounted(async () => {
 .trayecto-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 6px;
   padding-top: 8px;
   border-top: 1px solid #e0e0e0;
 }
