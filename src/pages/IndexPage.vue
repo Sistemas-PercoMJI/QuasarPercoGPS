@@ -296,7 +296,7 @@
       style="background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%) !important"
       icon="my_location"
       text-color="white"
-      class="recenter-btn"
+      class="recenter-btn boton-centrar-mapa"
       @click="recentrarEnUsuario"
     >
       <q-tooltip class="bg-grey-9" transition-show="scale" transition-hide="scale">

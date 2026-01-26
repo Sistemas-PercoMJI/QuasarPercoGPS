@@ -1,0 +1,23 @@
+/* src/css/tutorial.css - VERSIÓN MÍNIMA Y SEGURA */
+
+/* 1. SOLO asegurar que el elemento resaltado sea visible */
+.driver-highlighted-element {
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 99999 !important;
+}
+
+/* 2. Si el problema persiste, solo esto para Quasar */
+.driver-highlighted-element.q-input,
+.driver-highlighted-element.q-input .q-field__control,
+.driver-highlighted-element.q-input input {
+  background-color: white !important;
+  color: #000000 !important;
+}
+
+/* 3. Para elementos Quasar específicos con opacidad */
+.driver-highlighted-element.nav-item,
+.driver-highlighted-element.q-btn {
+  opacity: 1 !important;
+  background-color: inherit !important;
+}
