@@ -12,19 +12,19 @@
       <div class="modern-tabs">
         <div
           class="tab-item"
-          :class="{ active: vistaActual === 'poi' }"
-          @click="cambiarVista('poi')"
-        >
-          <q-icon name="place" size="20px" />
-          <span>Puntos de Interés</span>
-        </div>
-        <div
-          class="tab-item"
           :class="{ active: vistaActual === 'geozona' }"
           @click="cambiarVista('geozona')"
         >
           <q-icon name="layers" size="20px" />
           <span>Geozonas</span>
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: vistaActual === 'poi' }"
+          @click="cambiarVista('poi')"
+        >
+          <q-icon name="place" size="20px" />
+          <span>Puntos de Interés</span>
         </div>
       </div>
     </div>
