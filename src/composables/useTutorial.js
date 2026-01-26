@@ -29,6 +29,18 @@ export function useTutorial() {
         driverObj.destroy()
       }
     },
+
+    // 🔥 NUEVO: Dar foco al popover cuando aparece
+    onPopoverRender: (popover) => {
+      // Hacer que el popover pueda recibir foco
+      if (popover.wrapper) {
+        popover.wrapper.setAttribute('tabindex', '-1')
+        // Dar foco después de un momento para que la animación termine
+        setTimeout(() => {
+          popover.wrapper.focus()
+        }, 100)
+      }
+    },
   })
 
   // 📚 PASOS DEL TUTORIAL ESPECÍFICOS PARA TU ESTRUCTURA
@@ -231,6 +243,39 @@ export function useTutorial() {
     setTimeout(() => {
       driverObj.setSteps(pasosTutorial)
       driverObj.drive()
+
+      // Variable para rastrear si hay un confirm activo
+      let confirmActive = false
+
+      // Interceptar el confirm original
+      const originalConfirm = window.confirm
+      window.confirm = function (...args) {
+        confirmActive = true
+        const result = originalConfirm.apply(this, args)
+        confirmActive = false
+        return result
+      }
+
+      // ⌨️ Listener para tecla Enter mejorado
+      const handleKeyPress = (e) => {
+        // 🔥 Solo procesar Enter si NO hay confirm activo
+        if (e.key === 'Enter' && !confirmActive && driverObj.hasNextStep()) {
+          e.preventDefault()
+          e.stopPropagation()
+          driverObj.moveNext()
+        }
+      }
+
+      // Usar capture phase para interceptar antes que otros listeners
+      document.addEventListener('keydown', handleKeyPress, true)
+
+      // Limpiar listeners cuando termine el tutorial
+      const originalDestroy = driverObj.destroy.bind(driverObj)
+      driverObj.destroy = () => {
+        document.removeEventListener('keydown', handleKeyPress, true)
+        window.confirm = originalConfirm // Restaurar confirm original
+        originalDestroy()
+      }
     }, 300)
   }
 
