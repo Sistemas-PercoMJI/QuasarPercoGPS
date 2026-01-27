@@ -186,7 +186,16 @@
               <q-separator />
 
               <q-card-actions class="q-px-md q-pb-md">
-                <q-btn flat label="Tutorial" style="color: #bb0000" v-close-popup />
+                <q-btn
+                  flat
+                  label="Tutorial"
+                  style="color: #bb0000"
+                  @click="iniciarTutorial"
+                  v-close-popup
+                  icon="school"
+                >
+                  <q-tooltip>Iniciar tutorial guiado</q-tooltip>
+                </q-btn>
                 <q-space />
                 <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
               </q-card-actions>
@@ -473,6 +482,8 @@ import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
+import { useTutorial } from 'src/composables/useTutorial'
+const { iniciarTutorial } = useTutorial()
 
 const router = useRouter()
 const $q = useQuasar()
