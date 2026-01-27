@@ -194,7 +194,7 @@ const cargarIconosMapa = async (map) => {
     return canvas
   }
 
-  // 🆕 FUNCIÓN HELPER: Cargar icono si no existe
+  // FUNCIÓN HELPER: Cargar icono si no existe
   window._mapboxLoadIcon = (map, type, color, conBadge = false) => {
     const colorKey = color.replace('#', '')
     const badgeSuffix = conBadge ? '-badge' : ''
@@ -334,7 +334,7 @@ export function useMapboxGL() {
     return el
   }
 
-  // ✅ POPUP OPTIMIZADO - Versión más ligera
+  // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
     const estadoTexto = {
       movimiento: 'En movimiento',
@@ -350,7 +350,7 @@ export function useMapboxGL() {
   <div id="${popupId}" class="unidad-popup-container">
     <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
-      <!-- ✅ Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
+      <!-- Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
       <div class="unidad-header-top-row">
         <div class="unidad-close-placeholder"></div>
         <div class="unidad-texto">
@@ -363,7 +363,7 @@ export function useMapboxGL() {
         </button>
       </div>
 
-      <!-- ✅ Segunda fila: (Unidad + Dirección) | Ícono -->
+      <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
       <div class="unidad-info-row">
         <div class="unidad-info">
           <div class="unidad-placa">${unidad.unidadNombre}</div>
@@ -410,7 +410,7 @@ export function useMapboxGL() {
 
     return popupContent
   }
-  // ⚡ OPTIMIZADO: Procesamiento real de marcadores
+  // OPTIMIZADO: Procesamiento real de marcadores
   const procesarActualizacionMarcadores = (unidades) => {
     if (!map.value || !unidades) {
       return
@@ -475,7 +475,7 @@ export function useMapboxGL() {
             // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
-            // ✅ OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
+            // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
             if (popup && popup.isOpen()) {
               const popupContent = popup.getElement()
@@ -533,15 +533,15 @@ export function useMapboxGL() {
     })
   }
 
-  // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  // OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
   // Línea ~239
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+      console.warn(' Mapa no disponible')
       return
     }
 
-    // ⚡ Si el mapa se está moviendo O haciendo zoom, postponer
+    // Si el mapa se está moviendo O haciendo zoom, postponer
     if (isZooming || isPanning) {
       // 🆕 AGREGAR isPanning
       pendingUnidades = unidades
@@ -596,7 +596,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🔵 FUNCIONES POI CON CÍRCULOS
+  // FUNCIONES POI CON CÍRCULOS
   function crearCirculoTemporalPOI(lat, lng, radio) {
     if (!map.value) return
 
