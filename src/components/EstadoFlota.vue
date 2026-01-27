@@ -546,6 +546,7 @@ const emit = defineEmits([
   'vehiculo-mapa',
   'cerrar',
   'mostrarRuta',
+  'update:modelValue',
 ])
 
 // Estado local - Vista general
@@ -695,7 +696,6 @@ const mostrarRutaEnMapa = (trayecto) => {
   }
 }
 
-// En EstadoFlota.vue
 const cerrarDrawer = () => {
   console.log('🚪 Cerrando drawer y limpiando ruta...')
 
@@ -704,7 +704,8 @@ const cerrarDrawer = () => {
     window.limpiarRuta()
   }
 
-  emit('cerrar')
+  // Solo emitir cerrar
+  emit('close')
 }
 
 // Computed para estados
