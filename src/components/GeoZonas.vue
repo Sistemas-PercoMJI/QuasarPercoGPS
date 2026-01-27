@@ -304,7 +304,13 @@
       </q-scroll-area>
 
       <!-- Botón flotante para agregar Geozona -->
-      <q-btn fab color="primary" icon="add" class="floating-btn" @click="dialogTipoGeozona = true">
+      <q-btn
+        fab
+        color="primary"
+        icon="add"
+        class="floating-btn"
+        @click="abrirDialogGeozonaPoligonal"
+      >
         <q-tooltip>Nueva Geozona</q-tooltip>
       </q-btn>
     </div>
@@ -571,45 +577,6 @@
         </q-card>
       </div>
     </transition>
-
-    <!-- Dialog: Tipo de Geozona -->
-    <!-- Dialog: Tipo de Geozona - SIMPLIFICADO -->
-    <q-dialog v-model="dialogTipoGeozona" persistent>
-      <q-card style="min-width: 400px; max-width: 500px">
-        <q-card-section class="bg-secondary text-white">
-          <div class="row items-center">
-            <q-icon name="layers" size="32px" class="q-mr-md" />
-            <div>
-              <div class="text-h6">Nueva Geozona</div>
-              <div class="text-caption">Define un área con múltiples puntos</div>
-            </div>
-            <q-space />
-            <q-btn flat dense round icon="close" v-close-popup color="white" />
-          </div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-lg text-center">
-          <q-icon name="change_history" size="64px" color="primary" class="q-mb-md" />
-
-          <div class="text-subtitle1">Geozona Poligonal</div>
-          <div class="text-caption text-grey-7 q-mt-sm">
-            Marca múltiples puntos en el mapa para definir el área de la geozona.
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-px-lg q-pb-lg">
-          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            label="Continuar"
-            color="secondary"
-            @click="abrirDialogGeozonaPoligonal"
-            v-close-popup
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
     <!-- Dialog: Nueva Geozona -->
     <q-dialog v-model="dialogNuevaGeozona" persistent>
       <q-card style="min-width: 400px; max-width: 500px">
@@ -966,7 +933,7 @@ const eventosActivos = ref([])
 const ubicacionSeleccionadaDesdeMapa = ref(null)
 
 // Estados reactivos
-const vistaActual = ref('poi')
+const vistaActual = ref('geozona')
 const itemSeleccionado = ref(null)
 const busquedaPOI = ref('')
 const busquedaGeozona = ref('')
@@ -974,7 +941,7 @@ const grupoSeleccionado = ref(null)
 const grupoSeleccionadoGZ = ref(null)
 const dialogNuevoPOI = ref(false)
 const dialogNuevaGeozona = ref(false)
-const dialogTipoGeozona = ref(false)
+//const dialogTipoGeozona = ref(false)
 const menuContextualVisible = ref(false)
 const itemMenu = ref(null)
 const marcadorActivo = ref(null)

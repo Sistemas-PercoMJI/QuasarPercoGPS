@@ -1,0 +1,215 @@
+/* src/css/tutorial.css - SOLO ESTILOS PARA POPOVERS */
+
+/* 🎨 TEMA PERSONALIZADO PARA LOS POPOVERS */
+
+/* ========================================
+   POPOVER PRINCIPAL
+   ======================================== */
+.driver-popover {
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+  max-width: 450px !important;
+  animation: fadeInScale 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========================================
+   HEADER DEL POPOVER (Título)
+   ======================================== */
+.driver-popover-title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+  margin-bottom: 12px !important;
+  padding: 20px 20px 0 20px !important;
+  line-height: 1.3 !important;
+}
+
+/* ========================================
+   DESCRIPCIÓN
+   ======================================== */
+.driver-popover-description {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: #4b5563 !important;
+  padding: 0 20px 20px 20px !important;
+}
+
+/* Listas en descripción */
+.driver-popover-description ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.driver-popover-description li {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+/* ========================================
+   FLECHA DEL POPOVER
+   ======================================== */
+.driver-popover-arrow {
+  border: 8px solid white !important;
+}
+
+.driver-popover-arrow-side-top {
+  border-top-color: white !important;
+}
+
+.driver-popover-arrow-side-bottom {
+  border-bottom-color: white !important;
+}
+
+.driver-popover-arrow-side-left {
+  border-left-color: white !important;
+}
+
+.driver-popover-arrow-side-right {
+  border-right-color: white !important;
+}
+
+/* ========================================
+   FOOTER CON BOTONES
+   ======================================== */
+.driver-popover-footer {
+  padding: 16px 20px 20px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+/* Texto de progreso */
+.driver-popover-progress-text {
+  font-size: 13px !important;
+  color: #6b7280 !important;
+  font-weight: 500 !important;
+}
+
+/* ========================================
+   BOTONES
+   ======================================== */
+.driver-popover-footer button {
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  cursor: pointer !important;
+  /* 🔥 ANTI-ALIASING para texto nítido */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
+}
+
+/* Botón SIGUIENTE */
+.driver-popover-next-btn {
+  background: #bb0000 !important; /* Color sólido en lugar de gradiente */
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(187, 0, 0, 0.3) !important;
+  /* 🔥 Renderizado nítido */
+  transform: translate3d(0, 0, 0) !important;
+  will-change: transform !important;
+}
+
+.driver-popover-next-btn:hover {
+  background: #d40000 !important; /* Ligeramente más claro en hover */
+  transform: translate3d(0, -2px, 0) !important;
+  box-shadow: 0 6px 20px rgba(187, 0, 0, 0.4) !important;
+}
+
+.driver-popover-next-btn:active {
+  background: #a00000 !important; /* Más oscuro al presionar */
+  transform: translate3d(0, 0, 0) !important;
+}
+
+/* Botón ANTERIOR */
+.driver-popover-prev-btn {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+.driver-popover-prev-btn:hover {
+  background: #e5e7eb !important;
+  transform: translate3d(0, -1px, 0) !important;
+}
+
+.driver-popover-prev-btn:active {
+  background: #d1d5db !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+/* Botón CERRAR (X) */
+.driver-popover-close-btn {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  font-size: 18px !important;
+  transition: all 0.2s ease !important;
+}
+
+.driver-popover-close-btn:hover {
+  background: #e5e7eb !important;
+  color: #1f2937 !important;
+  transform: rotate(90deg) !important;
+}
+
+.driver-popover-close-btn:active {
+  transform: rotate(90deg) scale(0.95) !important;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 600px) {
+  .driver-popover {
+    max-width: 90vw !important;
+  }
+
+  .driver-popover-title {
+    font-size: 18px !important;
+  }
+
+  .driver-popover-description {
+    font-size: 14px !important;
+  }
+
+  .driver-popover-footer button {
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ========================================
+   ANIMACIÓN SUAVE ENTRE PASOS
+   ======================================== */
+.driver-popover.driver-popover-animate {
+  animation: fadeInScale 0.3s ease-out !important;
+}
