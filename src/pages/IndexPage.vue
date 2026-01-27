@@ -1473,7 +1473,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     markerInicioEl.className = 'marcador-ruta-custom marcador-inicio'
     markerInicioEl.innerHTML = `
       <div class="marcador-pin-container">
-        <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="30" height="50" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Pin azul -->
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="#1976D2"/>
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="url(#gradient-inicio)"/>
@@ -1513,7 +1513,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     markerFinEl.className = 'marcador-ruta-custom marcador-fin'
     markerFinEl.innerHTML = `
       <div class="marcador-pin-container">
-        <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="30" height="50" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Pin naranja -->
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="#FF6D00"/>
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="url(#gradient-fin)"/>
