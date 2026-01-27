@@ -370,6 +370,8 @@
                     v-for="trayecto in trayectosFiltradosPorHora"
                     :key="trayecto.id"
                     class="trayecto-card-compact"
+                    @click="mostrarRutaEnMapa(trayecto)"
+                    style="cursor: pointer"
                   >
                     <!-- Header del trayecto -->
                     <div class="trayecto-header">
@@ -530,8 +532,21 @@ const { obtenerTrayectosDia } = useTrayectosDiarios()
 const { obtenerEventosDiarios } = useEventosUnidad()
 const { crearQueryConEmpresa } = useMultiTenancy()
 
+const props = defineProps({
+  vehiculo: {
+    type: Object,
+    required: true,
+  },
+})
+
 // Props y emits
-const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
+const emit = defineEmits([
+  'close',
+  'vehiculo-seleccionado',
+  'vehiculo-mapa',
+  'cerrar',
+  'mostrarRuta',
+])
 
 // Estado local - Vista general
 const vehiculoSeleccionado = ref(null)
@@ -664,6 +679,33 @@ const vehiculos = computed(() => {
     }
   })
 })
+
+const mostrarRutaEnMapa = (trayecto) => {
+  console.log('Mostrando ruta del trayecto:', trayecto)
+  console.log('Color del trayecto:', trayecto.color) // 🔍 DEBUG
+
+  // Asegurarnos de que tenga un color fosforescente
+  const trayectoConColor = {
+    ...trayecto,
+    color: trayecto.color || '#00E5FF', // Cyan neón por defecto
+  }
+
+  if (window.dibujarRutaTrayecto) {
+    window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
+  }
+}
+
+// Modificar tu método cerrar existente (no crear uno nuevo)
+// Busca tu método cerrar actual y agrégale la limpieza de ruta:
+const cerrarDrawer = () => {
+  // Limpiar ruta del mapa
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
+  // Emitir evento de cerrar
+  emit('close')
+}
 
 // Computed para estados
 const estadosVehiculos = computed(() => {
@@ -886,10 +928,6 @@ function seleccionarVehiculoParaMapa(vehiculo) {
 function volverALista() {
   vehiculoSeleccionado.value = null
   tabActual.value = 'resumen'
-}
-
-function cerrarDrawer() {
-  emit('close')
 }
 
 function getColorEstado(estado) {

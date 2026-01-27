@@ -1385,6 +1385,205 @@ const recentrarEnUsuario = () => {
   })
 }
 
+// En IndexPage.vue, reemplaza el método dibujarRutaTrayecto completo:
+
+const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    console.warn('⚠️ Mapa no inicializado')
+    return
+  }
+
+  const map = mapPage._mapaAPI.map
+
+  try {
+    console.log('📍 Dibujando ruta con', trayecto.coordenadas?.length, 'puntos')
+    console.log('🎨 Color de la ruta:', trayecto.color) // 🔍 DEBUG
+
+    // Limpiar rutas anteriores
+    const capasRuta = ['ruta-trayecto', 'ruta-trayecto-glow', 'ruta-inicio', 'ruta-fin']
+    const sourcesRuta = ['ruta-trayecto', 'ruta-inicio', 'ruta-fin']
+
+    capasRuta.forEach((capa) => {
+      if (map.getLayer(capa)) {
+        map.removeLayer(capa)
+      }
+    })
+
+    sourcesRuta.forEach((source) => {
+      if (map.getSource(source)) {
+        map.removeSource(source)
+      }
+    })
+
+    // Limpiar marcadores HTML previos si existen
+    const marcadoresAnteriores = document.querySelectorAll('.marcador-ruta-custom')
+    marcadoresAnteriores.forEach((m) => m.remove())
+
+    // Obtener coordenadas del trayecto
+    const coordenadas = trayecto.coordenadas || []
+
+    if (coordenadas.length === 0) {
+      console.warn('⚠️ Trayecto sin coordenadas')
+      return
+    }
+
+    // Convertir coordenadas al formato [lng, lat] para Mapbox
+    const lineCoordinates = coordenadas.map((coord) => [coord.lng, coord.lat])
+
+    // Color de la línea (usar el del trayecto o cyan neón por defecto)
+    const colorLinea = trayecto.color || '#00E5FF'
+    console.log('🎨 Usando color:', colorLinea) // 🔍 DEBUG
+
+    // 1. Agregar la línea del trayecto con GLOW
+    map.addSource('ruta-trayecto', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: lineCoordinates,
+        },
+      },
+    })
+
+    // Capa de brillo (debajo)
+    map.addLayer({
+      id: 'ruta-trayecto-glow',
+      type: 'line',
+      source: 'ruta-trayecto',
+      paint: {
+        'line-color': colorLinea,
+        'line-width': 12,
+        'line-opacity': 0.3,
+        'line-blur': 5,
+      },
+    })
+
+    // Capa principal (encima)
+    map.addLayer({
+      id: 'ruta-trayecto',
+      type: 'line',
+      source: 'ruta-trayecto',
+      paint: {
+        'line-color': colorLinea,
+        'line-width': 5,
+        'line-opacity': 1,
+      },
+    })
+
+    // 2. Crear marcador HTML para INICIO (A)
+    const inicio = coordenadas[0]
+
+    const markerInicioEl = document.createElement('div')
+    markerInicioEl.className = 'marcador-ruta-custom marcador-inicio'
+    markerInicioEl.innerHTML = `
+  <div class="marcador-ruta-circle" style="background-color: #00FF41;">
+    <span class="marcador-ruta-letra">A</span>
+  </div>
+`
+
+    const markerInicio = new mapboxgl.Marker({
+      element: markerInicioEl,
+      anchor: 'center',
+    })
+      .setLngLat([inicio.lng, inicio.lat])
+      .addTo(map)
+
+    marcadoresRuta.value.push(markerInicio) // 🆕 Guardar referencia
+
+    // 3. Crear marcador HTML para FIN (B)
+    const fin = coordenadas[coordenadas.length - 1]
+
+    const markerFinEl = document.createElement('div')
+    markerFinEl.className = 'marcador-ruta-custom marcador-fin'
+    markerFinEl.innerHTML = `
+  <div class="marcador-ruta-circle" style="background-color: #FF0080;">
+    <span class="marcador-ruta-letra">B</span>
+  </div>
+`
+
+    const markerFin = new mapboxgl.Marker({
+      element: markerFinEl,
+      anchor: 'center',
+    })
+      .setLngLat([fin.lng, fin.lat])
+      .addTo(map)
+
+    marcadoresRuta.value.push(markerFin)
+
+    // 4. Hacer zoom a la ruta
+    const bounds = new mapboxgl.LngLatBounds()
+    lineCoordinates.forEach((coord) => bounds.extend(coord))
+
+    map.fitBounds(bounds, {
+      padding: 80,
+      duration: 1000,
+      maxZoom: 15,
+    })
+
+    // 5. Notificar al usuario
+    $q.notify({
+      type: 'positive',
+      message: `Ruta mostrada: ${vehiculo.nombre}`,
+      caption: `${trayecto.horaInicio} - ${trayecto.horaFin}`,
+      position: 'top',
+      timeout: 2000,
+      icon: 'route',
+    })
+
+    console.log('✅ Ruta dibujada correctamente con color:', colorLinea)
+  } catch (error) {
+    console.error('❌ Error dibujando ruta:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al mostrar la ruta',
+      position: 'top',
+      timeout: 2000,
+    })
+  }
+}
+// 🆕 MÉTODO PARA LIMPIAR RUTA
+const marcadoresRuta = ref([]) // 🆕 Para guardar referencias de marcadores A y B
+
+// Modificar el método limpiarRuta:
+const limpiarRuta = () => {
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
+
+  const map = mapPage._mapaAPI.map
+
+  // Limpiar capas y sources
+  const capas = ['ruta-trayecto', 'ruta-trayecto-glow', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+  const sources = ['ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+
+  capas.forEach((capa) => {
+    if (map.getLayer(capa)) {
+      map.removeLayer(capa)
+    }
+  })
+
+  sources.forEach((source) => {
+    if (map.getSource(source)) {
+      map.removeSource(source)
+    }
+  })
+
+  // 🆕 Limpiar marcadores HTML (A y B)
+  marcadoresRuta.value.forEach((marker) => {
+    marker.remove()
+  })
+  marcadoresRuta.value = []
+
+  // También limpiar por clase
+  const marcadoresHTML = document.querySelectorAll('.marcador-ruta-custom')
+  marcadoresHTML.forEach((m) => m.remove())
+}
+
+// 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
+window.dibujarRutaTrayecto = dibujarRutaTrayecto
+window.limpiarRuta = limpiarRuta
+
 onMounted(async () => {
   await cargarUsuarioActual()
 
@@ -2939,5 +3138,60 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 :deep(.icono-unidad-hover:hover) {
   transform: scale(1.08) translateZ(0) !important;
   transition: transform 0.15s ease !important;
+}
+
+/* Marcadores de ruta personalizados */
+.marcador-ruta-custom {
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.marcador-ruta-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(255, 255, 255, 0.5);
+  animation: pulse-marcador 2s ease-in-out infinite;
+}
+
+.marcador-ruta-letra {
+  color: white;
+  font-size: 20px;
+  font-weight: 900;
+  font-family: 'Arial Black', sans-serif;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Animación de pulso */
+@keyframes pulse-marcador {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 0 20px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.4),
+      0 0 30px rgba(255, 255, 255, 0.7);
+  }
+}
+
+.marcador-inicio .marcador-ruta-circle {
+  background-color: #00ff41 !important; /* Verde neón */
+}
+
+.marcador-fin .marcador-ruta-circle {
+  background-color: #ff0080 !important; /* Rosa neón */
 }
 </style>
