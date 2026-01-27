@@ -483,9 +483,11 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 import { useTutorial } from 'src/composables/useTutorial'
-const { iniciarTutorial } = useTutorial()
 
+//const { iniciarTutorial } = useTutorial()
 const router = useRouter()
+const { iniciarTutorial } = useTutorial(router)
+
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()
 const userId = ref(auth.currentUser?.uid || '')
