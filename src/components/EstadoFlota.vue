@@ -19,7 +19,7 @@
           <span v-else class="vehiculo-nombre">{{ vehiculoSeleccionado.nombre }}</span>
         </div>
       </div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
+      <q-btn flat round dense icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
     </div>
 
     <!-- Vista de Lista de Vehículos -->
@@ -695,16 +695,16 @@ const mostrarRutaEnMapa = (trayecto) => {
   }
 }
 
-// Modificar tu método cerrar existente (no crear uno nuevo)
-// Busca tu método cerrar actual y agrégale la limpieza de ruta:
+// En EstadoFlota.vue
 const cerrarDrawer = () => {
+  console.log('🚪 Cerrando drawer y limpiando ruta...')
+
   // Limpiar ruta del mapa
   if (window.limpiarRuta) {
     window.limpiarRuta()
   }
 
-  // Emitir evento de cerrar
-  emit('close')
+  emit('cerrar')
 }
 
 // Computed para estados
