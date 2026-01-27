@@ -121,37 +121,40 @@
 
 /* Botón SIGUIENTE */
 .driver-popover-next-btn {
-  background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%) !important;
+  background: #bb0000 !important; /* Color sólido en lugar de gradiente */
   color: white !important;
   box-shadow: 0 4px 12px rgba(187, 0, 0, 0.3) !important;
   /* 🔥 Renderizado nítido */
-  transform: translateZ(0) !important;
+  transform: translate3d(0, 0, 0) !important;
   will-change: transform !important;
 }
 
 .driver-popover-next-btn:hover {
-  transform: translateY(-2px) translateZ(0) !important;
+  background: #d40000 !important; /* Ligeramente más claro en hover */
+  transform: translate3d(0, -2px, 0) !important;
   box-shadow: 0 6px 20px rgba(187, 0, 0, 0.4) !important;
 }
 
 .driver-popover-next-btn:active {
-  transform: translateY(0) translateZ(0) !important;
+  background: #a00000 !important; /* Más oscuro al presionar */
+  transform: translate3d(0, 0, 0) !important;
 }
 
 /* Botón ANTERIOR */
 .driver-popover-prev-btn {
   background: #f3f4f6 !important;
   color: #374151 !important;
-  transform: translateZ(0) !important;
+  transform: translate3d(0, 0, 0) !important;
 }
 
 .driver-popover-prev-btn:hover {
   background: #e5e7eb !important;
-  transform: translateY(-1px) translateZ(0) !important;
+  transform: translate3d(0, -1px, 0) !important;
 }
 
 .driver-popover-prev-btn:active {
-  transform: translateY(0) translateZ(0) !important;
+  background: #d1d5db !important;
+  transform: translate3d(0, 0, 0) !important;
 }
 
 /* Botón CERRAR (X) */

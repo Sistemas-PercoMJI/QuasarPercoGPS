@@ -2,7 +2,9 @@
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
-export function useTutorial() {
+export function useTutorial(router) {
+  // 🔥 Recibir router como parámetro
+
   const driverObj = driver({
     showProgress: true,
     showButtons: ['next', 'previous', 'close'],
@@ -11,11 +13,7 @@ export function useTutorial() {
     doneBtnText: '¡Entendido! ✓',
     closeBtnText: 'Salir',
     progressText: '{{current}} de {{total}}',
-
-    // 🎨 Estilos personalizados
     popoverClass: 'driverjs-theme-custom',
-
-    // ⚙️ Opciones de comportamiento
     animate: true,
     smoothScroll: true,
     allowClose: true,
@@ -30,12 +28,9 @@ export function useTutorial() {
       }
     },
 
-    // 🔥 NUEVO: Dar foco al popover cuando aparece
     onPopoverRender: (popover) => {
-      // Hacer que el popover pueda recibir foco
       if (popover.wrapper) {
         popover.wrapper.setAttribute('tabindex', '-1')
-        // Dar foco después de un momento para que la animación termine
         setTimeout(() => {
           popover.wrapper.focus()
         }, 100)
@@ -43,11 +38,7 @@ export function useTutorial() {
     },
   })
 
-  // 📚 PASOS DEL TUTORIAL ESPECÍFICOS PARA TU ESTRUCTURA
   const pasosTutorial = [
-    // ================================
-    // 🗺️ PASO 1: MAPA PRINCIPAL
-    // ================================
     {
       element: '#map-page',
       popover: {
@@ -58,25 +49,16 @@ export function useTutorial() {
         align: 'center',
       },
     },
-
-    // ================================
-    // 🔍 PASO 2: BUSCADOR (funciona con tu clase .search-input)
-    // ================================
     {
       element: '.search-input',
       popover: {
-        title: '🔍 Buscador Inteligente',
+        title: 'Buscador Inteligente',
         description:
           'Busca direcciones, vehículos, conductores, POIs y geozonas. El sistema te mostrará resultados mientras escribes.',
         side: 'bottom',
         align: 'start',
-        // 🔥 REMOVER o SIMPLIFICAR el onNextClick
       },
     },
-
-    // ================================
-    // 📱 PASO 3: MENÚ LATERAL (drawer)
-    // ================================
     {
       element: '.drawer-custom',
       popover: {
@@ -87,10 +69,6 @@ export function useTutorial() {
         align: 'start',
       },
     },
-
-    // ================================
-    // 🗺️ PASO 4: ITEM "MAPA" en el drawer
-    // ================================
     {
       element: '.nav-item:first-child',
       popover: {
@@ -101,10 +79,6 @@ export function useTutorial() {
         align: 'start',
       },
     },
-
-    // ================================
-    // 🚗 PASO 5: ITEM "ESTADO DE LA FLOTA"
-    // ================================
     {
       element: '.nav-item:nth-child(2)',
       popover: {
@@ -114,36 +88,24 @@ export function useTutorial() {
         align: 'start',
       },
     },
-
-    // ================================
-    // 👥 PASO 6: ITEM "CONDUCTORES"
-    // ================================
     {
       element: '.nav-item:nth-child(3)',
       popover: {
-        title: '👥 Gestión de Conductores',
+        title: 'Gestión de Conductores',
         description: 'Administra tu base de datos de conductores organizados por grupos.',
         side: 'right',
         align: 'start',
       },
     },
-
-    // ================================
-    // 📍 PASO 7: ITEM "GEOZONAS Y POIs"
-    // ================================
     {
       element: '.nav-item:nth-child(4)',
       popover: {
-        title: '📍 Geozonas y Puntos de Interés',
+        title: 'Geozonas y Puntos de Interés',
         description: 'Crea y gestiona POIs y Geozonas (áreas delimitadas).',
         side: 'right',
         align: 'start',
       },
     },
-
-    // ================================
-    // 🔔 PASO 8: ITEM "EVENTOS"
-    // ================================
     {
       element: '.nav-item:nth-child(5)',
       popover: {
@@ -154,100 +116,125 @@ export function useTutorial() {
         align: 'start',
       },
     },
-
-    // ================================
-    // 📄 PASO 9: ITEM "REPORTES"
-    // ================================
     {
       element: '.nav-item:nth-child(6)',
       popover: {
         title: 'Reportes',
-        description: 'Genera reportes detallados de rutas, tiempos y más.',
+        description:
+          'Genera reportes detallados. Al hacer clic en "Siguiente" iremos a la sección de reportes.',
         side: 'right',
         align: 'start',
       },
+      onNext: async () => {
+        console.log('Navegando a /reporte...')
+        await router.push('/reporte')
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            console.log('Navegación completada')
+            resolve()
+          }, 1200)
+        })
+      },
     },
-
-    // ================================
-    // 🗂️ PASO 10: BOTÓN DE CAPAS
-    // ================================
+    {
+      element: '.q-select',
+      popover: {
+        title: 'Tipo de Informe',
+        description: 'Elige qué tipo de reporte: Eventos, Trayectos o Horas de Trabajo.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.q-select[use-chips]',
+      popover: {
+        title: 'Selección de Elementos',
+        description: 'Elige las unidades, conductores o grupos para incluir en el reporte.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.q-input[readonly]',
+      popover: {
+        title: 'Rango de Fechas',
+        description: 'Define el período del reporte con el calendario.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.btn-pdf',
+      popover: {
+        title: 'Generar Reportes',
+        description: 'Genera tu reporte en PDF o Excel. Se guardan en el historial.',
+        side: 'top',
+        align: 'center',
+      },
+      onNext: async () => {
+        console.log('Regresando al dashboard...')
+        await router.push('/dashboard')
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            console.log('Regreso completado')
+            resolve()
+          }, 1200)
+        })
+      },
+    },
     {
       element: '.layers-menu-btn',
       popover: {
         title: 'Control de Capas del Mapa',
-        description:
-          'Cambia entre vista satélite y vista de calles, y activa/desactiva la capa de tráfico.',
+        description: 'Cambia entre vista satélite y calles.',
         side: 'left',
         align: 'start',
       },
     },
-
-    // ================================
-    // 🎯 PASO 11: BOTÓN DE CENTRAR (ya funciona)
-    // ================================
     {
       element: '.recenter-btn',
       popover: {
-        title: 'Centrar Mapa en Tu Ubicación',
-        description: 'Este botón centra el mapa automáticamente en tu posición GPS actual.',
+        title: 'Centrar Mapa',
+        description: 'Centra el mapa en tu ubicación GPS.',
         side: 'left',
         align: 'start',
       },
     },
-
-    // ================================
-    // ℹ️ PASO 12: BOTÓN DE INFORMACIÓN
-    // ================================
     {
       element: '.info-btn',
       popover: {
         title: 'Información del Sistema',
-        description:
-          'Aquí encontrarás la versión del sistema, información de la empresa y acceso a este tutorial.',
+        description: 'Versión del sistema e información de la empresa.',
         side: 'bottom',
         align: 'end',
       },
     },
-
-    // ================================
-    // 🔔 PASO 13: BOTÓN DE NOTIFICACIONES
-    // ================================
     {
       element: '.notif-btn',
       popover: {
         title: 'Centro de Notificaciones',
-        description:
-          'Recibe alertas en tiempo real de eventos configurados. El badge rojo indica notificaciones nuevas.',
+        description: 'Alertas en tiempo real de eventos configurados.',
         side: 'bottom',
         align: 'end',
       },
     },
-
-    // ================================
-    // 🎉 PASO 14: FINAL DEL TUTORIAL
-    // ================================
     {
       popover: {
         title: '¡Tutorial Completado!',
         description:
-          'Ya conoces las funciones principales de MJ GPS. Puedes volver a ver este tutorial desde el botón de información.',
+          'Ya conoces las funciones principales de MJ GPS. Puedes volver a este tutorial desde el botón de información.',
         side: 'center',
         align: 'center',
       },
     },
   ]
 
-  // 🚀 Función para iniciar el tutorial
   function iniciarTutorial() {
-    // Iniciar tutorial después de un pequeño delay
     setTimeout(() => {
       driverObj.setSteps(pasosTutorial)
       driverObj.drive()
 
-      // Variable para rastrear si hay un confirm activo
       let confirmActive = false
-
-      // Interceptar el confirm original
       const originalConfirm = window.confirm
       window.confirm = function (...args) {
         confirmActive = true
@@ -256,9 +243,7 @@ export function useTutorial() {
         return result
       }
 
-      // ⌨️ Listener para tecla Enter mejorado
       const handleKeyPress = (e) => {
-        // 🔥 Solo procesar Enter si NO hay confirm activo
         if (e.key === 'Enter' && !confirmActive && driverObj.hasNextStep()) {
           e.preventDefault()
           e.stopPropagation()
@@ -266,25 +251,21 @@ export function useTutorial() {
         }
       }
 
-      // Usar capture phase para interceptar antes que otros listeners
       document.addEventListener('keydown', handleKeyPress, true)
 
-      // Limpiar listeners cuando termine el tutorial
       const originalDestroy = driverObj.destroy.bind(driverObj)
       driverObj.destroy = () => {
         document.removeEventListener('keydown', handleKeyPress, true)
-        window.confirm = originalConfirm // Restaurar confirm original
+        window.confirm = originalConfirm
         originalDestroy()
       }
     }, 300)
   }
 
-  // 🎯 Función para ir a un paso específico
   function irAPaso(numeroPaso) {
     driverObj.moveTo(numeroPaso)
   }
 
-  // 🛑 Función para detener el tutorial
   function detenerTutorial() {
     driverObj.destroy()
   }
