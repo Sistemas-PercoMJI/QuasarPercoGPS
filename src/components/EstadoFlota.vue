@@ -521,6 +521,8 @@ import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
 import { useEventosUnidad } from 'src/composables/useEventosUnidad'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTime'
+import { onUnmounted } from 'vue'
 
 // 🆕 IMPORTAR idEmpresaActual
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
@@ -575,6 +577,31 @@ const horaFin = ref('23:59')
 const filtroNotificaciones = ref('Todo')
 const eventosUnidad = ref([])
 const loadingEventos = ref(false)
+const { escucharEventosDia, detenerEscucha } = useEventosUnidadRealTime()
+
+watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
+  // Detener escucha anterior si existía
+  if (vehiculoAnterior) {
+    detenerEscucha()
+  }
+
+  if (nuevoVehiculo) {
+    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
+
+    fechaSeleccionada.value = new Date()
+    horaInicio.value = '00:00'
+    horaFin.value = '23:59'
+    await cargarTrayectosDia()
+
+    // 🆕 Iniciar escucha en tiempo real de eventos
+    escucharEventosDia(nuevoVehiculo.id, new Date())
+  } else {
+    estadisticasVehiculo.value = null
+    trayectosDia.value = []
+    resumenDia.value = null
+    eventosUnidad.value = []
+  }
+})
 
 // ==================== FUNCIONES PARA CONDUCTORES ====================
 
@@ -1000,6 +1027,10 @@ watch(fechaSeleccionada, () => {
 })
 
 // ==================== LIFECYCLE ====================
+
+onUnmounted(() => {
+  detenerEscucha()
+})
 
 onMounted(async () => {
   // ✅ Cargar usuario y empresa primero
