@@ -577,12 +577,23 @@ import { useEventos } from 'src/composables/useEventos'
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
+import { useRouter } from 'vue-router'
+import { useTutorial } from 'src/composables/useTutorial'
 
 const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
 const remarcarHorasExtra = ref(true)
+const router = useRouter()
+const { iniciarTutorialReportes } = useTutorial(router)
+
+console.log('🎯 Reporte.vue script setup ejecutado')
+
+onMounted(() => {
+  console.log('🎯 Reporte.vue onMounted ejecutado')
+  iniciarTutorialReportes()
+})
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
