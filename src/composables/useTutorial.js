@@ -124,7 +124,7 @@ export function useTutorial(router) {
     {
       element: '#map-page',
       popover: {
-        title: '¡Bienvenido a MJ GPS! 🎉',
+        title: '¡Bienvenido a MJ GPS!',
         description: 'Este es tu panel principal de rastreo de flotas.',
         side: 'bottom',
         align: 'center',
@@ -133,7 +133,7 @@ export function useTutorial(router) {
     {
       element: '.search-input',
       popover: {
-        title: '🔍 Buscador Inteligente',
+        title: 'Buscador Inteligente',
         description: 'Busca direcciones, vehículos, conductores, POIs y geozonas.',
         side: 'bottom',
         align: 'start',
@@ -149,7 +149,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(1)',
+      element: '#nav--dashboard', // 🔥 ID específico para Mapa
       popover: {
         title: 'Vista del Mapa',
         description: 'Vuelve a la vista principal del mapa.',
@@ -158,7 +158,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(2)',
+      element: '#nav-open-estado-flota', // 🔥 ID específico para Estado de Flota
       popover: {
         title: 'Estado de la Flota',
         description: 'Monitorea en tiempo real el estado de todos tus vehículos.',
@@ -167,25 +167,25 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(3)',
+      element: '#nav-open-conductores', // 🔥 ID específico para Conductores
       popover: {
-        title: '👥 Gestión de Conductores',
+        title: 'Gestión de Conductores',
         description: 'Administra tu base de datos de conductores.',
         side: 'right',
         align: 'start',
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(4)',
+      element: '#nav-open-geozonas', // 🔥 ID específico para Geozonas
       popover: {
-        title: '📍 Geozonas y POIs',
+        title: 'Geozonas y POIs',
         description: 'Crea y gestiona POIs y Geozonas.',
         side: 'right',
         align: 'start',
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(5)',
+      element: '#nav-open-eventos', // 🔥 ID específico para Eventos
       popover: {
         title: 'Sistema de Eventos',
         description: 'Configura alertas personalizadas.',
@@ -194,11 +194,11 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '.q-list .nav-item:nth-of-type(6)',
+      element: '#nav--reporte', // 🔥 ID específico para Reportes
       popover: {
         title: 'Reportes',
         description:
-          'Genera reportes detallados. 👉 Al hacer clic en "Siguiente" iremos a la sección de reportes.',
+          'Genera reportes detallados. Al hacer clic en "Siguiente" iremos a la sección de reportes.',
         side: 'right',
         align: 'start',
       },
@@ -241,7 +241,7 @@ export function useTutorial(router) {
     },
     {
       popover: {
-        title: '¡Tutorial Completado! ✅',
+        title: '¡Tutorial Completado!',
         description: 'Ya conoces las funciones principales de MJ GPS.',
         side: 'center',
         align: 'center',
@@ -253,7 +253,7 @@ export function useTutorial(router) {
     {
       element: '.q-card .q-select',
       popover: {
-        title: '📋 Tipo de Informe',
+        title: 'Tipo de Informe',
         description: 'Elige qué tipo de reporte: Eventos, Trayectos o Horas de Trabajo.',
         side: 'bottom',
         align: 'start',
@@ -262,7 +262,7 @@ export function useTutorial(router) {
     {
       element: 'div.q-mb-md .q-select[multiple]',
       popover: {
-        title: '🚗 Selección de Elementos',
+        title: 'Selección de Elementos',
         description: 'Elige las unidades, conductores o grupos para tu reporte.',
         side: 'bottom',
         align: 'start',
@@ -271,7 +271,7 @@ export function useTutorial(router) {
     {
       element: 'div.q-mb-md .q-input',
       popover: {
-        title: '📅 Rango de Fechas',
+        title: 'Rango de Fechas',
         description: 'Define el período del reporte. Haz clic en el icono del calendario.',
         side: 'bottom',
         align: 'start',
@@ -280,9 +280,9 @@ export function useTutorial(router) {
     {
       element: '.btn-pdf',
       popover: {
-        title: '🎯 Generar Reportes',
+        title: 'Generar Reportes',
         description:
-          'Genera tu reporte en PDF o Excel. 👉 Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
+          'Genera tu reporte en PDF o Excel. Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
         side: 'top',
         align: 'center',
       },

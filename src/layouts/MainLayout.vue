@@ -263,6 +263,7 @@
             v-ripple
             @click="link.click"
             class="nav-item"
+            :id="`nav-${link.action || link.link}`"
           >
             <q-item-section avatar>
               <q-icon :name="link.icon" size="24px" />
@@ -296,6 +297,7 @@
             @click="handleLinkClick(link)"
             v-ripple
             class="nav-item"
+            :id="`nav-${(link.action || link.link).replace(/[^a-z0-9]/gi, '-')}`"
             :class="{
               'nav-item-active-page': esRutaActiva(link) && !link.action && !link.click,
               'nav-item-active-component': esRutaActiva(link) && (link.action || link.click),
