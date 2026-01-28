@@ -424,16 +424,97 @@
 
             <!-- Tab Notificaciones -->
             <q-tab-panel name="notificaciones" class="tab-panel-padding">
-              <!-- Filtro -->
-              <div class="filtro-container">
-                <q-select
-                  v-model="filtroNotificaciones"
-                  :options="['Todo', 'Entradas', 'Salidas']"
-                  outlined
+              <!-- 🆕 Selector de fecha (igual que en tab "hoy") -->
+              <div class="filtro-dia-card">
+                <q-btn
+                  flat
                   dense
-                  label="Mostrar eventos"
-                  class="filtro-select"
+                  round
+                  icon="chevron_left"
+                  size="sm"
+                  @click="cambiarDiaEventos(-1)"
                 />
+                <div class="dia-actual">
+                  <div class="dia-label">
+                    {{ fechaSeleccionadaEventos.toLocaleDateString('es-MX', { weekday: 'long' }) }}
+                  </div>
+                  <div class="dia-fecha">
+                    {{
+                      fechaSeleccionadaEventos.toLocaleDateString('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    }}
+                  </div>
+                </div>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="chevron_right"
+                  size="sm"
+                  @click="cambiarDiaEventos(1)"
+                  :disable="fechaSeleccionadaEventos.toDateString() === new Date().toDateString()"
+                />
+              </div>
+
+              <!-- 🆕 Filtro por tipo de evento -->
+              <div class="filtro-horas-card">
+                <div class="filtro-horas-header">
+                  <q-icon name="filter_list" size="20px" color="primary" />
+                  <span class="filtro-horas-titulo">Filtrar eventos</span>
+                  <q-btn
+                    flat
+                    dense
+                    label="Resetear"
+                    size="sm"
+                    color="primary"
+                    @click="resetearFiltroEventos"
+                  />
+                </div>
+
+                <div class="filtro-eventos-tipo">
+                  <q-select
+                    v-model="filtroNotificaciones"
+                    :options="['Todo', 'Entradas', 'Salidas']"
+                    outlined
+                    dense
+                    label="Tipo de evento"
+                    class="filtro-select-eventos"
+                  />
+                </div>
+
+                <!-- 🆕 Filtro por rango de horas -->
+                <div class="filtro-horas-inputs">
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Desde</span>
+                    <q-input
+                      v-model="horaInicioEventos"
+                      type="time"
+                      outlined
+                      dense
+                      class="hora-input"
+                    />
+                  </div>
+
+                  <q-icon name="arrow_forward" size="20px" color="grey-6" />
+
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Hasta</span>
+                    <q-input
+                      v-model="horaFinEventos"
+                      type="time"
+                      outlined
+                      dense
+                      class="hora-input"
+                    />
+                  </div>
+                </div>
+
+                <div class="filtro-resultados">
+                  {{ eventosFiltrados.length }} evento(s) encontrado(s)
+                </div>
               </div>
 
               <!-- Loading -->
@@ -578,6 +659,9 @@ const filtroNotificaciones = ref('Todo')
 const eventosUnidad = ref([])
 const loadingEventos = ref(false)
 const { escucharEventosDia, detenerEscucha } = useEventosUnidadRealTime()
+const fechaSeleccionadaEventos = ref(new Date())
+const horaInicioEventos = ref('00:00')
+const horaFinEventos = ref('23:59')
 
 watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
   // Detener escucha anterior si existía
@@ -829,30 +913,112 @@ const trayectosFiltradosPorHora = computed(() => {
   })
 })
 
+const cambiarDiaEventos = (dias) => {
+  const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
+  nuevaFecha.setDate(nuevaFecha.getDate() + dias)
+
+  const hoy = new Date()
+  hoy.setHours(23, 59, 59, 999)
+
+  if (nuevaFecha <= hoy) {
+    fechaSeleccionadaEventos.value = nuevaFecha
+  }
+}
+
+// 🆕 Función para resetear filtros
+const resetearFiltroEventos = () => {
+  horaInicioEventos.value = '00:00'
+  horaFinEventos.value = '23:59'
+  filtroNotificaciones.value = 'Todo'
+}
+
 const eventosFiltrados = computed(() => {
   if (!eventosUnidad.value || eventosUnidad.value.length === 0) {
     return []
   }
 
-  if (filtroNotificaciones.value === 'Todo') {
-    return eventosUnidad.value
-  }
+  let resultado = eventosUnidad.value
 
+  // Filtro por tipo (Todo, Entradas, Salidas)
   if (filtroNotificaciones.value === 'Entradas') {
-    return eventosUnidad.value.filter((e) => {
+    resultado = resultado.filter((e) => {
       const accion = e.accion?.toLowerCase() || ''
       return accion.includes('entrada') || accion.includes('entró')
     })
-  }
-
-  if (filtroNotificaciones.value === 'Salidas') {
-    return eventosUnidad.value.filter((e) => {
+  } else if (filtroNotificaciones.value === 'Salidas') {
+    resultado = resultado.filter((e) => {
       const accion = e.accion?.toLowerCase() || ''
       return accion.includes('salida') || accion.includes('salió')
     })
   }
 
-  return eventosUnidad.value
+  // 🆕 Filtro por rango de horas
+  if (horaInicioEventos.value && horaFinEventos.value) {
+    const [horaInicioNum, minInicioNum] = horaInicioEventos.value.split(':').map(Number)
+    const [horaFinNum, minFinNum] = horaFinEventos.value.split(':').map(Number)
+
+    const minutosInicio = horaInicioNum * 60 + minInicioNum
+    const minutosFin = horaFinNum * 60 + minFinNum
+
+    resultado = resultado.filter((evento) => {
+      if (!evento.timestamp) return true
+
+      try {
+        const fecha = evento.timestamp.toDate
+          ? evento.timestamp.toDate()
+          : new Date(evento.timestamp)
+        const hora = fecha.getHours()
+        const minutos = fecha.getMinutes()
+        const minutosEvento = hora * 60 + minutos
+
+        return minutosEvento >= minutosInicio && minutosEvento <= minutosFin
+      } catch (error) {
+        console.warn('Error procesando timestamp:', error)
+        return true
+      }
+    })
+  }
+
+  return resultado
+})
+
+watch(fechaSeleccionadaEventos, (nuevaFecha) => {
+  if (vehiculoSeleccionado.value) {
+    console.log('📅 Cambiando fecha de eventos a:', nuevaFecha.toISOString().split('T')[0])
+    escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
+  }
+})
+
+// Actualizar el watcher de vehiculoSeleccionado:
+watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
+  // Detener escucha anterior si existía
+  if (vehiculoAnterior) {
+    detenerEscucha()
+  }
+
+  if (nuevoVehiculo) {
+    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
+
+    // Tab "Hoy"
+    fechaSeleccionada.value = new Date()
+    horaInicio.value = '00:00'
+    horaFin.value = '23:59'
+    await cargarTrayectosDia()
+
+    // 🆕 Tab "Notificaciones" - Resetear filtros
+    fechaSeleccionadaEventos.value = new Date()
+    horaInicioEventos.value = '00:00'
+    horaFinEventos.value = '23:59'
+    filtroNotificaciones.value = 'Todo'
+
+    // Iniciar escucha en tiempo real de eventos
+    escucharEventosDia(nuevoVehiculo.id, fechaSeleccionadaEventos.value)
+  } else {
+    estadisticasVehiculo.value = null
+    trayectosDia.value = []
+    resumenDia.value = null
+    eventosUnidad.value = []
+  }
 })
 
 // ==================== FUNCIONES ====================
@@ -2124,6 +2290,21 @@ onMounted(async () => {
   font-family: 'Courier New', monospace;
   font-size: 11px;
   color: #757575;
+}
+
+/* Filtro de eventos tipo */
+.filtro-eventos-tipo {
+  margin-bottom: 12px;
+}
+
+.filtro-select-eventos {
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.filtro-select-eventos:focus-within {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
 /* ============================================ */
