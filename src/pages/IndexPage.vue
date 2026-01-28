@@ -1398,16 +1398,19 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 
   try {
     console.log('📍 Dibujando ruta con', trayecto.coordenadas?.length, 'puntos')
+    console.log('🎨 Color del trayecto:', trayecto.color)
 
-    // Limpiar rutas anteriores
-    const capasRuta = ['ruta-trayecto', 'ruta-trayecto-borde', 'ruta-inicio', 'ruta-fin']
-    const sourcesRuta = ['ruta-trayecto', 'ruta-inicio', 'ruta-fin']
+    // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
+    const capasRuta = ['ruta-trayecto-borde', 'ruta-trayecto', 'ruta-inicio', 'ruta-fin']
 
     capasRuta.forEach((capa) => {
       if (map.getLayer(capa)) {
         map.removeLayer(capa)
       }
     })
+
+    // AHORA sí remover sources (después de los layers)
+    const sourcesRuta = ['ruta-trayecto', 'ruta-inicio', 'ruta-fin']
 
     sourcesRuta.forEach((source) => {
       if (map.getSource(source)) {
@@ -1416,7 +1419,13 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     })
 
     // Limpiar marcadores HTML previos
-    marcadoresRuta.value.forEach((marker) => marker.remove())
+    marcadoresRuta.value.forEach((marker) => {
+      try {
+        marker.remove()
+      } catch (e) {
+        console.warn('Error removiendo marcador:', e)
+      }
+    })
     marcadoresRuta.value = []
 
     // Obtener coordenadas del trayecto
@@ -1473,7 +1482,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     markerInicioEl.className = 'marcador-ruta-custom marcador-inicio'
     markerInicioEl.innerHTML = `
       <div class="marcador-pin-container">
-        <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="30" height="50" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Pin azul -->
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="#1976D2"/>
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="url(#gradient-inicio)"/>
@@ -1513,7 +1522,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     markerFinEl.className = 'marcador-ruta-custom marcador-fin'
     markerFinEl.innerHTML = `
       <div class="marcador-pin-container">
-        <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="30" height="50" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Pin naranja -->
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="#FF6D00"/>
           <path d="M20 0C8.95 0 0 8.95 0 20C0 32 20 52 20 52C20 52 40 32 40 20C40 8.95 31.05 0 20 0Z" fill="url(#gradient-fin)"/>
@@ -1559,8 +1568,8 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     // 7. Notificar al usuario
     $q.notify({
       type: 'positive',
-      message: `Ruta mostrada: ${vehiculo.nombre}`,
-      caption: `${trayecto.horaInicio} - ${trayecto.horaFin}`,
+      message: vehiculo?.nombre ? `Ruta mostrada: ${vehiculo.nombre}` : 'Ruta mostrada',
+      caption: `${trayecto.horaInicio || ''} - ${trayecto.horaFin || ''}`,
       position: 'top',
       timeout: 2000,
       icon: 'route',
@@ -1580,38 +1589,53 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 // 🆕 MÉTODO PARA LIMPIAR RUTA
 const marcadoresRuta = ref([]) // 🆕 Para guardar referencias de marcadores A y B
 
-// Modificar el método limpiarRuta:
 const limpiarRuta = () => {
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
 
   const map = mapPage._mapaAPI.map
 
-  // Limpiar capas y sources
-  const capas = ['ruta-trayecto', 'ruta-trayecto-glow', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
-  const sources = ['ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+  // 🔥 PRIMERO remover LAYERS
+  const capas = ['ruta-trayecto-borde', 'ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
 
   capas.forEach((capa) => {
-    if (map.getLayer(capa)) {
-      map.removeLayer(capa)
+    try {
+      if (map.getLayer(capa)) {
+        map.removeLayer(capa)
+      }
+    } catch (e) {
+      console.warn(`Error removiendo layer ${capa}:`, e)
     }
   })
+
+  // 🔥 DESPUÉS remover SOURCES
+  const sources = ['ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
 
   sources.forEach((source) => {
-    if (map.getSource(source)) {
-      map.removeSource(source)
+    try {
+      if (map.getSource(source)) {
+        map.removeSource(source)
+      }
+    } catch (e) {
+      console.warn(`Error removiendo source ${source}:`, e)
     }
   })
 
-  // 🆕 Limpiar marcadores HTML (A y B)
+  // 🔥 Limpiar marcadores HTML (A y B)
   marcadoresRuta.value.forEach((marker) => {
-    marker.remove()
+    try {
+      marker.remove()
+    } catch (e) {
+      console.warn('Error removiendo marcador:', e)
+    }
   })
   marcadoresRuta.value = []
 
-  // También limpiar por clase
+  // También limpiar por clase (por si quedó alguno)
   const marcadoresHTML = document.querySelectorAll('.marcador-ruta-custom')
   marcadoresHTML.forEach((m) => m.remove())
+
+  console.log('✅ Ruta limpiada correctamente')
 }
 
 // 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)

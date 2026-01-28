@@ -19,7 +19,7 @@
           <span v-else class="vehiculo-nombre">{{ vehiculoSeleccionado.nombre }}</span>
         </div>
       </div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
+      <q-btn flat round dense icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
     </div>
 
     <!-- Vista de Lista de Vehículos -->
@@ -546,6 +546,7 @@ const emit = defineEmits([
   'vehiculo-mapa',
   'cerrar',
   'mostrarRuta',
+  'update:modelValue',
 ])
 
 // Estado local - Vista general
@@ -695,15 +696,15 @@ const mostrarRutaEnMapa = (trayecto) => {
   }
 }
 
-// Modificar tu método cerrar existente (no crear uno nuevo)
-// Busca tu método cerrar actual y agrégale la limpieza de ruta:
 const cerrarDrawer = () => {
+  console.log('🚪 Cerrando drawer y limpiando ruta...')
+
   // Limpiar ruta del mapa
   if (window.limpiarRuta) {
     window.limpiarRuta()
   }
 
-  // Emitir evento de cerrar
+  // Solo emitir cerrar
   emit('close')
 }
 
