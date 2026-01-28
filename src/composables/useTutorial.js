@@ -260,7 +260,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: 'div.q-mb-md .q-select[multiple]',
+      element: '#q-select-reportar',
       popover: {
         title: 'Selección de Elementos',
         description: 'Elige las unidades, conductores o grupos para tu reporte.',

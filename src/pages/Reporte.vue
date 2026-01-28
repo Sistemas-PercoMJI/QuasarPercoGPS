@@ -82,6 +82,7 @@
                 <div class="q-mb-md">
                   <div class="text-subtitle2 q-mb-sm">Reportar por</div>
                   <q-select
+                    id="q-select-reportar"
                     v-model="reportarPor"
                     :options="opcionesReportar"
                     outlined
