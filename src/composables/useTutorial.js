@@ -60,7 +60,7 @@ export function useTutorial(router) {
       }
 
       // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
-      if (totalPasos === 4 && pasoActual === 3) {
+      if (totalPasos === 5 && pasoActual === 4) {
         console.log('🎯 En último paso de reportes, programando navegación')
 
         navegacionProgramada = () => {
@@ -79,7 +79,7 @@ export function useTutorial(router) {
         }
       } else {
         // Limpiar si cambiamos de paso
-        if (navegacionProgramada && pasoActual !== 3) {
+        if (navegacionProgramada && pasoActual !== 4) {
           console.log('⚠️ Limpiando navegación programada (cambio de paso)')
           navegacionProgramada = null
         }
@@ -274,6 +274,16 @@ export function useTutorial(router) {
         title: 'Rango de Fechas',
         description: 'Define el período del reporte. Haz clic en el icono del calendario.',
         side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '#card-columnas-personalizacion', // 🆕 NUEVO PASO
+      popover: {
+        title: 'Personalización de Columnas',
+        description:
+          'Selecciona qué columnas quieres ver en tu reporte. Puedes agregar o quitar columnas haciendo clic en la X. Tus preferencias se guardarán automáticamente para la próxima vez.',
+        side: 'left',
         align: 'start',
       },
     },

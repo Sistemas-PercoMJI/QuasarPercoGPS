@@ -378,7 +378,13 @@
             </q-card>
 
             <!-- 🎯 CARD: PERSONALIZACIÓN DE COLUMNAS -->
-            <q-card v-if="tieneOpcion('seleccionColumnas')" flat bordered class="q-mb-md">
+            <q-card
+              id="card-columnas-personalizacion"
+              v-if="tieneOpcion('seleccionColumnas')"
+              flat
+              bordered
+              class="q-mb-md"
+            >
               <q-card-section class="bg-grey-2">
                 <div class="row items-center justify-between">
                   <div class="text-h6">
