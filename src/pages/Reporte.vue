@@ -32,7 +32,7 @@
         </div>
 
         <!-- 📋 CARD: TIPO DE INFORME -->
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md" id="tipo-informe-card">
           <q-card-section class="bg-grey-2">
             <div class="text-h6">
               <q-icon name="assessment" class="q-mr-sm" color="primary" />
@@ -79,10 +79,9 @@
 
               <q-card-section>
                 <!-- Reportar por -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="q-select-reportar">
                   <div class="text-subtitle2 q-mb-sm">Reportar por</div>
                   <q-select
-                    id="q-select-reportar"
                     v-model="reportarPor"
                     :options="opcionesReportar"
                     outlined
@@ -120,7 +119,7 @@
                 </div>
 
                 <!-- Rango de fecha -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="contenedor-rango-fecha">
                   <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
                   <q-input
                     :model-value="rangoFechaFormateado"

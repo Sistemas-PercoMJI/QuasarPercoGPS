@@ -1,4 +1,4 @@
-// useTutorial.js - VERSIÓN FINAL CORREGIDA
+// useTutorial.js - VERSIÓN CORREGIDA FINAL
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
@@ -6,7 +6,8 @@ export function useTutorial(router) {
   let pasoAnterior = -1
   let destroyOriginal = null
   let navegacionProgramada = null
-  let yaNavegamosAReportes = false // 🔥 FLAG para evitar doble navegación
+  let yaNavegamosAReportes = false
+  let isTransitioning = false // 🔥 MOVER AQUÍ FUERA
 
   const driverObj = driver({
     showProgress: true,
@@ -46,7 +47,8 @@ export function useTutorial(router) {
       if (!driverObj.hasNextStep() || confirm('¿Seguro que quieres salir del tutorial?')) {
         localStorage.removeItem('mj_tutorial_step')
         navegacionProgramada = null
-        yaNavegamosAReportes = false // 🔥 Reset flag
+        yaNavegamosAReportes = false
+        isTransitioning = false // 🔥 RESET AQUÍ TAMBIÉN
         driverObj.destroy()
       }
     },
@@ -70,7 +72,8 @@ export function useTutorial(router) {
               console.log('🎬 Continuando tutorial desde paso 9')
               pasoAnterior = 8
               navegacionProgramada = null
-              yaNavegamosAReportes = true // 🔥 MARCAR que ya navegamos
+              yaNavegamosAReportes = true
+              isTransitioning = false // 🔥 RESET AL CAMBIAR DE PÁGINA
               driverObj.setSteps(pasosDashboard)
               driverObj.drive(9)
               configurarListeners()
@@ -78,7 +81,6 @@ export function useTutorial(router) {
           })
         }
       } else {
-        // Limpiar si cambiamos de paso
         if (navegacionProgramada && pasoActual !== 4) {
           console.log('⚠️ Limpiando navegación programada (cambio de paso)')
           navegacionProgramada = null
@@ -86,10 +88,9 @@ export function useTutorial(router) {
       }
 
       // Dashboard: paso 8 → 9 (Reportes)
-      // 🔥 SOLO navegar si NO hemos navegado antes
       if (pasoAnterior === 8 && pasoActual === 9 && totalPasos === 14 && !yaNavegamosAReportes) {
         console.log('🚀 Navegando de dashboard a reportes (PRIMERA VEZ)...')
-        yaNavegamosAReportes = true // 🔥 MARCAR inmediatamente
+        yaNavegamosAReportes = true
 
         localStorage.setItem('mj_tutorial_step', 'reportes')
         console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
@@ -149,7 +150,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav--dashboard', // 🔥 ID específico para Mapa
+      element: '#nav--dashboard',
       popover: {
         title: 'Vista del Mapa',
         description: 'Vuelve a la vista principal del mapa.',
@@ -158,7 +159,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav-open-estado-flota', // 🔥 ID específico para Estado de Flota
+      element: '#nav-open-estado-flota',
       popover: {
         title: 'Estado de la Flota',
         description: 'Monitorea en tiempo real el estado de todos tus vehículos.',
@@ -167,7 +168,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav-open-conductores', // 🔥 ID específico para Conductores
+      element: '#nav-open-conductores',
       popover: {
         title: 'Gestión de Conductores',
         description: 'Administra tu base de datos de conductores.',
@@ -176,7 +177,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav-open-geozonas', // 🔥 ID específico para Geozonas
+      element: '#nav-open-geozonas',
       popover: {
         title: 'Geozonas y POIs',
         description: 'Crea y gestiona POIs y Geozonas.',
@@ -185,7 +186,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav-open-eventos', // 🔥 ID específico para Eventos
+      element: '#nav-open-eventos',
       popover: {
         title: 'Sistema de Eventos',
         description: 'Configura alertas personalizadas.',
@@ -194,7 +195,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#nav--reporte', // 🔥 ID específico para Reportes
+      element: '#nav--reporte',
       popover: {
         title: 'Reportes',
         description:
@@ -251,9 +252,9 @@ export function useTutorial(router) {
 
   const pasosReportes = [
     {
-      element: '.q-card .q-select',
+      element: '#tipo-informe-card',
       popover: {
-        title: 'Tipo de Informe',
+        title: 'Tipo de informe',
         description: 'Elige qué tipo de reporte: Eventos, Trayectos o Horas de Trabajo.',
         side: 'bottom',
         align: 'start',
@@ -269,7 +270,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: 'div.q-mb-md .q-input',
+      element: '#contenedor-rango-fecha', // 🔥 SELECTOR CORREGIDO
       popover: {
         title: 'Rango de Fechas',
         description: 'Define el período del reporte. Haz clic en el icono del calendario.',
@@ -278,7 +279,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#card-columnas-personalizacion', // 🆕 NUEVO PASO
+      element: '#card-columnas-personalizacion',
       popover: {
         title: 'Personalización de Columnas',
         description:
@@ -302,7 +303,8 @@ export function useTutorial(router) {
   function iniciarTutorial() {
     pasoAnterior = -1
     navegacionProgramada = null
-    yaNavegamosAReportes = false // 🔥 Reset flag
+    yaNavegamosAReportes = false
+    isTransitioning = false // 🔥 RESET
     localStorage.removeItem('mj_tutorial_step')
 
     if (driverObj.isActivated) {
@@ -329,6 +331,7 @@ export function useTutorial(router) {
       console.log('✅ Iniciando tutorial de reportes...')
       pasoAnterior = -1
       navegacionProgramada = null
+      isTransitioning = false // 🔥 RESET
 
       localStorage.removeItem('mj_tutorial_step')
 
@@ -347,8 +350,10 @@ export function useTutorial(router) {
     console.log('⚠️ continuarTutorialDashboard() deprecado - no hace nada')
   }
 
+  // 🔥 FUNCIÓN CORREGIDA - isTransitioning AHORA ES GLOBAL
   function configurarListeners() {
     let confirmActive = false
+
     const originalConfirm = window.confirm
     window.confirm = function (...args) {
       confirmActive = true
@@ -358,10 +363,27 @@ export function useTutorial(router) {
     }
 
     const handleKeyPress = (e) => {
-      if (e.key === 'Enter' && !confirmActive && driverObj.hasNextStep()) {
+      // 🔥 USAR LA VARIABLE GLOBAL isTransitioning
+      if (e.key === 'Enter' && !confirmActive && !isTransitioning && driverObj.hasNextStep()) {
+        console.log('✅ Enter aceptado - avanzando paso')
+
         e.preventDefault()
         e.stopPropagation()
+
+        // 🔥 BLOQUEAR INMEDIATAMENTE
+        isTransitioning = true
+
         driverObj.moveNext()
+
+        // 🔥 DESBLOQUEAR DESPUÉS DE LA ANIMACIÓN
+        setTimeout(() => {
+          isTransitioning = false
+          console.log('🔓 Transición completada - Enter habilitado nuevamente')
+        }, 400)
+      } else if (e.key === 'Enter' && isTransitioning) {
+        console.log('⚠️ Enter ignorado - transición en curso')
+        e.preventDefault()
+        e.stopPropagation()
       }
     }
 
@@ -376,7 +398,8 @@ export function useTutorial(router) {
       window.confirm = originalConfirm
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
-      yaNavegamosAReportes = false // 🔥 Reset flag
+      yaNavegamosAReportes = false
+      isTransitioning = false // 🔥 RESET
       destroyOriginal()
     }
   }
@@ -384,7 +407,8 @@ export function useTutorial(router) {
   function detenerTutorial() {
     localStorage.removeItem('mj_tutorial_step')
     navegacionProgramada = null
-    yaNavegamosAReportes = false // 🔥 Reset flag
+    yaNavegamosAReportes = false
+    isTransitioning = false // 🔥 RESET
     driverObj.destroy()
   }
 
