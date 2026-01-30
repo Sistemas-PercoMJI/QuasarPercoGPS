@@ -395,11 +395,9 @@ export function useTutorial(router) {
     console.log('⚠️ continuarTutorialDashboard() deprecado - no hace nada')
   }
 
-  // 🔥 FUNCIÓN CORREGIDA CON LIMPIEZA PREVIA
   function configurarListeners() {
     console.log('🎧 Configurando listeners...')
 
-    // 🔥 LIMPIAR PRIMERO (por si acaso)
     limpiarListeners()
 
     let confirmActive = false
@@ -412,19 +410,46 @@ export function useTutorial(router) {
       return result
     }
 
-    // 🔥 CREAR HANDLER CON ID ÚNICO PARA DEBUG
     const handlerId = Math.random().toString(36).substr(2, 9)
     console.log(`🆕 Creando handler: ${handlerId}`)
 
     keyPressHandler = (e) => {
-      if (e.key === 'Enter' && !confirmActive && !isTransitioning && driverObj.hasNextStep()) {
-        console.log(`✅ [${handlerId}] Enter aceptado - avanzando paso`)
+      if (e.key === 'Enter' && !confirmActive && !isTransitioning && driverObj.isActive()) {
+        console.log(`✅ [${handlerId}] Enter aceptado`)
 
         e.preventDefault()
         e.stopPropagation()
 
         isTransitioning = true
-        driverObj.moveNext()
+
+        // 🔥 SI HAY SIGUIENTE PASO, AVANZAR
+        if (driverObj.hasNextStep()) {
+          console.log('➡️ Avanzando al siguiente paso')
+          driverObj.moveNext()
+        }
+        // 🔥 SI NO HAY SIGUIENTE PASO, VERIFICAR NAVEGACIÓN PROGRAMADA
+        else {
+          console.log('📍 Último paso detectado')
+
+          // 🔥 SI HAY NAVEGACIÓN PROGRAMADA, EJECUTARLA
+          if (navegacionProgramada) {
+            console.log('🔀 Hay navegación programada, ejecutando...')
+            const accion = navegacionProgramada
+            navegacionProgramada = null
+
+            localStorage.removeItem('mj_tutorial_step')
+            driverObj.destroy()
+
+            setTimeout(() => {
+              accion()
+            }, 100)
+          }
+          // 🔥 SI NO HAY NAVEGACIÓN PROGRAMADA, SOLO CERRAR
+          else {
+            console.log('✅ No hay navegación programada, cerrando tutorial')
+            driverObj.destroy()
+          }
+        }
 
         setTimeout(() => {
           isTransitioning = false
