@@ -1,4 +1,4 @@
-// useTutorial.js - VERSIÓN CORREGIDA FINAL
+// useTutorial.js - VERSIÓN CON LIMPIEZA AGRESIVA
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
@@ -7,7 +7,9 @@ export function useTutorial(router) {
   let destroyOriginal = null
   let navegacionProgramada = null
   let yaNavegamosAReportes = false
-  let isTransitioning = false // 🔥 MOVER AQUÍ FUERA
+  let isTransitioning = false
+  let keyPressHandler = null
+  let confirmHandler = null
 
   const driverObj = driver({
     showProgress: true,
@@ -35,6 +37,10 @@ export function useTutorial(router) {
         navegacionProgramada = null
 
         localStorage.removeItem('mj_tutorial_step')
+
+        // 🔥 LIMPIAR LISTENERS ANTES DE DESTRUIR
+        limpiarListeners()
+
         driverObj.destroy()
 
         setTimeout(() => {
@@ -48,7 +54,11 @@ export function useTutorial(router) {
         localStorage.removeItem('mj_tutorial_step')
         navegacionProgramada = null
         yaNavegamosAReportes = false
-        isTransitioning = false // 🔥 RESET AQUÍ TAMBIÉN
+        isTransitioning = false
+
+        // 🔥 LIMPIAR LISTENERS ANTES DE DESTRUIR
+        limpiarListeners()
+
         driverObj.destroy()
       }
     },
@@ -73,7 +83,7 @@ export function useTutorial(router) {
               pasoAnterior = 8
               navegacionProgramada = null
               yaNavegamosAReportes = true
-              isTransitioning = false // 🔥 RESET AL CAMBIAR DE PÁGINA
+              isTransitioning = false
               driverObj.setSteps(pasosDashboard)
               driverObj.drive(9)
               configurarListeners()
@@ -94,6 +104,9 @@ export function useTutorial(router) {
 
         localStorage.setItem('mj_tutorial_step', 'reportes')
         console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
+
+        // 🔥 LIMPIAR LISTENERS ANTES DE NAVEGAR
+        limpiarListeners()
 
         if (destroyOriginal) {
           destroyOriginal()
@@ -270,7 +283,7 @@ export function useTutorial(router) {
       },
     },
     {
-      element: '#contenedor-rango-fecha', // 🔥 SELECTOR CORREGIDO
+      element: '#contenedor-rango-fecha',
       popover: {
         title: 'Rango de Fechas',
         description: 'Define el período del reporte. Haz clic en el icono del calendario.',
@@ -300,12 +313,31 @@ export function useTutorial(router) {
     },
   ]
 
+  // 🔥 NUEVA FUNCIÓN: LIMPIAR LISTENERS
+  function limpiarListeners() {
+    console.log('🧹 Limpiando listeners...')
+
+    if (keyPressHandler) {
+      document.removeEventListener('keydown', keyPressHandler, true)
+      console.log('🗑️ Listener removido')
+      keyPressHandler = null
+    }
+
+    if (confirmHandler) {
+      window.confirm = confirmHandler
+      confirmHandler = null
+    }
+  }
+
   function iniciarTutorial() {
     pasoAnterior = -1
     navegacionProgramada = null
     yaNavegamosAReportes = false
-    isTransitioning = false // 🔥 RESET
+    isTransitioning = false
     localStorage.removeItem('mj_tutorial_step')
+
+    // 🔥 LIMPIAR LISTENERS ANTES DE INICIAR
+    limpiarListeners()
 
     if (driverObj.isActivated) {
       console.log('⚠️ Tutorial activo, destruyendo...')
@@ -331,15 +363,28 @@ export function useTutorial(router) {
       console.log('✅ Iniciando tutorial de reportes...')
       pasoAnterior = -1
       navegacionProgramada = null
-      isTransitioning = false // 🔥 RESET
+      isTransitioning = false
 
       localStorage.removeItem('mj_tutorial_step')
 
+      // 🔥 LIMPIAR LISTENERS ANTES DE INICIAR
+      limpiarListeners()
+
       setTimeout(() => {
         console.log('🎬 Iniciando driver en página de reportes')
+
+        window.scrollTo({ top: 0, behavior: 'instant' })
+
         driverObj.setSteps(pasosReportes)
         driverObj.drive()
-        configurarListeners()
+        configurarListeners() // 🔥 CONFIGURAR LISTENERS FRESCOS
+
+        setTimeout(() => {
+          if (driverObj.isActivated) {
+            driverObj.refresh()
+            console.log('🔄 Posiciones recalculadas')
+          }
+        }, 100)
       }, 1500)
     } else {
       console.log('❌ No hay tutorial pendiente')
@@ -350,56 +395,62 @@ export function useTutorial(router) {
     console.log('⚠️ continuarTutorialDashboard() deprecado - no hace nada')
   }
 
-  // 🔥 FUNCIÓN CORREGIDA - isTransitioning AHORA ES GLOBAL
+  // 🔥 FUNCIÓN CORREGIDA CON LIMPIEZA PREVIA
   function configurarListeners() {
-    let confirmActive = false
+    console.log('🎧 Configurando listeners...')
 
-    const originalConfirm = window.confirm
+    // 🔥 LIMPIAR PRIMERO (por si acaso)
+    limpiarListeners()
+
+    let confirmActive = false
+    confirmHandler = window.confirm
+
     window.confirm = function (...args) {
       confirmActive = true
-      const result = originalConfirm.apply(this, args)
+      const result = confirmHandler.apply(this, args)
       confirmActive = false
       return result
     }
 
-    const handleKeyPress = (e) => {
-      // 🔥 USAR LA VARIABLE GLOBAL isTransitioning
+    // 🔥 CREAR HANDLER CON ID ÚNICO PARA DEBUG
+    const handlerId = Math.random().toString(36).substr(2, 9)
+    console.log(`🆕 Creando handler: ${handlerId}`)
+
+    keyPressHandler = (e) => {
       if (e.key === 'Enter' && !confirmActive && !isTransitioning && driverObj.hasNextStep()) {
-        console.log('✅ Enter aceptado - avanzando paso')
+        console.log(`✅ [${handlerId}] Enter aceptado - avanzando paso`)
 
         e.preventDefault()
         e.stopPropagation()
 
-        // 🔥 BLOQUEAR INMEDIATAMENTE
         isTransitioning = true
-
         driverObj.moveNext()
 
-        // 🔥 DESBLOQUEAR DESPUÉS DE LA ANIMACIÓN
         setTimeout(() => {
           isTransitioning = false
-          console.log('🔓 Transición completada - Enter habilitado nuevamente')
+          console.log('🔓 Transición completada')
         }, 400)
       } else if (e.key === 'Enter' && isTransitioning) {
-        console.log('⚠️ Enter ignorado - transición en curso')
+        console.log(`⚠️ [${handlerId}] Enter ignorado - transición en curso`)
         e.preventDefault()
         e.stopPropagation()
       }
     }
 
-    document.addEventListener('keydown', handleKeyPress, true)
+    document.addEventListener('keydown', keyPressHandler, true)
+    console.log(`✅ Listener ${handlerId} configurado`)
 
     if (!destroyOriginal) {
       destroyOriginal = driverObj.destroy.bind(driverObj)
     }
 
     driverObj.destroy = () => {
-      document.removeEventListener('keydown', handleKeyPress, true)
-      window.confirm = originalConfirm
+      console.log('💥 Destruyendo tutorial')
+      limpiarListeners()
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
       yaNavegamosAReportes = false
-      isTransitioning = false // 🔥 RESET
+      isTransitioning = false
       destroyOriginal()
     }
   }
@@ -408,7 +459,8 @@ export function useTutorial(router) {
     localStorage.removeItem('mj_tutorial_step')
     navegacionProgramada = null
     yaNavegamosAReportes = false
-    isTransitioning = false // 🔥 RESET
+    isTransitioning = false
+    limpiarListeners()
     driverObj.destroy()
   }
 
