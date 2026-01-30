@@ -10,6 +10,7 @@ export function useTutorial(router) {
   let isTransitioning = false
   let keyPressHandler = null
   let confirmHandler = null
+  let yaCambioAHistorial = false
 
   const driverObj = driver({
     showProgress: true,
@@ -71,8 +72,69 @@ export function useTutorial(router) {
         console.log(`📍 Paso ${pasoActual + 1}/${totalPasos}`)
       }
 
+      // 🔥 CAMBIAR AL TAB DE HISTORIAL EN EL PASO 7
+      if (totalPasos === 12 && pasoActual === 7 && !yaCambioAHistorial) {
+        console.log('📑 Cambiando al tab de Historial...')
+        yaCambioAHistorial = true
+
+        // 🔥 RETROCEDER UN PASO PARA "PAUSAR"
+        driverObj.movePrevious()
+
+        // 🔥 BUSCAR Y HACER CLICK EN EL TAB
+        const tabHistorial = document.querySelector('.q-tab[aria-controls="historial"]')
+
+        if (tabHistorial) {
+          console.log('✅ Tab de historial encontrado, haciendo click...')
+          tabHistorial.click()
+
+          // 🔥 ESPERAR A QUE SE COMPLETE LA ANIMACIÓN DEL TAB
+          setTimeout(() => {
+            console.log('🔄 Tab renderizado, avanzando paso...')
+
+            // 🔥 AHORA SÍ AVANZAR AL PASO 7
+            driverObj.moveNext()
+
+            // 🔥 REFRESCAR POSICIONES
+            setTimeout(() => {
+              if (driverObj.isActive()) {
+                driverObj.refresh()
+                console.log('✅ Posiciones actualizadas')
+              }
+            }, 200)
+          }, 600) // 🔥 TIEMPO PARA LA ANIMACIÓN DEL TAB
+        } else {
+          console.error('❌ No se encontró el tab de historial')
+
+          // 🔥 INTENTO ALTERNATIVO
+          const tabs = document.querySelectorAll('.q-tab')
+          console.log('🔍 Buscando entre', tabs.length, 'tabs')
+
+          tabs.forEach((tab) => {
+            if (tab.textContent.includes('Historial')) {
+              console.log('✅ Encontrado por texto, haciendo click...')
+              tab.click()
+
+              setTimeout(() => {
+                console.log('🔄 Avanzando paso después del cambio de tab...')
+                driverObj.moveNext()
+
+                setTimeout(() => {
+                  if (driverObj.isActive()) {
+                    driverObj.refresh()
+                  }
+                }, 200)
+              }, 600)
+            }
+          })
+        }
+
+        // 🔥 IMPORTANTE: Actualizar pasoAnterior para evitar bucles
+        pasoAnterior = 6 // Retrocedimos al paso 6
+        return // Salir para evitar que se ejecute el resto del código
+      }
+
       // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
-      if (totalPasos === 6 && pasoActual === 5) {
+      if (totalPasos === 12 && pasoActual === 11) {
         console.log('🎯 En último paso de reportes, programando navegación')
 
         navegacionProgramada = () => {
@@ -83,15 +145,16 @@ export function useTutorial(router) {
               pasoAnterior = 8
               navegacionProgramada = null
               yaNavegamosAReportes = true
+              yaCambioAHistorial = false
               isTransitioning = false
               driverObj.setSteps(pasosDashboard)
               driverObj.drive(9)
               configurarListeners()
-            }, 1000)
+            }, 500)
           })
         }
       } else {
-        if (navegacionProgramada && pasoActual !== 5) {
+        if (navegacionProgramada && pasoActual !== 11) {
           console.log('⚠️ Limpiando navegación programada (cambio de paso)')
           navegacionProgramada = null
         }
@@ -105,7 +168,6 @@ export function useTutorial(router) {
         localStorage.setItem('mj_tutorial_step', 'reportes')
         console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
 
-        // 🔥 LIMPIAR LISTENERS ANTES DE NAVEGAR
         limpiarListeners()
 
         if (destroyOriginal) {
@@ -264,6 +326,18 @@ export function useTutorial(router) {
   ]
 
   const pasosReportes = [
+    // 🔥 PASO 0: TABS
+    {
+      element: '#tabs-reportes',
+      popover: {
+        title: 'Secciones de Reportes',
+        description:
+          'Aquí puedes crear nuevos reportes o ver tu historial de reportes generados anteriormente.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    // 🔥 PASO 1: TIPO DE INFORME
     {
       element: '#tipo-informe-card',
       popover: {
@@ -273,6 +347,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
+    // 🔥 PASO 2: REPORTAR POR
     {
       element: '#q-select-reportar',
       popover: {
@@ -282,6 +357,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
+    // 🔥 PASO 3: RANGO DE FECHAS
     {
       element: '#contenedor-rango-fecha',
       popover: {
@@ -291,6 +367,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
+    // 🔥 PASO 4: COLUMNAS
     {
       element: '#card-columnas-personalizacion',
       popover: {
@@ -301,22 +378,75 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
+    // 🔥 PASO 5: BOTONES DE GENERAR
     {
       element: '.btn-pdf',
       popover: {
-        title: 'Generar Reporte PDF',
-        description: 'Genera tu reporte en PDF.',
+        title: 'Generar Reportes en PDF',
+        description: 'Genera tu reporte en PDF con las columnas seleccionadas.',
         side: 'top',
         align: 'center',
       },
     },
     {
-      element: '#btn-generar-excel',
+      element: '.btn-excel',
       popover: {
-        title: 'Generar Reporte Excel',
+        title: 'Generar Reportes en Excel',
         description:
-          'Genera tu reporte en Formato Excel. Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
+          'Genera tu reporte en Excel con las columnas seleccionadas, al darle a Siguiente iremos al tab de Historial.',
         side: 'top',
+        align: 'center',
+      },
+    },
+    // 🔥 PASO 6: TABLA DE HISTORIAL
+    {
+      element: '#tabla-historial',
+      popover: {
+        title: 'Historial de Reportes',
+        description:
+          'Aquí se mostrarán todos los reportes que hayas generado, tanto en PDF como en Excel. Podrás descargarlos o verlos en vista previa en cualquier momento.',
+        side: 'top',
+        align: 'start',
+      },
+    },
+    // 🔥 PASO 7: BOTONES DE ACCIONES
+    {
+      element: '#btn-accion-descargar',
+      popover: {
+        title: 'Descargar',
+        description: 'Usa el botón de descarga para guardar el reporte en tu dispositivo',
+        side: 'left',
+        align: 'center',
+      },
+    },
+    {
+      element: '#btn-accion-vista',
+      popover: {
+        title: 'Vista Previa',
+        description:
+          'Usa el botón de vista previa para ver el contenido del reporte sin descargarlo.',
+        side: 'left',
+        align: 'center',
+      },
+    },
+    // 🔥 PASO 8: PAGINACIÓN
+    {
+      element: '.q-table__bottom',
+      popover: {
+        title: 'Navegación de Historial',
+        description:
+          'Aquí puedes ver cuántos reportes tienes, navegar entre páginas y cambiar cuántos elementos se muestran por página.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+    // 🔥 PASO 9: FINAL
+    {
+      popover: {
+        title: '¡Tutorial de Reportes Completado!',
+        description:
+          'Ya conoces cómo crear reportes personalizados y gestionar tu historial. Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
+        side: 'center',
         align: 'center',
       },
     },
@@ -342,6 +472,7 @@ export function useTutorial(router) {
     pasoAnterior = -1
     navegacionProgramada = null
     yaNavegamosAReportes = false
+    yaCambioAHistorial = false
     isTransitioning = false
     localStorage.removeItem('mj_tutorial_step')
 
@@ -372,6 +503,7 @@ export function useTutorial(router) {
       console.log('✅ Iniciando tutorial de reportes...')
       pasoAnterior = -1
       navegacionProgramada = null
+      yaCambioAHistorial = false
       isTransitioning = false
 
       localStorage.removeItem('mj_tutorial_step')
@@ -394,7 +526,7 @@ export function useTutorial(router) {
             console.log('🔄 Posiciones recalculadas')
           }
         }, 100)
-      }, 1500)
+      }, 300)
     } else {
       console.log('❌ No hay tutorial pendiente')
     }
@@ -493,6 +625,7 @@ export function useTutorial(router) {
     localStorage.removeItem('mj_tutorial_step')
     navegacionProgramada = null
     yaNavegamosAReportes = false
+    yaCambioAHistorial = false
     isTransitioning = false
     limpiarListeners()
     driverObj.destroy()

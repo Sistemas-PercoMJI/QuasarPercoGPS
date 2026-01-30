@@ -4,6 +4,7 @@
     <div class="text-h4 text-weight-bold q-mb-md">Reportes</div>
 
     <q-tabs
+      id="tabs-reportes"
       v-model="tab"
       dense
       class="text-grey"
@@ -500,6 +501,7 @@
         <p class="text-grey-7">Lista de reportes generados anteriormente</p>
 
         <q-table
+          id="tabla-historial"
           flat
           bordered
           :rows="reportesAnteriores"
@@ -528,6 +530,7 @@
           <template v-slot:body-cell-acciones="props">
             <q-td :props="props">
               <q-btn
+                id="btn-accion-descargar"
                 flat
                 dense
                 icon="download"
@@ -541,6 +544,7 @@
 
               <!-- 🆕 Botón con lógica condicional -->
               <q-btn
+                id="btn-accion-vista"
                 flat
                 dense
                 icon="open_in_new"
@@ -550,11 +554,7 @@
                 @click="abrirVistaPrevia(props.row)"
               >
                 <q-tooltip>
-                  {{
-                    props.row.tipoArchivo === 'pdf'
-                      ? 'Ver en nueva pestaña'
-                      : 'Vista previa en Google Sheets'
-                  }}
+                  {{ props.row.tipoArchivo === 'pdf' ? 'Ver en nueva pestaña' : 'Vista previa' }}
                 </q-tooltip>
               </q-btn>
             </q-td>
