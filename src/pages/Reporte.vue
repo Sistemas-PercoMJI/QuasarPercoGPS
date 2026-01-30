@@ -469,6 +469,7 @@
                 :disable="generando"
               />
               <q-btn
+                id="btn-generar-excel"
                 color="positive"
                 label="Generar Excel"
                 icon="table_chart"

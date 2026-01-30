@@ -72,7 +72,7 @@ export function useTutorial(router) {
       }
 
       // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
-      if (totalPasos === 5 && pasoActual === 4) {
+      if (totalPasos === 6 && pasoActual === 5) {
         console.log('🎯 En último paso de reportes, programando navegación')
 
         navegacionProgramada = () => {
@@ -91,7 +91,7 @@ export function useTutorial(router) {
           })
         }
       } else {
-        if (navegacionProgramada && pasoActual !== 4) {
+        if (navegacionProgramada && pasoActual !== 5) {
           console.log('⚠️ Limpiando navegación programada (cambio de paso)')
           navegacionProgramada = null
         }
@@ -304,9 +304,18 @@ export function useTutorial(router) {
     {
       element: '.btn-pdf',
       popover: {
-        title: 'Generar Reportes',
+        title: 'Generar Reporte PDF',
+        description: 'Genera tu reporte en PDF.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+    {
+      element: '#btn-generar-excel',
+      popover: {
+        title: 'Generar Reporte Excel',
         description:
-          'Genera tu reporte en PDF o Excel. Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
+          'Genera tu reporte en Formato Excel. Al hacer clic en "¡Entendido! ✓" regresaremos al dashboard.',
         side: 'top',
         align: 'center',
       },
