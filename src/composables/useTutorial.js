@@ -278,7 +278,7 @@ export function useTutorial(router) {
         side: 'right',
         align: 'start',
       },
-    },
+    }, //AQUI ES DONDE SE PONE CAPAS Y DESPUES MANDA A REPORTES
     {
       element: '.layers-menu-btn',
       popover: {
@@ -406,7 +406,7 @@ export function useTutorial(router) {
         description:
           'Aquí se mostrarán todos los reportes que hayas generado, tanto en PDF como en Excel. Podrás descargarlos o verlos en vista previa en cualquier momento.',
         side: 'top',
-        align: 'start',
+        align: 'center',
       },
     },
     // 🔥 PASO 7: BOTONES DE ACCIONES
