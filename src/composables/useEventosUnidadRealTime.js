@@ -1,7 +1,7 @@
 // composables/useEventosUnidadRealTime.js
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, getDocs, onSnapshot } from 'firebase/firestore'
 
 export function useEventosUnidadRealTime() {
   const eventosUnidad = ref([])
@@ -9,15 +9,11 @@ export function useEventosUnidadRealTime() {
   const errorEventos = ref(null)
   let unsubscribe = null
 
-  /**
-   * Obtener eventos del día en tiempo real para una unidad
-   * @param {string} unidadId - ID de la unidad
-   * @param {Date} fecha - Fecha para buscar eventos (default: hoy)
-   */
-  const escucharEventosDia = (unidadId, fecha = new Date()) => {
-    // Limpiar listener anterior si existe
+  const escucharEventosDia = async (unidadId, fecha = new Date()) => {
     if (unsubscribe) {
+      console.log('🛑 Deteniendo listener anterior')
       unsubscribe()
+      unsubscribe = null
     }
 
     if (!unidadId) {
@@ -29,170 +25,159 @@ export function useEventosUnidadRealTime() {
     loadingEventos.value = true
     errorEventos.value = null
 
+    const fechaStr = fecha.toISOString().split('T')[0]
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📡 INICIANDO LISTENER DE EVENTOS')
+    console.log('   Unidad:', unidadId)
+    console.log('   Fecha:', fechaStr)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
     try {
-      // Formatear fecha como YYYY-MM-DD
-      const fechaStr = fecha.toISOString().split('T')[0]
-
-      console.log(`📡 Escuchando eventos para unidad ${unidadId} del día ${fechaStr}`)
-
-      // Ruta: /Unidades/{unidadId}/RutaDiaria/{fechaStr}/EventoDiario
       const eventosRef = collection(
         db,
         'Unidades',
-        unidadId,
+        String(unidadId), // 🔥 Convertir a string
         'RutaDiaria',
         fechaStr,
         'EventoDiario',
       )
 
-      // Query ordenada por timestamp descendente (más reciente primero)
-      const q = query(eventosRef, orderBy('timestamp', 'desc'))
+      const q = query(eventosRef)
 
-      // Escuchar cambios en tiempo real
+      console.log('✅ Query creada')
+
+      // 🔍 DEBUG
+      const testSnapshot = await getDocs(eventosRef)
+      console.log(`🔍 TEST: ${testSnapshot.size} documentos encontrados`)
+
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          console.log(`✅ ${snapshot.size} eventos recibidos en tiempo real`)
+          console.log(`✅ ${snapshot.size} eventos recibidos`)
 
-          eventosUnidad.value = snapshot.docs.map((doc) => {
+          if (snapshot.size === 0) {
+            console.warn('⚠️ No hay eventos')
+            eventosUnidad.value = []
+            loadingEventos.value = false
+            return
+          }
+
+          // 🔥 Usar Set para evitar duplicados por ID
+          const eventosMap = new Map()
+
+          snapshot.docs.forEach((doc) => {
             const data = doc.data()
 
-            return {
-              id: doc.id,
+            let horaExacta = ''
+            if (data.Timestamp) {
+              try {
+                const fecha = data.Timestamp.toDate()
+                horaExacta = fecha.toLocaleTimeString('es-MX', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              } catch (error) {
+                console.error('Error formateando hora:', error)
+              }
+            }
 
-              // Información del evento
-              titulo: data.eventoTitulo || data.titulo || 'Evento',
-              descripcion: data.accion || data.descripcion || '',
-              accion: data.accion || '',
-
-              // Ubicación
-              ubicacion: data.ubicacionNombre || data.ubicacion || 'Ubicación desconocida',
-              ubicacionId: data.ubicacionId || null,
-              tipoUbicacion: data.tipoUbicacion || data.tipo || '',
-
-              // Coordenadas
-              coordenadas: data.coordenadas || data.ubicacionCoords || null,
-
-              // Conductor
-              conductorId: data.conductorId || null,
-              conductorNombre: data.conductorNombre || 'Sin conductor',
-
-              // Timestamps
-              timestamp: data.timestamp,
-              fecha: data.fecha || fechaStr,
-              hora: data.hora || '',
-              fechaTexto: formatearFechaHora(data.timestamp),
-
-              // Visuales
-              icono: obtenerIconoEvento(data),
-              color: obtenerColorEvento(data),
-
-              // Datos raw por si se necesitan
-              raw: data,
+            // 🔥 Solo agregar si no existe en el Map
+            if (!eventosMap.has(doc.id)) {
+              eventosMap.set(doc.id, {
+                id: doc.id,
+                titulo: data.NombreEvento || data.GeozonaNombre || 'Evento',
+                descripcion: data.TipoEvento || '',
+                accion: data.TipoEvento || '',
+                ubicacion: data.GeozonaNombre || 'Ubicación desconocida',
+                ubicacionId: data.ubicacionId || data.IdEvento || null,
+                tipoUbicacion: data.tipoUbicacion || 'Geozona',
+                coordenadas: data.coordenadas || data.Coordenadas || null,
+                conductorId: data.conductorId || null,
+                conductorNombre: data.conductorNombre || 'Sin conductor',
+                unidadId: data.idUnidad || unidadId,
+                timestamp: data.Timestamp,
+                fecha: fechaStr,
+                hora: horaExacta,
+                fechaTexto: formatearFechaHora(data.Timestamp),
+                icono: obtenerIconoEvento(data),
+                color: obtenerColorEvento(data),
+                raw: data,
+              })
             }
           })
 
+          // Convertir Map a Array y ordenar
+          let eventosArray = Array.from(eventosMap.values())
+
+          eventosArray.sort((a, b) => {
+            if (!a.timestamp || !b.timestamp) return 0
+            const fechaA = a.timestamp.toDate()
+            const fechaB = b.timestamp.toDate()
+            return fechaB - fechaA
+          })
+
+          eventosUnidad.value = eventosArray
           loadingEventos.value = false
+          console.log('✅ Eventos únicos cargados:', eventosUnidad.value.length)
         },
         (error) => {
-          console.error('❌ Error escuchando eventos:', error)
+          console.error('❌ ERROR EN SNAPSHOT:', error)
           errorEventos.value = error.message
           eventosUnidad.value = []
           loadingEventos.value = false
         },
       )
+
+      console.log('✅ Listener configurado')
     } catch (error) {
-      console.error('❌ Error configurando listener:', error)
+      console.error('❌ ERROR:', error)
       errorEventos.value = error.message
       eventosUnidad.value = []
       loadingEventos.value = false
     }
   }
 
-  /**
-   * Detener el listener de eventos
-   */
   const detenerEscucha = () => {
     if (unsubscribe) {
-      console.log('🛑 Deteniendo listener de eventos')
+      console.log('🛑 Deteniendo listener')
       unsubscribe()
       unsubscribe = null
     }
     eventosUnidad.value = []
+    loadingEventos.value = false
   }
 
-  /**
-   * Formatear timestamp a texto legible
-   */
   const formatearFechaHora = (timestamp) => {
     if (!timestamp) return 'Fecha desconocida'
-
     try {
-      const fecha = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-
-      const opciones = {
+      const fecha = timestamp.toDate()
+      return fecha.toLocaleDateString('es-MX', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
-      }
-
-      return fecha.toLocaleDateString('es-MX', opciones)
+      })
     } catch (error) {
-      console.warn('Error formateando fecha:', error)
+      console.error('Error formateando fecha/hora:', error)
       return 'Fecha inválida'
     }
   }
 
-  /**
-   * Obtener icono según el tipo de evento
-   */
   const obtenerIconoEvento = (data) => {
-    const accion = (data.accion || '').toLowerCase()
-    const tipo = (data.tipoUbicacion || data.tipo || '').toLowerCase()
-
-    // Entrada
-    if (accion.includes('entrada') || accion.includes('entró')) {
-      return 'login'
-    }
-
-    // Salida
-    if (accion.includes('salida') || accion.includes('salió')) {
-      return 'logout'
-    }
-
-    // Por tipo de ubicación
-    if (tipo === 'poi' || tipo === 'punto') {
-      return 'place'
-    }
-
-    if (tipo === 'geozona') {
-      return 'map'
-    }
-
-    // Default
-    return 'notification_important'
+    const tipo = (data.TipoEvento || '').toLowerCase()
+    if (tipo.includes('entrada') || tipo.includes('entró')) return 'login'
+    if (tipo.includes('salida') || tipo.includes('salió')) return 'logout'
+    return 'place'
   }
 
-  /**
-   * Obtener color según el tipo de evento
-   */
   const obtenerColorEvento = (data) => {
-    const accion = (data.accion || '').toLowerCase()
-
-    // Entrada = Verde
-    if (accion.includes('entrada') || accion.includes('entró')) {
-      return 'green'
-    }
-
-    // Salida = Naranja/Rojo
-    if (accion.includes('salida') || accion.includes('salió')) {
-      return 'orange'
-    }
-
-    // Default = Azul
+    const tipo = (data.TipoEvento || '').toLowerCase()
+    if (tipo.includes('entrada') || tipo.includes('entró')) return 'green'
+    if (tipo.includes('salida') || tipo.includes('salió')) return 'orange'
     return 'blue'
   }
 

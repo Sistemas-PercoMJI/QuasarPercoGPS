@@ -532,6 +532,8 @@
                   v-for="evento in eventosFiltrados"
                   :key="evento.id"
                   class="evento-notification-card"
+                  @click="mostrarEventoEnMapa(evento)"
+                  style="cursor: pointer"
                 >
                   <!-- Header con icono y título -->
                   <div class="evento-header">
@@ -596,57 +598,46 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
-import { useEventosUnidad } from 'src/composables/useEventosUnidad'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTime'
-import { onUnmounted } from 'vue'
 
-// 🆕 IMPORTAR idEmpresaActual
-const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
-
-// Composables
+// ==================== COMPOSABLES ====================
+const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
-const { obtenerEventosDiarios } = useEventosUnidad()
-const { crearQueryConEmpresa } = useMultiTenancy()
 
+// Eventos en tiempo real
+const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
+  useEventosUnidadRealTime()
+
+// ==================== PROPS & EMITS ====================
 const props = defineProps({
-  vehiculo: {
-    type: Object,
-    required: true,
-  },
+  vehiculo: { type: Object, required: true },
 })
 
-// Props y emits
-const emit = defineEmits([
-  'close',
-  'vehiculo-seleccionado',
-  'vehiculo-mapa',
-  'cerrar',
-  'mostrarRuta',
-  'update:modelValue',
-])
+const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
 
-// Estado local - Vista general
+// ==================== ESTADO LOCAL ====================
+// Vista general
 const vehiculoSeleccionado = ref(null)
 const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
 const tabActual = ref('resumen')
 
-// Estado para conductores
+// Conductores
 const conductoresLista = ref([])
 const cargandoConductores = ref(false)
 
-// Estado - Tab Resumen
+// Tab Resumen
 const estadisticasVehiculo = ref(null)
 const loadingEstadisticas = ref(false)
 
-// Estado - Tab Hoy
+// Tab Hoy
 const fechaSeleccionada = ref(new Date())
 const trayectosDia = ref([])
 const resumenDia = ref(null)
@@ -654,50 +645,20 @@ const loadingHistorial = ref(false)
 const horaInicio = ref('00:00')
 const horaFin = ref('23:59')
 
-// Estado - Tab Notificaciones
+// Tab Notificaciones
 const filtroNotificaciones = ref('Todo')
-const eventosUnidad = ref([])
-const loadingEventos = ref(false)
-const { escucharEventosDia, detenerEscucha } = useEventosUnidadRealTime()
 const fechaSeleccionadaEventos = ref(new Date())
 const horaInicioEventos = ref('00:00')
 const horaFinEventos = ref('23:59')
 
-watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
-  // Detener escucha anterior si existía
-  if (vehiculoAnterior) {
-    detenerEscucha()
-  }
-
-  if (nuevoVehiculo) {
-    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
-
-    fechaSeleccionada.value = new Date()
-    horaInicio.value = '00:00'
-    horaFin.value = '23:59'
-    await cargarTrayectosDia()
-
-    // 🆕 Iniciar escucha en tiempo real de eventos
-    escucharEventosDia(nuevoVehiculo.id, new Date())
-  } else {
-    estadisticasVehiculo.value = null
-    trayectosDia.value = []
-    resumenDia.value = null
-    eventosUnidad.value = []
-  }
-})
-
-// ==================== FUNCIONES PARA CONDUCTORES ====================
+// ==================== FUNCIONES CONDUCTORES ====================
 
 const cargarConductoresFirebase = async () => {
   cargandoConductores.value = true
   try {
     const { query, orderBy, getDocs } = await import('firebase/firestore')
-
-    // Aplicar filtro de empresa
     const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
     const qOrdenado = query(q, orderBy('Nombre'))
-
     const snapshot = await getDocs(qOrdenado)
 
     conductoresLista.value = snapshot.docs.map((doc) => ({
@@ -705,7 +666,7 @@ const cargarConductoresFirebase = async () => {
       ...doc.data(),
     }))
 
-    console.log(`✅ ${conductoresLista.value.length} conductores de la empresa cargados`)
+    console.log(`✅ ${conductoresLista.value.length} conductores cargados`)
     return conductoresLista.value
   } catch (error) {
     console.error('❌ Error cargando conductores:', error)
@@ -717,7 +678,6 @@ const cargarConductoresFirebase = async () => {
 
 const obtenerConductorDeUnidad = (unidadId) => {
   if (!unidadId || !conductoresLista.value.length) return null
-
   const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === unidadId)
 
   if (conductor) {
@@ -730,32 +690,27 @@ const obtenerConductorDeUnidad = (unidadId) => {
       datosCompletos: conductor,
     }
   }
-
   return null
 }
 
 // ==================== COMPUTED ====================
 
-// 🔥 VALIDACIÓN ADICIONAL: Filtrar unidades por empresa
+// Filtrar unidades por empresa
 const unidadesFiltradas = computed(() => {
   if (!idEmpresaActual.value) {
-    console.warn('⚠️ No hay IdEmpresa, no se muestran unidades')
+    console.warn('⚠️ No hay IdEmpresa')
     return []
   }
 
-  // 🔥 Filtrar por IdEmpresaUnidad (seguridad adicional)
   return unidadesActivas.value.filter((unidad) => {
-    // Si es array de empresas (multi-tenant)
     if (Array.isArray(idEmpresaActual.value)) {
       return idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
     }
-
-    // Si es string simple
     return unidad.IdEmpresaUnidad === idEmpresaActual.value
   })
 })
 
-// Computed - Convertir unidades activas a formato de vehículos
+// Convertir unidades a formato de vehículos
 const vehiculos = computed(() => {
   return unidadesFiltradas.value.map((unidad) => {
     const infoConductor = obtenerConductorDeUnidad(unidad.id)
@@ -768,58 +723,25 @@ const vehiculos = computed(() => {
       coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
       velocidad: `${unidad.velocidad} km/h`,
       estado: unidad.estado,
-
-      // INFORMACIÓN DEL CONDUCTOR
       conductor: infoConductor ? infoConductor.nombre : 'Sin conductor',
       conductorId: infoConductor ? infoConductor.id : null,
       conductorTelefono: infoConductor ? infoConductor.telefono : null,
       conductorLicencia: infoConductor ? infoConductor.licencia : null,
-
       placa: unidad.unidadPlaca,
       ignicion: unidad.ignicion,
       bateria: unidad.bateria,
       timestamp: unidad.timestamp,
       timestampCambioEstado: unidad.timestamp_cambio_estado,
-
-      // Datos calculados dinámicamente
       tiempoConductionHoy: estadisticasVehiculo.value?.tiempoConductionHoy || 'Cargando...',
       duracionEstado: calcularDuracionEstado(unidad.timestamp_cambio_estado, unidad.timestamp),
       ultimaSincronizacion: formatearFechaHora(unidad.timestamp),
       fechaHora: formatearFechaHora(unidad.timestamp),
-
       notificaciones: 0,
     }
   })
 })
 
-const mostrarRutaEnMapa = (trayecto) => {
-  console.log('Mostrando ruta del trayecto:', trayecto)
-  console.log('Color del trayecto:', trayecto.color) // 🔍 DEBUG
-
-  // Asegurarnos de que tenga un color fosforescente
-  const trayectoConColor = {
-    ...trayecto,
-    color: trayecto.color || '#00E5FF', // Cyan neón por defecto
-  }
-
-  if (window.dibujarRutaTrayecto) {
-    window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
-  }
-}
-
-const cerrarDrawer = () => {
-  console.log('🚪 Cerrando drawer y limpiando ruta...')
-
-  // Limpiar ruta del mapa
-  if (window.limpiarRuta) {
-    window.limpiarRuta()
-  }
-
-  // Solo emitir cerrar
-  emit('close')
-}
-
-// Computed para estados
+// Estados de vehículos
 const estadosVehiculos = computed(() => {
   const conteo = contarPorEstado()
   return [
@@ -863,83 +785,52 @@ const vehiculosFiltrados = computed(() => {
   }
 
   if (busqueda.value) {
+    const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
       (v) =>
-        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.conductor.toLowerCase().includes(busqueda.value.toLowerCase()),
+        v.nombre.toLowerCase().includes(busquedaLower) ||
+        v.ubicacion.toLowerCase().includes(busquedaLower) ||
+        v.conductor.toLowerCase().includes(busquedaLower),
     )
   }
 
   return resultado
 })
 
+// Trayectos filtrados por hora
 const trayectosFiltradosPorHora = computed(() => {
-  if (!trayectosDia.value || trayectosDia.value.length === 0) {
-    return []
-  }
-
-  if (!horaInicio.value || !horaFin.value) {
-    return trayectosDia.value
-  }
+  if (!trayectosDia.value || trayectosDia.value.length === 0) return []
+  if (!horaInicio.value || !horaFin.value) return trayectosDia.value
 
   const [horaInicioNum, minInicioNum] = horaInicio.value.split(':').map(Number)
   const [horaFinNum, minFinNum] = horaFin.value.split(':').map(Number)
-
   const minutosInicio = horaInicioNum * 60 + minInicioNum
   const minutosFin = horaFinNum * 60 + minFinNum
 
   return trayectosDia.value.filter((trayecto) => {
     const horaStr = trayecto.horaInicio.toLowerCase().trim()
     const match = horaStr.match(/(\d+):(\d+)\s*(a\.?m\.?|p\.?m\.?)/i)
-
-    if (!match) {
-      console.warn('⚠️ No se pudo parsear la hora:', horaStr)
-      return true
-    }
+    if (!match) return true
 
     let hora = parseInt(match[1])
     const minuto = parseInt(match[2])
     const periodo = match[3].toLowerCase().replace(/\./g, '')
 
-    if (periodo === 'pm' && hora !== 12) {
-      hora += 12
-    } else if (periodo === 'am' && hora === 12) {
-      hora = 0
-    }
+    if (periodo === 'pm' && hora !== 12) hora += 12
+    else if (periodo === 'am' && hora === 12) hora = 0
 
     const minutosTrayecto = hora * 60 + minuto
     return minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
   })
 })
 
-const cambiarDiaEventos = (dias) => {
-  const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
-  nuevaFecha.setDate(nuevaFecha.getDate() + dias)
-
-  const hoy = new Date()
-  hoy.setHours(23, 59, 59, 999)
-
-  if (nuevaFecha <= hoy) {
-    fechaSeleccionadaEventos.value = nuevaFecha
-  }
-}
-
-// 🆕 Función para resetear filtros
-const resetearFiltroEventos = () => {
-  horaInicioEventos.value = '00:00'
-  horaFinEventos.value = '23:59'
-  filtroNotificaciones.value = 'Todo'
-}
-
+// Eventos filtrados
 const eventosFiltrados = computed(() => {
-  if (!eventosUnidad.value || eventosUnidad.value.length === 0) {
-    return []
-  }
+  if (!eventosUnidad.value || eventosUnidad.value.length === 0) return []
 
   let resultado = eventosUnidad.value
 
-  // Filtro por tipo (Todo, Entradas, Salidas)
+  // Filtro por tipo
   if (filtroNotificaciones.value === 'Entradas') {
     resultado = resultado.filter((e) => {
       const accion = e.accion?.toLowerCase() || ''
@@ -952,11 +843,10 @@ const eventosFiltrados = computed(() => {
     })
   }
 
-  // 🆕 Filtro por rango de horas
+  // Filtro por rango de horas
   if (horaInicioEventos.value && horaFinEventos.value) {
     const [horaInicioNum, minInicioNum] = horaInicioEventos.value.split(':').map(Number)
     const [horaFinNum, minFinNum] = horaFinEventos.value.split(':').map(Number)
-
     const minutosInicio = horaInicioNum * 60 + minInicioNum
     const minutosFin = horaFinNum * 60 + minFinNum
 
@@ -970,55 +860,14 @@ const eventosFiltrados = computed(() => {
         const hora = fecha.getHours()
         const minutos = fecha.getMinutes()
         const minutosEvento = hora * 60 + minutos
-
         return minutosEvento >= minutosInicio && minutosEvento <= minutosFin
-      } catch (error) {
-        console.warn('Error procesando timestamp:', error)
+      } catch {
         return true
       }
     })
   }
 
   return resultado
-})
-
-watch(fechaSeleccionadaEventos, (nuevaFecha) => {
-  if (vehiculoSeleccionado.value) {
-    console.log('📅 Cambiando fecha de eventos a:', nuevaFecha.toISOString().split('T')[0])
-    escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
-  }
-})
-
-// Actualizar el watcher de vehiculoSeleccionado:
-watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
-  // Detener escucha anterior si existía
-  if (vehiculoAnterior) {
-    detenerEscucha()
-  }
-
-  if (nuevoVehiculo) {
-    await cargarEstadisticasVehiculo(nuevoVehiculo.id)
-
-    // Tab "Hoy"
-    fechaSeleccionada.value = new Date()
-    horaInicio.value = '00:00'
-    horaFin.value = '23:59'
-    await cargarTrayectosDia()
-
-    // 🆕 Tab "Notificaciones" - Resetear filtros
-    fechaSeleccionadaEventos.value = new Date()
-    horaInicioEventos.value = '00:00'
-    horaFinEventos.value = '23:59'
-    filtroNotificaciones.value = 'Todo'
-
-    // Iniciar escucha en tiempo real de eventos
-    escucharEventosDia(nuevoVehiculo.id, fechaSeleccionadaEventos.value)
-  } else {
-    estadisticasVehiculo.value = null
-    trayectosDia.value = []
-    resumenDia.value = null
-    eventosUnidad.value = []
-  }
 })
 
 // ==================== FUNCIONES ====================
@@ -1043,11 +892,8 @@ const cargarTrayectosDia = async () => {
       vehiculoSeleccionado.value.id,
       fechaSeleccionada.value,
     )
-
     trayectosDia.value = resultado.trayectos
     resumenDia.value = resultado.resumen
-
-    console.log('📋 Trayectos del día:', resultado)
   } catch (err) {
     console.error('Error cargando trayectos:', err)
     trayectosDia.value = []
@@ -1057,36 +903,215 @@ const cargarTrayectosDia = async () => {
   }
 }
 
-const cargarEventosUnidad = async (unidadId) => {
-  loadingEventos.value = true
-  try {
-    console.log(`📊 Cargando eventos diarios para unidad ${unidadId}`)
-    const eventos = await obtenerEventosDiarios(unidadId, 50)
-    eventosUnidad.value = eventos
-    console.log(`✅ ${eventos.length} eventos cargados`)
-  } catch (err) {
-    console.error('Error cargando eventos:', err)
-    eventosUnidad.value = []
-  } finally {
-    loadingEventos.value = false
-  }
-}
-
 const cambiarDia = (dias) => {
   const nuevaFecha = new Date(fechaSeleccionada.value)
   nuevaFecha.setDate(nuevaFecha.getDate() + dias)
-
   const hoy = new Date()
   hoy.setHours(23, 59, 59, 999)
-
   if (nuevaFecha <= hoy) {
     fechaSeleccionada.value = nuevaFecha
+  }
+}
+
+const cambiarDiaEventos = (dias) => {
+  const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
+  nuevaFecha.setDate(nuevaFecha.getDate() + dias)
+  const hoy = new Date()
+  hoy.setHours(23, 59, 59, 999)
+  if (nuevaFecha <= hoy) {
+    fechaSeleccionadaEventos.value = nuevaFecha
   }
 }
 
 const resetearFiltroHoras = () => {
   horaInicio.value = '00:00'
   horaFin.value = '23:59'
+}
+
+const resetearFiltroEventos = () => {
+  horaInicioEventos.value = '00:00'
+  horaFinEventos.value = '23:59'
+  filtroNotificaciones.value = 'Todo'
+}
+
+// Mostrar ruta en mapa (trayectos)
+const mostrarRutaEnMapa = (trayecto) => {
+  const trayectoConColor = {
+    ...trayecto,
+    color: trayecto.color || '#00E5FF',
+  }
+
+  if (window.dibujarRutaTrayecto) {
+    window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
+  }
+}
+
+// 🆕 Mostrar evento en mapa
+const mostrarEventoEnMapa = async (evento) => {
+  if (!evento.coordenadas) {
+    console.warn('⚠️ Evento sin coordenadas')
+    return
+  }
+
+  console.log('📍 Mostrando evento en mapa:', evento)
+
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    console.warn('⚠️ Mapa no disponible')
+    return
+  }
+
+  const map = mapPage._mapaAPI.map
+  const { lat, lng } = evento.coordenadas
+
+  const mapboxgl = (await import('mapbox-gl')).default
+
+  // Limpiar marcador anterior
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+  }
+
+  const esEntrada = evento.accion?.toLowerCase().includes('entrada')
+  const color = esEntrada ? '#4CAF50' : '#FF6D00'
+  const icono = esEntrada ? '→' : '←'
+
+  const markerHTML = `
+    <div style="
+      background: ${color};
+      width: 45px;
+      height: 45px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 4px solid white;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      animation: bounce 0.5s ease;
+    ">
+      <div style="
+        transform: rotate(45deg);
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+      ">${icono}</div>
+    </div>
+  `
+
+  const el = document.createElement('div')
+  el.innerHTML = markerHTML
+  el.className = 'marcador-evento-custom'
+
+  // 🔥 Obtener conductor de la unidad
+  const infoConductor = obtenerConductorDeEvento(evento.unidadId)
+  const conductorNombre = infoConductor ? infoConductor.nombre : 'Sin conductor'
+
+  window.marcadorEvento = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
+
+  // 🔥 Popup mejorado con más info
+  const popup = new mapboxgl.Popup({
+    offset: 30,
+    maxWidth: '300px',
+    closeButton: true,
+    closeOnClick: false,
+  }).setHTML(`
+    <div style="padding: 12px; font-family: 'Roboto', sans-serif;">
+      <div style="
+        font-weight: 700;
+        font-size: 16px;
+        color: ${color};
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <span style="font-size: 20px;">${icono}</span>
+        ${evento.titulo}
+      </div>
+
+      <div style="
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+        padding: 8px;
+        background: #f5f5f5;
+        border-radius: 6px;
+      ">
+        <strong>${evento.descripcion}</strong>
+      </div>
+
+      <div style="font-size: 12px; color: #999; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span>🕐</span>
+          <strong style="color: #333;">${evento.hora}</strong>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span>📍</span>
+          <span>${evento.ubicacion}</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span>👤</span>
+          <span>${conductorNombre}</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 10px;">
+          <span>🌐</span>
+          <span>${lat.toFixed(6)}, ${lng.toFixed(6)}</span>
+        </div>
+      </div>
+    </div>
+  `)
+
+  window.marcadorEvento.setPopup(popup)
+
+  // Hacer zoom
+  map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  // Abrir popup
+  setTimeout(() => {
+    popup.addTo(map)
+  }, 1600)
+
+  console.log('✅ Evento marcado en el mapa')
+}
+
+// En el script setup de EstadoFlota.vue, agregar esta función helper:
+
+const obtenerConductorDeEvento = (unidadId) => {
+  if (!unidadId || !conductoresLista.value.length) return null
+
+  // Buscar conductor por UnidadAsignada
+  const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === String(unidadId))
+
+  if (conductor) {
+    return {
+      id: conductor.id,
+      nombre: conductor.Nombre,
+      telefono: conductor.Telefono,
+    }
+  }
+  return null
+}
+
+const cerrarDrawer = () => {
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
+  }
+
+  emit('close')
 }
 
 function seleccionarEstado(estado) {
@@ -1168,44 +1193,60 @@ function getEstadoTexto(estado) {
 
 // ==================== WATCHERS ====================
 
-watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
+// UN SOLO WATCHER para vehiculoSeleccionado
+watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
+  console.log('🔄 Cambio de vehículo:', nuevoVehiculo?.nombre)
+
+  if (vehiculoAnterior) {
+    detenerEscucha()
+  }
+
   if (nuevoVehiculo) {
+    // Tab Resumen
     await cargarEstadisticasVehiculo(nuevoVehiculo.id)
 
+    // Tab Hoy
     fechaSeleccionada.value = new Date()
     horaInicio.value = '00:00'
     horaFin.value = '23:59'
     await cargarTrayectosDia()
 
-    await cargarEventosUnidad(nuevoVehiculo.id)
+    // Tab Notificaciones
+    fechaSeleccionadaEventos.value = new Date()
+    horaInicioEventos.value = '00:00'
+    horaFinEventos.value = '23:59'
+    filtroNotificaciones.value = 'Todo'
+
+    // 🔥 Solo pasar unidadId y fecha
+    escucharEventosDia(nuevoVehiculo.id, new Date())
   } else {
     estadisticasVehiculo.value = null
     trayectosDia.value = []
     resumenDia.value = null
-    eventosUnidad.value = []
   }
 })
 
+// Watcher para cambio de fecha de trayectos
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
     cargarTrayectosDia()
   }
 })
 
-// ==================== LIFECYCLE ====================
-
-onUnmounted(() => {
-  detenerEscucha()
+// Watcher para cambio de fecha de eventos
+watch(fechaSeleccionadaEventos, (nuevaFecha) => {
+  if (vehiculoSeleccionado.value) {
+    console.log('📅 Cambiando fecha eventos:', nuevaFecha.toISOString().split('T')[0])
+    escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
+  }
 })
 
+// ==================== LIFECYCLE ====================
+
 onMounted(async () => {
-  // ✅ Cargar usuario y empresa primero
   await cargarUsuarioActual()
 
-  // ✅ Esperar a que el IdEmpresa esté disponible
   if (!idEmpresaActual.value) {
-    console.warn('⚠️ Esperando IdEmpresa...')
-    // Intentar de nuevo en 1 segundo
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
@@ -1213,6 +1254,15 @@ onMounted(async () => {
   } else {
     await cargarConductoresFirebase()
     iniciarTracking()
+  }
+})
+
+onUnmounted(() => {
+  detenerEscucha()
+
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
   }
 })
 </script>
@@ -2239,6 +2289,20 @@ onMounted(async () => {
   }
 }
 
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-45deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-45deg);
+  }
+}
+
+.marcador-evento-custom {
+  z-index: 1000;
+}
+
 .evento-header {
   display: flex;
   align-items: flex-start;
@@ -2305,6 +2369,43 @@ onMounted(async () => {
 .filtro-select-eventos:focus-within {
   transform: scale(1.02);
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.evento-notification-card {
+  /* ... estilos existentes ... */
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.evento-notification-card:hover {
+  transform: translateX(6px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-left-color: #1976d2;
+}
+
+.evento-notification-card:active {
+  transform: translateX(4px) scale(1.01);
+}
+
+.marcador-evento-custom {
+  z-index: 1000;
+}
+
+/* Animación del avatar al hacer hover */
+.evento-notification-card:hover .evento-header .q-avatar {
+  animation: avatar-pulse-glow 0.8s ease;
+}
+
+@keyframes avatar-pulse-glow {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    box-shadow: 0 0 20px 10px rgba(33, 150, 243, 0);
+  }
 }
 
 /* ============================================ */
