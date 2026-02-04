@@ -174,12 +174,8 @@
                   <strong>Versión:</strong> 1.0.0
                 </div>
                 <div class="q-mb-sm">
-                  <q-icon name="code" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Quasar:</strong> v{{ $q.version }}
-                </div>
-                <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Empresa:</strong> MJ Industrias
+                  <strong>Empresa:</strong> MJ Industrial
                 </div>
               </q-card-section>
 
