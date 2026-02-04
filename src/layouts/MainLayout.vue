@@ -332,7 +332,13 @@
       <!-- Botón de cerrar sesión en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
-        <q-item clickable v-ripple class="config-item" @click="confirmarCierreSesion">
+        <q-item
+          clickable
+          v-ripple
+          class="config-item"
+          @click="confirmarCierreSesion"
+          id="nav-logout"
+        >
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
               <q-icon name="logout" />

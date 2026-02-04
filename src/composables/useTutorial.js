@@ -105,7 +105,7 @@ export function useTutorial(router) {
       console.log(`🔘 onNextClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
 
       // 🔥 YA TIENES ESTE BLOQUE - NO LO TOQUES
-      if (pasoActual === 9 && totalPasos === 15 && !yaNavegamosAReportes) {
+      if (pasoActual === 9 && totalPasos === 16 && !yaNavegamosAReportes) {
         console.log('🛑 Interceptando navegación desde Reportes')
         yaNavegamosAReportes = true
         localStorage.setItem('mj_tutorial_step', 'reportes')
@@ -402,6 +402,15 @@ export function useTutorial(router) {
         description: 'Alertas en tiempo real.',
         side: 'bottom',
         align: 'end',
+      },
+    },
+    {
+      element: '#nav-logout',
+      popover: {
+        title: 'Cerrar sesión',
+        description: 'Cierra la sesión actual y regresa al inicio de sesión.',
+        side: 'center',
+        align: 'center',
       },
     },
     {
