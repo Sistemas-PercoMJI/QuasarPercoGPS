@@ -97,33 +97,72 @@ export function useTutorial(router) {
 
       console.log(`🔘 onNextClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
 
-      // 🔥 SI ESTAMOS EN EL PASO 8 (REPORTES) Y VAMOS A IR AL 9 (CAPAS)
+      // 🔥 YA TIENES ESTE BLOQUE - NO LO TOQUES
       if (pasoActual === 9 && totalPasos === 15 && !yaNavegamosAReportes) {
-        console.log('🛑 Interceptando navegación a paso 9 (Capas)')
-
-        // 🔥 PREVENIR QUE AVANCE AL PASO 9
+        console.log('🛑 Interceptando navegación desde Reportes')
         yaNavegamosAReportes = true
-
         localStorage.setItem('mj_tutorial_step', 'reportes')
         console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
-
         limpiarListeners()
-
         if (destroyOriginal) {
-          destroyOriginal() // 🔥 DESTRUIR INMEDIATAMENTE
+          destroyOriginal()
         }
-
         console.log('🔀 Navegando a /reporte')
         router.push('/reporte')
-
-        // 🔥 IMPORTANTE: Retornar para prevenir el avance normal
         return
       }
 
-      // 🔥 SI NO ES ESE CASO, PERMITIR EL AVANCE NORMAL
+      // 🔥 AGREGAR ESTE BLOQUE NUEVO AQUÍ (DESPUÉS DEL ANTERIOR)
+      if (totalPasos === 12 && pasoActual === 6 && !yaCambioAHistorial) {
+        console.log('📑 Interceptando cambio a Historial...')
+        yaCambioAHistorial = true
+
+        const tabHistorial = document.querySelector('.q-tab[aria-controls="historial"]')
+
+        if (tabHistorial) {
+          console.log('✅ Tab de historial encontrado, haciendo click...')
+          tabHistorial.click()
+
+          setTimeout(() => {
+            console.log('🔄 Tab renderizado, avanzando paso...')
+            driverObj.moveNext()
+
+            setTimeout(() => {
+              if (driverObj.isActive()) {
+                driverObj.refresh()
+                console.log('✅ Posiciones actualizadas')
+              }
+            }, 200)
+          }, 600)
+        } else {
+          const tabs = document.querySelectorAll('.q-tab')
+          console.log('🔍 Buscando entre', tabs.length, 'tabs')
+
+          tabs.forEach((tab) => {
+            if (tab.textContent.includes('Historial')) {
+              console.log('✅ Encontrado por texto, haciendo click...')
+              tab.click()
+
+              setTimeout(() => {
+                console.log('🔄 Avanzando paso...')
+                driverObj.moveNext()
+
+                setTimeout(() => {
+                  if (driverObj.isActive()) {
+                    driverObj.refresh()
+                  }
+                }, 200)
+              }, 600)
+            }
+          })
+        }
+
+        return // 🔥 IMPORTANTE: NO AVANZAR AUTOMÁTICAMENTE
+      }
+
+      // 🔥 ESTA LÍNEA YA LA TIENES - NO LA TOQUES
       driverObj.moveNext()
     },
-
     onDestroyStarted: () => {
       console.log('🔔 onDestroyStarted - navegacionProgramada:', navegacionProgramada)
 
@@ -168,65 +207,6 @@ export function useTutorial(router) {
       }
 
       // 🔥 CAMBIAR AL TAB DE HISTORIAL EN EL PASO 7
-      if (totalPasos === 12 && pasoActual === 7 && !yaCambioAHistorial) {
-        console.log('📑 Cambiando al tab de Historial...')
-        yaCambioAHistorial = true
-
-        // 🔥 RETROCEDER UN PASO PARA "PAUSAR"
-        driverObj.movePrevious()
-
-        // 🔥 BUSCAR Y HACER CLICK EN EL TAB
-        const tabHistorial = document.querySelector('.q-tab[aria-controls="historial"]')
-
-        if (tabHistorial) {
-          console.log('✅ Tab de historial encontrado, haciendo click...')
-          tabHistorial.click()
-
-          // 🔥 ESPERAR A QUE SE COMPLETE LA ANIMACIÓN DEL TAB
-          setTimeout(() => {
-            console.log('🔄 Tab renderizado, avanzando paso...')
-
-            // 🔥 AHORA SÍ AVANZAR AL PASO 7
-            driverObj.moveNext()
-
-            // 🔥 REFRESCAR POSICIONES
-            setTimeout(() => {
-              if (driverObj.isActive()) {
-                driverObj.refresh()
-                console.log('✅ Posiciones actualizadas')
-              }
-            }, 200)
-          }, 600) // 🔥 TIEMPO PARA LA ANIMACIÓN DEL TAB
-        } else {
-          console.error('❌ No se encontró el tab de historial')
-
-          // 🔥 INTENTO ALTERNATIVO
-          const tabs = document.querySelectorAll('.q-tab')
-          console.log('🔍 Buscando entre', tabs.length, 'tabs')
-
-          tabs.forEach((tab) => {
-            if (tab.textContent.includes('Historial')) {
-              console.log('✅ Encontrado por texto, haciendo click...')
-              tab.click()
-
-              setTimeout(() => {
-                console.log('🔄 Avanzando paso después del cambio de tab...')
-                driverObj.moveNext()
-
-                setTimeout(() => {
-                  if (driverObj.isActive()) {
-                    driverObj.refresh()
-                  }
-                }, 200)
-              }, 600)
-            }
-          })
-        }
-
-        // 🔥 IMPORTANTE: Actualizar pasoAnterior para evitar bucles
-        pasoAnterior = 6 // Retrocedimos al paso 6
-        return // Salir para evitar que se ejecute el resto del código
-      }
 
       // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
       if (totalPasos === 12 && pasoActual === 11) {
