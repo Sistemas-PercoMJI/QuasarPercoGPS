@@ -35,7 +35,7 @@ export function useTutorial(router) {
       console.log(`🔘 onNextClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
 
       // 🔥 SI ESTAMOS EN EL PASO 8 (REPORTES) Y VAMOS A IR AL 9 (CAPAS)
-      if (pasoActual === 8 && totalPasos === 14 && !yaNavegamosAReportes) {
+      if (pasoActual === 9 && totalPasos === 15 && !yaNavegamosAReportes) {
         console.log('🛑 Interceptando navegación a paso 9 (Capas)')
 
         // 🔥 PREVENIR QUE AVANCE AL PASO 9
@@ -173,14 +173,14 @@ export function useTutorial(router) {
           console.log('🔙 Navegando a dashboard...')
           router.push('/dashboard').then(() => {
             setTimeout(() => {
-              console.log('🎬 Continuando tutorial desde paso 9')
-              pasoAnterior = 8
+              console.log('🎬 Continuando tutorial desde paso 10')
+              pasoAnterior = 9
               navegacionProgramada = null
               yaNavegamosAReportes = true
               yaCambioAHistorial = false
               isTransitioning = false
               driverObj.setSteps(pasosDashboard)
-              driverObj.drive(9)
+              driverObj.drive(10)
               configurarListeners()
             }, 500)
           })
@@ -241,6 +241,15 @@ export function useTutorial(router) {
       popover: {
         title: 'Buscador Inteligente',
         description: 'Busca direcciones, vehículos, conductores, POIs y geozonas.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '#filtros-panel',
+      popover: {
+        title: 'Filtro para buscador',
+        description: 'Filtro de búsquedas para geozonas, POIs, vehículos y conductores.',
         side: 'bottom',
         align: 'start',
       },

@@ -23,7 +23,14 @@
 
             <template v-slot:append>
               <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
-              <q-btn flat dense round icon="tune" @click="mostrarFiltros = !mostrarFiltros">
+              <q-btn
+                flat
+                dense
+                round
+                icon="tune"
+                @click="mostrarFiltros = !mostrarFiltros"
+                id="filtros-panel"
+              >
                 <q-tooltip>Filtros</q-tooltip>
               </q-btn>
             </template>
