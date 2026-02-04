@@ -22,12 +22,19 @@ export function useTutorial(router) {
     progressText: '{{current}} de {{total}}',
     popoverClass: 'driverjs-theme-custom',
     animate: true,
-    smoothScroll: true,
+    smoothScroll: false,
     allowClose: true,
     overlayOpacity: 0.7,
     stagePadding: 5,
     stageRadius: 12,
     disableActiveInteraction: false,
+
+    scrollIntoViewOptions: {
+      behavior: 'auto',
+      block: 'nearest', // 👈 ESTO CENTRA EL ELEMENTO
+      inline: 'nearest',
+    },
+
     onPrevClick: () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
@@ -590,30 +597,45 @@ export function useTutorial(router) {
 
       localStorage.removeItem('mj_tutorial_step')
 
-      // 🔥 LIMPIAR LISTENERS ANTES DE INICIAR
       limpiarListeners()
 
       setTimeout(() => {
         console.log('🎬 Iniciando driver en página de reportes')
 
+        // 🔥 SCROLL AL TOP PRIMERO
         window.scrollTo({ top: 0, behavior: 'instant' })
 
-        driverObj.setSteps(pasosReportes)
-        driverObj.drive()
-        configurarListeners() // 🔥 CONFIGURAR LISTENERS FRESCOS
-
+        // 🔥 FORZAR SCROLL AL PRIMER ELEMENTO DEL TUTORIAL
         setTimeout(() => {
-          if (driverObj.isActivated) {
-            driverObj.refresh()
-            console.log('🔄 Posiciones recalculadas')
+          const primerElemento = document.querySelector('#tabs-reportes')
+          if (primerElemento) {
+            primerElemento.scrollIntoView({
+              behavior: 'instant',
+              block: 'center',
+            })
+            console.log('📍 Scroll forzado al primer elemento')
           }
+
+          // 🔥 ESPERAR UN POCO MÁS ANTES DE INICIAR
+          setTimeout(() => {
+            driverObj.setSteps(pasosReportes)
+            driverObj.drive()
+            configurarListeners()
+
+            // 🔥 REFRESH FINAL PARA ASEGURAR
+            setTimeout(() => {
+              if (driverObj.isActive()) {
+                driverObj.refresh()
+                console.log('🔄 Posiciones recalculadas')
+              }
+            }, 100)
+          }, 100)
         }, 100)
       }, 300)
     } else {
       console.log('❌ No hay tutorial pendiente')
     }
   }
-
   function continuarTutorialDashboard() {
     console.log('⚠️ continuarTutorialDashboard() deprecado - no hace nada')
   }
