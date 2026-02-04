@@ -28,6 +28,38 @@ export function useTutorial(router) {
     stagePadding: 5,
     stageRadius: 12,
     disableActiveInteraction: false,
+    onNextClick: () => {
+      const pasoActual = driverObj.getActiveIndex()
+      const totalPasos = driverObj.getConfig().steps?.length || 0
+
+      console.log(`🔘 onNextClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
+
+      // 🔥 SI ESTAMOS EN EL PASO 8 (REPORTES) Y VAMOS A IR AL 9 (CAPAS)
+      if (pasoActual === 8 && totalPasos === 14 && !yaNavegamosAReportes) {
+        console.log('🛑 Interceptando navegación a paso 9 (Capas)')
+
+        // 🔥 PREVENIR QUE AVANCE AL PASO 9
+        yaNavegamosAReportes = true
+
+        localStorage.setItem('mj_tutorial_step', 'reportes')
+        console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
+
+        limpiarListeners()
+
+        if (destroyOriginal) {
+          destroyOriginal() // 🔥 DESTRUIR INMEDIATAMENTE
+        }
+
+        console.log('🔀 Navegando a /reporte')
+        router.push('/reporte')
+
+        // 🔥 IMPORTANTE: Retornar para prevenir el avance normal
+        return
+      }
+
+      // 🔥 SI NO ES ESE CASO, PERMITIR EL AVANCE NORMAL
+      driverObj.moveNext()
+    },
 
     onDestroyStarted: () => {
       console.log('🔔 onDestroyStarted - navegacionProgramada:', navegacionProgramada)
@@ -174,10 +206,8 @@ export function useTutorial(router) {
           destroyOriginal()
         }
 
-        setTimeout(() => {
-          console.log('🔀 Ejecutando router.push("/reporte")')
-          router.push('/reporte')
-        }, 100)
+        console.log('🔀 Ejecutando router.push("/reporte")')
+        router.push('/reporte')
 
         pasoAnterior = pasoActual
         return
