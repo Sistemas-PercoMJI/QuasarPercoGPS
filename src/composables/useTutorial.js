@@ -28,6 +28,69 @@ export function useTutorial(router) {
     stagePadding: 5,
     stageRadius: 12,
     disableActiveInteraction: false,
+    onPrevClick: () => {
+      const pasoActual = driverObj.getActiveIndex()
+      const totalPasos = driverObj.getConfig().steps?.length || 0
+
+      console.log(`🔙 onPrevClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
+
+      // 🔥 SI ESTAMOS EN EL PASO 7 (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
+      if (totalPasos === 12 && pasoActual === 7) {
+        console.log('📑 Retrocediendo al tab de Crear Reporte...')
+
+        // Resetear el flag para permitir cambios futuros
+        yaCambioAHistorial = false
+
+        // Buscar y hacer click en el tab de Crear Reporte
+        const tabCrear = document.querySelector('.q-tab[aria-controls="crear"]')
+
+        if (tabCrear) {
+          console.log('✅ Tab de Crear encontrado, haciendo click...')
+          tabCrear.click()
+
+          // Esperar a que se renderice el tab
+          setTimeout(() => {
+            console.log('🔄 Tab renderizado, retrocediendo paso...')
+            driverObj.movePrevious()
+
+            setTimeout(() => {
+              if (driverObj.isActive()) {
+                driverObj.refresh()
+                console.log('✅ Posiciones actualizadas')
+              }
+            }, 200)
+          }, 600)
+        } else {
+          // Intento alternativo: buscar por texto
+          const tabs = document.querySelectorAll('.q-tab')
+          console.log('🔍 Buscando tab Crear entre', tabs.length, 'tabs')
+
+          tabs.forEach((tab) => {
+            if (tab.textContent.includes('Crear') || tab.textContent.includes('CREAR')) {
+              console.log('✅ Encontrado por texto, haciendo click...')
+              tab.click()
+
+              setTimeout(() => {
+                driverObj.movePrevious()
+
+                setTimeout(() => {
+                  if (driverObj.isActive()) {
+                    driverObj.refresh()
+                  }
+                }, 200)
+              }, 600)
+            }
+          })
+        }
+
+        // Importante: retornar para evitar el retroceso automático
+        return
+      }
+
+      // Para cualquier otro caso, permitir el retroceso normal
+      driverObj.movePrevious()
+    },
+
     onNextClick: () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
