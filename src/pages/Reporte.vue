@@ -482,6 +482,7 @@
                 :disable="generando"
               />
               <q-btn
+                id="btn-cancelar"
                 outline
                 color="grey-7"
                 label="Cancelar"

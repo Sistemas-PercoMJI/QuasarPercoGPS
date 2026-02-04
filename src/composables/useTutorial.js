@@ -42,7 +42,7 @@ export function useTutorial(router) {
       console.log(`🔙 onPrevClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
 
       // 🔥 SI ESTAMOS EN EL PASO 7 (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
-      if (totalPasos === 12 && pasoActual === 7) {
+      if (totalPasos === 13 && pasoActual === 8) {
         console.log('📑 Retrocediendo al tab de Crear Reporte...')
 
         // Resetear el flag para permitir cambios futuros
@@ -120,7 +120,7 @@ export function useTutorial(router) {
       }
 
       // 🔥 AGREGAR ESTE BLOQUE NUEVO AQUÍ (DESPUÉS DEL ANTERIOR)
-      if (totalPasos === 12 && pasoActual === 6 && !yaCambioAHistorial) {
+      if (totalPasos === 13 && pasoActual === 7 && !yaCambioAHistorial) {
         console.log('📑 Interceptando cambio a Historial...')
         yaCambioAHistorial = true
 
@@ -216,7 +216,7 @@ export function useTutorial(router) {
       // 🔥 CAMBIAR AL TAB DE HISTORIAL EN EL PASO 7
 
       // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
-      if (totalPasos === 12 && pasoActual === 11) {
+      if (totalPasos === 13 && pasoActual === 12) {
         console.log('🎯 En último paso de reportes, programando navegación')
 
         navegacionProgramada = () => {
@@ -492,6 +492,15 @@ export function useTutorial(router) {
         title: 'Generar Reportes en Excel',
         description:
           'Genera tu reporte en Excel con las columnas seleccionadas, al darle a Siguiente iremos al tab de Historial.',
+        side: 'top',
+        align: 'center',
+      },
+    },
+    {
+      element: '#btn-cancelar',
+      popover: {
+        title: 'Cancelar Reporte',
+        description: 'Se reinician los datos del formulario para crear un nuevo reporte.',
         side: 'top',
         align: 'center',
       },
