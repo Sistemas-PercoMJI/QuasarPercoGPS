@@ -3,6 +3,7 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
 export function useTutorial(router) {
+  // eslint-disable-next-line no-unused-vars
   let pasoAnterior = -1
   let destroyOriginal = null
   let navegacionProgramada = null
@@ -87,23 +88,68 @@ export function useTutorial(router) {
       // Para cualquier otro caso, permitir el retroceso normal
       driverObj.movePrevious()
     },
-
     onNextClick: () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
+      // 🔥 NAVEGACIÓN A REPORTES CON LIMPIEZA FORZADA
       if (pasoActual === 9 && totalPasos === 16 && !yaNavegamosAReportes) {
         yaNavegamosAReportes = true
         localStorage.setItem('mj_tutorial_step', 'reportes')
+
+        // 🔥 PASO 1: LIMPIAR LISTENERS
         limpiarListeners()
-        if (destroyOriginal) {
-          destroyOriginal()
+
+        // 🔥 PASO 2: LIMPIAR CLASES Y ESTILOS PRIMERO (antes de destruir)
+        try {
+          if (document.body) {
+            document.body.classList.remove('driver-active', 'driver-fade')
+            document.body.style.overflow = ''
+          }
+          if (document.documentElement) {
+            document.documentElement.classList.remove('driver-active', 'driver-fade')
+            document.documentElement.style.overflow = ''
+          }
+        } catch (e) {
+          console.warn('Error limpiando estilos:', e)
         }
-        router.push('/reporte')
+
+        // 🔥 PASO 3: FORZAR ELIMINACIÓN DEL DOM (antes de destruir)
+        try {
+          const driverPopovers = document.querySelectorAll(
+            '.driver-popover, .driver-overlay, .driver-highlighted-element, .driver-popover-item, .driver-popover-title, .driver-popover-description',
+          )
+          driverPopovers.forEach((el) => {
+            try {
+              if (el && el.parentNode) {
+                el.parentNode.removeChild(el)
+              }
+            } catch (e) {
+              console.warn('Error eliminando elemento:', e)
+            }
+          })
+        } catch (e) {
+          console.warn('Error limpiando DOM:', e)
+        }
+
+        // 🔥 PASO 4: AHORA SÍ DESTRUIR EL DRIVER
+        if (destroyOriginal) {
+          try {
+            destroyOriginal()
+          } catch (e) {
+            console.warn('Error destruyendo driver:', e)
+          }
+        }
+
+        // 🔥 PASO 5: ESPERAR Y NAVEGAR
+        setTimeout(() => {
+          router.push('/reporte')
+        }, 250) // Aumentado a 250ms
+
         return
       }
 
-      // 🔥 AGREGAR ESTE BLOQUE NUEVO AQUÍ (DESPUÉS DEL ANTERIOR)
+      // Cambio de tab en reportes
       if (totalPasos === 13 && pasoActual === 7 && !yaCambioAHistorial) {
         yaCambioAHistorial = true
 
@@ -141,10 +187,9 @@ export function useTutorial(router) {
           })
         }
 
-        return // 🔥 IMPORTANTE: NO AVANZAR AUTOMÁTICAMENTE
+        return
       }
 
-      // 🔥 ESTA LÍNEA YA LA TIENES - NO LA TOQUES
       driverObj.moveNext()
     },
     onDestroyStarted: () => {
@@ -187,7 +232,7 @@ export function useTutorial(router) {
         navegacionProgramada = () => {
           router.push('/dashboard').then(() => {
             setTimeout(() => {
-              pasoAnterior = 9
+              pasoAnterior = 9 // 🔥 AQUÍ SE USA pasoAnterior
               navegacionProgramada = null
               yaNavegamosAReportes = true
               yaCambioAHistorial = false
@@ -204,23 +249,7 @@ export function useTutorial(router) {
         }
       }
 
-      // Dashboard: paso 8 → 9 (Reportes)
-      if (pasoAnterior === 8 && pasoActual === 9 && totalPasos === 14 && !yaNavegamosAReportes) {
-        yaNavegamosAReportes = true
-
-        localStorage.setItem('mj_tutorial_step', 'reportes')
-        limpiarListeners()
-
-        if (destroyOriginal) {
-          destroyOriginal()
-        }
-        router.push('/reporte')
-
-        pasoAnterior = pasoActual
-        return
-      }
-
-      pasoAnterior = pasoActual
+      pasoAnterior = pasoActual // 🔥 Y AQUÍ TAMBIÉN
     },
 
     onPopoverRender: (popover) => {
@@ -529,6 +558,7 @@ export function useTutorial(router) {
     }
   }
 
+  // 🔥 MODIFICAR LA FUNCIÓN iniciarTutorial()
   function iniciarTutorial() {
     pasoAnterior = -1
     navegacionProgramada = null
@@ -537,7 +567,6 @@ export function useTutorial(router) {
     isTransitioning = false
     localStorage.removeItem('mj_tutorial_step')
 
-    // 🔥 LIMPIAR LISTENERS ANTES DE INICIAR
     limpiarListeners()
 
     if (driverObj.isActivated) {
@@ -546,11 +575,27 @@ export function useTutorial(router) {
       }
     }
 
-    setTimeout(() => {
-      driverObj.setSteps(pasosDashboard)
-      driverObj.drive()
-      configurarListeners()
-    }, 300)
+    // 🔥 VERIFICAR SI ESTAMOS EN EL DASHBOARD
+    const rutaActual = router.currentRoute.value.path
+
+    if (rutaActual !== '/dashboard') {
+      // 🔥 SI NO ESTAMOS EN DASHBOARD, NAVEGAR PRIMERO
+      router.push('/dashboard').then(() => {
+        // 🔥 ESPERAR A QUE EL DASHBOARD CARGUE COMPLETAMENTE
+        setTimeout(() => {
+          driverObj.setSteps(pasosDashboard)
+          driverObj.drive()
+          configurarListeners()
+        }, 500) // 500ms para asegurar que todo esté renderizado
+      })
+    } else {
+      // 🔥 SI YA ESTAMOS EN DASHBOARD, INICIAR DIRECTAMENTE
+      setTimeout(() => {
+        driverObj.setSteps(pasosDashboard)
+        driverObj.drive()
+        configurarListeners()
+      }, 300)
+    }
   }
 
   function iniciarTutorialReportes() {
