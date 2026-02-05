@@ -596,10 +596,7 @@ const remarcarHorasExtra = ref(true)
 const router = useRouter()
 const { iniciarTutorialReportes } = useTutorial(router)
 
-console.log('🎯 Reporte.vue script setup ejecutado')
-
 onMounted(() => {
-  console.log('🎯 Reporte.vue onMounted ejecutado')
   iniciarTutorialReportes()
 })
 
@@ -632,9 +629,9 @@ const {
   obtenerConfiguracionColumnas,
   procesarNotificacionesParaReporte,
   generarResumen,
-  cambiarTipoInforme: cambiarTipoInformeColumnas, // 👈 Nuevo
-  guardarColumnasActuales, // 👈 Nuevo
-  resetearColumnas, // 👈 Nuevo
+  cambiarTipoInforme: cambiarTipoInformeColumnas,
+  guardarColumnasActuales,
+  resetearColumnas,
 } = instanciaColumnas
 
 const { generarExcelEventos } = useReporteExcel()
@@ -1296,31 +1293,6 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
-    console.log(
-      '🔍 PRIMER TRAYECTO RAW:',
-      datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
-        : null,
-    )
-
-    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
-      duracion: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
-        : null,
-      duracionHoras: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
-        : null,
-      kilometrajeInicio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
-        : null,
-      kilometrajeFinal: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
-        : null,
-      velocidadPromedio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
-        : null,
-    })
-
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
@@ -1337,8 +1309,6 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
-      console.log('📊 datosReales completo:', datosReales)
       if (datosReales.eventosAgrupados) {
         Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
           console.log(
@@ -1644,12 +1614,8 @@ const abrirVistaPrevia = async (reporte) => {
     loadingPreview.value[reporte.id] = true
 
     try {
-      console.log('📥 Descargando Excel...')
-
       // 1. Descargar el Excel desde Firebase Storage
       const excelBlob = await descargarArchivo(reporte.downloadURL)
-
-      console.log('🔄 Convirtiendo a HTML...')
 
       // 2. Convertir a HTML
       const htmlContent = await obtenerVistaPrevia(excelBlob)
