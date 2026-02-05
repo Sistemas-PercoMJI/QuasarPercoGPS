@@ -1401,7 +1401,15 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     console.log('🎨 Color del trayecto:', trayecto.color)
 
     // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
-    const capasRuta = ['ruta-trayecto-borde', 'ruta-trayecto', 'ruta-inicio', 'ruta-fin']
+    const capasRuta = [
+      'ruta-trayecto-borde',
+      'ruta-trayecto',
+      'ruta-flechas',
+      'ruta-circulo-inicio',
+      'ruta-circulo-fin',
+      'ruta-inicio',
+      'ruta-fin',
+    ]
 
     capasRuta.forEach((capa) => {
       if (map.getLayer(capa)) {
@@ -1410,7 +1418,14 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     })
 
     // AHORA sí remover sources (después de los layers)
-    const sourcesRuta = ['ruta-trayecto', 'ruta-inicio', 'ruta-fin']
+    const sourcesRuta = [
+      'ruta-trayecto',
+      'ruta-flechas',
+      'ruta-circulo-inicio',
+      'ruta-circulo-fin',
+      'ruta-inicio',
+      'ruta-fin',
+    ]
 
     sourcesRuta.forEach((source) => {
       if (map.getSource(source)) {
@@ -1458,7 +1473,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#000000',
-        'line-width': 8,
+        'line-width': 10, // 👈 Cambiar de 8 a 12
         'line-opacity': 1,
       },
     })
@@ -1470,14 +1485,98 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#FFFFFF',
-        'line-width': 5,
+        'line-width': 8, // 👈 Cambiar de 5 a 8
         'line-opacity': 1,
       },
     })
 
-    // 4. Crear marcador de INICIO con pin azul
-    const inicio = coordenadas[0]
+    // 🎯 NUEVO: Agregar FLECHAS direccionales
+    // Cargar el icono de flecha si no existe
+    if (!map.hasImage('arrow-icon')) {
+      const arrowSvg = `
+  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2 L18 10 L10 18 L10 12 L2 12 L2 8 L10 8 Z" fill="#00FFF2" stroke="#000000" stroke-width="2"/>
+  </svg>
+`
+      const img = new Image(20, 20)
+      img.onload = () => map.addImage('arrow-icon', img)
+      img.src = 'data:image/svg+xml;base64,' + btoa(arrowSvg)
+    }
 
+    // Esperar un poco para que se cargue el icono
+    setTimeout(() => {
+      map.addLayer({
+        id: 'ruta-flechas',
+        type: 'symbol',
+        source: 'ruta-trayecto',
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 80, // Espaciado entre flechas
+          'icon-image': 'arrow-icon',
+          'icon-size': 0.6,
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-opacity': 0.8,
+        },
+      })
+    }, 100)
+
+    // 🎯 NUEVO: Agregar CÍRCULOS de sombra en inicio y fin
+    const inicio = coordenadas[0]
+    const fin = coordenadas[coordenadas.length - 1]
+
+    // Círculo de inicio (azul semi-transparente)
+    map.addSource('ruta-circulo-inicio', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [inicio.lng, inicio.lat],
+        },
+      },
+    })
+
+    map.addLayer({
+      id: 'ruta-circulo-inicio',
+      type: 'circle',
+      source: 'ruta-circulo-inicio',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': '#1976D2',
+        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-blur': 0.5,
+      },
+    })
+
+    // Círculo de fin (naranja semi-transparente)
+    map.addSource('ruta-circulo-fin', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [fin.lng, fin.lat],
+        },
+      },
+    })
+
+    map.addLayer({
+      id: 'ruta-circulo-fin',
+      type: 'circle',
+      source: 'ruta-circulo-fin',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': '#FF6D00',
+        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-blur': 0.5,
+      },
+    })
+
+    // 4. Crear marcador de INICIO con pin azul
     const markerInicioEl = document.createElement('div')
     markerInicioEl.className = 'marcador-ruta-custom marcador-inicio'
     markerInicioEl.innerHTML = `
@@ -1516,8 +1615,6 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     marcadoresRuta.value.push(markerInicio)
 
     // 5. Crear marcador de FIN con pin naranja/rojo
-    const fin = coordenadas[coordenadas.length - 1]
-
     const markerFinEl = document.createElement('div')
     markerFinEl.className = 'marcador-ruta-custom marcador-fin'
     markerFinEl.innerHTML = `
@@ -1596,7 +1693,16 @@ const limpiarRuta = () => {
   const map = mapPage._mapaAPI.map
 
   // 🔥 PRIMERO remover LAYERS
-  const capas = ['ruta-trayecto-borde', 'ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+  const capas = [
+    'ruta-trayecto-borde',
+    'ruta-trayecto',
+    'ruta-flechas',
+    'ruta-puntos',
+    'ruta-circulo-inicio',
+    'ruta-circulo-fin',
+    'ruta-inicio',
+    'ruta-fin',
+  ]
 
   capas.forEach((capa) => {
     try {
@@ -1609,7 +1715,15 @@ const limpiarRuta = () => {
   })
 
   // 🔥 DESPUÉS remover SOURCES
-  const sources = ['ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+  const sources = [
+    'ruta-trayecto',
+    'ruta-flechas',
+    'ruta-puntos',
+    'ruta-circulo-inicio',
+    'ruta-circulo-fin',
+    'ruta-inicio',
+    'ruta-fin',
+  ]
 
   sources.forEach((source) => {
     try {
