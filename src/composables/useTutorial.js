@@ -39,12 +39,8 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      console.log(`🔙 onPrevClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
-
       // 🔥 SI ESTAMOS EN EL PASO 7 (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
       if (totalPasos === 13 && pasoActual === 8) {
-        console.log('📑 Retrocediendo al tab de Crear Reporte...')
-
         // Resetear el flag para permitir cambios futuros
         yaCambioAHistorial = false
 
@@ -52,29 +48,23 @@ export function useTutorial(router) {
         const tabCrear = document.querySelector('.q-tab[aria-controls="crear"]')
 
         if (tabCrear) {
-          console.log('✅ Tab de Crear encontrado, haciendo click...')
           tabCrear.click()
-
           // Esperar a que se renderice el tab
           setTimeout(() => {
-            console.log('🔄 Tab renderizado, retrocediendo paso...')
             driverObj.movePrevious()
 
             setTimeout(() => {
               if (driverObj.isActive()) {
                 driverObj.refresh()
-                console.log('✅ Posiciones actualizadas')
               }
             }, 200)
           }, 600)
         } else {
           // Intento alternativo: buscar por texto
           const tabs = document.querySelectorAll('.q-tab')
-          console.log('🔍 Buscando tab Crear entre', tabs.length, 'tabs')
 
           tabs.forEach((tab) => {
             if (tab.textContent.includes('Crear') || tab.textContent.includes('CREAR')) {
-              console.log('✅ Encontrado por texto, haciendo click...')
               tab.click()
 
               setTimeout(() => {
@@ -102,56 +92,43 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      console.log(`🔘 onNextClick - Paso actual: ${pasoActual}, Total: ${totalPasos}`)
-
-      // 🔥 YA TIENES ESTE BLOQUE - NO LO TOQUES
       if (pasoActual === 9 && totalPasos === 16 && !yaNavegamosAReportes) {
-        console.log('🛑 Interceptando navegación desde Reportes')
         yaNavegamosAReportes = true
         localStorage.setItem('mj_tutorial_step', 'reportes')
-        console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
         limpiarListeners()
         if (destroyOriginal) {
           destroyOriginal()
         }
-        console.log('🔀 Navegando a /reporte')
         router.push('/reporte')
         return
       }
 
       // 🔥 AGREGAR ESTE BLOQUE NUEVO AQUÍ (DESPUÉS DEL ANTERIOR)
       if (totalPasos === 13 && pasoActual === 7 && !yaCambioAHistorial) {
-        console.log('📑 Interceptando cambio a Historial...')
         yaCambioAHistorial = true
 
         const tabHistorial = document.querySelector('.q-tab[aria-controls="historial"]')
 
         if (tabHistorial) {
-          console.log('✅ Tab de historial encontrado, haciendo click...')
           tabHistorial.click()
 
           setTimeout(() => {
-            console.log('🔄 Tab renderizado, avanzando paso...')
             driverObj.moveNext()
 
             setTimeout(() => {
               if (driverObj.isActive()) {
                 driverObj.refresh()
-                console.log('✅ Posiciones actualizadas')
               }
             }, 200)
           }, 600)
         } else {
           const tabs = document.querySelectorAll('.q-tab')
-          console.log('🔍 Buscando entre', tabs.length, 'tabs')
 
           tabs.forEach((tab) => {
             if (tab.textContent.includes('Historial')) {
-              console.log('✅ Encontrado por texto, haciendo click...')
               tab.click()
 
               setTimeout(() => {
-                console.log('🔄 Avanzando paso...')
                 driverObj.moveNext()
 
                 setTimeout(() => {
@@ -171,10 +148,7 @@ export function useTutorial(router) {
       driverObj.moveNext()
     },
     onDestroyStarted: () => {
-      console.log('🔔 onDestroyStarted - navegacionProgramada:', navegacionProgramada)
-
       if (navegacionProgramada) {
-        console.log('✅ Ejecutando navegación programada')
         const accion = navegacionProgramada
         navegacionProgramada = null
 
@@ -209,21 +183,10 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      if (pasoActual !== pasoAnterior) {
-        console.log(`📍 Paso ${pasoActual + 1}/${totalPasos}`)
-      }
-
-      // 🔥 CAMBIAR AL TAB DE HISTORIAL EN EL PASO 7
-
-      // 🔥 DETECTAR ÚLTIMO PASO DE REPORTES
       if (totalPasos === 13 && pasoActual === 12) {
-        console.log('🎯 En último paso de reportes, programando navegación')
-
         navegacionProgramada = () => {
-          console.log('🔙 Navegando a dashboard...')
           router.push('/dashboard').then(() => {
             setTimeout(() => {
-              console.log('🎬 Continuando tutorial desde paso 10')
               pasoAnterior = 9
               navegacionProgramada = null
               yaNavegamosAReportes = true
@@ -237,26 +200,20 @@ export function useTutorial(router) {
         }
       } else {
         if (navegacionProgramada && pasoActual !== 11) {
-          console.log('⚠️ Limpiando navegación programada (cambio de paso)')
           navegacionProgramada = null
         }
       }
 
       // Dashboard: paso 8 → 9 (Reportes)
       if (pasoAnterior === 8 && pasoActual === 9 && totalPasos === 14 && !yaNavegamosAReportes) {
-        console.log('🚀 Navegando de dashboard a reportes (PRIMERA VEZ)...')
         yaNavegamosAReportes = true
 
         localStorage.setItem('mj_tutorial_step', 'reportes')
-        console.log('✅ localStorage guardado:', localStorage.getItem('mj_tutorial_step'))
-
         limpiarListeners()
 
         if (destroyOriginal) {
           destroyOriginal()
         }
-
-        console.log('🔀 Ejecutando router.push("/reporte")')
         router.push('/reporte')
 
         pasoAnterior = pasoActual
@@ -561,11 +518,8 @@ export function useTutorial(router) {
 
   // 🔥 NUEVA FUNCIÓN: LIMPIAR LISTENERS
   function limpiarListeners() {
-    console.log('🧹 Limpiando listeners...')
-
     if (keyPressHandler) {
       document.removeEventListener('keydown', keyPressHandler, true)
-      console.log('🗑️ Listener removido')
       keyPressHandler = null
     }
 
@@ -587,14 +541,12 @@ export function useTutorial(router) {
     limpiarListeners()
 
     if (driverObj.isActivated) {
-      console.log('⚠️ Tutorial activo, destruyendo...')
       if (destroyOriginal) {
         destroyOriginal()
       }
     }
 
     setTimeout(() => {
-      console.log('🎬 Iniciando tutorial desde el principio')
       driverObj.setSteps(pasosDashboard)
       driverObj.drive()
       configurarListeners()
@@ -602,12 +554,9 @@ export function useTutorial(router) {
   }
 
   function iniciarTutorialReportes() {
-    console.log('🔍 iniciarTutorialReportes() ejecutado')
     const step = localStorage.getItem('mj_tutorial_step')
-    console.log('📝 localStorage value:', step)
 
     if (step === 'reportes') {
-      console.log('✅ Iniciando tutorial de reportes...')
       pasoAnterior = -1
       navegacionProgramada = null
       yaCambioAHistorial = false
@@ -618,12 +567,9 @@ export function useTutorial(router) {
       limpiarListeners()
 
       setTimeout(() => {
-        console.log('🎬 Iniciando driver en página de reportes')
-
-        // 🔥 SCROLL AL TOP PRIMERO
         window.scrollTo({ top: 0, behavior: 'instant' })
 
-        // 🔥 FORZAR SCROLL AL PRIMER ELEMENTO DEL TUTORIAL
+        //FORZAR SCROLL AL PRIMER ELEMENTO DEL TUTORIAL
         setTimeout(() => {
           const primerElemento = document.querySelector('#tabs-reportes')
           if (primerElemento) {
@@ -631,7 +577,6 @@ export function useTutorial(router) {
               behavior: 'instant',
               block: 'center',
             })
-            console.log('📍 Scroll forzado al primer elemento')
           }
 
           // 🔥 ESPERAR UN POCO MÁS ANTES DE INICIAR
@@ -644,23 +589,15 @@ export function useTutorial(router) {
             setTimeout(() => {
               if (driverObj.isActive()) {
                 driverObj.refresh()
-                console.log('🔄 Posiciones recalculadas')
               }
             }, 100)
           }, 100)
         }, 100)
       }, 300)
-    } else {
-      console.log('❌ No hay tutorial pendiente')
     }
-  }
-  function continuarTutorialDashboard() {
-    console.log('⚠️ continuarTutorialDashboard() deprecado - no hace nada')
   }
 
   function configurarListeners() {
-    console.log('🎧 Configurando listeners...')
-
     limpiarListeners()
 
     let confirmActive = false
@@ -673,13 +610,8 @@ export function useTutorial(router) {
       return result
     }
 
-    const handlerId = Math.random().toString(36).substr(2, 9)
-    console.log(`🆕 Creando handler: ${handlerId}`)
-
     keyPressHandler = (e) => {
       if (e.key === 'Enter' && !confirmActive && !isTransitioning && driverObj.isActive()) {
-        console.log(`✅ [${handlerId}] Enter aceptado`)
-
         e.preventDefault()
         e.stopPropagation()
 
@@ -687,16 +619,12 @@ export function useTutorial(router) {
 
         // 🔥 SI HAY SIGUIENTE PASO, AVANZAR
         if (driverObj.hasNextStep()) {
-          console.log('➡️ Avanzando al siguiente paso')
           driverObj.moveNext()
         }
         // 🔥 SI NO HAY SIGUIENTE PASO, VERIFICAR NAVEGACIÓN PROGRAMADA
         else {
-          console.log('📍 Último paso detectado')
-
           // 🔥 SI HAY NAVEGACIÓN PROGRAMADA, EJECUTARLA
           if (navegacionProgramada) {
-            console.log('🔀 Hay navegación programada, ejecutando...')
             const accion = navegacionProgramada
             navegacionProgramada = null
 
@@ -709,31 +637,26 @@ export function useTutorial(router) {
           }
           // 🔥 SI NO HAY NAVEGACIÓN PROGRAMADA, SOLO CERRAR
           else {
-            console.log('✅ No hay navegación programada, cerrando tutorial')
             driverObj.destroy()
           }
         }
 
         setTimeout(() => {
           isTransitioning = false
-          console.log('🔓 Transición completada')
         }, 400)
       } else if (e.key === 'Enter' && isTransitioning) {
-        console.log(`⚠️ [${handlerId}] Enter ignorado - transición en curso`)
         e.preventDefault()
         e.stopPropagation()
       }
     }
 
     document.addEventListener('keydown', keyPressHandler, true)
-    console.log(`✅ Listener ${handlerId} configurado`)
 
     if (!destroyOriginal) {
       destroyOriginal = driverObj.destroy.bind(driverObj)
     }
 
     driverObj.destroy = () => {
-      console.log('💥 Destruyendo tutorial')
       limpiarListeners()
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
@@ -756,7 +679,6 @@ export function useTutorial(router) {
   return {
     iniciarTutorial,
     iniciarTutorialReportes,
-    continuarTutorialDashboard,
     detenerTutorial,
     driverObj,
   }
