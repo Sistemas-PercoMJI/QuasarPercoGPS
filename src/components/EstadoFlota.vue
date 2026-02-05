@@ -594,6 +594,19 @@
         </q-scroll-area>
       </div>
     </transition>
+    <transition name="fade-scale-btn">
+      <q-btn
+        v-if="hayElementosEnMapa"
+        fab
+        color="negative"
+        icon="close"
+        class="floating-clear-map-btn"
+        @click="limpiarTodoDelMapa"
+        size="md"
+      >
+        <q-tooltip>Limpiar mapa</q-tooltip>
+      </q-btn>
+    </transition>
   </div>
 </template>
 
@@ -604,12 +617,22 @@ import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTime'
+import { useGeocoding } from 'src/composables/useGeocoding'
+import { useQuasar } from 'quasar'
 
 // ==================== COMPOSABLES ====================
 const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
+
+// 🆕 Agregar composable de geocoding
+const { obtenerDireccion } = useGeocoding()
+
+// 🆕 Estado para controlar visibilidad del botón de limpiar
+const hayElementosEnMapa = ref(false)
+
+const $q = useQuasar()
 
 // Eventos en tiempo real
 const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
@@ -867,9 +890,16 @@ const eventosFiltrados = computed(() => {
     })
   }
 
-  return resultado
+  // 🔥 Agregar información del conductor a cada evento
+  return resultado.map((evento) => {
+    const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
+    return {
+      ...evento,
+      conductorNombre: infoConductor ? infoConductor.nombre : 'Sin conductor',
+      conductorId: infoConductor ? infoConductor.id : null,
+    }
+  })
 })
-
 // ==================== FUNCIONES ====================
 
 const cargarEstadisticasVehiculo = async (unidadId) => {
@@ -944,6 +974,9 @@ const mostrarRutaEnMapa = (trayecto) => {
   if (window.dibujarRutaTrayecto) {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
+
+  // 🆕 Activar botón de limpiar
+  hayElementosEnMapa.value = true
 }
 
 // 🆕 Mostrar evento en mapa
@@ -1003,13 +1036,15 @@ const mostrarEventoEnMapa = async (evento) => {
   el.innerHTML = markerHTML
   el.className = 'marcador-evento-custom'
 
-  // 🔥 Obtener conductor de la unidad
-  const infoConductor = obtenerConductorDeEvento(evento.unidadId)
-  const conductorNombre = infoConductor ? infoConductor.nombre : 'Sin conductor'
-
   window.marcadorEvento = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
 
-  // 🔥 Popup mejorado con más info
+  // 🔥 Geocodificar dirección
+  const direccionGeocoded = await obtenerDireccion({ lat, lng })
+
+  // 🔥 Obtener conductor de la unidad
+  const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
+  const conductorNombre = infoConductor ? infoConductor.nombre : 'Sin conductor'
+
   const popup = new mapboxgl.Popup({
     offset: 30,
     maxWidth: '300px',
@@ -1049,7 +1084,7 @@ const mostrarEventoEnMapa = async (evento) => {
 
         <div style="display: flex; align-items: center; gap: 6px;">
           <span>📍</span>
-          <span>${evento.ubicacion}</span>
+          <span>${direccionGeocoded}</span>
         </div>
 
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -1067,7 +1102,6 @@ const mostrarEventoEnMapa = async (evento) => {
 
   window.marcadorEvento.setPopup(popup)
 
-  // Hacer zoom
   map.flyTo({
     center: [lng, lat],
     zoom: 17,
@@ -1075,20 +1109,44 @@ const mostrarEventoEnMapa = async (evento) => {
     essential: true,
   })
 
-  // Abrir popup
   setTimeout(() => {
     popup.addTo(map)
   }, 1600)
 
+  // 🆕 Activar botón de limpiar
+  hayElementosEnMapa.value = true
+
   console.log('✅ Evento marcado en el mapa')
 }
 
-// En el script setup de EstadoFlota.vue, agregar esta función helper:
+const limpiarTodoDelMapa = () => {
+  // Limpiar ruta
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
 
+  // Limpiar marcador de evento
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
+  }
+
+  // Desactivar botón
+  hayElementosEnMapa.value = false
+
+  $q.notify({
+    type: 'positive',
+    message: 'Mapa limpiado',
+    icon: 'cleaning_services',
+    position: 'top',
+    timeout: 1500,
+  })
+}
+
+/* En el script setup de EstadoFlota.vue, agregar esta función helper:
 const obtenerConductorDeEvento = (unidadId) => {
   if (!unidadId || !conductoresLista.value.length) return null
 
-  // Buscar conductor por UnidadAsignada
   const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === String(unidadId))
 
   if (conductor) {
@@ -1099,9 +1157,10 @@ const obtenerConductorDeEvento = (unidadId) => {
     }
   }
   return null
-}
+}*/
 
 const cerrarDrawer = () => {
+  // Limpiar todo del mapa antes de cerrar
   if (window.limpiarRuta) {
     window.limpiarRuta()
   }
@@ -1110,6 +1169,9 @@ const cerrarDrawer = () => {
     window.marcadorEvento.remove()
     window.marcadorEvento = null
   }
+
+  // Desactivar botón
+  hayElementosEnMapa.value = false
 
   emit('close')
 }
@@ -1241,6 +1303,12 @@ watch(fechaSeleccionadaEventos, (nuevaFecha) => {
   }
 })
 
+// Agregar este watcher
+watch(tabActual, () => {
+  // Limpiar mapa al cambiar de tab
+  limpiarTodoDelMapa()
+})
+
 // ==================== LIFECYCLE ====================
 
 onMounted(async () => {
@@ -1260,10 +1328,17 @@ onMounted(async () => {
 onUnmounted(() => {
   detenerEscucha()
 
+  // Limpiar todo del mapa
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
   if (window.marcadorEvento) {
     window.marcadorEvento.remove()
     window.marcadorEvento = null
   }
+
+  hayElementosEnMapa.value = false
 })
 </script>
 
@@ -2517,5 +2592,44 @@ onUnmounted(() => {
   .tab-panel-padding {
     padding: 16px;
   }
+}
+
+/* ... estilos existentes ... */
+
+/* ============================================ */
+/* === BOTÓN FLOTANTE LIMPIAR MAPA === */
+/* ============================================ */
+.floating-clear-map-btn {
+  position: fixed !important;
+  bottom: 180px !important;
+  right: 24px !important;
+  z-index: 9999 !important;
+  box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.floating-clear-map-btn:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 12px 32px rgba(244, 67, 54, 0.5) !important;
+}
+
+.floating-clear-map-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Animación de entrada/salida */
+.fade-scale-btn-enter-active,
+.fade-scale-btn-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-scale-btn-enter-from {
+  opacity: 0;
+  transform: scale(0.7) translateY(20px);
+}
+
+.fade-scale-btn-leave-to {
+  opacity: 0;
+  transform: scale(0.7) translateY(20px);
 }
 </style>
