@@ -347,6 +347,8 @@ import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
+import { useGeocoding } from 'src/composables/useGeocoding'
 
 const geozonasCacheCompleto = ref([])
 
@@ -387,6 +389,9 @@ const geozonasCargadas = ref([])
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
+
+const { obtenerCentroGeozona } = useGeozonaUtils()
+const { obtenerDireccion } = useGeocoding() // 🔥 Agregar esta línea
 
 const {
   conductores,
@@ -913,10 +918,10 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         }
 
         const feature = e.features[0]
-
         const geozona = geozonasCargadas.value.find((g) => g.id === feature.properties.id)
 
         if (geozona) {
+          mostrarPopupGeozonaConDireccion(geozona, e.lngLat)
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -1755,6 +1760,114 @@ const limpiarRuta = () => {
 // 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
 window.limpiarRuta = limpiarRuta
+
+// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
+  // Calcular centroide con dirección
+  const centroInfo = await obtenerCentroGeozona(geozona)
+
+  if (!centroInfo) {
+    console.error('❌ No se pudo calcular centroide')
+    return
+  }
+
+  // Obtener direcciones de los puntos individuales (solo para polígonos)
+  let direccionesPuntos = []
+  if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
+    // Geocodificar cada punto
+    direccionesPuntos = await Promise.all(
+      geozona.puntos.map(async (punto, index) => {
+        let direccion = punto.direccion
+        if (!direccion) {
+          try {
+            direccion = await obtenerDireccion({ lat: punto.lat, lng: punto.lng })
+          } catch {
+            direccion = 'Dirección no disponible'
+          }
+        }
+        return {
+          index: index,
+          direccion: direccion,
+          lat: punto.lat,
+          lng: punto.lng,
+        }
+      }),
+    )
+  }
+
+  const popupContent = `
+    <div class="geozona-popup-container">
+      <div class="geozona-popup-header">
+        <div class="header-info">
+          <div class="header-title">${geozona.nombre}</div>
+          <div class="header-divider"></div>
+          <!-- 🔥 CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
+          <div class="header-subtitle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="9" r="2.5" fill="#6b7280"/>
+            </svg>
+            ${centroInfo.direccion}
+          </div>
+        </div>
+        <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+        ${
+          direccionesPuntos.length > 0
+            ? `
+          <div class="points-list-container">
+            ${direccionesPuntos
+              .map(
+                (punto) => `
+              <div class="point-card">
+                <div class="point-label">Punto ${punto.index + 1}</div>
+                <div class="point-address">
+                  <div class="address-name">${punto.direccion}</div>
+                </div>
+                <div class="point-coords">
+                  <div><span class="coord-label">Lat:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
+                  <div><span class="coord-label">Lng:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
+                </div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        `
+            : `
+          <div class="centro-info">
+            <div class="info-label">Centro de la geozona</div>
+            <div class="info-value">${centroInfo.lat.toFixed(6)}, ${centroInfo.lng.toFixed(6)}</div>
+          </div>
+        `
+        }
+        <button onclick="window.verDetallesGeozona('${geozona.id}')" class="details-btn">
+          Ver más detalles
+        </button>
+      </div>
+    </div>
+  `
+
+  if (popupGlobalActivo) {
+    popupGlobalActivo.remove()
+  }
+
+  popupGlobalActivo = new mapboxgl.Popup({
+    offset: 25,
+    className: 'popup-animated',
+    closeButton: true,
+    closeOnClick: true,
+  })
+    .setLngLat(lngLat)
+    .setHTML(popupContent)
+    .addTo(mapaAPI.map)
+}
 
 onMounted(async () => {
   await cargarUsuarioActual()
@@ -2929,6 +3042,42 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .marcador-evento-custom {
   cursor: pointer;
   z-index: 1000;
+}
+
+/* Estilos para el header subtitle con icono */
+.header-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+}
+
+.header-subtitle svg {
+  flex-shrink: 0;
+}
+
+/* Info del centro (para geozonas circulares) */
+.centro-info {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 </style>
 
