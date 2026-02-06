@@ -71,7 +71,7 @@ service cloud.firestore {
     match /Usuarios {
       allow list: if request.auth != null;
     }
-     match /SuperAdmins/{adminId} {
+     match /SuperAdmin/{adminId} {
       allow read: if true;
       allow write: if false; // Solo manual desde consola
     }
