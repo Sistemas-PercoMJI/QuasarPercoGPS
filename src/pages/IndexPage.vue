@@ -1110,8 +1110,8 @@ const dibujarPOIsCombinados = async (pois) => {
               <div class="poi-popup-header">
                 <div class="header-info">
                   <div class="header-title">${poi.nombre}</div>
-                  <div class="header-divider"></div>
-                  <div class="header-subtitle">Radio: ${poi.radio || 100}m</div>
+
+
                 </div>
               </div>
               <div class="poi-popup-body">
@@ -2892,7 +2892,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* ... tus estilos existentes de IndexPage ... */
 
 /* ============================================ */
-/* === POPUP MEJORADO EVENTOS === */
+/* === POPUP MEJORADO EVENTOS (FONDO BLANCO) === */
 /* ============================================ */
 .evento-popup-mejorado .mapboxgl-popup-content {
   padding: 0 !important;
@@ -2900,82 +2900,102 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   overflow: hidden !important;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2) !important;
   min-width: 300px !important;
+  background: white !important;
 }
 
 .evento-popup-mejorado .mapboxgl-popup-tip {
   border-top-color: white !important;
 }
 
+/* 🔥 NUEVO: Botón de cerrar a la derecha */
 .evento-popup-mejorado .mapboxgl-popup-close-button {
   position: absolute !important;
-  top: 10px !important;
-  right: 10px !important;
-  width: 24px !important;
-  height: 24px !important;
-  background: rgba(0, 0, 0, 0.5) !important;
+  top: 14px !important;
+  right: 14px !important;
+  width: 28px !important;
+  height: 28px !important;
+  background-color: #f3f4f6 !important;
+  border: 1px solid #d1d5db !important;
   border-radius: 50% !important;
-  color: white !important;
-  font-size: 16px !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  color: #6b7280 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border: none !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
 }
 
 .evento-popup-mejorado .mapboxgl-popup-close-button:hover {
-  background: rgba(0, 0, 0, 0.7) !important;
-  transform: scale(1.1) !important;
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
 }
 
-.evento-popup-wrapper {
+.evento-popup-wrapper-white {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   width: 100%;
+  background: white;
 }
 
-.evento-popup-header {
+/* 🔥 NUEVO: Header blanco */
+.evento-popup-header-white {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 16px;
-  color: white;
+  padding: 18px 50px 16px 18px; /* Extra padding a la derecha para el botón X */
+  background: white;
 }
 
-.evento-icon {
+/* 🔥 NUEVO: Icono con color (verde/naranja) */
+.evento-icon-white {
   width: 42px;
   height: 42px;
   min-width: 42px;
-  background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
-.evento-info {
+.evento-info-white {
   flex: 1;
   min-width: 0;
 }
 
-.evento-titulo {
+/* 🔥 NUEVO: Título en negro */
+.evento-titulo-white {
   font-size: 17px;
   font-weight: 700;
   margin-bottom: 4px;
   line-height: 1.3;
   letter-spacing: -0.2px;
+  color: #1f2937;
 }
 
-.evento-tipo {
+/* 🔥 NUEVO: Subtítulo en negro */
+.evento-tipo-white {
   font-size: 13px;
-  opacity: 0.92;
   line-height: 1.3;
   font-weight: 500;
+  color: #4b5563;
 }
 
-.evento-popup-body {
+/* 🔥 NUEVO: Separador estilo geozona */
+.header-divider-evento {
+  width: 100%;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0;
+}
+
+.evento-popup-body-white {
   padding: 18px 16px;
   background: white;
   display: flex;
@@ -2983,13 +3003,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   gap: 16px;
 }
 
-.evento-detalle {
+.evento-detalle-white {
   display: flex;
   align-items: flex-start;
   gap: 12px;
 }
 
-.detalle-icon {
+.detalle-icon-white {
   width: 36px;
   height: 36px;
   min-width: 36px;
@@ -3001,7 +3021,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   flex-shrink: 0;
 }
 
-.detalle-texto {
+.detalle-texto-white {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -3010,7 +3030,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   padding-top: 2px;
 }
 
-.detalle-label {
+.detalle-label-white {
   font-size: 11px;
   font-weight: 700;
   color: #9ca3af;
@@ -3019,7 +3039,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   line-height: 1.2;
 }
 
-.detalle-valor {
+.detalle-valor-white {
   font-size: 14px;
   font-weight: 600;
   color: #1f2937;
