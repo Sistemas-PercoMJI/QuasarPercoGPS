@@ -1,7 +1,11 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // 🆕 FUNCIÓN HELPER: Verificar si es Super Admin
+    function isSuperAdmin() {
+      return exists(/databases/$(database)/documents/SuperAdmin/$(request.auth.uid));
+    }
     
     // Reportes: acceso para autenticados
     match /Reportes/{ReporteId} {
@@ -19,15 +23,13 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
-    // 🆕 Unidades CON subcolecciones RutaDiaria y EventoDiario
+    // Unidades CON subcolecciones RutaDiaria y EventoDiario
     match /Unidades/{unidadId} {
       allow read, write: if request.auth != null;
       
-      // 🆕 SUBCOLECCIÓN RutaDiaria (dentro de cada Unidad)
       match /RutaDiaria/{rutaId} {
         allow read, write: if request.auth != null;
         
-        // 🆕 SUBCOLECCIÓN EventoDiario (dentro de cada RutaDiaria)
         match /EventoDiario/{eventoId} {
           allow read, write: if request.auth != null;
         }
@@ -37,43 +39,46 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
-    // Usuarios: solo el dueño puede acceder
+    // 🆕 USUARIOS: Super Admins pueden ver todo, usuarios normales solo lo suyo
     match /Usuarios/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       
       // SUBCOLECCIÓN POIS
       match /POIS/{poiId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
       // SUBCOLECCIÓN GruposConductores
       match /GruposConductores/{grupoId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
       // SUBCOLECCIÓN Geozonas
       match /Geozonas/{geozonaId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
       // SUBCOLECCIÓN Eventos
       match /Eventos/{eventoId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
       // SUBCOLECCIÓN HistorialReportes
       match /HistorialReportes/{reporteId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
     }
     
-    // Listar usuarios (si lo necesitas)
+    // 🆕 LISTAR USUARIOS: Super Admins pueden listar, usuarios normales pueden listar (para buscar)
     match /Usuarios {
       allow list: if request.auth != null;
     }
-     match /SuperAdmin/{adminId} {
+    
+    // Super Admins (solo lectura para verificación)
+    match /SuperAdmin/{adminId} {
       allow read: if true;
       allow write: if false; // Solo manual desde consola
     }
+    
   }
 }
