@@ -2776,6 +2776,160 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   padding: 2px 8px;
   border-radius: 4px;
 }
+/* ... tus estilos existentes de IndexPage ... */
+
+/* ============================================ */
+/* === POPUP MEJORADO EVENTOS === */
+/* ============================================ */
+.evento-popup-mejorado .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2) !important;
+  min-width: 300px !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-tip {
+  border-top-color: white !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-close-button {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  width: 24px !important;
+  height: 24px !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 50% !important;
+  color: white !important;
+  font-size: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-close-button:hover {
+  background: rgba(0, 0, 0, 0.7) !important;
+  transform: scale(1.1) !important;
+}
+
+.evento-popup-wrapper {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
+}
+
+.evento-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  color: white;
+}
+
+.evento-icon {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.evento-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.evento-titulo {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+
+.evento-tipo {
+  font-size: 13px;
+  opacity: 0.92;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+.evento-popup-body {
+  padding: 18px 16px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evento-detalle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detalle-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detalle-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+.detalle-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  line-height: 1.2;
+}
+
+.detalle-valor {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Animación del marcador de evento */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-45deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-45deg);
+  }
+}
+
+.marcador-evento-custom {
+  cursor: pointer;
+  z-index: 1000;
+}
 </style>
 
 <style scoped>

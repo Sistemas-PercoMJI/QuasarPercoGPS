@@ -559,7 +559,7 @@
                       <span class="detail-text">{{ evento.fechaTexto }}</span>
                     </div>
 
-                    <!-- Ubicación -->
+                    <!-- Ubicación (YA SIN COORDENADAS) -->
                     <div class="detail-item">
                       <q-icon name="place" size="14px" color="grey-7" />
                       <span class="detail-text">{{ evento.ubicacion }}</span>
@@ -569,15 +569,6 @@
                     <div class="detail-item">
                       <q-icon name="person" size="14px" color="grey-7" />
                       <span class="detail-text">{{ evento.conductorNombre }}</span>
-                    </div>
-
-                    <!-- Coordenadas (expandible) -->
-                    <div v-if="evento.coordenadas" class="detail-item">
-                      <q-icon name="my_location" size="14px" color="grey-7" />
-                      <span class="detail-text detail-coords">
-                        {{ evento.coordenadas.lat.toFixed(6) }},
-                        {{ evento.coordenadas.lng.toFixed(6) }}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -847,11 +838,42 @@ const trayectosFiltradosPorHora = computed(() => {
   })
 })
 
+// Después de las refs existentes
+const eventosConDirecciones = ref([])
+
+// Agregar esta función
+const procesarEventosConDirecciones = async (eventos) => {
+  const procesados = await Promise.all(
+    eventos.map(async (evento) => {
+      const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
+
+      // 🔥 Geocodificar dirección si tiene coordenadas
+      let direccionGeocoded = evento.ubicacion || 'Ubicación desconocida'
+      if (evento.coordenadas) {
+        try {
+          direccionGeocoded = await obtenerDireccion(evento.coordenadas)
+        } catch (error) {
+          console.warn('Error geocodificando:', error)
+        }
+      }
+
+      return {
+        ...evento,
+        conductorNombre: infoConductor ? infoConductor.nombre : 'Sin conductor',
+        conductorId: infoConductor ? infoConductor.id : null,
+        ubicacion: direccionGeocoded,
+      }
+    }),
+  )
+
+  eventosConDirecciones.value = procesados
+}
+
 // Eventos filtrados
 const eventosFiltrados = computed(() => {
-  if (!eventosUnidad.value || eventosUnidad.value.length === 0) return []
+  if (!eventosConDirecciones.value || eventosConDirecciones.value.length === 0) return []
 
-  let resultado = eventosUnidad.value
+  let resultado = eventosConDirecciones.value
 
   // Filtro por tipo
   if (filtroNotificaciones.value === 'Entradas') {
@@ -890,17 +912,8 @@ const eventosFiltrados = computed(() => {
     })
   }
 
-  // 🔥 Agregar información del conductor a cada evento
-  return resultado.map((evento) => {
-    const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
-    return {
-      ...evento,
-      conductorNombre: infoConductor ? infoConductor.nombre : 'Sin conductor',
-      conductorId: infoConductor ? infoConductor.id : null,
-    }
-  })
+  return resultado
 })
-// ==================== FUNCIONES ====================
 
 const cargarEstadisticasVehiculo = async (unidadId) => {
   loadingEstadisticas.value = true
@@ -979,7 +992,6 @@ const mostrarRutaEnMapa = (trayecto) => {
   hayElementosEnMapa.value = true
 }
 
-// 🆕 Mostrar evento en mapa
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
     console.warn('⚠️ Evento sin coordenadas')
@@ -1006,29 +1018,29 @@ const mostrarEventoEnMapa = async (evento) => {
 
   const esEntrada = evento.accion?.toLowerCase().includes('entrada')
   const color = esEntrada ? '#4CAF50' : '#FF6D00'
-  const icono = esEntrada ? '→' : '←'
 
+  // 🔥 NUEVO: Usar mismo icono que en los eventos
   const markerHTML = `
     <div style="
-      background: ${color};
-      width: 45px;
-      height: 45px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 4px solid white;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       animation: bounce 0.5s ease;
+      background: ${color};
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     ">
-      <div style="
-        transform: rotate(45deg);
-        color: white;
-        font-size: 24px;
-        font-weight: bold;
-      ">${icono}</div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        ${
+          esEntrada
+            ? '<path d="M11 2L3 11h5v9h6v-9h5l-8-9z" fill="white" stroke="white" stroke-width="1.5"/>'
+            : '<path d="M11 22l8-9h-5V4H8v9H3l8 9z" fill="white" stroke="white" stroke-width="1.5"/>'
+        }
+      </svg>
     </div>
   `
 
@@ -1038,63 +1050,80 @@ const mostrarEventoEnMapa = async (evento) => {
 
   window.marcadorEvento = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
 
-  // 🔥 Geocodificar dirección
-  const direccionGeocoded = await obtenerDireccion({ lat, lng })
+  // 🔥 Obtener dirección (ya debería estar geocodificada en evento.ubicacion)
+  const direccionGeocoded = evento.ubicacion || (await obtenerDireccion({ lat, lng }))
 
-  // 🔥 Obtener conductor de la unidad
-  const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
-  const conductorNombre = infoConductor ? infoConductor.nombre : 'Sin conductor'
+  // 🔥 Obtener conductor
+  const conductorNombre = evento.conductorNombre || 'Sin conductor'
 
+  // 🔥 NUEVO: Popup mejorado sin coordenadas
   const popup = new mapboxgl.Popup({
-    offset: 30,
-    maxWidth: '300px',
+    offset: 25,
+    maxWidth: '320px',
     closeButton: true,
     closeOnClick: false,
+    className: 'evento-popup-mejorado',
   }).setHTML(`
-    <div style="padding: 12px; font-family: 'Roboto', sans-serif;">
-      <div style="
-        font-weight: 700;
-        font-size: 16px;
-        color: ${color};
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      ">
-        <span style="font-size: 20px;">${icono}</span>
-        ${evento.titulo}
+    <div class="evento-popup-wrapper">
+      <!-- Header -->
+      <div class="evento-popup-header" style="background: ${color};">
+        <div class="evento-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            ${
+              esEntrada
+                ? '<path d="M11 2L3 11h5v9h6v-9h5l-8-9z" fill="white" stroke="white" stroke-width="1.5"/>'
+                : '<path d="M11 22l8-9h-5V4H8v9H3l8 9z" fill="white" stroke="white" stroke-width="1.5"/>'
+            }
+          </svg>
+        </div>
+        <div class="evento-info">
+          <div class="evento-titulo">${evento.titulo}</div>
+          <div class="evento-tipo">${evento.descripcion}</div>
+        </div>
       </div>
 
-      <div style="
-        font-size: 13px;
-        color: #666;
-        margin-bottom: 12px;
-        padding: 8px;
-        background: #f5f5f5;
-        border-radius: 6px;
-      ">
-        <strong>${evento.descripcion}</strong>
-      </div>
-
-      <div style="font-size: 12px; color: #999; display: flex; flex-direction: column; gap: 6px;">
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span>🕐</span>
-          <strong style="color: #333;">${evento.hora}</strong>
+      <!-- Body -->
+      <div class="evento-popup-body">
+        <!-- Hora -->
+        <div class="evento-detalle">
+          <div class="detalle-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="#6b7280" stroke-width="2"/>
+              <path d="M12 6v6l4 2" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="detalle-texto">
+            <span class="detalle-label">Hora</span>
+            <span class="detalle-valor">${evento.hora}</span>
+          </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span>📍</span>
-          <span>${direccionGeocoded}</span>
+        <!-- Ubicación -->
+        <div class="evento-detalle">
+          <div class="detalle-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="9" r="2.5" fill="#6b7280"/>
+            </svg>
+          </div>
+          <div class="detalle-texto">
+            <span class="detalle-label">Ubicación</span>
+            <span class="detalle-valor">${direccionGeocoded}</span>
+          </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span>👤</span>
-          <span>${conductorNombre}</span>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 6px; font-family: monospace; font-size: 10px;">
-          <span>🌐</span>
-          <span>${lat.toFixed(6)}, ${lng.toFixed(6)}</span>
+        <!-- Conductor -->
+        <div class="evento-detalle">
+          <div class="detalle-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="4" stroke="#6b7280" stroke-width="2"/>
+              <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="detalle-texto">
+            <span class="detalle-label">Conductor</span>
+            <span class="detalle-valor">${conductorNombre}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1113,7 +1142,6 @@ const mostrarEventoEnMapa = async (evento) => {
     popup.addTo(map)
   }, 1600)
 
-  // 🆕 Activar botón de limpiar
   hayElementosEnMapa.value = true
 
   console.log('✅ Evento marcado en el mapa')
@@ -1308,6 +1336,18 @@ watch(tabActual, () => {
   // Limpiar mapa al cambiar de tab
   limpiarTodoDelMapa()
 })
+
+watch(
+  eventosUnidad,
+  async (nuevosEventos) => {
+    if (nuevosEventos && nuevosEventos.length > 0) {
+      await procesarEventosConDirecciones(nuevosEventos)
+    } else {
+      eventosConDirecciones.value = []
+    }
+  },
+  { immediate: true },
+)
 
 // ==================== LIFECYCLE ====================
 
