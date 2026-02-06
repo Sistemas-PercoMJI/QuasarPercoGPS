@@ -40,27 +40,12 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      console.log(
-        '🔵 onPrevClick - Paso actual:',
-        pasoActual,
-        'Total pasos:',
-        totalPasos,
-        'yaNavegamosAReportes:',
-        yaNavegamosAReportes,
-      )
-
       // 🔥 NUEVO: SI ESTAMOS EN DASHBOARD PASO 10 Y RETROCEDEMOS, IR A REPORTES
       if (pasoActual === 10 && totalPasos === 16 && yaNavegamosAReportes) {
-        console.log('✅ Condición cumplida - Navegando a reportes desde paso 10')
-
         // Guardar flag para que iniciarTutorialReportes sepa que viene de "Anterior"
-        //  localStorage.setItem('mj_tutorial_step', 'reportes-anterior')
-        console.log('💾 Flag guardado en localStorage:', localStorage.getItem('mj_tutorial_step'))
-
+        //  localStorage.setItem('mj_tutorial_step', 'reportes-anterior'
         // Limpiar listeners
         limpiarListeners()
-        console.log('🧹 Listeners limpiados')
-
         // Limpiar DOM antes de destruir
         try {
           if (document.body) {
@@ -71,7 +56,6 @@ export function useTutorial(router) {
             document.documentElement.classList.remove('driver-active', 'driver-fade')
             document.documentElement.style.overflow = ''
           }
-          console.log('🧹 DOM limpiado (estilos)')
         } catch (e) {
           console.warn('⚠️ Error limpiando estilos:', e)
         }
@@ -81,7 +65,6 @@ export function useTutorial(router) {
           const driverPopovers = document.querySelectorAll(
             '.driver-popover, .driver-overlay, .driver-highlighted-element, .driver-popover-item, .driver-popover-title, .driver-popover-description',
           )
-          console.log('🧹 Elementos driver encontrados:', driverPopovers.length)
           driverPopovers.forEach((el) => {
             try {
               if (el && el.parentNode) {
@@ -91,34 +74,25 @@ export function useTutorial(router) {
               console.warn('⚠️ Error eliminando elemento:', e)
             }
           })
-          console.log('🧹 DOM limpiado (elementos)')
         } catch (e) {
-          console.warn('⚠️ Error limpiando DOM:', e)
+          console.warn('Error limpiando DOM:', e)
         }
 
         // Destruir driver
         if (destroyOriginal) {
           try {
             destroyOriginal()
-            console.log('💥 Driver destruido')
           } catch (e) {
-            console.warn('⚠️ Error destruyendo driver:', e)
+            console.warn('Error destruyendo driver:', e)
           }
         }
 
         // 🔥 NAVEGAR Y LUEGO EJECUTAR EL TUTORIAL
-        console.log('🚀 Iniciando navegación a /reporte')
         router
           .push('/reporte')
           .then(() => {
-            console.log('✅ Navegación completada, esperando 400ms...')
             // Esperar a que la página se renderice
             setTimeout(() => {
-              console.log('⏰ Timeout cumplido, llamando iniciarTutorialReportes()')
-              console.log(
-                '💾 Flag actual en localStorage:',
-                localStorage.getItem('mj_tutorial_step'),
-              )
               iniciarTutorialReportes(true) // 🔥 LLAMAR DIRECTAMENTE LA FUNCIÓN
             }, 400)
           })
@@ -131,7 +105,6 @@ export function useTutorial(router) {
 
       // 🔥 SI ESTAMOS EN EL PASO 8 DE REPORTES (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
       if (totalPasos === 13 && pasoActual === 8) {
-        console.log('🔄 Retrocediendo desde historial a crear reporte')
         // Resetear el flag para permitir cambios futuros
         yaCambioAHistorial = false
 
@@ -174,8 +147,6 @@ export function useTutorial(router) {
         // Importante: retornar para evitar el retroceso automático
         return
       }
-
-      console.log('➡️ Retroceso normal')
       // Para cualquier otro caso, permitir el retroceso normal
       driverObj.movePrevious()
     },
@@ -690,28 +661,20 @@ export function useTutorial(router) {
   }
 
   function iniciarTutorialReportes(forzarAnterior = false) {
-    console.log('🎬 iniciarTutorialReportes() ejecutada con forzarAnterior:', forzarAnterior)
     const step = localStorage.getItem('mj_tutorial_step')
-    console.log('💾 Flag leído de localStorage:', step)
-
-    // 🔥 DETECTAR SI VIENE DE "SIGUIENTE" O "ANTERIOR"
     if (step === 'reportes' || step === 'reportes-anterior' || forzarAnterior) {
       const vieneDeAnterior = step === 'reportes-anterior' || forzarAnterior
-      console.log('✅ Flag válido detectado. Viene de anterior:', vieneDeAnterior)
-
       pasoAnterior = -1
       navegacionProgramada = null
       yaCambioAHistorial = false
       isTransitioning = false
 
       localStorage.removeItem('mj_tutorial_step')
-      console.log('🗑️ Flag removido de localStorage')
 
       limpiarListeners()
 
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'instant' })
-        console.log('📜 Scroll al top')
 
         //FORZAR SCROLL AL PRIMER ELEMENTO DEL TUTORIAL
         setTimeout(() => {
@@ -721,20 +684,16 @@ export function useTutorial(router) {
               behavior: 'instant',
               block: 'center',
             })
-            console.log('✅ Primer elemento encontrado y scrolleado')
           } else {
             console.warn('⚠️ Primer elemento #tabs-reportes NO encontrado')
           }
 
           // 🔥 ESPERAR UN POCO MÁS ANTES DE INICIAR
           setTimeout(() => {
-            console.log('📝 Configurando pasos del tutorial')
             driverObj.setSteps(pasosReportes)
 
             // 🔥 SI VIENE DE "ANTERIOR", INICIAR EN EL ÚLTIMO PASO (12)
             if (vieneDeAnterior) {
-              console.log('⬅️ Viene de ANTERIOR - Buscando tab historial')
-
               // 🔥 ESPERAR MÁS TIEMPO PARA QUE LOS TABS SE RENDERICEN
               setTimeout(() => {
                 // Buscar el tab de Historial de múltiples formas
@@ -743,36 +702,24 @@ export function useTutorial(router) {
                 if (!tabHistorial) {
                   console.warn('⚠️ No encontrado con aria-controls, buscando por texto...')
                   const tabs = document.querySelectorAll('.q-tab')
-                  console.log('📊 Tabs encontrados:', tabs.length)
-
-                  tabs.forEach((tab, index) => {
-                    console.log(
-                      `Tab ${index}:`,
-                      tab.textContent,
-                      'aria-controls:',
-                      tab.getAttribute('aria-controls'),
-                    )
+                  tabs.forEach((tab) => {
                     const texto = tab.textContent.trim().toLowerCase()
                     if (texto.includes('historial')) {
                       tabHistorial = tab
-                      console.log('✅ Tab historial encontrado por texto en índice:', index)
                     }
                   })
                 }
 
                 if (tabHistorial) {
-                  console.log('✅ Tab historial encontrado, haciendo click')
                   tabHistorial.click()
 
                   setTimeout(() => {
-                    console.log('🚀 Iniciando driver en paso 12')
                     driverObj.drive(12) // 🔥 INICIAR EN EL PASO 12 (ÚLTIMO PASO)
                     yaCambioAHistorial = true // Marcar que ya estamos en historial
                     configurarListeners()
 
                     setTimeout(() => {
                       if (driverObj.isActive()) {
-                        console.log('🔄 Refrescando driver')
                         driverObj.refresh()
                       } else {
                         console.warn('⚠️ Driver NO está activo después de drive(12)')
@@ -781,20 +728,15 @@ export function useTutorial(router) {
                   }, 600)
                 } else {
                   console.error('❌ Tab historial NO encontrado después de búsqueda exhaustiva')
-                  console.log('🔍 Intentando obtener HTML de los tabs:')
                   const allTabs = document.querySelectorAll('.q-tab')
                   allTabs.forEach((tab, idx) => {
                     console.log(`Tab ${idx} HTML:`, tab.outerHTML)
                   })
                 }
-              }, 200) // 🔥 DAR 200ms EXTRA PARA QUE SE RENDERICEN LOS TABS
+              }, 200)
             } else {
-              console.log('➡️ Viene de SIGUIENTE - Iniciando desde paso 0')
-              // Si viene de "Siguiente", iniciar desde el principio
               driverObj.drive()
               configurarListeners()
-
-              // 🔥 REFRESH FINAL PARA ASEGURAR
               setTimeout(() => {
                 if (driverObj.isActive()) {
                   driverObj.refresh()
@@ -805,7 +747,7 @@ export function useTutorial(router) {
         }, 100)
       }, 300)
     } else {
-      console.log('❌ Flag NO válido o no existe. Flag actual:', step)
+      console.warn('❌ Flag NO válido o no existe. Flag actual:', step)
     }
   }
 
