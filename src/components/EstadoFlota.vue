@@ -1064,10 +1064,10 @@ const mostrarEventoEnMapa = async (evento) => {
     closeOnClick: false,
     className: 'evento-popup-mejorado',
   }).setHTML(`
-    <div class="evento-popup-wrapper">
-      <!-- Header -->
-      <div class="evento-popup-header" style="background: ${color};">
-        <div class="evento-icon">
+    <div class="evento-popup-wrapper-white">
+      <!-- Header BLANCO con icono y título -->
+      <div class="evento-popup-header-white">
+        <div class="evento-icon-white" style="background-color: ${color};">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             ${
               esEntrada
@@ -1076,53 +1076,52 @@ const mostrarEventoEnMapa = async (evento) => {
             }
           </svg>
         </div>
-        <div class="evento-info">
-          <div class="evento-titulo">${evento.titulo}</div>
-          <div class="evento-tipo">${evento.descripcion}</div>
+        <div class="evento-info-white">
+          <div class="evento-titulo-white">${evento.titulo}</div>
+          <div class="evento-tipo-white">${evento.descripcion}</div>
         </div>
       </div>
-
       <!-- Body -->
-      <div class="evento-popup-body">
+      <div class="evento-popup-body-white">
         <!-- Hora -->
-        <div class="evento-detalle">
-          <div class="detalle-icon">
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="10" stroke="#6b7280" stroke-width="2"/>
               <path d="M12 6v6l4 2" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <div class="detalle-texto">
-            <span class="detalle-label">Hora</span>
-            <span class="detalle-valor">${evento.hora}</span>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">HORA</span>
+            <span class="detalle-valor-white">${evento.hora}</span>
           </div>
         </div>
 
         <!-- Ubicación -->
-        <div class="evento-detalle">
-          <div class="detalle-icon">
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
               <circle cx="12" cy="9" r="2.5" fill="#6b7280"/>
             </svg>
           </div>
-          <div class="detalle-texto">
-            <span class="detalle-label">Ubicación</span>
-            <span class="detalle-valor">${direccionGeocoded}</span>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">UBICACIÓN</span>
+            <span class="detalle-valor-white">${direccionGeocoded}</span>
           </div>
         </div>
 
         <!-- Conductor -->
-        <div class="evento-detalle">
-          <div class="detalle-icon">
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="8" r="4" stroke="#6b7280" stroke-width="2"/>
               <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <div class="detalle-texto">
-            <span class="detalle-label">Conductor</span>
-            <span class="detalle-valor">${conductorNombre}</span>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">CONDUCTOR</span>
+            <span class="detalle-valor-white">${conductorNombre}</span>
           </div>
         </div>
       </div>
