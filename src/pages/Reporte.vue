@@ -4,6 +4,7 @@
     <div class="text-h4 text-weight-bold q-mb-md">Reportes</div>
 
     <q-tabs
+      id="tabs-reportes"
       v-model="tab"
       dense
       class="text-grey"
@@ -32,7 +33,7 @@
         </div>
 
         <!-- 📋 CARD: TIPO DE INFORME -->
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md" id="tipo-informe-card">
           <q-card-section class="bg-grey-2">
             <div class="text-h6">
               <q-icon name="assessment" class="q-mr-sm" color="primary" />
@@ -79,7 +80,7 @@
 
               <q-card-section>
                 <!-- Reportar por -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="q-select-reportar">
                   <div class="text-subtitle2 q-mb-sm">Reportar por</div>
                   <q-select
                     v-model="reportarPor"
@@ -119,7 +120,7 @@
                 </div>
 
                 <!-- Rango de fecha -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="contenedor-rango-fecha">
                   <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
                   <q-input
                     :model-value="rangoFechaFormateado"
@@ -377,7 +378,13 @@
             </q-card>
 
             <!-- 🎯 CARD: PERSONALIZACIÓN DE COLUMNAS -->
-            <q-card v-if="tieneOpcion('seleccionColumnas')" flat bordered class="q-mb-md">
+            <q-card
+              id="card-columnas-personalizacion"
+              v-if="tieneOpcion('seleccionColumnas')"
+              flat
+              bordered
+              class="q-mb-md"
+            >
               <q-card-section class="bg-grey-2">
                 <div class="row items-center justify-between">
                   <div class="text-h6">
@@ -463,6 +470,7 @@
                 :disable="generando"
               />
               <q-btn
+                id="btn-generar-excel"
                 color="positive"
                 label="Generar Excel"
                 icon="table_chart"
@@ -474,6 +482,7 @@
                 :disable="generando"
               />
               <q-btn
+                id="btn-cancelar"
                 outline
                 color="grey-7"
                 label="Cancelar"
@@ -493,6 +502,7 @@
         <p class="text-grey-7">Lista de reportes generados anteriormente</p>
 
         <q-table
+          id="tabla-historial"
           flat
           bordered
           :rows="reportesAnteriores"
@@ -521,6 +531,7 @@
           <template v-slot:body-cell-acciones="props">
             <q-td :props="props">
               <q-btn
+                id="btn-accion-descargar"
                 flat
                 dense
                 icon="download"
@@ -534,6 +545,7 @@
 
               <!-- 🆕 Botón con lógica condicional -->
               <q-btn
+                id="btn-accion-vista"
                 flat
                 dense
                 icon="open_in_new"
@@ -543,11 +555,7 @@
                 @click="abrirVistaPrevia(props.row)"
               >
                 <q-tooltip>
-                  {{
-                    props.row.tipoArchivo === 'pdf'
-                      ? 'Ver en nueva pestaña'
-                      : 'Vista previa en Google Sheets'
-                  }}
+                  {{ props.row.tipoArchivo === 'pdf' ? 'Ver en nueva pestaña' : 'Vista previa' }}
                 </q-tooltip>
               </q-btn>
             </q-td>
@@ -577,12 +585,20 @@ import { useEventos } from 'src/composables/useEventos'
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
+import { useRouter } from 'vue-router'
+import { useTutorial } from 'src/composables/useTutorial'
 
 const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
 const remarcarHorasExtra = ref(true)
+const router = useRouter()
+const { iniciarTutorialReportes } = useTutorial(router)
+
+onMounted(() => {
+  iniciarTutorialReportes()
+})
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -613,9 +629,9 @@ const {
   obtenerConfiguracionColumnas,
   procesarNotificacionesParaReporte,
   generarResumen,
-  cambiarTipoInforme: cambiarTipoInformeColumnas, // 👈 Nuevo
-  guardarColumnasActuales, // 👈 Nuevo
-  resetearColumnas, // 👈 Nuevo
+  cambiarTipoInforme: cambiarTipoInformeColumnas,
+  guardarColumnasActuales,
+  resetearColumnas,
 } = instanciaColumnas
 
 const { generarExcelEventos } = useReporteExcel()
@@ -1277,31 +1293,6 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
-    console.log(
-      '🔍 PRIMER TRAYECTO RAW:',
-      datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
-        : null,
-    )
-
-    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
-      duracion: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
-        : null,
-      duracionHoras: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
-        : null,
-      kilometrajeInicio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
-        : null,
-      kilometrajeFinal: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
-        : null,
-      velocidadPromedio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
-        : null,
-    })
-
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
@@ -1318,8 +1309,6 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
-      console.log('📊 datosReales completo:', datosReales)
       if (datosReales.eventosAgrupados) {
         Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
           console.log(
@@ -1625,12 +1614,8 @@ const abrirVistaPrevia = async (reporte) => {
     loadingPreview.value[reporte.id] = true
 
     try {
-      console.log('📥 Descargando Excel...')
-
       // 1. Descargar el Excel desde Firebase Storage
       const excelBlob = await descargarArchivo(reporte.downloadURL)
-
-      console.log('🔄 Convirtiendo a HTML...')
 
       // 2. Convertir a HTML
       const htmlContent = await obtenerVistaPrevia(excelBlob)

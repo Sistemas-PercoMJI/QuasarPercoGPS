@@ -19,7 +19,7 @@
           <span v-else class="vehiculo-nombre">{{ vehiculoSeleccionado.nombre }}</span>
         </div>
       </div>
-      <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
+      <q-btn flat round dense icon="close" color="white" @click="cerrarDrawer" class="close-btn" />
     </div>
 
     <!-- Vista de Lista de Vehículos -->
@@ -424,16 +424,97 @@
 
             <!-- Tab Notificaciones -->
             <q-tab-panel name="notificaciones" class="tab-panel-padding">
-              <!-- Filtro -->
-              <div class="filtro-container">
-                <q-select
-                  v-model="filtroNotificaciones"
-                  :options="['Todo', 'Entradas', 'Salidas']"
-                  outlined
+              <!-- 🆕 Selector de fecha (igual que en tab "hoy") -->
+              <div class="filtro-dia-card">
+                <q-btn
+                  flat
                   dense
-                  label="Mostrar eventos"
-                  class="filtro-select"
+                  round
+                  icon="chevron_left"
+                  size="sm"
+                  @click="cambiarDiaEventos(-1)"
                 />
+                <div class="dia-actual">
+                  <div class="dia-label">
+                    {{ fechaSeleccionadaEventos.toLocaleDateString('es-MX', { weekday: 'long' }) }}
+                  </div>
+                  <div class="dia-fecha">
+                    {{
+                      fechaSeleccionadaEventos.toLocaleDateString('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    }}
+                  </div>
+                </div>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="chevron_right"
+                  size="sm"
+                  @click="cambiarDiaEventos(1)"
+                  :disable="fechaSeleccionadaEventos.toDateString() === new Date().toDateString()"
+                />
+              </div>
+
+              <!-- 🆕 Filtro por tipo de evento -->
+              <div class="filtro-horas-card">
+                <div class="filtro-horas-header">
+                  <q-icon name="filter_list" size="20px" color="primary" />
+                  <span class="filtro-horas-titulo">Filtrar eventos</span>
+                  <q-btn
+                    flat
+                    dense
+                    label="Resetear"
+                    size="sm"
+                    color="primary"
+                    @click="resetearFiltroEventos"
+                  />
+                </div>
+
+                <div class="filtro-eventos-tipo">
+                  <q-select
+                    v-model="filtroNotificaciones"
+                    :options="['Todo', 'Entradas', 'Salidas']"
+                    outlined
+                    dense
+                    label="Tipo de evento"
+                    class="filtro-select-eventos"
+                  />
+                </div>
+
+                <!-- 🆕 Filtro por rango de horas -->
+                <div class="filtro-horas-inputs">
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Desde</span>
+                    <q-input
+                      v-model="horaInicioEventos"
+                      type="time"
+                      outlined
+                      dense
+                      class="hora-input"
+                    />
+                  </div>
+
+                  <q-icon name="arrow_forward" size="20px" color="grey-6" />
+
+                  <div class="hora-input-wrapper">
+                    <span class="hora-label">Hasta</span>
+                    <q-input
+                      v-model="horaFinEventos"
+                      type="time"
+                      outlined
+                      dense
+                      class="hora-input"
+                    />
+                  </div>
+                </div>
+
+                <div class="filtro-resultados">
+                  {{ eventosFiltrados.length }} evento(s) encontrado(s)
+                </div>
               </div>
 
               <!-- Loading -->
@@ -451,6 +532,8 @@
                   v-for="evento in eventosFiltrados"
                   :key="evento.id"
                   class="evento-notification-card"
+                  @click="mostrarEventoEnMapa(evento)"
+                  style="cursor: pointer"
                 >
                   <!-- Header con icono y título -->
                   <div class="evento-header">
@@ -476,7 +559,7 @@
                       <span class="detail-text">{{ evento.fechaTexto }}</span>
                     </div>
 
-                    <!-- Ubicación -->
+                    <!-- Ubicación (YA SIN COORDENADAS) -->
                     <div class="detail-item">
                       <q-icon name="place" size="14px" color="grey-7" />
                       <span class="detail-text">{{ evento.ubicacion }}</span>
@@ -486,15 +569,6 @@
                     <div class="detail-item">
                       <q-icon name="person" size="14px" color="grey-7" />
                       <span class="detail-text">{{ evento.conductorNombre }}</span>
-                    </div>
-
-                    <!-- Coordenadas (expandible) -->
-                    <div v-if="evento.coordenadas" class="detail-item">
-                      <q-icon name="my_location" size="14px" color="grey-7" />
-                      <span class="detail-text detail-coords">
-                        {{ evento.coordenadas.lat.toFixed(6) }},
-                        {{ evento.coordenadas.lng.toFixed(6) }}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -511,58 +585,73 @@
         </q-scroll-area>
       </div>
     </transition>
+    <transition name="fade-scale-btn">
+      <q-btn
+        v-if="hayElementosEnMapa"
+        fab
+        color="negative"
+        icon="close"
+        class="floating-clear-map-btn"
+        @click="limpiarTodoDelMapa"
+        size="md"
+      >
+        <q-tooltip>Limpiar mapa</q-tooltip>
+      </q-btn>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
-import { useEventosUnidad } from 'src/composables/useEventosUnidad'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTime'
+import { useGeocoding } from 'src/composables/useGeocoding'
+import { useQuasar } from 'quasar'
 
-// 🆕 IMPORTAR idEmpresaActual
-const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
-
-// Composables
+// ==================== COMPOSABLES ====================
+const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
 const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidades()
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
-const { obtenerEventosDiarios } = useEventosUnidad()
-const { crearQueryConEmpresa } = useMultiTenancy()
 
+// 🆕 Agregar composable de geocoding
+const { obtenerDireccion } = useGeocoding()
+
+// 🆕 Estado para controlar visibilidad del botón de limpiar
+const hayElementosEnMapa = ref(false)
+
+const $q = useQuasar()
+
+// Eventos en tiempo real
+const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
+  useEventosUnidadRealTime()
+
+// ==================== PROPS & EMITS ====================
 const props = defineProps({
-  vehiculo: {
-    type: Object,
-    required: true,
-  },
+  vehiculo: { type: Object, required: true },
 })
 
-// Props y emits
-const emit = defineEmits([
-  'close',
-  'vehiculo-seleccionado',
-  'vehiculo-mapa',
-  'cerrar',
-  'mostrarRuta',
-])
+const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
 
-// Estado local - Vista general
+// ==================== ESTADO LOCAL ====================
+// Vista general
 const vehiculoSeleccionado = ref(null)
 const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
 const tabActual = ref('resumen')
 
-// Estado para conductores
+// Conductores
 const conductoresLista = ref([])
 const cargandoConductores = ref(false)
 
-// Estado - Tab Resumen
+// Tab Resumen
 const estadisticasVehiculo = ref(null)
 const loadingEstadisticas = ref(false)
 
-// Estado - Tab Hoy
+// Tab Hoy
 const fechaSeleccionada = ref(new Date())
 const trayectosDia = ref([])
 const resumenDia = ref(null)
@@ -570,22 +659,20 @@ const loadingHistorial = ref(false)
 const horaInicio = ref('00:00')
 const horaFin = ref('23:59')
 
-// Estado - Tab Notificaciones
+// Tab Notificaciones
 const filtroNotificaciones = ref('Todo')
-const eventosUnidad = ref([])
-const loadingEventos = ref(false)
+const fechaSeleccionadaEventos = ref(new Date())
+const horaInicioEventos = ref('00:00')
+const horaFinEventos = ref('23:59')
 
-// ==================== FUNCIONES PARA CONDUCTORES ====================
+// ==================== FUNCIONES CONDUCTORES ====================
 
 const cargarConductoresFirebase = async () => {
   cargandoConductores.value = true
   try {
     const { query, orderBy, getDocs } = await import('firebase/firestore')
-
-    // Aplicar filtro de empresa
     const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor')
     const qOrdenado = query(q, orderBy('Nombre'))
-
     const snapshot = await getDocs(qOrdenado)
 
     conductoresLista.value = snapshot.docs.map((doc) => ({
@@ -593,7 +680,7 @@ const cargarConductoresFirebase = async () => {
       ...doc.data(),
     }))
 
-    console.log(`✅ ${conductoresLista.value.length} conductores de la empresa cargados`)
+    console.log(`✅ ${conductoresLista.value.length} conductores cargados`)
     return conductoresLista.value
   } catch (error) {
     console.error('❌ Error cargando conductores:', error)
@@ -605,7 +692,6 @@ const cargarConductoresFirebase = async () => {
 
 const obtenerConductorDeUnidad = (unidadId) => {
   if (!unidadId || !conductoresLista.value.length) return null
-
   const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === unidadId)
 
   if (conductor) {
@@ -618,32 +704,27 @@ const obtenerConductorDeUnidad = (unidadId) => {
       datosCompletos: conductor,
     }
   }
-
   return null
 }
 
 // ==================== COMPUTED ====================
 
-// 🔥 VALIDACIÓN ADICIONAL: Filtrar unidades por empresa
+// Filtrar unidades por empresa
 const unidadesFiltradas = computed(() => {
   if (!idEmpresaActual.value) {
-    console.warn('⚠️ No hay IdEmpresa, no se muestran unidades')
+    console.warn('⚠️ No hay IdEmpresa')
     return []
   }
 
-  // 🔥 Filtrar por IdEmpresaUnidad (seguridad adicional)
   return unidadesActivas.value.filter((unidad) => {
-    // Si es array de empresas (multi-tenant)
     if (Array.isArray(idEmpresaActual.value)) {
       return idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
     }
-
-    // Si es string simple
     return unidad.IdEmpresaUnidad === idEmpresaActual.value
   })
 })
 
-// Computed - Convertir unidades activas a formato de vehículos
+// Convertir unidades a formato de vehículos
 const vehiculos = computed(() => {
   return unidadesFiltradas.value.map((unidad) => {
     const infoConductor = obtenerConductorDeUnidad(unidad.id)
@@ -656,58 +737,25 @@ const vehiculos = computed(() => {
       coordenadas: `${unidad.ubicacion.lat.toFixed(6)}, ${unidad.ubicacion.lng.toFixed(6)}`,
       velocidad: `${unidad.velocidad} km/h`,
       estado: unidad.estado,
-
-      // INFORMACIÓN DEL CONDUCTOR
       conductor: infoConductor ? infoConductor.nombre : 'Sin conductor',
       conductorId: infoConductor ? infoConductor.id : null,
       conductorTelefono: infoConductor ? infoConductor.telefono : null,
       conductorLicencia: infoConductor ? infoConductor.licencia : null,
-
       placa: unidad.unidadPlaca,
       ignicion: unidad.ignicion,
       bateria: unidad.bateria,
       timestamp: unidad.timestamp,
       timestampCambioEstado: unidad.timestamp_cambio_estado,
-
-      // Datos calculados dinámicamente
       tiempoConductionHoy: estadisticasVehiculo.value?.tiempoConductionHoy || 'Cargando...',
       duracionEstado: calcularDuracionEstado(unidad.timestamp_cambio_estado, unidad.timestamp),
       ultimaSincronizacion: formatearFechaHora(unidad.timestamp),
       fechaHora: formatearFechaHora(unidad.timestamp),
-
       notificaciones: 0,
     }
   })
 })
 
-const mostrarRutaEnMapa = (trayecto) => {
-  console.log('Mostrando ruta del trayecto:', trayecto)
-  console.log('Color del trayecto:', trayecto.color) // 🔍 DEBUG
-
-  // Asegurarnos de que tenga un color fosforescente
-  const trayectoConColor = {
-    ...trayecto,
-    color: trayecto.color || '#00E5FF', // Cyan neón por defecto
-  }
-
-  if (window.dibujarRutaTrayecto) {
-    window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
-  }
-}
-
-// Modificar tu método cerrar existente (no crear uno nuevo)
-// Busca tu método cerrar actual y agrégale la limpieza de ruta:
-const cerrarDrawer = () => {
-  // Limpiar ruta del mapa
-  if (window.limpiarRuta) {
-    window.limpiarRuta()
-  }
-
-  // Emitir evento de cerrar
-  emit('close')
-}
-
-// Computed para estados
+// Estados de vehículos
 const estadosVehiculos = computed(() => {
   const conteo = contarPorEstado()
   return [
@@ -751,83 +799,121 @@ const vehiculosFiltrados = computed(() => {
   }
 
   if (busqueda.value) {
+    const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
       (v) =>
-        v.nombre.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.ubicacion.toLowerCase().includes(busqueda.value.toLowerCase()) ||
-        v.conductor.toLowerCase().includes(busqueda.value.toLowerCase()),
+        v.nombre.toLowerCase().includes(busquedaLower) ||
+        v.ubicacion.toLowerCase().includes(busquedaLower) ||
+        v.conductor.toLowerCase().includes(busquedaLower),
     )
   }
 
   return resultado
 })
 
+// Trayectos filtrados por hora
 const trayectosFiltradosPorHora = computed(() => {
-  if (!trayectosDia.value || trayectosDia.value.length === 0) {
-    return []
-  }
-
-  if (!horaInicio.value || !horaFin.value) {
-    return trayectosDia.value
-  }
+  if (!trayectosDia.value || trayectosDia.value.length === 0) return []
+  if (!horaInicio.value || !horaFin.value) return trayectosDia.value
 
   const [horaInicioNum, minInicioNum] = horaInicio.value.split(':').map(Number)
   const [horaFinNum, minFinNum] = horaFin.value.split(':').map(Number)
-
   const minutosInicio = horaInicioNum * 60 + minInicioNum
   const minutosFin = horaFinNum * 60 + minFinNum
 
   return trayectosDia.value.filter((trayecto) => {
     const horaStr = trayecto.horaInicio.toLowerCase().trim()
     const match = horaStr.match(/(\d+):(\d+)\s*(a\.?m\.?|p\.?m\.?)/i)
-
-    if (!match) {
-      console.warn('⚠️ No se pudo parsear la hora:', horaStr)
-      return true
-    }
+    if (!match) return true
 
     let hora = parseInt(match[1])
     const minuto = parseInt(match[2])
     const periodo = match[3].toLowerCase().replace(/\./g, '')
 
-    if (periodo === 'pm' && hora !== 12) {
-      hora += 12
-    } else if (periodo === 'am' && hora === 12) {
-      hora = 0
-    }
+    if (periodo === 'pm' && hora !== 12) hora += 12
+    else if (periodo === 'am' && hora === 12) hora = 0
 
     const minutosTrayecto = hora * 60 + minuto
     return minutosTrayecto >= minutosInicio && minutosTrayecto <= minutosFin
   })
 })
 
+// Después de las refs existentes
+const eventosConDirecciones = ref([])
+
+// Agregar esta función
+const procesarEventosConDirecciones = async (eventos) => {
+  const procesados = await Promise.all(
+    eventos.map(async (evento) => {
+      const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
+
+      // 🔥 Geocodificar dirección si tiene coordenadas
+      let direccionGeocoded = evento.ubicacion || 'Ubicación desconocida'
+      if (evento.coordenadas) {
+        try {
+          direccionGeocoded = await obtenerDireccion(evento.coordenadas)
+        } catch (error) {
+          console.warn('Error geocodificando:', error)
+        }
+      }
+
+      return {
+        ...evento,
+        conductorNombre: infoConductor ? infoConductor.nombre : 'Sin conductor',
+        conductorId: infoConductor ? infoConductor.id : null,
+        ubicacion: direccionGeocoded,
+      }
+    }),
+  )
+
+  eventosConDirecciones.value = procesados
+}
+
+// Eventos filtrados
 const eventosFiltrados = computed(() => {
-  if (!eventosUnidad.value || eventosUnidad.value.length === 0) {
-    return []
-  }
+  if (!eventosConDirecciones.value || eventosConDirecciones.value.length === 0) return []
 
-  if (filtroNotificaciones.value === 'Todo') {
-    return eventosUnidad.value
-  }
+  let resultado = eventosConDirecciones.value
 
+  // Filtro por tipo
   if (filtroNotificaciones.value === 'Entradas') {
-    return eventosUnidad.value.filter((e) => {
+    resultado = resultado.filter((e) => {
       const accion = e.accion?.toLowerCase() || ''
       return accion.includes('entrada') || accion.includes('entró')
     })
-  }
-
-  if (filtroNotificaciones.value === 'Salidas') {
-    return eventosUnidad.value.filter((e) => {
+  } else if (filtroNotificaciones.value === 'Salidas') {
+    resultado = resultado.filter((e) => {
       const accion = e.accion?.toLowerCase() || ''
       return accion.includes('salida') || accion.includes('salió')
     })
   }
 
-  return eventosUnidad.value
-})
+  // Filtro por rango de horas
+  if (horaInicioEventos.value && horaFinEventos.value) {
+    const [horaInicioNum, minInicioNum] = horaInicioEventos.value.split(':').map(Number)
+    const [horaFinNum, minFinNum] = horaFinEventos.value.split(':').map(Number)
+    const minutosInicio = horaInicioNum * 60 + minInicioNum
+    const minutosFin = horaFinNum * 60 + minFinNum
 
-// ==================== FUNCIONES ====================
+    resultado = resultado.filter((evento) => {
+      if (!evento.timestamp) return true
+
+      try {
+        const fecha = evento.timestamp.toDate
+          ? evento.timestamp.toDate()
+          : new Date(evento.timestamp)
+        const hora = fecha.getHours()
+        const minutos = fecha.getMinutes()
+        const minutosEvento = hora * 60 + minutos
+        return minutosEvento >= minutosInicio && minutosEvento <= minutosFin
+      } catch {
+        return true
+      }
+    })
+  }
+
+  return resultado
+})
 
 const cargarEstadisticasVehiculo = async (unidadId) => {
   loadingEstadisticas.value = true
@@ -849,11 +935,8 @@ const cargarTrayectosDia = async () => {
       vehiculoSeleccionado.value.id,
       fechaSeleccionada.value,
     )
-
     trayectosDia.value = resultado.trayectos
     resumenDia.value = resultado.resumen
-
-    console.log('📋 Trayectos del día:', resultado)
   } catch (err) {
     console.error('Error cargando trayectos:', err)
     trayectosDia.value = []
@@ -863,36 +946,261 @@ const cargarTrayectosDia = async () => {
   }
 }
 
-const cargarEventosUnidad = async (unidadId) => {
-  loadingEventos.value = true
-  try {
-    console.log(`📊 Cargando eventos diarios para unidad ${unidadId}`)
-    const eventos = await obtenerEventosDiarios(unidadId, 50)
-    eventosUnidad.value = eventos
-    console.log(`✅ ${eventos.length} eventos cargados`)
-  } catch (err) {
-    console.error('Error cargando eventos:', err)
-    eventosUnidad.value = []
-  } finally {
-    loadingEventos.value = false
-  }
-}
-
 const cambiarDia = (dias) => {
   const nuevaFecha = new Date(fechaSeleccionada.value)
   nuevaFecha.setDate(nuevaFecha.getDate() + dias)
-
   const hoy = new Date()
   hoy.setHours(23, 59, 59, 999)
-
   if (nuevaFecha <= hoy) {
     fechaSeleccionada.value = nuevaFecha
+  }
+}
+
+const cambiarDiaEventos = (dias) => {
+  const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
+  nuevaFecha.setDate(nuevaFecha.getDate() + dias)
+  const hoy = new Date()
+  hoy.setHours(23, 59, 59, 999)
+  if (nuevaFecha <= hoy) {
+    fechaSeleccionadaEventos.value = nuevaFecha
   }
 }
 
 const resetearFiltroHoras = () => {
   horaInicio.value = '00:00'
   horaFin.value = '23:59'
+}
+
+const resetearFiltroEventos = () => {
+  horaInicioEventos.value = '00:00'
+  horaFinEventos.value = '23:59'
+  filtroNotificaciones.value = 'Todo'
+}
+
+// Mostrar ruta en mapa (trayectos)
+const mostrarRutaEnMapa = (trayecto) => {
+  const trayectoConColor = {
+    ...trayecto,
+    color: trayecto.color || '#00E5FF',
+  }
+
+  if (window.dibujarRutaTrayecto) {
+    window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
+  }
+
+  // 🆕 Activar botón de limpiar
+  hayElementosEnMapa.value = true
+}
+
+const mostrarEventoEnMapa = async (evento) => {
+  if (!evento.coordenadas) {
+    console.warn('⚠️ Evento sin coordenadas')
+    return
+  }
+
+  console.log('📍 Mostrando evento en mapa:', evento)
+
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    console.warn('⚠️ Mapa no disponible')
+    return
+  }
+
+  const map = mapPage._mapaAPI.map
+  const { lat, lng } = evento.coordenadas
+
+  const mapboxgl = (await import('mapbox-gl')).default
+
+  // Limpiar marcador anterior
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+  }
+
+  const esEntrada = evento.accion?.toLowerCase().includes('entrada')
+  const color = esEntrada ? '#4CAF50' : '#FF6D00'
+
+  // 🔥 NUEVO: Usar mismo icono que en los eventos
+  const markerHTML = `
+    <div style="
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      animation: bounce 0.5s ease;
+      background: ${color};
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    ">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        ${
+          esEntrada
+            ? '<path d="M11 2L3 11h5v9h6v-9h5l-8-9z" fill="white" stroke="white" stroke-width="1.5"/>'
+            : '<path d="M11 22l8-9h-5V4H8v9H3l8 9z" fill="white" stroke="white" stroke-width="1.5"/>'
+        }
+      </svg>
+    </div>
+  `
+
+  const el = document.createElement('div')
+  el.innerHTML = markerHTML
+  el.className = 'marcador-evento-custom'
+
+  window.marcadorEvento = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
+
+  // 🔥 Obtener dirección (ya debería estar geocodificada en evento.ubicacion)
+  const direccionGeocoded = evento.ubicacion || (await obtenerDireccion({ lat, lng }))
+
+  // 🔥 Obtener conductor
+  const conductorNombre = evento.conductorNombre || 'Sin conductor'
+
+  // 🔥 NUEVO: Popup mejorado sin coordenadas
+  const popup = new mapboxgl.Popup({
+    offset: 25,
+    maxWidth: '320px',
+    closeButton: true,
+    closeOnClick: false,
+    className: 'evento-popup-mejorado',
+  }).setHTML(`
+    <div class="evento-popup-wrapper-white">
+      <!-- Header BLANCO con icono y título -->
+      <div class="evento-popup-header-white">
+        <div class="evento-icon-white" style="background-color: ${color};">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            ${
+              esEntrada
+                ? '<path d="M11 2L3 11h5v9h6v-9h5l-8-9z" fill="white" stroke="white" stroke-width="1.5"/>'
+                : '<path d="M11 22l8-9h-5V4H8v9H3l8 9z" fill="white" stroke="white" stroke-width="1.5"/>'
+            }
+          </svg>
+        </div>
+        <div class="evento-info-white">
+          <div class="evento-titulo-white">${evento.titulo}</div>
+          <div class="evento-tipo-white">${evento.descripcion}</div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="evento-popup-body-white">
+        <!-- Hora -->
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="#6b7280" stroke-width="2"/>
+              <path d="M12 6v6l4 2" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">HORA</span>
+            <span class="detalle-valor-white">${evento.hora}</span>
+          </div>
+        </div>
+
+        <!-- Ubicación -->
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="9" r="2.5" fill="#6b7280"/>
+            </svg>
+          </div>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">UBICACIÓN</span>
+            <span class="detalle-valor-white">${direccionGeocoded}</span>
+          </div>
+        </div>
+
+        <!-- Conductor -->
+        <div class="evento-detalle-white">
+          <div class="detalle-icon-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="4" stroke="#6b7280" stroke-width="2"/>
+              <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="detalle-texto-white">
+            <span class="detalle-label-white">CONDUCTOR</span>
+            <span class="detalle-valor-white">${conductorNombre}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `)
+
+  window.marcadorEvento.setPopup(popup)
+
+  map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  setTimeout(() => {
+    popup.addTo(map)
+  }, 1600)
+
+  hayElementosEnMapa.value = true
+
+  console.log('✅ Evento marcado en el mapa')
+}
+
+const limpiarTodoDelMapa = () => {
+  // Limpiar ruta
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
+  // Limpiar marcador de evento
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
+  }
+
+  // Desactivar botón
+  hayElementosEnMapa.value = false
+
+  $q.notify({
+    type: 'positive',
+    message: 'Mapa limpiado',
+    icon: 'cleaning_services',
+    position: 'top',
+    timeout: 1500,
+  })
+}
+
+/* En el script setup de EstadoFlota.vue, agregar esta función helper:
+const obtenerConductorDeEvento = (unidadId) => {
+  if (!unidadId || !conductoresLista.value.length) return null
+
+  const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === String(unidadId))
+
+  if (conductor) {
+    return {
+      id: conductor.id,
+      nombre: conductor.Nombre,
+      telefono: conductor.Telefono,
+    }
+  }
+  return null
+}*/
+
+const cerrarDrawer = () => {
+  // Limpiar todo del mapa antes de cerrar
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
+  }
+
+  // Desactivar botón
+  hayElementosEnMapa.value = false
+
+  emit('close')
 }
 
 function seleccionarEstado(estado) {
@@ -974,40 +1282,78 @@ function getEstadoTexto(estado) {
 
 // ==================== WATCHERS ====================
 
-watch(vehiculoSeleccionado, async (nuevoVehiculo) => {
+// UN SOLO WATCHER para vehiculoSeleccionado
+watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
+  console.log('🔄 Cambio de vehículo:', nuevoVehiculo?.nombre)
+
+  if (vehiculoAnterior) {
+    detenerEscucha()
+  }
+
   if (nuevoVehiculo) {
+    // Tab Resumen
     await cargarEstadisticasVehiculo(nuevoVehiculo.id)
 
+    // Tab Hoy
     fechaSeleccionada.value = new Date()
     horaInicio.value = '00:00'
     horaFin.value = '23:59'
     await cargarTrayectosDia()
 
-    await cargarEventosUnidad(nuevoVehiculo.id)
+    // Tab Notificaciones
+    fechaSeleccionadaEventos.value = new Date()
+    horaInicioEventos.value = '00:00'
+    horaFinEventos.value = '23:59'
+    filtroNotificaciones.value = 'Todo'
+
+    // 🔥 Solo pasar unidadId y fecha
+    escucharEventosDia(nuevoVehiculo.id, new Date())
   } else {
     estadisticasVehiculo.value = null
     trayectosDia.value = []
     resumenDia.value = null
-    eventosUnidad.value = []
   }
 })
 
+// Watcher para cambio de fecha de trayectos
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
     cargarTrayectosDia()
   }
 })
 
+// Watcher para cambio de fecha de eventos
+watch(fechaSeleccionadaEventos, (nuevaFecha) => {
+  if (vehiculoSeleccionado.value) {
+    console.log('📅 Cambiando fecha eventos:', nuevaFecha.toISOString().split('T')[0])
+    escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
+  }
+})
+
+// Agregar este watcher
+watch(tabActual, () => {
+  // Limpiar mapa al cambiar de tab
+  limpiarTodoDelMapa()
+})
+
+watch(
+  eventosUnidad,
+  async (nuevosEventos) => {
+    if (nuevosEventos && nuevosEventos.length > 0) {
+      await procesarEventosConDirecciones(nuevosEventos)
+    } else {
+      eventosConDirecciones.value = []
+    }
+  },
+  { immediate: true },
+)
+
 // ==================== LIFECYCLE ====================
 
 onMounted(async () => {
-  // ✅ Cargar usuario y empresa primero
   await cargarUsuarioActual()
 
-  // ✅ Esperar a que el IdEmpresa esté disponible
   if (!idEmpresaActual.value) {
-    console.warn('⚠️ Esperando IdEmpresa...')
-    // Intentar de nuevo en 1 segundo
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
@@ -1016,6 +1362,22 @@ onMounted(async () => {
     await cargarConductoresFirebase()
     iniciarTracking()
   }
+})
+
+onUnmounted(() => {
+  detenerEscucha()
+
+  // Limpiar todo del mapa
+  if (window.limpiarRuta) {
+    window.limpiarRuta()
+  }
+
+  if (window.marcadorEvento) {
+    window.marcadorEvento.remove()
+    window.marcadorEvento = null
+  }
+
+  hayElementosEnMapa.value = false
 })
 </script>
 
@@ -2041,6 +2403,20 @@ onMounted(async () => {
   }
 }
 
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-45deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-45deg);
+  }
+}
+
+.marcador-evento-custom {
+  z-index: 1000;
+}
+
 .evento-header {
   display: flex;
   align-items: flex-start;
@@ -2092,6 +2468,58 @@ onMounted(async () => {
   font-family: 'Courier New', monospace;
   font-size: 11px;
   color: #757575;
+}
+
+/* Filtro de eventos tipo */
+.filtro-eventos-tipo {
+  margin-bottom: 12px;
+}
+
+.filtro-select-eventos {
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.filtro-select-eventos:focus-within {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.evento-notification-card {
+  /* ... estilos existentes ... */
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.evento-notification-card:hover {
+  transform: translateX(6px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-left-color: #1976d2;
+}
+
+.evento-notification-card:active {
+  transform: translateX(4px) scale(1.01);
+}
+
+.marcador-evento-custom {
+  z-index: 1000;
+}
+
+/* Animación del avatar al hacer hover */
+.evento-notification-card:hover .evento-header .q-avatar {
+  animation: avatar-pulse-glow 0.8s ease;
+}
+
+@keyframes avatar-pulse-glow {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    box-shadow: 0 0 20px 10px rgba(33, 150, 243, 0);
+  }
 }
 
 /* ============================================ */
@@ -2203,5 +2631,44 @@ onMounted(async () => {
   .tab-panel-padding {
     padding: 16px;
   }
+}
+
+/* ... estilos existentes ... */
+
+/* ============================================ */
+/* === BOTÓN FLOTANTE LIMPIAR MAPA === */
+/* ============================================ */
+.floating-clear-map-btn {
+  position: fixed !important;
+  bottom: 180px !important;
+  right: 24px !important;
+  z-index: 9999 !important;
+  box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4) !important;
+  transition: all 0.3s ease !important;
+}
+
+.floating-clear-map-btn:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 12px 32px rgba(244, 67, 54, 0.5) !important;
+}
+
+.floating-clear-map-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Animación de entrada/salida */
+.fade-scale-btn-enter-active,
+.fade-scale-btn-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-scale-btn-enter-from {
+  opacity: 0;
+  transform: scale(0.7) translateY(20px);
+}
+
+.fade-scale-btn-leave-to {
+  opacity: 0;
+  transform: scale(0.7) translateY(20px);
 }
 </style>

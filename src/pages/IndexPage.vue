@@ -347,6 +347,8 @@ import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
+import { useGeocoding } from 'src/composables/useGeocoding'
 
 const geozonasCacheCompleto = ref([])
 
@@ -387,6 +389,9 @@ const geozonasCargadas = ref([])
 
 const $q = useQuasar()
 const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
+
+const { obtenerCentroGeozona } = useGeozonaUtils()
+const { obtenerDireccion } = useGeocoding() // 🔥 Agregar esta línea
 
 const {
   conductores,
@@ -913,10 +918,10 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         }
 
         const feature = e.features[0]
-
         const geozona = geozonasCargadas.value.find((g) => g.id === feature.properties.id)
 
         if (geozona) {
+          mostrarPopupGeozonaConDireccion(geozona, e.lngLat)
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -1105,8 +1110,7 @@ const dibujarPOIsCombinados = async (pois) => {
               <div class="poi-popup-header">
                 <div class="header-info">
                   <div class="header-title">${poi.nombre}</div>
-                  <div class="header-divider"></div>
-                  <div class="header-subtitle">Radio: ${poi.radio || 100}m</div>
+
                 </div>
               </div>
               <div class="poi-popup-body">
@@ -1398,16 +1402,34 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 
   try {
     console.log('📍 Dibujando ruta con', trayecto.coordenadas?.length, 'puntos')
+    console.log('🎨 Color del trayecto:', trayecto.color)
 
-    // Limpiar rutas anteriores
-    const capasRuta = ['ruta-trayecto', 'ruta-trayecto-borde', 'ruta-inicio', 'ruta-fin']
-    const sourcesRuta = ['ruta-trayecto', 'ruta-inicio', 'ruta-fin']
+    // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
+    const capasRuta = [
+      'ruta-trayecto-borde',
+      'ruta-trayecto',
+      'ruta-flechas',
+      'ruta-circulo-inicio',
+      'ruta-circulo-fin',
+      'ruta-inicio',
+      'ruta-fin',
+    ]
 
     capasRuta.forEach((capa) => {
       if (map.getLayer(capa)) {
         map.removeLayer(capa)
       }
     })
+
+    // AHORA sí remover sources (después de los layers)
+    const sourcesRuta = [
+      'ruta-trayecto',
+      'ruta-flechas',
+      'ruta-circulo-inicio',
+      'ruta-circulo-fin',
+      'ruta-inicio',
+      'ruta-fin',
+    ]
 
     sourcesRuta.forEach((source) => {
       if (map.getSource(source)) {
@@ -1416,7 +1438,13 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     })
 
     // Limpiar marcadores HTML previos
-    marcadoresRuta.value.forEach((marker) => marker.remove())
+    marcadoresRuta.value.forEach((marker) => {
+      try {
+        marker.remove()
+      } catch (e) {
+        console.warn('Error removiendo marcador:', e)
+      }
+    })
     marcadoresRuta.value = []
 
     // Obtener coordenadas del trayecto
@@ -1449,7 +1477,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#000000',
-        'line-width': 8,
+        'line-width': 10, // 👈 Cambiar de 8 a 12
         'line-opacity': 1,
       },
     })
@@ -1461,14 +1489,98 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#FFFFFF',
-        'line-width': 5,
+        'line-width': 8, // 👈 Cambiar de 5 a 8
         'line-opacity': 1,
       },
     })
 
-    // 4. Crear marcador de INICIO con pin azul
-    const inicio = coordenadas[0]
+    // 🎯 NUEVO: Agregar FLECHAS direccionales
+    // Cargar el icono de flecha si no existe
+    if (!map.hasImage('arrow-icon')) {
+      const arrowSvg = `
+  <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 2 L18 10 L10 18 L10 12 L2 12 L2 8 L10 8 Z" fill="#00FFF2" stroke="#000000" stroke-width="2"/>
+  </svg>
+`
+      const img = new Image(20, 20)
+      img.onload = () => map.addImage('arrow-icon', img)
+      img.src = 'data:image/svg+xml;base64,' + btoa(arrowSvg)
+    }
 
+    // Esperar un poco para que se cargue el icono
+    setTimeout(() => {
+      map.addLayer({
+        id: 'ruta-flechas',
+        type: 'symbol',
+        source: 'ruta-trayecto',
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 80, // Espaciado entre flechas
+          'icon-image': 'arrow-icon',
+          'icon-size': 0.6,
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-opacity': 0.8,
+        },
+      })
+    }, 100)
+
+    // 🎯 NUEVO: Agregar CÍRCULOS de sombra en inicio y fin
+    const inicio = coordenadas[0]
+    const fin = coordenadas[coordenadas.length - 1]
+
+    // Círculo de inicio (azul semi-transparente)
+    map.addSource('ruta-circulo-inicio', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [inicio.lng, inicio.lat],
+        },
+      },
+    })
+
+    map.addLayer({
+      id: 'ruta-circulo-inicio',
+      type: 'circle',
+      source: 'ruta-circulo-inicio',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': '#1976D2',
+        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-blur': 0.5,
+      },
+    })
+
+    // Círculo de fin (naranja semi-transparente)
+    map.addSource('ruta-circulo-fin', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [fin.lng, fin.lat],
+        },
+      },
+    })
+
+    map.addLayer({
+      id: 'ruta-circulo-fin',
+      type: 'circle',
+      source: 'ruta-circulo-fin',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': '#FF6D00',
+        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-blur': 0.5,
+      },
+    })
+
+    // 4. Crear marcador de INICIO con pin azul
     const markerInicioEl = document.createElement('div')
     markerInicioEl.className = 'marcador-ruta-custom marcador-inicio'
     markerInicioEl.innerHTML = `
@@ -1507,8 +1619,6 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     marcadoresRuta.value.push(markerInicio)
 
     // 5. Crear marcador de FIN con pin naranja/rojo
-    const fin = coordenadas[coordenadas.length - 1]
-
     const markerFinEl = document.createElement('div')
     markerFinEl.className = 'marcador-ruta-custom marcador-fin'
     markerFinEl.innerHTML = `
@@ -1559,8 +1669,8 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     // 7. Notificar al usuario
     $q.notify({
       type: 'positive',
-      message: `Ruta mostrada: ${vehiculo.nombre}`,
-      caption: `${trayecto.horaInicio} - ${trayecto.horaFin}`,
+      message: vehiculo?.nombre ? `Ruta mostrada: ${vehiculo.nombre}` : 'Ruta mostrada',
+      caption: `${trayecto.horaInicio || ''} - ${trayecto.horaFin || ''}`,
       position: 'top',
       timeout: 2000,
       icon: 'route',
@@ -1580,43 +1690,183 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 // 🆕 MÉTODO PARA LIMPIAR RUTA
 const marcadoresRuta = ref([]) // 🆕 Para guardar referencias de marcadores A y B
 
-// Modificar el método limpiarRuta:
 const limpiarRuta = () => {
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
 
   const map = mapPage._mapaAPI.map
 
-  // Limpiar capas y sources
-  const capas = ['ruta-trayecto', 'ruta-trayecto-glow', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
-  const sources = ['ruta-trayecto', 'ruta-puntos', 'ruta-inicio', 'ruta-fin']
+  // 🔥 PRIMERO remover LAYERS
+  const capas = [
+    'ruta-trayecto-borde',
+    'ruta-trayecto',
+    'ruta-flechas',
+    'ruta-puntos',
+    'ruta-circulo-inicio',
+    'ruta-circulo-fin',
+    'ruta-inicio',
+    'ruta-fin',
+  ]
 
   capas.forEach((capa) => {
-    if (map.getLayer(capa)) {
-      map.removeLayer(capa)
+    try {
+      if (map.getLayer(capa)) {
+        map.removeLayer(capa)
+      }
+    } catch (e) {
+      console.warn(`Error removiendo layer ${capa}:`, e)
     }
   })
+
+  // 🔥 DESPUÉS remover SOURCES
+  const sources = [
+    'ruta-trayecto',
+    'ruta-flechas',
+    'ruta-puntos',
+    'ruta-circulo-inicio',
+    'ruta-circulo-fin',
+    'ruta-inicio',
+    'ruta-fin',
+  ]
 
   sources.forEach((source) => {
-    if (map.getSource(source)) {
-      map.removeSource(source)
+    try {
+      if (map.getSource(source)) {
+        map.removeSource(source)
+      }
+    } catch (e) {
+      console.warn(`Error removiendo source ${source}:`, e)
     }
   })
 
-  // 🆕 Limpiar marcadores HTML (A y B)
+  // 🔥 Limpiar marcadores HTML (A y B)
   marcadoresRuta.value.forEach((marker) => {
-    marker.remove()
+    try {
+      marker.remove()
+    } catch (e) {
+      console.warn('Error removiendo marcador:', e)
+    }
   })
   marcadoresRuta.value = []
 
-  // También limpiar por clase
+  // También limpiar por clase (por si quedó alguno)
   const marcadoresHTML = document.querySelectorAll('.marcador-ruta-custom')
   marcadoresHTML.forEach((m) => m.remove())
+
+  console.log('✅ Ruta limpiada correctamente')
 }
 
 // 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
 window.limpiarRuta = limpiarRuta
+
+// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
+  // Calcular centroide con dirección
+  const centroInfo = await obtenerCentroGeozona(geozona)
+
+  if (!centroInfo) {
+    console.error('❌ No se pudo calcular centroide')
+    return
+  }
+
+  // Obtener direcciones de los puntos individuales (solo para polígonos)
+  let direccionesPuntos = []
+  if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
+    // Geocodificar cada punto
+    direccionesPuntos = await Promise.all(
+      geozona.puntos.map(async (punto, index) => {
+        let direccion = punto.direccion
+        if (!direccion) {
+          try {
+            direccion = await obtenerDireccion({ lat: punto.lat, lng: punto.lng })
+          } catch {
+            direccion = 'Dirección no disponible'
+          }
+        }
+        return {
+          index: index,
+          direccion: direccion,
+          lat: punto.lat,
+          lng: punto.lng,
+        }
+      }),
+    )
+  }
+
+  const popupContent = `
+    <div class="geozona-popup-container">
+      <div class="geozona-popup-header">
+        <div class="header-info">
+          <div class="header-title">${geozona.nombre}</div>
+          <div class="header-divider"></div>
+          <!-- 🔥 CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
+          <div class="header-subtitle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
+              <circle cx="12" cy="9" r="2.5" fill="#6b7280"/>
+            </svg>
+            ${centroInfo.direccion}
+          </div>
+        </div>
+        <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+        ${
+          direccionesPuntos.length > 0
+            ? `
+          <div class="points-list-container">
+            ${direccionesPuntos
+              .map(
+                (punto) => `
+              <div class="point-card">
+                <div class="point-label">Punto ${punto.index + 1}</div>
+                <div class="point-address">
+                  <div class="address-name">${punto.direccion}</div>
+                </div>
+                <div class="point-coords">
+                  <div><span class="coord-label">Lat:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
+                  <div><span class="coord-label">Lng:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
+                </div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        `
+            : `
+          <div class="centro-info">
+            <div class="info-label">Centro de la geozona</div>
+            <div class="info-value">${centroInfo.lat.toFixed(6)}, ${centroInfo.lng.toFixed(6)}</div>
+          </div>
+        `
+        }
+        <button onclick="window.verDetallesGeozona('${geozona.id}')" class="details-btn">
+          Ver más detalles
+        </button>
+      </div>
+    </div>
+  `
+
+  if (popupGlobalActivo) {
+    popupGlobalActivo.remove()
+  }
+
+  popupGlobalActivo = new mapboxgl.Popup({
+    offset: 25,
+    className: 'popup-animated',
+    closeButton: true,
+    closeOnClick: true,
+  })
+    .setLngLat(lngLat)
+    .setHTML(popupContent)
+    .addTo(mapaAPI.map)
+}
 
 onMounted(async () => {
   await cargarUsuarioActual()
@@ -2104,6 +2354,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-top-color: #ffffff !important;
 }
 
+/* 🔥 Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
 .mapboxgl-popup-close-button {
   position: absolute !important;
   top: 14px !important;
@@ -2128,6 +2379,34 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
+
+/* 🔥 Botón específico para POPUP DE EVENTOS (a la derecha) */
+.evento-popup-mejorado .mapboxgl-popup-close-button {
+  top: 16px !important;
+  right: 16px !important;
+  left: auto !important; /* 🔥 IMPORTANTE: Anular el left del estilo por defecto */
+  color: #6b7280 !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
+
+/* 🔥 Botón específico para POPUP DE UNIDADES (a la izquierda) */
+.unidad-popup-container .mapboxgl-popup-close-button {
+  top: 16px !important;
+  left: 16px !important;
+  background-color: #f3f4f6 !important;
+  border: 1px solid #6b7280 !important;
+}
+
+.unidad-popup-container .mapboxgl-popup-close-button:hover {
   background-color: #e5e7eb !important;
   border-color: #9ca3af !important;
   transform: scale(1.05) !important;
@@ -2411,34 +2690,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background-color: #ffffff;
 }
 
-.unidad-popup-container .mapboxgl-popup-close-button {
-  position: absolute !important;
-  top: 16px !important;
-  left: 16px !important;
-  background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280 !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  font-size: 18px !important;
-  font-weight: bold !important;
-  transition: all 0.3s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 10 !important;
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-}
-
-.unidad-popup-container .mapboxgl-popup-close-button:hover {
-  background-color: #e5e7eb !important;
-  border-color: #9ca3af !important;
-  transform: scale(1.05) !important;
-}
 .unidad-direccion {
   font-size: 12px;
   color: #6b7280;
@@ -2637,6 +2888,187 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background-color: #e3f2fd;
   padding: 2px 8px;
   border-radius: 4px;
+}
+/* ... tus estilos existentes de IndexPage ... */
+
+/* ============================================ */
+/* === POPUP MEJORADO EVENTOS (FONDO BLANCO) === */
+/* ============================================ */
+.evento-popup-mejorado .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2) !important;
+  min-width: 300px !important;
+  background: white !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-tip {
+  border-top-color: white !important;
+}
+
+.evento-popup-wrapper-white {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
+  background: white;
+}
+
+/* 🔥 NUEVO: Header blanco */
+.evento-popup-header-white {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 56px 16px 18px; /* 🔥 Aumentado de 50px a 56px */
+  background: white;
+}
+
+/* 🔥 NUEVO: Icono con color (verde/naranja) */
+.evento-icon-white {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.evento-info-white {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 🔥 NUEVO: Título en negro */
+.evento-titulo-white {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+  color: #1f2937;
+}
+
+/* 🔥 NUEVO: Subtítulo en negro */
+.evento-tipo-white {
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* 🔥 NUEVO: Separador estilo geozona */
+.header-divider-evento {
+  width: 100%;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0;
+}
+
+.evento-popup-body-white {
+  padding: 18px 16px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.evento-detalle-white {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detalle-icon-white {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detalle-texto-white {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+
+.detalle-label-white {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  line-height: 1.2;
+}
+
+.detalle-valor-white {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Animación del marcador de evento */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-45deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-45deg);
+  }
+}
+
+.marcador-evento-custom {
+  cursor: pointer;
+  z-index: 1000;
+}
+
+/* Estilos para el header subtitle con icono */
+.header-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+}
+
+.header-subtitle svg {
+  flex-shrink: 0;
+}
+
+/* Info del centro (para geozonas circulares) */
+.centro-info {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 </style>
 
