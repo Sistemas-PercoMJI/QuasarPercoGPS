@@ -1111,7 +1111,6 @@ const dibujarPOIsCombinados = async (pois) => {
                 <div class="header-info">
                   <div class="header-title">${poi.nombre}</div>
 
-
                 </div>
               </div>
               <div class="poi-popup-body">
@@ -2355,6 +2354,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-top-color: #ffffff !important;
 }
 
+/* 🔥 Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
 .mapboxgl-popup-close-button {
   position: absolute !important;
   top: 14px !important;
@@ -2379,6 +2379,34 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
+
+/* 🔥 Botón específico para POPUP DE EVENTOS (a la derecha) */
+.evento-popup-mejorado .mapboxgl-popup-close-button {
+  top: 16px !important;
+  right: 16px !important;
+  left: auto !important; /* 🔥 IMPORTANTE: Anular el left del estilo por defecto */
+  color: #6b7280 !important;
+}
+
+.evento-popup-mejorado .mapboxgl-popup-close-button:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+  transform: scale(1.05) !important;
+}
+
+/* 🔥 Botón específico para POPUP DE UNIDADES (a la izquierda) */
+.unidad-popup-container .mapboxgl-popup-close-button {
+  top: 16px !important;
+  left: 16px !important;
+  background-color: #f3f4f6 !important;
+  border: 1px solid #6b7280 !important;
+}
+
+.unidad-popup-container .mapboxgl-popup-close-button:hover {
   background-color: #e5e7eb !important;
   border-color: #9ca3af !important;
   transform: scale(1.05) !important;
@@ -2662,34 +2690,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background-color: #ffffff;
 }
 
-.unidad-popup-container .mapboxgl-popup-close-button {
-  position: absolute !important;
-  top: 16px !important;
-  left: 16px !important;
-  background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280 !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
-  padding: 0 !important;
-  border-radius: 50% !important;
-  font-size: 18px !important;
-  font-weight: bold !important;
-  transition: all 0.3s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 10 !important;
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-}
-
-.unidad-popup-container .mapboxgl-popup-close-button:hover {
-  background-color: #e5e7eb !important;
-  border-color: #9ca3af !important;
-  transform: scale(1.05) !important;
-}
 .unidad-direccion {
   font-size: 12px;
   color: #6b7280;
@@ -2907,35 +2907,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-top-color: white !important;
 }
 
-/* 🔥 NUEVO: Botón de cerrar a la derecha */
-.evento-popup-mejorado .mapboxgl-popup-close-button {
-  position: absolute !important;
-  top: 14px !important;
-  right: 14px !important;
-  width: 28px !important;
-  height: 28px !important;
-  background-color: #f3f4f6 !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 50% !important;
-  font-size: 18px !important;
-  font-weight: bold !important;
-  color: #6b7280 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  z-index: 10 !important;
-  padding: 0 !important;
-  line-height: 1 !important;
-}
-
-.evento-popup-mejorado .mapboxgl-popup-close-button:hover {
-  background-color: #e5e7eb !important;
-  border-color: #9ca3af !important;
-  transform: scale(1.05) !important;
-}
-
 .evento-popup-wrapper-white {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   width: 100%;
@@ -2947,7 +2918,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 50px 16px 18px; /* Extra padding a la derecha para el botón X */
+  padding: 18px 56px 16px 18px; /* 🔥 Aumentado de 50px a 56px */
   background: white;
 }
 
