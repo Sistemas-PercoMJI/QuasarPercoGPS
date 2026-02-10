@@ -602,7 +602,7 @@
               COLOR DEL GRUPO
             </div>
 
-            <!-- Paleta de colores -->
+            <!-- Paleta de colores predefinida -->
             <div class="color-palette q-mb-sm">
               <div
                 v-for="color in paletaColores"
@@ -623,7 +623,19 @@
               </div>
             </div>
 
-            <!-- Vista previa -->
+            <!-- 🆕 Botón para abrir color picker personalizado -->
+            <q-btn
+              outline
+              dense
+              icon="colorize"
+              label="Color personalizado"
+              color="grey-7"
+              size="sm"
+              @click="mostrarColorPickerGrupo = true"
+              class="full-width"
+            />
+
+            <!-- Vista previa del color seleccionado -->
             <div class="color-preview q-mt-sm">
               <div class="preview-box" :style="{ background: nuevoGrupo.color }"></div>
               <span class="text-caption text-grey-7">{{ nuevoGrupo.color.toUpperCase() }}</span>
@@ -643,7 +655,26 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <!-- Slider flotante para ajustar radio del POI -->
+
+    <!-- 🆕 Dialog del Color Picker para Grupos -->
+    <q-dialog v-model="mostrarColorPickerGrupo">
+      <q-card style="min-width: 300px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Elige un color</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <q-color v-model="nuevoGrupo.color" format-model="hex" default-view="palette" />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+          <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <!-- Slider flotante para ajustar radio del POI -->
     <transition name="slide-up">
       <div v-if="mostrarSliderRadio" class="slider-flotante-container">
@@ -1099,6 +1130,7 @@ const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
 //seleccionador de color para POI:
 const mostrarColorPickerPOI = ref(false)
+const mostrarColorPickerGrupo = ref(false)
 
 // Agregar paleta de colores para POIs (similar a la de geozonas)
 const paletaColoresPOI = [
