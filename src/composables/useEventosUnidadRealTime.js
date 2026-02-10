@@ -25,19 +25,25 @@ export function useEventosUnidadRealTime() {
     loadingEventos.value = true
     errorEventos.value = null
 
-    const fechaStr = fecha.toISOString().split('T')[0]
+    // 🔥 ASEGURARSE que la fecha esté en la zona horaria correcta
+    const fechaLocal = new Date(fecha)
+    fechaLocal.setHours(0, 0, 0, 0) // Reset a medianoche
+
+    const fechaStr = fechaLocal.toISOString().split('T')[0]
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('📡 INICIANDO LISTENER DE EVENTOS')
     console.log('   Unidad:', unidadId)
-    console.log('   Fecha:', fechaStr)
+    console.log('   Fecha objeto:', fecha)
+    console.log('   Fecha local:', fechaLocal)
+    console.log('   Fecha string:', fechaStr)
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
     try {
       const eventosRef = collection(
         db,
         'Unidades',
-        String(unidadId), // 🔥 Convertir a string
+        String(unidadId),
         'RutaDiaria',
         fechaStr,
         'EventoDiario',
@@ -45,25 +51,30 @@ export function useEventosUnidadRealTime() {
 
       const q = query(eventosRef)
 
-      console.log('✅ Query creada')
+      // 🔍 DEBUG - usar 'q' en lugar de 'eventosRef'
+      const testSnapshot = await getDocs(q)
+      console.log(`🔍 TEST: ${testSnapshot.size} documentos encontrados en ${fechaStr}`)
 
-      // 🔍 DEBUG
-      const testSnapshot = await getDocs(eventosRef)
-      console.log(`🔍 TEST: ${testSnapshot.size} documentos encontrados`)
+      // 🔥 Si no hay docs, mostrar la ruta exacta
+      if (testSnapshot.size === 0) {
+        console.warn(
+          '⚠️ RUTA COMPLETA:',
+          `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`,
+        )
+      }
 
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          console.log(`✅ ${snapshot.size} eventos recibidos`)
+          console.log(`✅ ${snapshot.size} eventos recibidos para ${fechaStr}`)
 
           if (snapshot.size === 0) {
-            console.warn('⚠️ No hay eventos')
+            console.warn('⚠️ No hay eventos en snapshot para', fechaStr)
             eventosUnidad.value = []
             loadingEventos.value = false
             return
           }
 
-          // 🔥 Usar Set para evitar duplicados por ID
           const eventosMap = new Map()
 
           snapshot.docs.forEach((doc) => {
@@ -83,7 +94,6 @@ export function useEventosUnidadRealTime() {
               }
             }
 
-            // 🔥 Solo agregar si no existe en el Map
             if (!eventosMap.has(doc.id)) {
               eventosMap.set(doc.id, {
                 id: doc.id,
@@ -108,7 +118,6 @@ export function useEventosUnidadRealTime() {
             }
           })
 
-          // Convertir Map a Array y ordenar
           let eventosArray = Array.from(eventosMap.values())
 
           eventosArray.sort((a, b) => {
@@ -130,7 +139,7 @@ export function useEventosUnidadRealTime() {
         },
       )
 
-      console.log('✅ Listener configurado')
+      console.log('✅ Listener configurado para', fechaStr)
     } catch (error) {
       console.error('❌ ERROR:', error)
       errorEventos.value = error.message

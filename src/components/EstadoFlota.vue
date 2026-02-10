@@ -959,10 +959,22 @@ const cambiarDia = (dias) => {
 const cambiarDiaEventos = (dias) => {
   const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
   nuevaFecha.setDate(nuevaFecha.getDate() + dias)
+
+  // 🔥 IMPORTANTE: Reset horas para evitar timezone issues
+  nuevaFecha.setHours(0, 0, 0, 0)
+
   const hoy = new Date()
   hoy.setHours(23, 59, 59, 999)
+
   if (nuevaFecha <= hoy) {
+    console.log('🔄 Cambiando a fecha:', nuevaFecha.toISOString().split('T')[0])
     fechaSeleccionadaEventos.value = nuevaFecha
+
+    // 🔥 Recargar eventos explícitamente
+    if (vehiculoSeleccionado.value) {
+      detenerEscucha()
+      escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
+    }
   }
 }
 
