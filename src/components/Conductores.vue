@@ -250,7 +250,7 @@
                         v-model="conductorEditando.Telefono"
                         outlined
                         dense
-                        mask="(###) ### ####"
+                        mask="##########"
                         @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
                         class="field-input"
                       />
