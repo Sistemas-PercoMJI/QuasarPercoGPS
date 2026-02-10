@@ -1928,9 +1928,8 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 const guardarPOI = async () => {
   try {
     mostrarSliderRadio.value = false
-    // const mapPage = document.querySelector('#map-page')
+    const mapPage = document.querySelector('#map-page')
 
-    // Preparar datos del POI
     const poiData = {
       nombre: nuevoPOI.value.nombre,
       direccion: nuevoPOI.value.direccion,
@@ -1938,11 +1937,20 @@ const guardarPOI = async () => {
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
       radio: nuevoPOI.value.radio || 5,
-      color: nuevoPOI.value.color || '#FF5252', // ✅ Color incluido
+      color: nuevoPOI.value.color || '#FF5252',
+    }
+
+    // 🆕 LIMPIAR ELEMENTOS TEMPORALES PRIMERO
+    if (mapPage && mapPage._mapaAPI) {
+      const mapaAPI = mapPage._mapaAPI
+      mapaAPI.limpiarCirculoTemporalPOI()
+      mapaAPI.limpiarMarcadorTemporal()
     }
 
     if (nuevoPOI.value.id) {
+      // ========================================
       // ACTUALIZAR POI EXISTENTE
+      // ========================================
       await actualizarPOI(nuevoPOI.value.id, poiData)
 
       const index = items.value.findIndex((i) => i.id === nuevoPOI.value.id)
@@ -1959,7 +1967,9 @@ const guardarPOI = async () => {
         icon: 'check_circle',
       })
     } else {
+      // ========================================
       // CREAR NUEVO POI
+      // ========================================
       const nuevoId = await crearPOI(poiData)
 
       items.value.push({
@@ -1975,10 +1985,8 @@ const guardarPOI = async () => {
       })
     }
 
-    // ✅ CERRAR DIALOG
+    // ✅ CERRAR DIALOG Y RESETEAR
     dialogNuevoPOI.value = false
-
-    // ✅ RESETEAR FORMULARIO
     nuevoPOI.value = {
       nombre: '',
       direccion: '',
@@ -1989,9 +1997,15 @@ const guardarPOI = async () => {
       color: '#FF5252',
     }
 
-    // ✅ ESPERAR Y REDIBUJAR MAPA
+    // 🚀 OPTIMIZACIÓN CRÍTICA: Solo actualizar capa de POIs
     await nextTick()
-    redibujarMapa()
+
+    // Actualizar el array en IndexPage
+    window.dispatchEvent(
+      new CustomEvent('actualizarPOIsEnMapa', {
+        detail: { pois: items.value.filter((i) => i.tipo === 'poi') },
+      }),
+    )
   } catch (err) {
     console.error('Error al guardar POI:', err)
     $q.notify({

@@ -1152,6 +1152,57 @@ const dibujarPOIsCombinados = async (pois) => {
     }
   }
 }
+// 🚀 FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
+const actualizarCapaPOIs = async () => {
+  if (!mapaAPI?.map) return
+
+  const eventosActivos = await obtenerEventos()
+  const eventosFiltrados = eventosActivos.filter((e) => e.activo)
+
+  const poisFeatures = poisCargados.value
+    .filter((poi) => poi.coordenadas)
+    .map((poi) => {
+      const { lat, lng } = poi.coordenadas
+      const radio = poi.radio || 100
+      const color = poi.color || '#FF5252'
+      const colorKey = color.replace('#', '')
+      const tieneEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
+
+      if (window._mapboxLoadIcon) {
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, false)
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, true)
+      }
+
+      const iconSuffix = tieneEventos ? '-badge' : ''
+      return {
+        type: 'Feature',
+        properties: {
+          id: poi.id,
+          nombre: poi.nombre,
+          direccion: poi.direccion,
+          color: color,
+          colorKey: colorKey,
+          radio: radio,
+          lat: lat,
+          tieneEventos: tieneEventos,
+          iconImage: `poi-${colorKey}${iconSuffix}`,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+      }
+    })
+
+  // 🚀 SOLO ACTUALIZAR EL SOURCE (no recrear layers)
+  const sourceId = 'pois-combined'
+  if (mapaAPI.map.getSource(sourceId)) {
+    mapaAPI.map.getSource(sourceId).setData({
+      type: 'FeatureCollection',
+      features: poisFeatures,
+    })
+  }
+}
 
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
@@ -2201,6 +2252,10 @@ onMounted(async () => {
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
+  })
+  window.addEventListener('actualizarPOIsEnMapa', async (e) => {
+    poisCargados.value = e.detail.pois
+    await actualizarCapaPOIs()
   })
 })
 const handleMostrarBoton = (e) => {
