@@ -397,7 +397,8 @@
           </q-select>
           <!-- 🎨 Selector de Color para POI -->
           <!-- 🎨 Selector de Color CONDICIONAL -->
-          <div v-if="!nuevaGeozona.grupoId" class="q-mb-md">
+
+          <div v-if="!nuevoPOI.grupoId" class="q-mb-md">
             <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
               <q-icon name="palette" size="16px" class="q-mr-xs" />
               COLOR DEL POI
