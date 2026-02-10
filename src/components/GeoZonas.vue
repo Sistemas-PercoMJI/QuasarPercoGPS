@@ -3226,11 +3226,52 @@ defineExpose({
   background: white;
   border-radius: 12px;
 }
-
 .chips-container {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: 200px; /* Altura máxima */
+  overflow-y: auto; /* Scroll vertical */
+  overflow-x: hidden; /* Sin scroll horizontal */
+  padding: 4px; /* Padding para que no se corte el shadow de los chips */
+
+  /* Estilos del scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+.chips-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chips-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chips-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.chips-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Animación suave al hacer scroll */
+.chips-container {
+  scroll-behavior: smooth;
+}
+
+/* Gradiente sutil al final para indicar más contenido */
+.chips-container::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to top, rgba(248, 249, 250, 0.8), transparent);
+  pointer-events: none;
 }
 
 .lista-scroll {
