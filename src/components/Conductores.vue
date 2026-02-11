@@ -1573,6 +1573,39 @@ async function actualizarCampo(campo, valor) {
   if (!conductorEditando.value?.id) return
 
   try {
+    // 🔥 CASO ESPECIAL: Si está cambiando la empresa del conductor
+    if (campo === 'IdEmpresaConductor') {
+      const empresaAnterior = conductorEditando.value.IdEmpresaConductor
+      const empresaNueva = valor
+
+      // Solo limpiar si realmente cambió de empresa
+      if (empresaAnterior !== empresaNueva) {
+        console.log(`🏢 Cambiando empresa: ${empresaAnterior} → ${empresaNueva}`)
+
+        // Si tiene unidad asignada, quitarla (esto ya elimina del mapa)
+        if (conductorEditando.value.UnidadAsignada) {
+          console.log(`🚗 Quitando unidad: ${conductorEditando.value.UnidadAsignada}`)
+
+          const unidadId = conductorEditando.value.UnidadAsignada
+
+          // Eliminar del mapa (Firebase Realtime Database)
+          const { realtimeDb } = await import('src/firebase/firebaseConfig')
+          const { ref: dbRef, remove } = await import('firebase/database')
+
+          const unidadKey = `unidad_${unidadId}`
+          const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
+
+          await remove(unidadRef)
+          console.log(`✅ Unidad ${unidadKey} eliminada del mapa`)
+
+          // Quitar asignación en Firestore
+          await asignarUnidad(conductorEditando.value.id, null)
+          console.log(`✅ Asignación de unidad removida`)
+        }
+      }
+    }
+
+    // Actualizar el campo en Firestore
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
 
     Notify.create({
@@ -1580,7 +1613,24 @@ async function actualizarCampo(campo, valor) {
       message: 'Campo actualizado correctamente',
       icon: 'check_circle',
     })
+
+    // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
+    if (campo === 'IdEmpresaConductor') {
+      await recargarDatos()
+
+      dialogDetallesConductor.value = false
+
+      Notify.create({
+        type: 'info',
+        message: '🏢 Conductor movido a otra empresa',
+        caption: 'La unidad ha sido liberada del mapa',
+        icon: 'business',
+        timeout: 3000,
+      })
+    }
   } catch (error) {
+    console.error('❌ Error al actualizar campo:', error)
+
     Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
