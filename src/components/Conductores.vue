@@ -1573,40 +1573,65 @@ async function actualizarCampo(campo, valor) {
   if (!conductorEditando.value?.id) return
 
   try {
+    console.log(`📝 Actualizando campo: ${campo} = ${valor}`)
+
     // 🔥 CASO ESPECIAL: Si está cambiando la empresa del conductor
     if (campo === 'IdEmpresaConductor') {
       const empresaAnterior = conductorEditando.value.IdEmpresaConductor
       const empresaNueva = valor
 
-      // Solo limpiar si realmente cambió de empresa
+      console.log(`🏢 Empresa anterior: ${empresaAnterior}`)
+      console.log(`🏢 Empresa nueva: ${empresaNueva}`)
+
+      // Solo procesar si realmente cambió de empresa
       if (empresaAnterior !== empresaNueva) {
-        console.log(`🏢 Cambiando empresa: ${empresaAnterior} → ${empresaNueva}`)
+        console.log('✅ Cambio de empresa detectado')
 
-        // Si tiene unidad asignada, quitarla (esto ya elimina del mapa)
+        // Si tiene unidad asignada, actualizar su IdEmpresaUnidad
         if (conductorEditando.value.UnidadAsignada) {
-          console.log(`🚗 Quitando unidad: ${conductorEditando.value.UnidadAsignada}`)
-
           const unidadId = conductorEditando.value.UnidadAsignada
+          console.log(`🚗 Actualizando empresa de unidad: ${unidadId}`)
 
-          // Eliminar del mapa (Firebase Realtime Database)
-          const { realtimeDb } = await import('src/firebase/firebaseConfig')
-          const { ref: dbRef, remove } = await import('firebase/database')
+          try {
+            // 🔥 Actualizar IdEmpresaUnidad en Realtime Database
+            const { realtimeDb } = await import('src/firebase/firebaseConfig')
+            const { ref: dbRef, update } = await import('firebase/database')
 
-          const unidadKey = `unidad_${unidadId}`
-          const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
+            const unidadKey = `unidad_${unidadId}`
+            const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
 
-          await remove(unidadRef)
-          console.log(`✅ Unidad ${unidadKey} eliminada del mapa`)
+            await update(unidadRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
 
-          // Quitar asignación en Firestore
-          await asignarUnidad(conductorEditando.value.id, null)
-          console.log(`✅ Asignación de unidad removida`)
+            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Realtime Database`)
+
+            // 🔥 También actualizar en Firestore
+            const { doc, updateDoc } = await import('firebase/firestore')
+            const { db } = await import('src/firebase/firebaseConfig')
+
+            const unidadFirestoreRef = doc(db, 'Unidades', unidadId)
+            await updateDoc(unidadFirestoreRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
+
+            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Firestore`)
+          } catch (unidadError) {
+            console.error('❌ Error al actualizar unidad:', unidadError)
+            // Continuar de todos modos para actualizar el conductor
+          }
+        } else {
+          console.log('ℹ️ No tiene unidad asignada')
         }
+      } else {
+        console.log('ℹ️ No hubo cambio de empresa')
       }
     }
 
     // Actualizar el campo en Firestore
+    console.log('💾 Actualizando campo en Firestore...')
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
+    console.log('✅ Campo actualizado en Firestore')
 
     Notify.create({
       type: 'positive',
@@ -1616,6 +1641,7 @@ async function actualizarCampo(campo, valor) {
 
     // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
     if (campo === 'IdEmpresaConductor') {
+      console.log('🔄 Recargando datos...')
       await recargarDatos()
 
       dialogDetallesConductor.value = false
@@ -1623,13 +1649,14 @@ async function actualizarCampo(campo, valor) {
       Notify.create({
         type: 'info',
         message: '🏢 Conductor movido a otra empresa',
-        caption: 'La unidad ha sido liberada del mapa',
+        caption: 'La unidad ahora pertenece a la nueva empresa',
         icon: 'business',
         timeout: 3000,
       })
     }
   } catch (error) {
-    console.error('❌ Error al actualizar campo:', error)
+    console.error('❌ Error completo:', error)
+    console.error('❌ Stack:', error.stack)
 
     Notify.create({
       type: 'negative',

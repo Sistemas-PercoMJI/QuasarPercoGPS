@@ -17,6 +17,7 @@ import { useMultiTenancy } from './useMultiTenancy'
 
 export function useConductoresFirebase() {
   const { crearQueryConEmpresa } = useMultiTenancy()
+  const { idEmpresaActual } = useMultiTenancy()
 
   // Estado reactivo
   const conductores = ref([])
@@ -889,7 +890,16 @@ export function useConductoresFirebase() {
 
   const contarConductoresPorGrupo = (grupoId) => {
     const grupo = gruposConductores.value.find((g) => g.id === grupoId)
-    return grupo?.ConductoresIds?.length || 0
+    if (!grupo?.ConductoresIds) return 0
+
+    // 🔥 Filtrar: Solo contar conductores de la empresa actual
+    const conductoresValidos = grupo.ConductoresIds.filter((conductorId) => {
+      const conductor = conductores.value.find((c) => c.id === conductorId)
+      // Verificar que existe Y que pertenece a la empresa actual
+      return conductor && conductor.IdEmpresaConductor === idEmpresaActual.value
+    })
+
+    return conductoresValidos.length
   }
 
   const obtenerUnidadDeConductor = (conductorId) => {
