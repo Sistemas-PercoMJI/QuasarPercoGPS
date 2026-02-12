@@ -1558,15 +1558,36 @@ const esPlacasVigente = computed(() => {
 const gruposConEspeciales = computed(() => {
   const grupos = [...gruposConductores.value]
 
-  // Contar unidades sin conductor
   const unidadesSinConductor = computed(() => {
-    const sinConductor = unidades.value.filter(
-      (unidad) =>
-        !unidad.ConductorAsignado && // 🔥 Ahora es un campo directo
-        unidad.IdEmpresaUnidad === idEmpresaActual.value,
-    )
+    // Obtener IDs de todas las unidades que SÍ tienen conductor
+    const unidadesConConductor = conductores.value
+      .filter((c) => {
+        if (!c.UnidadAsignada) return false
 
-    console.log(`✅ ${sinConductor.length} unidades SIN conductor`)
+        // 🆕 FILTRAR: Solo conductores de MIS empresas
+        if (Array.isArray(idEmpresaActual.value)) {
+          return idEmpresaActual.value.includes(c.IdEmpresaConductor)
+        } else {
+          return c.IdEmpresaConductor === idEmpresaActual.value
+        }
+      })
+      .map((c) => c.UnidadAsignada)
+
+    console.log('🚗 Unidades CON conductor:', unidadesConConductor)
+
+    // Filtrar unidades de MIS empresas que NO están asignadas
+    const sinConductor = unidades.value.filter((unidad) => {
+      if (unidadesConConductor.includes(unidad.id)) return false
+
+      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      if (Array.isArray(idEmpresaActual.value)) {
+        return idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
+      } else {
+        return unidad.IdEmpresaUnidad === idEmpresaActual.value
+      }
+    })
+
+    console.log(`✅ ${sinConductor.length} unidades SIN conductor de tus empresas`)
 
     return sinConductor
   })

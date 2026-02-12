@@ -27,22 +27,20 @@ export function useTrackingUnidades() {
     }
 
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      // 🔥 OPCIÓN 1: Filtrar por IdEmpresaConductor (no por IdEmpresaUnidad)
+      // Validar que tenga IdEmpresaConductor (cambiamos a este en lugar de IdEmpresaUnidad)
       if (!unidad.IdEmpresaConductor) {
-        return false // Si no tiene conductor asignado, no mostrar
+        return false
       }
 
-      // Filtrar por la empresa del CONDUCTOR (no de la unidad)
-      const conductorPerteneceAMiEmpresa = Array.isArray(idEmpresaActual.value)
+      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      const perteneceAMisEmpresas = Array.isArray(idEmpresaActual.value)
         ? idEmpresaActual.value.includes(unidad.IdEmpresaConductor)
         : unidad.IdEmpresaConductor === idEmpresaActual.value
 
-      return conductorPerteneceAMiEmpresa
+      return perteneceAMisEmpresas
     })
 
-    console.log(
-      `🔍 Filtradas ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades por IdEmpresaConductor`,
-    )
+    console.log(`✅ Mostrando ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades`)
     return unidadesFiltradas
   }
 
