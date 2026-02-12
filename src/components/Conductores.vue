@@ -48,7 +48,7 @@
       <div class="text-caption text-grey-7 q-mb-xs">GRUPOS</div>
       <q-list dense bordered class="rounded-borders">
         <q-item
-          v-for="grupo in gruposConductores"
+          v-for="grupo in gruposConEspeciales"
           :key="grupo.id"
           clickable
           v-ripple
@@ -69,8 +69,16 @@
           <q-item-section>
             <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
             <q-item-label caption class="text-grey-7">
-              <q-icon name="person" size="14px" class="q-mr-xs" />
-              {{ contarConductoresPorGrupo(grupo.id) }} conductores
+              <q-icon
+                :name="grupo.esGrupoEspecial ? 'directions_car' : 'person'"
+                size="14px"
+                class="q-mr-xs"
+              />
+              {{
+                grupo.esGrupoEspecial
+                  ? `${grupo.cantidadUnidades} unidades`
+                  : `${contarConductoresPorGrupo(grupo.id)} conductores`
+              }}
             </q-item-label>
           </q-item-section>
 
@@ -127,16 +135,29 @@
           class="conductor-card"
           clickable
           v-ripple
-          @click="seleccionarConductor(conductor)"
-          :class="{ 'conductor-selected': conductorSeleccionado?.id === conductor.id }"
+          @click="
+            conductor.esPseudoConductor
+              ? navegarAUnidadSinConductor(conductor)
+              : seleccionarConductor(conductor)
+          "
         >
           <q-card-section class="card-header">
-            <q-avatar color="primary" text-color="white" size="40px" class="card-avatar">
-              {{ obtenerIniciales(conductor.Nombre) }}
+            <q-avatar
+              :color="conductor.esPseudoConductor ? 'orange' : 'primary'"
+              text-color="white"
+              size="40px"
+              class="card-avatar"
+            >
+              <q-icon v-if="conductor.esPseudoConductor" name="directions_car" size="24px" />
+              <template v-else>
+                {{ obtenerIniciales(conductor.Nombre) }}
+              </template>
             </q-avatar>
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
-              <div class="text-caption text-grey-7">{{ conductor.Telefono }}</div>
+              <div class="text-caption text-grey-7">
+                {{ conductor.esPseudoConductor ? '🚗 Sin conductor' : conductor.Telefono }}
+              </div>
             </div>
           </q-card-section>
 
@@ -1230,7 +1251,7 @@ const {
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-  asignarUnidad,
+  //asignarUnidad,
   obtenerUnidadDeConductor,
   puedeEditarLicenciaConducir,
   puedeEditarSeguroUnidad,
@@ -1309,8 +1330,27 @@ const conductoresFiltrados = computed(() => {
     return []
   }
 
-  let resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  let resultado = []
 
+  // 🆕 GRUPO ESPECIAL: Sin Conductor
+  if (grupoSeleccionado.value === '__sin_conductor__') {
+    // Obtener todas las unidades sin conductor asignado
+    resultado = unidades.value
+      .filter((u) => !u.ConductorAsignado && u.IdEmpresaUnidad === idEmpresaActual.value)
+      .map((unidad) => ({
+        id: `unidad_${unidad.id}`,
+        Nombre: `Unidad ${unidad.Unidad}`,
+        Telefono: 'Sin conductor',
+        UnidadAsignada: unidad.id,
+        IdEmpresaConductor: unidad.IdEmpresaUnidad,
+        esPseudoConductor: true, // 🔥 Flag para identificarlo
+      }))
+  } else {
+    // Grupos normales
+    resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  }
+
+  // Aplicar búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1513,6 +1553,36 @@ const esPlacasVigente = computed(() => {
   }
 
   return fechaVencimiento > new Date()
+})
+
+const gruposConEspeciales = computed(() => {
+  const grupos = [...gruposConductores.value]
+
+  // Contar unidades sin conductor
+  const unidadesSinConductor = computed(() => {
+    const sinConductor = unidades.value.filter(
+      (unidad) =>
+        !unidad.ConductorAsignado && // 🔥 Ahora es un campo directo
+        unidad.IdEmpresaUnidad === idEmpresaActual.value,
+    )
+
+    console.log(`✅ ${sinConductor.length} unidades SIN conductor`)
+
+    return sinConductor
+  })
+
+  // Solo agregar si hay unidades sin conductor
+  if (unidadesSinConductor.value.length > 0) {
+    grupos.push({
+      id: '__sin_conductor__',
+      Nombre: 'Unidades Sin Conductor',
+      ConductoresIds: [], // Vacío porque son unidades
+      esGrupoEspecial: true,
+      cantidadUnidades: unidadesSinConductor.value.length,
+    })
+  }
+
+  return grupos
 })
 
 // Methods
@@ -1847,26 +1917,37 @@ async function asignarUnidadAConductor(unidadId) {
   const unidadAnteriorId = conductorEditando.value.UnidadAsignada
 
   try {
-    // CASO 1: Si unidadId es null/undefined, está QUITANDO la unidad
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    // CASO 1: Si unidadId es null, está QUITANDO la unidad
     if (!unidadId) {
       console.log('🗑️ Removiendo unidad del conductor...')
 
-      // Eliminar de Firebase Realtime Database
+      // 1. Quitar del conductor
+      const conductorRef = doc(db, 'Conductores', conductorId)
+      await updateDoc(conductorRef, {
+        UnidadAsignada: null,
+      })
+
+      // 2. 🆕 Quitar conductor de la unidad anterior
+      if (unidadAnteriorId) {
+        const unidadRef = doc(db, 'Unidades', unidadAnteriorId)
+        await updateDoc(unidadRef, {
+          ConductorAsignado: null, // 🔥 NUEVO CAMPO
+        })
+      }
+
+      // 3. Eliminar del mapa
       if (unidadAnteriorId) {
         const { realtimeDb } = await import('src/firebase/firebaseConfig')
         const { ref: dbRef, remove } = await import('firebase/database')
 
         const unidadIdKey = `unidad_${unidadAnteriorId}`
         const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
-
         await remove(unidadRef)
-        console.log(`✅ Unidad ${unidadIdKey} eliminada del mapa`)
       }
 
-      // Actualizar Firestore
-      await asignarUnidad(conductorId, null)
-
-      // Actualizar estado local
       conductorEditando.value.UnidadAsignada = null
       if (conductorSeleccionado.value) {
         conductorSeleccionado.value.UnidadAsignada = null
@@ -1879,7 +1960,6 @@ async function asignarUnidadAConductor(unidadId) {
         timeout: 2000,
       })
 
-      // Recargar datos
       await obtenerConductores()
       await obtenerUnidades()
 
@@ -1887,7 +1967,6 @@ async function asignarUnidadAConductor(unidadId) {
     }
 
     // CASO 2: Está ASIGNANDO una nueva unidad
-    // Verificar si la unidad ya está asignada a OTRO conductor
     const otroConductorConEstaUnidad = conductores.value.find(
       (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
     )
@@ -1900,33 +1979,44 @@ async function asignarUnidadAConductor(unidadId) {
         timeout: 3000,
       })
 
-      // Restaurar valor anterior
       conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
       return
     }
 
-    // Si había una unidad anterior diferente, eliminarla del mapa
+    // Si había una unidad anterior diferente, liberarla
     if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
+      // 🆕 Quitar conductor de unidad anterior
+      const unidadAnteriorRef = doc(db, 'Unidades', unidadAnteriorId)
+      await updateDoc(unidadAnteriorRef, {
+        ConductorAsignado: null,
+      })
+
+      // Eliminar del mapa
       const { realtimeDb } = await import('src/firebase/firebaseConfig')
       const { ref: dbRef, remove } = await import('firebase/database')
 
       const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
-      const unidadAnteriorRef = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
-
-      await remove(unidadAnteriorRef)
-      console.log(`✅ Unidad anterior ${unidadAnteriorKey} eliminada del mapa`)
+      const unidadAnteriorRef2 = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
+      await remove(unidadAnteriorRef2)
     }
 
-    // Ejecutar la asignación
-    await asignarUnidad(conductorId, unidadId)
+    // 1. Asignar unidad al conductor
+    const conductorRef = doc(db, 'Conductores', conductorId)
+    await updateDoc(conductorRef, {
+      UnidadAsignada: unidadId,
+    })
 
-    // Actualizar estado local
+    // 2. 🆕 Asignar conductor a la unidad
+    const unidadRef = doc(db, 'Unidades', unidadId)
+    await updateDoc(unidadRef, {
+      ConductorAsignado: conductorId, // 🔥 NUEVO CAMPO
+    })
+
     conductorEditando.value.UnidadAsignada = unidadId
     if (conductorSeleccionado.value) {
       conductorSeleccionado.value.UnidadAsignada = unidadId
     }
 
-    // Recargar datos primero
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
@@ -1939,7 +2029,6 @@ async function asignarUnidadAConductor(unidadId) {
       timeout: 3000,
     })
 
-    // Restaurar en caso de error
     conductorEditando.value.UnidadAsignada = unidadAnteriorId
   }
 }
@@ -2441,6 +2530,124 @@ async function quitarDeGrupo() {
       icon: 'error',
     })
   }
+}
+
+async function navegarAUnidadSinConductor(unidad) {
+  if (!unidad?.UnidadAsignada) {
+    Notify.create({
+      type: 'warning',
+      message: 'No hay unidad válida',
+      icon: 'warning',
+    })
+    return
+  }
+
+  // Buscar la unidad en el array de unidades
+  const unidadData = unidades.value.find((u) => u.id === unidad.UnidadAsignada)
+
+  if (!unidadData) {
+    Notify.create({
+      type: 'negative',
+      message: 'Unidad no encontrada',
+      icon: 'error',
+    })
+    return
+  }
+
+  // Acceder al mapa
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error: Mapa no disponible',
+      icon: 'error',
+    })
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+
+  if (!mapaAPI.map) {
+    Notify.create({
+      type: 'negative',
+      message: 'Mapa no inicializado',
+      icon: 'error',
+    })
+    return
+  }
+
+  // Buscar la unidad en el mapa
+  let unidadesDisponibles = window._unidadesTrackeadas || []
+
+  if (unidadesDisponibles.length === 0) {
+    const unidadesRef = window.firebase_unidades_activas
+    if (unidadesRef) {
+      unidadesDisponibles = Object.values(unidadesRef)
+    }
+  }
+
+  const nombreBuscado = unidadData.Unidad?.toLowerCase().trim()
+
+  const unidadActiva = unidadesDisponibles.find((u) => {
+    const nombreUnidad = u.unidadNombre?.toLowerCase().trim()
+    return (
+      nombreUnidad === nombreBuscado ||
+      nombreUnidad?.includes(nombreBuscado) ||
+      nombreBuscado?.includes(nombreUnidad)
+    )
+  })
+
+  if (!unidadActiva) {
+    Notify.create({
+      type: 'negative',
+      message: `No se encontró "${unidadData.Unidad}" en el mapa`,
+      caption: 'La unidad podría no tener GPS activo',
+      icon: 'search_off',
+      timeout: 3000,
+    })
+    return
+  }
+
+  // Verificar ubicación
+  if (!unidadActiva.ubicacion || !unidadActiva.ubicacion.lat || !unidadActiva.ubicacion.lng) {
+    Notify.create({
+      type: 'negative',
+      message: 'La unidad no tiene ubicación GPS',
+      icon: 'gps_not_fixed',
+      timeout: 3000,
+    })
+    return
+  }
+
+  const { lat, lng } = unidadActiva.ubicacion
+
+  // Centrar mapa con animación suave
+  mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  // Abrir popup del marcador
+  setTimeout(() => {
+    if (mapaAPI.centrarEnUnidad) {
+      mapaAPI.centrarEnUnidad(unidadActiva.id)
+    }
+  }, 1600)
+
+  // Cerrar drawer
+  emit('close')
+
+  // Notificación de éxito
+  Notify.create({
+    type: 'positive',
+    message: `📍 ${unidadData.Unidad}`,
+    caption: 'Sin conductor asignado',
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
 }
 
 // Lifecycle
