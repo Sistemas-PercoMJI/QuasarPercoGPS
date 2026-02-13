@@ -1306,9 +1306,6 @@ export function useMapboxGL() {
         delete window._mapMoveEndHandler
       }
 
-      mapboxgl.accessToken =
-        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
-
       map.value = new mapboxgl.Map({
         container: containerId,
         style: ESTILOS_MAPA[estiloActual.value], // ✅ Usar estilo del estado
@@ -1561,7 +1558,7 @@ export function useMapboxGL() {
         console.error('❌ Error en Mapbox GL:', e)
       })
 
-      /* 🆕 LISTENER: Filtrar unidades del mapa por IDs
+      // 🆕 LISTENER: Filtrar unidades del mapa por IDs
       window.addEventListener('filtrar-unidades-mapa', (event) => {
         const { idsUnidades } = event.detail
 
@@ -1596,7 +1593,7 @@ export function useMapboxGL() {
         })
 
         console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
-      })*/
+      })
 
       // ✅ Crear objeto mapaAPI con todas las funciones
       const mapaAPI = {
