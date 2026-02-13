@@ -17,9 +17,6 @@ export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   const { idEmpresaActual } = useMultiTenancy()
 
-  /**
-   * 🆕 Filtrar unidades por empresa
-   */
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
     if (!idEmpresaActual.value) {
       console.warn('⚠️ No hay IdEmpresa, retornando array vacío')
@@ -27,12 +24,13 @@ export function useTrackingUnidades() {
     }
 
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      // Validar que tenga IdEmpresaConductor (cambiamos a este en lugar de IdEmpresaUnidad)
+      // 🔥 IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
       if (!unidad.IdEmpresaConductor) {
+        console.log(`⚠️ Unidad sin IdEmpresaConductor:`, unidad.unidadNombre)
         return false
       }
 
-      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      // Soportar array de empresas
       const perteneceAMisEmpresas = Array.isArray(idEmpresaActual.value)
         ? idEmpresaActual.value.includes(unidad.IdEmpresaConductor)
         : unidad.IdEmpresaConductor === idEmpresaActual.value
@@ -40,6 +38,9 @@ export function useTrackingUnidades() {
       return perteneceAMisEmpresas
     })
 
+    console.log(
+      `🔍 Filtradas ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades por IdEmpresaConductor`,
+    )
     return unidadesFiltradas
   }
 

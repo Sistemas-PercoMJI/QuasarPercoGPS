@@ -1564,19 +1564,22 @@ const esPlacasVigente = computed(() => {
 
 // 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  if (!filtroMapaActivo.value || !grupoSeleccionado.value) {
-    return null // null = mostrar todas
-  }
-
-  // Grupo "TODOS" = mostrar todas las unidades
-  if (grupoSeleccionado.value === '__todos__') {
+  // 🔥 Si el filtro NO está activo, retornar null para mostrar TODAS
+  if (!filtroMapaActivo.value) {
+    console.log('🗺️ Filtro desactivado → mostrando TODAS las unidades')
     return null
   }
 
-  /* Grupo "Sin Conductor" = mostrar solo unidades sin conductor
-  if (grupoSeleccionado.value === '__sin_conductor__') {
-    return unidadesSinConductor.value.map((u) => u.id)
-  }*/
+  // Si no hay grupo seleccionado, mostrar todas
+  if (!grupoSeleccionado.value) {
+    return null
+  }
+
+  // Grupo "TODOS" = desactivar filtro (mostrar todas)
+  if (grupoSeleccionado.value === '__todos__') {
+    console.log('🗺️ Grupo "TODOS" → mostrando TODAS las unidades')
+    return null
+  }
 
   // Grupo normal = mostrar unidades de conductores del grupo
   const conductoresDelGrupo = conductoresFiltrados.value
@@ -1584,7 +1587,7 @@ const idsUnidadesVisibles = computed(() => {
     .filter((c) => c.UnidadAsignada)
     .map((c) => c.UnidadAsignada)
 
-  console.log(`🗺️ Mostrando ${idsUnidades.length} unidades del grupo`)
+  console.log(`🗺️ Grupo "${grupoSeleccionado.value}" → ${idsUnidades.length} unidades`)
   return idsUnidades
 })
 
@@ -1641,24 +1644,33 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
 
-  // 🔥 Activar filtro automáticamente (excepto para "TODOS")
+  // 🔥 Si es "TODOS", desactivar filtro
   if (grupo.id === '__todos__') {
-    filtroMapaActivo.value = false // Desactivar filtro para "TODOS"
-  } else {
-    filtroMapaActivo.value = true // Activar filtro para grupos específicos
-  }
+    filtroMapaActivo.value = false
 
-  Notify.create({
-    type: 'info',
-    message: `📁 ${grupo.Nombre}`,
-    caption:
-      grupo.id === '__todos__'
-        ? 'Mostrando todas las unidades'
-        : `Filtrando ${conductoresFiltrados.value.length} unidades`,
-    icon: grupo.icono || 'folder',
-    position: 'top',
-    timeout: 2000,
-  })
+    Notify.create({
+      type: 'info',
+      message: `👥 ${grupo.Nombre}`,
+      caption: 'Mostrando todas las unidades del mapa',
+      icon: grupo.icono || 'groups',
+      position: 'top',
+      timeout: 2000,
+    })
+  } else {
+    // Para grupos específicos, activar filtro
+    filtroMapaActivo.value = true
+
+    const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
+
+    Notify.create({
+      type: 'info',
+      message: `📁 ${grupo.Nombre}`,
+      caption: `Filtrando ${cantidadUnidades} unidades en el mapa`,
+      icon: grupo.icono || 'folder',
+      position: 'top',
+      timeout: 2000,
+    })
+  }
 }
 
 async function seleccionarConductor(conductor) {
@@ -2736,21 +2748,23 @@ watch(
 )
 
 // 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
-watch(idsUnidadesVisibles, (nuevosIds) => {
-  if (!filtroMapaActivo.value) {
-    console.log('🗺️ Filtro desactivado, mostrando todas las unidades')
-    return
-  }
+watch(
+  idsUnidadesVisibles,
+  (nuevosIds) => {
+    console.log(
+      '🗺️ idsUnidadesVisibles cambió:',
+      nuevosIds ? `${nuevosIds.length} IDs` : 'NULL (todas)',
+    )
 
-  console.log('🗺️ Aplicando filtro de mapa:', nuevosIds ? nuevosIds.length : 'TODAS')
-
-  // Emitir evento para que el mapa se actualice
-  window.dispatchEvent(
-    new CustomEvent('filtrar-unidades-mapa', {
-      detail: { idsUnidades: nuevosIds },
-    }),
-  )
-})
+    // Emitir evento para que el mapa se actualice
+    window.dispatchEvent(
+      new CustomEvent('filtrar-unidades-mapa', {
+        detail: { idsUnidades: nuevosIds },
+      }),
+    )
+  },
+  { immediate: true },
+) // 🔥 immediate: true para ejecutar al cargar
 
 // 🆕 Watch: Guardar grupo seleccionado en localStorage
 watch(grupoSeleccionado, (nuevoGrupo) => {
