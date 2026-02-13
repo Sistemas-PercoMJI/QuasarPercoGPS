@@ -2007,21 +2007,18 @@ onMounted(async () => {
     }
 
     window.addEventListener('empresa-cambiada', async (event) => {
-      console.log('🔄 Empresa cambiada, recargando página...', event.detail.empresas)
+      console.log('🔄 Empresa cambiada:', event.detail.empresas)
 
-      // Notificar al usuario
+      // Solo notificar, NO recargar
       Notify.create({
         type: 'info',
         message: '🏢 Empresa actualizada',
-        caption: 'Recargando la página...',
+        caption: 'Los datos se actualizarán automáticamente',
         icon: 'business',
         timeout: 2000,
       })
 
-      // Recargar la página completa después de 1 segundo
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      // NO hacer: window.location.reload()
     })
 
     window.verDetallesPOI = (poiId) => {

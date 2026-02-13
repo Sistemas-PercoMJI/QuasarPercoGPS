@@ -2917,8 +2917,8 @@ onMounted(async () => {
         icon: 'sync',
         timeout: 2000,
       })
-    } catch (error) {
-      console.error('❌ Error recargando:', error)
+    } catch (o) {
+      console.log('', o)
     }
   })
 })
