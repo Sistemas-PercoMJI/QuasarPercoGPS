@@ -57,8 +57,6 @@ const ESTILOS_MAPA = {
 let popupGlobalActivo = null
 
 // 🔑 Tu API key de Mapbox
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 // ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
 const THROTTLE_MS = 200 // ✅ 200ms = 5 actualizaciones/segundo (antes era 300ms)
@@ -1169,7 +1167,7 @@ export function useMapboxGL() {
   const obtenerDireccion = async (lat, lng) => {
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`,
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'}`,
       )
       const data = await response.json()
       return data.features[0]?.place_name || 'Dirección no disponible'
@@ -1556,43 +1554,6 @@ export function useMapboxGL() {
 
       map.value.on('error', (e) => {
         console.error('❌ Error en Mapbox GL:', e)
-      })
-
-      // 🆕 LISTENER: Filtrar unidades del mapa por IDs
-      window.addEventListener('filtrar-unidades-mapa', (event) => {
-        const { idsUnidades } = event.detail
-
-        console.log(
-          '🗺️ Filtrando marcadores en mapa:',
-          idsUnidades ? `${idsUnidades.length} unidades` : 'TODAS',
-        )
-
-        // Si idsUnidades es null o undefined, mostrar todos
-        if (!idsUnidades) {
-          Object.values(marcadoresUnidades.value).forEach((marcador) => {
-            if (marcador && marcador.getElement) {
-              marcador.getElement().style.display = 'block'
-            }
-          })
-          console.log('✅ Mostrando todos los marcadores')
-          return
-        }
-
-        // Filtrar: mostrar solo los que están en idsUnidades
-        Object.entries(marcadoresUnidades.value).forEach(([key, marcador]) => {
-          if (!marcador || !marcador.getElement) return
-
-          // El key puede ser el unidadId directamente
-          const unidadId = key.replace('unidad_', '') // Por si tiene prefijo
-
-          if (idsUnidades.includes(unidadId) || idsUnidades.includes(key)) {
-            marcador.getElement().style.display = 'block' // Mostrar
-          } else {
-            marcador.getElement().style.display = 'none' // Ocultar
-          }
-        })
-
-        console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
       })
 
       // ✅ Crear objeto mapaAPI con todas las funciones
