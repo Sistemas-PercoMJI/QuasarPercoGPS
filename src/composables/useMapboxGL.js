@@ -57,6 +57,8 @@ const ESTILOS_MAPA = {
 let popupGlobalActivo = null
 
 // 🔑 Tu API key de Mapbox
+const MAPBOX_TOKEN =
+  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 // ⚡ OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
 const THROTTLE_MS = 200 // ✅ 200ms = 5 actualizaciones/segundo (antes era 300ms)
@@ -1167,7 +1169,7 @@ export function useMapboxGL() {
   const obtenerDireccion = async (lat, lng) => {
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'}`,
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`,
       )
       const data = await response.json()
       return data.features[0]?.place_name || 'Dirección no disponible'
@@ -1303,6 +1305,9 @@ export function useMapboxGL() {
         delete window._mapMoveStartHandler
         delete window._mapMoveEndHandler
       }
+
+      mapboxgl.accessToken =
+        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
       map.value = new mapboxgl.Map({
         container: containerId,
