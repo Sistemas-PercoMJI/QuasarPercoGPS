@@ -2266,7 +2266,7 @@ onMounted(async () => {
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
-    // Actualizar marcadores de unidades
+    // Actualizar marcadores de unidades ola
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
