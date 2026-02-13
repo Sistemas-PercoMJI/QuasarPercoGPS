@@ -12,6 +12,19 @@
         </div>
       </div>
       <div class="header-actions">
+        <q-btn
+          flat
+          dense
+          round
+          :icon="filtroMapaActivo ? 'filter_alt' : 'filter_alt_off'"
+          :color="filtroMapaActivo ? 'white' : 'grey-4'"
+          size="sm"
+          @click="filtroMapaActivo = !filtroMapaActivo"
+        >
+          <q-tooltip>
+            {{ filtroMapaActivo ? 'Filtro de mapa ACTIVADO' : 'Filtro de mapa DESACTIVADO' }}
+          </q-tooltip>
+        </q-btn>
         <q-btn flat dense round icon="sync" color="white" size="sm" @click="sincronizarDatos">
           <q-tooltip>Sincronizar con Firebase</q-tooltip>
         </q-btn>
@@ -62,7 +75,7 @@
               text-color="white"
               size="32px"
             >
-              <q-icon name="folder" size="16px" />
+              <q-icon :name="grupo.icono || 'folder'" size="16px" />
             </q-avatar>
           </q-item-section>
 
@@ -1149,6 +1162,7 @@ import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { auth } from 'src/firebase/firebaseConfig'
 
 const { estadoCompartido, resetAbrirConductores } = useEventBus()
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
@@ -1311,6 +1325,8 @@ const inputFotoTargeta = ref(null)
 const inputFotoPlacas = ref(null)
 const opcionesUnidadesFiltradas = ref([])
 
+const filtroMapaActivo = ref(false)
+
 // Listeners de Firebase
 let unsubscribeConductores = null
 let unsubscribeGrupos = null
@@ -1332,21 +1348,12 @@ const conductoresFiltrados = computed(() => {
 
   let resultado = []
 
-  // 🆕 GRUPO ESPECIAL: Sin Conductor
-  if (grupoSeleccionado.value === '__sin_conductor__') {
-    // Obtener todas las unidades sin conductor asignado
-    resultado = unidades.value
-      .filter((u) => !u.ConductorAsignado && u.IdEmpresaUnidad === idEmpresaActual.value)
-      .map((unidad) => ({
-        id: `unidad_${unidad.id}`,
-        Nombre: `Unidad ${unidad.Unidad}`,
-        Telefono: 'Sin conductor',
-        UnidadAsignada: unidad.id,
-        IdEmpresaConductor: unidad.IdEmpresaUnidad,
-        esPseudoConductor: true, // 🔥 Flag para identificarlo
-      }))
-  } else {
-    // Grupos normales
+  // GRUPO ESPECIAL: TODOS (sin filtro de empresa)
+  if (grupoSeleccionado.value === '__todos__') {
+    resultado = conductores.value
+  }
+  // Grupos normales
+  else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
@@ -1555,51 +1562,67 @@ const esPlacasVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
+// 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
+const idsUnidadesVisibles = computed(() => {
+  if (!filtroMapaActivo.value || !grupoSeleccionado.value) {
+    return null // null = mostrar todas
+  }
+
+  // Grupo "TODOS" = mostrar todas las unidades
+  if (grupoSeleccionado.value === '__todos__') {
+    return null
+  }
+
+  /* Grupo "Sin Conductor" = mostrar solo unidades sin conductor
+  if (grupoSeleccionado.value === '__sin_conductor__') {
+    return unidadesSinConductor.value.map((u) => u.id)
+  }*/
+
+  // Grupo normal = mostrar unidades de conductores del grupo
+  const conductoresDelGrupo = conductoresFiltrados.value
+  const idsUnidades = conductoresDelGrupo
+    .filter((c) => c.UnidadAsignada)
+    .map((c) => c.UnidadAsignada)
+
+  console.log(`🗺️ Mostrando ${idsUnidades.length} unidades del grupo`)
+  return idsUnidades
+})
+
+// 🆕 Grupos con el especial "Sin Conductor" y "TODOS"
 const gruposConEspeciales = computed(() => {
-  const grupos = [...gruposConductores.value]
+  const grupos = []
 
-  const unidadesSinConductor = computed(() => {
-    // Obtener IDs de todas las unidades que SÍ tienen conductor
-    const unidadesConConductor = conductores.value
-      .filter((c) => {
-        if (!c.UnidadAsignada) return false
-
-        // 🆕 FILTRAR: Solo conductores de MIS empresas
-        if (Array.isArray(idEmpresaActual.value)) {
-          return idEmpresaActual.value.includes(c.IdEmpresaConductor)
-        } else {
-          return c.IdEmpresaConductor === idEmpresaActual.value
-        }
-      })
-      .map((c) => c.UnidadAsignada)
-
-    console.log('🚗 Unidades CON conductor:', unidadesConConductor)
-
-    // Filtrar unidades de MIS empresas que NO están asignadas
-    const sinConductor = unidades.value.filter((unidad) => {
-      if (unidadesConConductor.includes(unidad.id)) return false
-
-      // 🆕 SOPORTAR ARRAY DE EMPRESAS
-      if (Array.isArray(idEmpresaActual.value)) {
-        return idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
-      } else {
-        return unidad.IdEmpresaUnidad === idEmpresaActual.value
-      }
-    })
-
-    console.log(`✅ ${sinConductor.length} unidades SIN conductor de tus empresas`)
-
-    return sinConductor
+  // 🆕 BOTÓN ESPECIAL: Ver TODOS los conductores
+  grupos.push({
+    id: '__todos__',
+    Nombre: '👥 Todos los Conductores',
+    ConductoresIds: [],
+    esGrupoEspecial: true,
+    icono: 'groups',
+    cantidadTotal: conductores.value.length,
   })
 
+  // Grupos normales del usuario
+  grupos.push(...gruposConductores.value)
+
+  // Contar unidades sin conductor
+  const unidadesSinConductor = unidades.value.filter(
+    (u) =>
+      !u.ConductorAsignado &&
+      (Array.isArray(idEmpresaActual.value)
+        ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
+        : u.IdEmpresaUnidad === idEmpresaActual.value),
+  )
+
   // Solo agregar si hay unidades sin conductor
-  if (unidadesSinConductor.value.length > 0) {
+  if (unidadesSinConductor.length > 0) {
     grupos.push({
       id: '__sin_conductor__',
-      Nombre: 'Unidades Sin Conductor',
-      ConductoresIds: [], // Vacío porque son unidades
+      Nombre: '🚗 Unidades Sin Conductor',
+      ConductoresIds: [],
       esGrupoEspecial: true,
-      cantidadUnidades: unidadesSinConductor.value.length,
+      icono: 'directions_car',
+      cantidadUnidades: unidadesSinConductor.length,
     })
   }
 
@@ -1617,6 +1640,19 @@ function obtenerIniciales(nombre) {
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
+
+  // 🆕 Activar filtro de mapa automáticamente
+  filtroMapaActivo.value = true
+
+  Notify.create({
+    type: 'info',
+    message: `📁 ${grupo.Nombre}`,
+    caption:
+      grupo.id === '__todos__' ? 'Mostrando todas las unidades' : 'Filtrando unidades en el mapa',
+    icon: grupo.icono || 'folder',
+    position: 'top',
+    timeout: 2000,
+  })
 }
 
 async function seleccionarConductor(conductor) {
@@ -2671,33 +2707,6 @@ async function navegarAUnidadSinConductor(unidad) {
   })
 }
 
-// Lifecycle
-onMounted(async () => {
-  if (!idEmpresaActual.value) {
-    await cargarUsuarioActual()
-  }
-
-  console.log('🏢 Empresa:', idEmpresaActual.value)
-
-  // Ahora sí cargar conductores
-  await obtenerConductores()
-  try {
-    await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
-
-    unsubscribeConductores = escucharConductores()
-    unsubscribeGrupos = escucharGrupos()
-  } catch (error) {
-    console.error('❌ Error al conectar con Firebase:', error)
-
-    Notify.create({
-      type: 'negative',
-      message: 'Error al conectar con Firebase: ' + error.message,
-      icon: 'error',
-      timeout: 5000,
-    })
-  }
-})
-
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
@@ -2719,6 +2728,43 @@ watch(
   },
   { deep: true, immediate: true },
 )
+
+// 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
+watch(idsUnidadesVisibles, (nuevosIds) => {
+  if (!filtroMapaActivo.value) return
+
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI) return
+
+  const mapaAPI = mapPage._mapaAPI
+
+  // Aplicar filtro al mapa
+  if (mapaAPI.filtrarUnidadesPorIds) {
+    mapaAPI.filtrarUnidadesPorIds(nuevosIds)
+  }
+
+  console.log('🗺️ Filtro de mapa actualizado:', nuevosIds ? nuevosIds.length : 'TODAS')
+})
+
+// 🆕 Watch: Guardar grupo seleccionado en localStorage
+watch(grupoSeleccionado, (nuevoGrupo) => {
+  if (nuevoGrupo) {
+    const userId = auth.currentUser?.uid
+    if (userId) {
+      localStorage.setItem(`grupoSeleccionado_${userId}`, nuevoGrupo)
+      console.log(`💾 Grupo guardado: ${nuevoGrupo}`)
+    }
+  }
+})
+
+// 🆕 Watch: Guardar estado de filtro de mapa
+watch(filtroMapaActivo, (nuevoEstado) => {
+  const userId = auth.currentUser?.uid
+  if (userId) {
+    localStorage.setItem(`filtroMapaActivo_${userId}`, String(nuevoEstado))
+    console.log(`💾 Filtro de mapa guardado: ${nuevoEstado}`)
+  }
+})
 
 function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
   if (grupoId && grupoId !== grupoSeleccionado.value) {
@@ -2780,6 +2826,65 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
     }
   })
 }
+
+onMounted(async () => {
+  if (!idEmpresaActual.value) {
+    await cargarUsuarioActual()
+  }
+
+  console.log('🏢 Empresa:', idEmpresaActual.value)
+
+  await obtenerConductores()
+
+  try {
+    await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
+
+    unsubscribeConductores = escucharConductores()
+    unsubscribeGrupos = escucharGrupos()
+
+    // 🆕 RESTAURAR SELECCIÓN GUARDADA
+    const userId = auth.currentUser?.uid
+    if (userId) {
+      const grupoGuardado = localStorage.getItem(`grupoSeleccionado_${userId}`)
+      const filtroGuardado = localStorage.getItem(`filtroMapaActivo_${userId}`)
+
+      if (grupoGuardado) {
+        // Esperar a que los grupos se carguen
+        await nextTick()
+
+        // Verificar que el grupo existe
+        const grupoExiste = gruposConEspeciales.value.find((g) => g.id === grupoGuardado)
+
+        if (grupoExiste) {
+          grupoSeleccionado.value = grupoGuardado
+          console.log(`✅ Grupo restaurado: ${grupoGuardado}`)
+        } else {
+          // Si el grupo no existe, seleccionar "TODOS" por defecto
+          grupoSeleccionado.value = '__todos__'
+          console.log('⚠️ Grupo guardado no existe, usando TODOS')
+        }
+      } else {
+        // Primera vez: seleccionar "TODOS"
+        grupoSeleccionado.value = '__todos__'
+      }
+
+      // Restaurar estado de filtro
+      if (filtroGuardado !== null) {
+        filtroMapaActivo.value = filtroGuardado === 'true'
+        console.log(`✅ Filtro restaurado: ${filtroMapaActivo.value}`)
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error al conectar con Firebase:', error)
+
+    Notify.create({
+      type: 'negative',
+      message: 'Error al conectar con Firebase: ' + error.message,
+      icon: 'error',
+      timeout: 5000,
+    })
+  }
+})
 
 onUnmounted(() => {
   if (unsubscribeConductores) unsubscribeConductores()

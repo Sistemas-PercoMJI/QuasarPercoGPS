@@ -40,7 +40,6 @@ export function useTrackingUnidades() {
       return perteneceAMisEmpresas
     })
 
-    console.log(`✅ Mostrando ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades`)
     return unidadesFiltradas
   }
 
