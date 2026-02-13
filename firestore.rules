@@ -53,6 +53,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
+      // 🆕 NUEVA: SUBCOLECCIÓN GruposGeozonas
+      match /GruposGeozonas/{grupoId} {
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
+      }
+      
       // SUBCOLECCIÓN Geozonas
       match /Geozonas/{geozonaId} {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());

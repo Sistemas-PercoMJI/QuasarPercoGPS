@@ -349,6 +349,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
+import { Notify } from 'quasar'
 
 const geozonasCacheCompleto = ref([])
 
@@ -1150,6 +1151,57 @@ const dibujarPOIsCombinados = async (pois) => {
         mapaAPI.map.getCanvas().style.cursor = ''
       })
     }
+  }
+}
+// 🚀 FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
+const actualizarCapaPOIs = async () => {
+  if (!mapaAPI?.map) return
+
+  const eventosActivos = await obtenerEventos()
+  const eventosFiltrados = eventosActivos.filter((e) => e.activo)
+
+  const poisFeatures = poisCargados.value
+    .filter((poi) => poi.coordenadas)
+    .map((poi) => {
+      const { lat, lng } = poi.coordenadas
+      const radio = poi.radio || 100
+      const color = poi.color || '#FF5252'
+      const colorKey = color.replace('#', '')
+      const tieneEventos = tieneEventosAsignados(poi.id, 'poi', eventosFiltrados)
+
+      if (window._mapboxLoadIcon) {
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, false)
+        window._mapboxLoadIcon(mapaAPI.map, 'poi', color, true)
+      }
+
+      const iconSuffix = tieneEventos ? '-badge' : ''
+      return {
+        type: 'Feature',
+        properties: {
+          id: poi.id,
+          nombre: poi.nombre,
+          direccion: poi.direccion,
+          color: color,
+          colorKey: colorKey,
+          radio: radio,
+          lat: lat,
+          tieneEventos: tieneEventos,
+          iconImage: `poi-${colorKey}${iconSuffix}`,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+      }
+    })
+
+  // 🚀 SOLO ACTUALIZAR EL SOURCE (no recrear layers)
+  const sourceId = 'pois-combined'
+  if (mapaAPI.map.getSource(sourceId)) {
+    mapaAPI.map.getSource(sourceId).setData({
+      type: 'FeatureCollection',
+      features: poisFeatures,
+    })
   }
 }
 
@@ -1954,6 +2006,21 @@ onMounted(async () => {
       }
     }
 
+    window.addEventListener('empresa-cambiada', async (event) => {
+      console.log('🔄 Empresa cambiada:', event.detail.empresas)
+
+      // Solo notificar, NO recargar
+      Notify.create({
+        type: 'info',
+        message: '🏢 Empresa actualizada',
+        caption: 'Los datos se actualizarán automáticamente',
+        icon: 'business',
+        timeout: 2000,
+      })
+
+      // NO hacer: window.location.reload()
+    })
+
     window.verDetallesPOI = (poiId) => {
       window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
     }
@@ -2196,13 +2263,20 @@ onMounted(async () => {
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
-    // Actualizar marcadores de unidades
+    // Actualizar marcadores de unidades ola
     await nextTick()
     if (unidadesActivas.value && unidadesActivas.value.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   })
+  window.addEventListener('actualizarPOIsEnMapa', async (e) => {
+    poisCargados.value = e.detail.pois
+    await actualizarCapaPOIs()
+  })
 })
+
+// Escuchar evento de filtrado
+
 const handleMostrarBoton = (e) => {
   mostrarBotonConfirmarGeozona.value = e.detail.mostrar
 }

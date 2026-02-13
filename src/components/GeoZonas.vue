@@ -65,45 +65,82 @@
             <q-icon name="close" class="cursor-pointer" @click="busquedaPOI = ''" />
           </template>
         </q-input>
+
+        <!-- 🆕 BOTÓN CREAR GRUPO -->
+        <q-btn
+          outline
+          dense
+          icon="create_new_folder"
+          label="Crear Grupo"
+          color="orange"
+          class="full-width q-mt-sm crear-grupo-btn"
+          @click="dialogNuevoGrupo = true"
+        >
+          <q-tooltip>Crear un nuevo grupo para organizar ubicaciones</q-tooltip>
+        </q-btn>
       </div>
 
-      <!-- Filtro por grupos -->
+      <!-- Filtro por grupos POIs -->
+      <!-- Filtro por grupos POIs -->
       <div class="q-px-md q-pb-md" v-if="grupos.length > 0">
-        <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">FILTRAR POR GRUPO</div>
-        <div class="chips-container">
-          <q-chip
-            :outline="grupoSeleccionado !== null"
-            color="primary"
-            text-color="white"
-            clickable
-            @click="grupoSeleccionado = null"
-          >
-            <q-avatar
-              v-if="grupoSeleccionado === null"
-              icon="check"
-              color="white"
-              text-color="primary"
+        <!-- Header colapsable -->
+        <div class="filtro-header" @click="filtrosExpandidosPOI = !filtrosExpandidosPOI">
+          <div class="text-caption text-grey-7 text-weight-medium">FILTRAR POR GRUPO</div>
+          <div class="filtro-actions">
+            <q-chip dense color="primary" text-color="white" size="sm">
+              {{ grupoSeleccionado !== null ? '1 filtro activo' : 'Sin filtros' }}
+            </q-chip>
+            <q-icon
+              :name="filtrosExpandidosPOI ? 'expand_less' : 'expand_more'"
+              size="20px"
+              color="grey-7"
             />
-            Todos ({{ poisFiltrados.length }})
-          </q-chip>
-          <q-chip
-            v-for="grupo in grupos"
-            :key="grupo.id"
-            :outline="grupoSeleccionado !== grupo.id"
-            :color="grupo.color"
-            text-color="white"
-            clickable
-            @click="grupoSeleccionado = grupo.id"
-          >
-            <q-avatar
-              v-if="grupoSeleccionado === grupo.id"
-              icon="check"
-              color="white"
-              :text-color="grupo.color"
-            />
-            {{ grupo.nombre }} ({{ contarPOIPorGrupo(grupo.id) }})
-          </q-chip>
+          </div>
         </div>
+
+        <!-- Chips colapsables -->
+        <q-slide-transition>
+          <div v-show="filtrosExpandidosPOI" class="chips-container q-mt-sm">
+            <!-- ✅ CHIP "TODOS" -->
+            <q-chip
+              :outline="grupoSeleccionado !== null"
+              color="primary"
+              text-color="white"
+              clickable
+              @click="grupoSeleccionado = null"
+            >
+              <q-avatar
+                v-if="grupoSeleccionado === null"
+                icon="check"
+                color="white"
+                text-color="primary"
+              />
+              Todos ({{ totalPOIs }})
+            </q-chip>
+
+            <!-- ✅ CHIPS DE GRUPOS -->
+            <q-chip
+              v-for="grupo in grupos"
+              :key="grupo.id"
+              :outline="grupoSeleccionado !== grupo.id"
+              :style="{
+                background: grupoSeleccionado === grupo.id ? grupo.color : 'transparent',
+                borderColor: grupo.color,
+                color: grupoSeleccionado === grupo.id ? 'white' : grupo.color,
+              }"
+              clickable
+              @click="grupoSeleccionado = grupo.id"
+            >
+              <q-avatar
+                v-if="grupoSeleccionado === grupo.id"
+                icon="check"
+                color="white"
+                :text-color="grupo.color"
+              />
+              {{ grupo.nombre }} ({{ contarPOIPorGrupo(grupo.id) }})
+            </q-chip>
+          </div>
+        </q-slide-transition>
       </div>
 
       <!-- Lista de POIs con diseño moderno -->
@@ -124,7 +161,11 @@
             @dblclick="verEnMapaEnDirecto(poi)"
           >
             <q-card-section class="row items-center q-pa-md">
-              <q-avatar size="48px" :color="getColorGrupo(poi.grupoId)" text-color="white">
+              <q-avatar
+                size="48px"
+                :style="{ background: getColorGrupo(poi.grupoId) }"
+                text-color="white"
+              >
                 <q-icon name="place" size="28px" />
                 <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
                 <q-badge
@@ -200,47 +241,82 @@
             <q-icon name="close" class="cursor-pointer" @click="busquedaGeozona = ''" />
           </template>
         </q-input>
+
+        <!-- 🆕 BOTÓN CREAR GRUPO -->
+        <q-btn
+          outline
+          dense
+          icon="create_new_folder"
+          label="Crear Grupo"
+          color="orange"
+          class="full-width q-mt-sm crear-grupo-btn"
+          @click="dialogNuevoGrupo = true"
+        >
+          <q-tooltip>Crear un nuevo grupo para organizar ubicaciones</q-tooltip>
+        </q-btn>
       </div>
 
-      <!-- Filtro por grupos -->
+      <!-- Filtro por grupos Geozonas -->
       <div class="q-px-md q-pb-md" v-if="grupos.length > 0">
-        <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">FILTRAR POR GRUPO</div>
-        <div class="chips-container">
-          <q-chip
-            :outline="grupoSeleccionadoGZ !== null"
-            color="secondary"
-            text-color="white"
-            clickable
-            @click="grupoSeleccionadoGZ = null"
-          >
-            <q-avatar
-              v-if="grupoSeleccionadoGZ === null"
-              icon="check"
-              color="white"
-              text-color="secondary"
+        <!-- Header colapsable -->
+        <div class="filtro-header" @click="filtrosExpandidosGZ = !filtrosExpandidosGZ">
+          <div class="text-caption text-grey-7 text-weight-medium">FILTRAR POR GRUPO</div>
+          <div class="filtro-actions">
+            <q-chip dense color="secondary" text-color="white" size="sm">
+              {{ grupoSeleccionadoGZ !== null ? '1 filtro activo' : 'Sin filtros' }}
+            </q-chip>
+            <q-icon
+              :name="filtrosExpandidosGZ ? 'expand_less' : 'expand_more'"
+              size="20px"
+              color="grey-7"
             />
-            Todos ({{ geozonasFiltradas.length }})
-          </q-chip>
-          <q-chip
-            v-for="grupo in grupos"
-            :key="grupo.id"
-            :outline="grupoSeleccionadoGZ !== grupo.id"
-            :color="grupo.color"
-            text-color="white"
-            clickable
-            @click="grupoSeleccionadoGZ = grupo.id"
-          >
-            <q-avatar
-              v-if="grupoSeleccionadoGZ === grupo.id"
-              icon="check"
-              color="white"
-              :text-color="grupo.color"
-            />
-            {{ grupo.nombre }} ({{ contarGeozonaPorGrupo(grupo.id) }})
-          </q-chip>
+          </div>
         </div>
-      </div>
 
+        <!-- Chips colapsables -->
+        <q-slide-transition>
+          <div v-show="filtrosExpandidosGZ" class="chips-container q-mt-sm">
+            <!-- ✅ CHIP "TODOS" -->
+            <q-chip
+              :outline="grupoSeleccionadoGZ !== null"
+              color="secondary"
+              text-color="white"
+              clickable
+              @click="grupoSeleccionadoGZ = null"
+            >
+              <q-avatar
+                v-if="grupoSeleccionadoGZ === null"
+                icon="check"
+                color="white"
+                text-color="secondary"
+              />
+              Todos ({{ totalGeozonas }})
+            </q-chip>
+
+            <!-- ✅ CHIPS DE GRUPOS -->
+            <q-chip
+              v-for="grupo in grupos"
+              :key="grupo.id"
+              :outline="grupoSeleccionadoGZ !== grupo.id"
+              :style="{
+                background: grupoSeleccionadoGZ === grupo.id ? grupo.color : 'transparent',
+                borderColor: grupo.color,
+                color: grupoSeleccionadoGZ === grupo.id ? 'white' : grupo.color,
+              }"
+              clickable
+              @click="grupoSeleccionadoGZ = grupo.id"
+            >
+              <q-avatar
+                v-if="grupoSeleccionadoGZ === grupo.id"
+                icon="check"
+                color="white"
+                :text-color="grupo.color"
+              />
+              {{ grupo.nombre }} ({{ contarGeozonaPorGrupo(grupo.id) }})
+            </q-chip>
+          </div>
+        </q-slide-transition>
+      </div>
       <!-- Lista de Geozonas con diseño moderno -->
       <q-scroll-area class="lista-scroll">
         <div class="q-pa-md">
@@ -259,7 +335,11 @@
             @dblclick="verEnMapaEnDirecto(geozona)"
           >
             <q-card-section class="row items-center q-pa-md">
-              <q-avatar size="48px" :color="getColorGrupo(geozona.grupoId)" text-color="white">
+              <q-avatar
+                size="48px"
+                :style="{ background: getColorGrupo(geozona.grupoId) }"
+                text-color="white"
+              >
                 <q-icon name="layers" size="28px" />
                 <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
                 <q-badge
@@ -376,10 +456,12 @@
             </template>
           </q-select>
           <!-- 🎨 Selector de Color para POI -->
-          <div class="q-mb-md">
+          <!-- 🎨 Selector de Color CONDICIONAL -->
+
+          <div v-if="!nuevoPOI.grupoId" class="q-mb-md">
             <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
               <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR DEL MARCADOR
+              COLOR DEL POI
             </div>
 
             <!-- Paleta de colores predefinida -->
@@ -411,7 +493,7 @@
               label="Color personalizado"
               color="grey-7"
               size="sm"
-              @click="mostrarColorPickerPOI = true"
+              @click="mostrarColorPicker = true"
               class="full-width"
             />
 
@@ -419,6 +501,24 @@
             <div class="color-preview q-mt-sm">
               <div class="preview-box" :style="{ background: nuevoPOI.color }"></div>
               <span class="text-caption text-grey-7">{{ nuevoPOI.color.toUpperCase() }}</span>
+            </div>
+          </div>
+
+          <!-- 🆕 NUEVO: Preview cuando hay grupo seleccionado -->
+          <div v-else class="q-mb-md">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
+              <q-icon name="palette" size="16px" class="q-mr-xs" />
+              COLOR HEREDADO DEL GRUPO
+            </div>
+
+            <div class="color-preview-readonly">
+              <div class="preview-box-readonly" :style="{ background: nuevoPOI.color }">
+                <q-icon name="folder" size="24px" color="white" />
+              </div>
+              <div class="preview-info">
+                <div class="preview-label">Color del grupo</div>
+                <div class="preview-value">{{ nuevoPOI.color.toUpperCase() }}</div>
+              </div>
             </div>
           </div>
 
@@ -466,8 +566,115 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- 🆕 Dialog: Crear Nuevo Grupo -->
+    <q-dialog v-model="dialogNuevoGrupo" persistent>
+      <q-card style="min-width: 400px; max-width: 500px">
+        <q-card-section class="bg-primary text-white">
+          <div class="row items-center">
+            <q-icon name="folder" size="32px" class="q-mr-md" />
+            <div>
+              <div class="text-h6">Nuevo Grupo</div>
+              <div class="text-caption">Organiza tus ubicaciones</div>
+            </div>
+            <q-space />
+            <q-btn flat dense round icon="close" @click="cancelarNuevoGrupo" color="white" />
+          </div>
+        </q-card-section>
 
-    <!-- Slider flotante para ajustar radio del POI -->
+        <q-card-section class="q-pt-lg">
+          <!-- Input de Nombre -->
+          <q-input
+            v-model="nuevoGrupo.nombre"
+            label="Nombre del grupo *"
+            outlined
+            class="q-mb-md"
+            placeholder="Ej: Clientes, Almacenes, Oficinas..."
+          >
+            <template v-slot:prepend>
+              <q-icon name="label" />
+            </template>
+          </q-input>
+
+          <!-- Selector de Color -->
+          <div class="q-mb-md">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
+              <q-icon name="palette" size="16px" class="q-mr-xs" />
+              COLOR DEL GRUPO
+            </div>
+
+            <!-- Paleta de colores predefinida -->
+            <div class="color-palette q-mb-sm">
+              <div
+                v-for="color in paletaColores"
+                :key="color.valor"
+                class="color-chip"
+                :class="{ 'color-chip-selected': nuevoGrupo.color === color.valor }"
+                :style="{ background: color.valor }"
+                @click="nuevoGrupo.color = color.valor"
+              >
+                <q-icon
+                  v-if="nuevoGrupo.color === color.valor"
+                  name="check"
+                  size="18px"
+                  color="white"
+                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
+                />
+                <q-tooltip>{{ color.nombre }}</q-tooltip>
+              </div>
+            </div>
+
+            <!-- 🆕 Botón para abrir color picker personalizado -->
+            <q-btn
+              outline
+              dense
+              icon="colorize"
+              label="Color personalizado"
+              color="grey-7"
+              size="sm"
+              @click="mostrarColorPickerGrupo = true"
+              class="full-width"
+            />
+
+            <!-- Vista previa del color seleccionado -->
+            <div class="color-preview q-mt-sm">
+              <div class="preview-box" :style="{ background: nuevoGrupo.color }"></div>
+              <span class="text-caption text-grey-7">{{ nuevoGrupo.color.toUpperCase() }}</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-lg q-pb-lg">
+          <q-btn flat label="Cancelar" color="grey-7" @click="cancelarNuevoGrupo" />
+          <q-btn
+            unelevated
+            label="Crear Grupo"
+            color="primary"
+            @click="guardarNuevoGrupo"
+            :disable="!nuevoGrupo.nombre.trim()"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- 🆕 Dialog del Color Picker para Grupos -->
+    <q-dialog v-model="mostrarColorPickerGrupo">
+      <q-card style="min-width: 300px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Elige un color</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <q-color v-model="nuevoGrupo.color" format-model="hex" default-view="palette" />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+          <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <!-- Slider flotante para ajustar radio del POI -->
     <transition name="slide-up">
       <div v-if="mostrarSliderRadio" class="slider-flotante-container">
@@ -651,8 +858,8 @@
             </template>
           </q-select>
 
-          <!-- 🎨 Selector de Color -->
-          <div class="q-mb-md">
+          <!-- 🎨 Selector de Color CONDICIONAL -->
+          <div v-if="!nuevaGeozona.grupoId" class="q-mb-md">
             <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
               <q-icon name="palette" size="16px" class="q-mr-xs" />
               COLOR DE LA GEOZONA
@@ -695,6 +902,24 @@
             <div class="color-preview q-mt-sm">
               <div class="preview-box" :style="{ background: nuevaGeozona.color }"></div>
               <span class="text-caption text-grey-7">{{ nuevaGeozona.color.toUpperCase() }}</span>
+            </div>
+          </div>
+
+          <!-- 🆕 NUEVO: Preview cuando hay grupo seleccionado -->
+          <div v-else class="q-mb-md">
+            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
+              <q-icon name="palette" size="16px" class="q-mr-xs" />
+              COLOR HEREDADO DEL GRUPO
+            </div>
+
+            <div class="color-preview-readonly">
+              <div class="preview-box-readonly" :style="{ background: nuevaGeozona.color }">
+                <q-icon name="folder" size="24px" color="white" />
+              </div>
+              <div class="preview-info">
+                <div class="preview-label">Color del grupo</div>
+                <div class="preview-value">{{ nuevaGeozona.color.toUpperCase() }}</div>
+              </div>
             </div>
           </div>
 
@@ -893,6 +1118,7 @@ import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useEventBus } from 'src/composables/useEventBus.js'
+import { useGruposGeozonas } from 'src/composables/useGruposGeozonas'
 
 const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado', 'crear-evento-ubicacion'])
@@ -904,6 +1130,7 @@ const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
 //seleccionador de color para POI:
 const mostrarColorPickerPOI = ref(false)
+const mostrarColorPickerGrupo = ref(false)
 
 // Agregar paleta de colores para POIs (similar a la de geozonas)
 const paletaColoresPOI = [
@@ -927,6 +1154,7 @@ const {
 
 // 🆕 NUEVO: Cargar eventos para mostrar badges
 const { obtenerEventos, eliminarEventosPorUbicacion } = useEventos(userId.value)
+const { obtenerGrupos, crearGrupo } = useGruposGeozonas(userId.value)
 const eventosActivos = ref([])
 
 // 🆕 NUEVO: Variable para controlar la selección desde el mapa
@@ -953,6 +1181,8 @@ const modoSeleccionGeozonaPoligonal = ref(false)
 const posicionMouseActual = ref(null)
 const lineaPreview = ref(null)
 const poligonoPreview = ref(null)
+const filtrosExpandidosPOI = ref(false)
+const filtrosExpandidosGZ = ref(false)
 
 const nuevoPOI = ref({
   nombre: '',
@@ -990,11 +1220,12 @@ const paletaColores = [
 // 🎨 Estado para el selector de color personalizado
 const mostrarColorPicker = ref(false)
 
-const grupos = ref([
-  { id: 'grupo1', nombre: 'Clientes', color: 'blue' },
-  { id: 'grupo2', nombre: 'Almacenes', color: 'green' },
-  { id: 'grupo3', nombre: 'Oficinas', color: 'orange' },
-])
+const grupos = ref([])
+const dialogNuevoGrupo = ref(false)
+const nuevoGrupo = ref({
+  nombre: '',
+  color: '#4ECDC4',
+})
 
 const items = ref([])
 
@@ -1321,9 +1552,12 @@ const gruposGeozona = computed(() => grupos.value.length)
 
 const poisFiltrados = computed(() => {
   let resultado = pois.value
-  if (grupoSeleccionado.value) {
+
+  // ✅ CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
+  if (grupoSeleccionado.value !== null) {
     resultado = resultado.filter((p) => p.grupoId === grupoSeleccionado.value)
   }
+
   if (busquedaPOI.value) {
     resultado = resultado.filter(
       (p) =>
@@ -1337,9 +1571,11 @@ const poisFiltrados = computed(() => {
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
 
-  if (grupoSeleccionadoGZ.value) {
+  // ✅ CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
+  if (grupoSeleccionadoGZ.value !== null) {
     resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
   }
+
   if (busquedaGeozona.value) {
     resultado = resultado.filter(
       (g) =>
@@ -1351,11 +1587,14 @@ const geozonasFiltradas = computed(() => {
 })
 
 const opcionesGruposSelect = computed(() => {
-  const opciones = [{ label: 'Sin grupo', value: null }]
-  grupos.value.forEach((grupo) => {
-    opciones.push({ label: grupo.nombre, value: grupo.id })
-  })
-  return opciones
+  return [
+    { label: '➕ Crear grupo nuevo', value: '__crear_nuevo__' },
+    { label: 'Sin grupo', value: null },
+    ...grupos.value.map((g) => ({
+      label: g.nombre,
+      value: g.id,
+    })),
+  ]
 })
 
 // Computed para validar si la geozona es válida
@@ -1367,6 +1606,44 @@ const esGeozonaValida = computed(() => {
     nuevaGeozona.value.puntos.length >= 3
   )
 })
+
+// 🆕 Watch para heredar color en Geozonas
+watch(
+  () => nuevaGeozona.value.grupoId,
+  (nuevoGrupoId) => {
+    if (nuevoGrupoId === '__crear_nuevo__') {
+      dialogNuevoGrupo.value = true
+      nuevaGeozona.value.grupoId = null // Reset mientras se crea el grupo
+      return
+    }
+
+    if (nuevoGrupoId && nuevoGrupoId !== null) {
+      const grupo = grupos.value.find((g) => g.id === nuevoGrupoId)
+      if (grupo) {
+        nuevaGeozona.value.color = grupo.color
+      }
+    }
+  },
+)
+
+// 🆕 Watch para heredar color en POIs
+watch(
+  () => nuevoPOI.value.grupoId,
+  (nuevoGrupoId) => {
+    if (nuevoGrupoId === '__crear_nuevo__') {
+      dialogNuevoGrupo.value = true
+      nuevoPOI.value.grupoId = null // Reset mientras se crea el grupo
+      return
+    }
+
+    if (nuevoGrupoId && nuevoGrupoId !== null) {
+      const grupo = grupos.value.find((g) => g.id === nuevoGrupoId)
+      if (grupo) {
+        nuevoPOI.value.color = grupo.color
+      }
+    }
+  },
+)
 // Funciones
 function cambiarVista(vista) {
   vistaActual.value = vista
@@ -1651,9 +1928,8 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 const guardarPOI = async () => {
   try {
     mostrarSliderRadio.value = false
-    // const mapPage = document.querySelector('#map-page')
+    const mapPage = document.querySelector('#map-page')
 
-    // Preparar datos del POI
     const poiData = {
       nombre: nuevoPOI.value.nombre,
       direccion: nuevoPOI.value.direccion,
@@ -1661,11 +1937,20 @@ const guardarPOI = async () => {
       grupoId: nuevoPOI.value.grupoId,
       notas: nuevoPOI.value.notas || '',
       radio: nuevoPOI.value.radio || 5,
-      color: nuevoPOI.value.color || '#FF5252', // ✅ Color incluido
+      color: nuevoPOI.value.color || '#FF5252',
+    }
+
+    // 🆕 LIMPIAR ELEMENTOS TEMPORALES PRIMERO
+    if (mapPage && mapPage._mapaAPI) {
+      const mapaAPI = mapPage._mapaAPI
+      mapaAPI.limpiarCirculoTemporalPOI()
+      mapaAPI.limpiarMarcadorTemporal()
     }
 
     if (nuevoPOI.value.id) {
+      // ========================================
       // ACTUALIZAR POI EXISTENTE
+      // ========================================
       await actualizarPOI(nuevoPOI.value.id, poiData)
 
       const index = items.value.findIndex((i) => i.id === nuevoPOI.value.id)
@@ -1682,7 +1967,9 @@ const guardarPOI = async () => {
         icon: 'check_circle',
       })
     } else {
+      // ========================================
       // CREAR NUEVO POI
+      // ========================================
       const nuevoId = await crearPOI(poiData)
 
       items.value.push({
@@ -1698,10 +1985,8 @@ const guardarPOI = async () => {
       })
     }
 
-    // ✅ CERRAR DIALOG
+    // ✅ CERRAR DIALOG Y RESETEAR
     dialogNuevoPOI.value = false
-
-    // ✅ RESETEAR FORMULARIO
     nuevoPOI.value = {
       nombre: '',
       direccion: '',
@@ -1712,9 +1997,15 @@ const guardarPOI = async () => {
       color: '#FF5252',
     }
 
-    // ✅ ESPERAR Y REDIBUJAR MAPA
+    // 🚀 OPTIMIZACIÓN CRÍTICA: Solo actualizar capa de POIs
     await nextTick()
-    redibujarMapa()
+
+    // Actualizar el array en IndexPage
+    window.dispatchEvent(
+      new CustomEvent('actualizarPOIsEnMapa', {
+        detail: { pois: items.value.filter((i) => i.tipo === 'poi') },
+      }),
+    )
   } catch (err) {
     console.error('Error al guardar POI:', err)
     $q.notify({
@@ -2250,7 +2541,59 @@ function actualizarRadioPOI(nuevoRadio) {
     )
   }
 }
+const guardarNuevoGrupo = async () => {
+  if (!nuevoGrupo.value.nombre.trim()) {
+    $q.notify({
+      type: 'warning',
+      message: 'El nombre del grupo es requerido',
+      icon: 'warning',
+    })
+    return
+  }
 
+  try {
+    // ❌ ELIMINAR ESTA LÍNEA:
+    // const grupoCreado = await crearGrupo(nuevoGrupo.value.nombre, nuevoGrupo.value.color)
+
+    // ✅ CAMBIAR POR ESTO (sin guardar en variable):
+    await crearGrupo(nuevoGrupo.value.nombre, nuevoGrupo.value.color)
+
+    // ❌ ELIMINAR ESTAS LÍNEAS:
+    // grupos.value.push(grupoCreado)
+
+    // ✅ AGREGAR: Recargar grupos desde Firebase
+    const gruposActualizados = await obtenerGrupos()
+    grupos.value = gruposActualizados
+
+    $q.notify({
+      type: 'positive',
+      message: 'Grupo creado correctamente',
+      icon: 'check_circle',
+    })
+
+    dialogNuevoGrupo.value = false
+    nuevoGrupo.value = {
+      nombre: '',
+      color: '#4ECDC4',
+    }
+  } catch (error) {
+    console.error('Error al crear grupo:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al crear el grupo',
+      icon: 'error',
+    })
+  }
+}
+
+// 🆕 Función para cancelar creación de grupo
+const cancelarNuevoGrupo = () => {
+  dialogNuevoGrupo.value = false
+  nuevoGrupo.value = {
+    nombre: '',
+    color: '#4ECDC4',
+  }
+}
 // Función para manejar la confirmación de geozona desde el botón flotante
 const handleConfirmarGeozonaDesdeBoton = async () => {
   const mapPage = document.querySelector('#map-page')
@@ -2295,6 +2638,16 @@ const handleConfirmarGeozonaDesdeBoton = async () => {
 }
 
 // Hooks de ciclo de vida
+
+const handleCancelarGeozona = (e) => {
+  console.log('Evento cancelarGeozonaDesdeBoton:', e.detail)
+  // Aquí puedes agregar lógica adicional si la necesitas
+  limpiarPreviewCompleto()
+
+  // 🆕 TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
+  cancelarNuevaGeozona()
+}
+
 onMounted(async () => {
   if (marcadorActivo.value) {
     marcadorActivo.value.remove()
@@ -2316,12 +2669,17 @@ onMounted(async () => {
 
   try {
     window.addEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
-    // Cargar POIs, Geozonas Y EVENTOS en paralelo
-    const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
+
+    // 🔥 CARGAR TODO EN PARALELO (POIs, Geozonas, Eventos Y Grupos)
+    const [poisCargados, geozonasCargadas, eventosCargados, gruposCargados] = await Promise.all([
       obtenerPOIs(),
       obtenerGeozonas(),
       obtenerEventos(),
+      obtenerGrupos(), // ✅ Cargar grupos
     ])
+
+    // ✅ ASIGNAR GRUPOS
+    grupos.value = gruposCargados
 
     items.value = [...poisCargados, ...geozonasCargadas]
     eventosActivos.value = eventosCargados.filter((e) => e.activo)
@@ -2341,51 +2699,7 @@ onMounted(async () => {
     })
   }
 
-  // ... (otros listeners como el del botón flotante)
-  window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
-})
-
-const handleCancelarGeozona = (e) => {
-  console.log('Evento cancelarGeozonaDesdeBoton:', e.detail)
-  // Aquí puedes agregar lógica adicional si la necesitas
-  limpiarPreviewCompleto()
-
-  // 🆕 TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
-  cancelarNuevaGeozona()
-}
-
-onMounted(async () => {
-  try {
-    // Cargar POIs, Geozonas Y EVENTOS en paralelo
-    const [poisCargados, geozonasCargadas, eventosCargados] = await Promise.all([
-      obtenerPOIs(),
-      obtenerGeozonas(),
-      obtenerEventos(),
-    ])
-
-    items.value = [...poisCargados, ...geozonasCargadas]
-    eventosActivos.value = eventosCargados.filter((e) => e.activo)
-
-    // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
-    if (estadoCompartido.value.abrirGeozonasConPOI) {
-      const { item } = estadoCompartido.value.abrirGeozonasConPOI
-
-      // Ejecutamos la lógica de selección
-      handleSeleccionDesdeMapa(item)
-
-      // Limpiamos el estado para la próxima vez
-      resetAbrirGeozonas()
-    }
-  } catch (err) {
-    console.error('Error al cargar datos:', err)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al cargar los datos',
-      caption: err.message,
-    })
-  }
-
-  // ... (otros listeners como el del botón flotante)
+  // ✅ Listeners de ventana
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
@@ -2926,11 +3240,52 @@ defineExpose({
   background: white;
   border-radius: 12px;
 }
-
 .chips-container {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-height: 200px; /* Altura máxima */
+  overflow-y: auto; /* Scroll vertical */
+  overflow-x: hidden; /* Sin scroll horizontal */
+  padding: 4px; /* Padding para que no se corte el shadow de los chips */
+
+  /* Estilos del scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+.chips-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chips-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chips-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.chips-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Animación suave al hacer scroll */
+.chips-container {
+  scroll-behavior: smooth;
+}
+
+/* Gradiente sutil al final para indicar más contenido */
+.chips-container::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to top, rgba(248, 249, 250, 0.8), transparent);
+  pointer-events: none;
 }
 
 .lista-scroll {
@@ -3263,5 +3618,117 @@ defineExpose({
     width: 44px;
     height: 44px;
   }
+}
+
+.color-preview-readonly {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+}
+
+.preview-box-readonly {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.preview-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+}
+
+/* 🎨 BOTÓN CREAR GRUPO */
+.crear-grupo-btn {
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px dashed #ff9800;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+}
+
+.crear-grupo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+  background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
+  border-style: solid;
+}
+
+.crear-grupo-btn:active {
+  transform: translateY(0);
+}
+
+/* Animación del icono */
+.crear-grupo-btn:hover .q-icon {
+  animation: folder-open 0.5s ease;
+}
+
+@keyframes folder-open {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+/* 🎨 HEADER DE FILTROS COLAPSABLE */
+.filtro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.filtro-header:hover {
+  background: #f5f7fa;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.filtro-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Animación del icono de expandir */
+.filtro-header .q-icon {
+  transition: transform 0.3s ease;
+}
+
+.filtro-header:hover .q-icon {
+  transform: scale(1.2);
 }
 </style>

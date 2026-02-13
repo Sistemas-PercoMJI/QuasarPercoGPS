@@ -12,6 +12,19 @@
         </div>
       </div>
       <div class="header-actions">
+        <q-btn
+          flat
+          dense
+          round
+          :icon="filtroMapaActivo ? 'filter_alt' : 'filter_alt_off'"
+          :color="filtroMapaActivo ? 'white' : 'grey-4'"
+          size="sm"
+          @click="filtroMapaActivo = !filtroMapaActivo"
+        >
+          <q-tooltip>
+            {{ filtroMapaActivo ? 'Filtro de mapa ACTIVADO' : 'Filtro de mapa DESACTIVADO' }}
+          </q-tooltip>
+        </q-btn>
         <q-btn flat dense round icon="sync" color="white" size="sm" @click="sincronizarDatos">
           <q-tooltip>Sincronizar con Firebase</q-tooltip>
         </q-btn>
@@ -48,7 +61,7 @@
       <div class="text-caption text-grey-7 q-mb-xs">GRUPOS</div>
       <q-list dense bordered class="rounded-borders">
         <q-item
-          v-for="grupo in gruposConductores"
+          v-for="grupo in gruposConEspeciales"
           :key="grupo.id"
           clickable
           v-ripple
@@ -62,15 +75,23 @@
               text-color="white"
               size="32px"
             >
-              <q-icon name="folder" size="16px" />
+              <q-icon :name="grupo.icono || 'folder'" size="16px" />
             </q-avatar>
           </q-item-section>
 
           <q-item-section>
             <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
             <q-item-label caption class="text-grey-7">
-              <q-icon name="person" size="14px" class="q-mr-xs" />
-              {{ contarConductoresPorGrupo(grupo.id) }} conductores
+              <q-icon
+                :name="grupo.esGrupoEspecial ? 'directions_car' : 'person'"
+                size="14px"
+                class="q-mr-xs"
+              />
+              {{
+                grupo.esGrupoEspecial
+                  ? `${grupo.cantidadUnidades} unidades`
+                  : `${contarConductoresPorGrupo(grupo.id)} conductores`
+              }}
             </q-item-label>
           </q-item-section>
 
@@ -127,16 +148,29 @@
           class="conductor-card"
           clickable
           v-ripple
-          @click="seleccionarConductor(conductor)"
-          :class="{ 'conductor-selected': conductorSeleccionado?.id === conductor.id }"
+          @click="
+            conductor.esPseudoConductor
+              ? navegarAUnidadSinConductor(conductor)
+              : seleccionarConductor(conductor)
+          "
         >
           <q-card-section class="card-header">
-            <q-avatar color="primary" text-color="white" size="40px" class="card-avatar">
-              {{ obtenerIniciales(conductor.Nombre) }}
+            <q-avatar
+              :color="conductor.esPseudoConductor ? 'orange' : 'primary'"
+              text-color="white"
+              size="40px"
+              class="card-avatar"
+            >
+              <q-icon v-if="conductor.esPseudoConductor" name="directions_car" size="24px" />
+              <template v-else>
+                {{ obtenerIniciales(conductor.Nombre) }}
+              </template>
             </q-avatar>
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
-              <div class="text-caption text-grey-7">{{ conductor.Telefono }}</div>
+              <div class="text-caption text-grey-7">
+                {{ conductor.esPseudoConductor ? '🚗 Sin conductor' : conductor.Telefono }}
+              </div>
             </div>
           </q-card-section>
 
@@ -250,7 +284,7 @@
                         v-model="conductorEditando.Telefono"
                         outlined
                         dense
-                        mask="(###) ### ####"
+                        mask="##########"
                         @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
                         class="field-input"
                       />
@@ -1128,6 +1162,7 @@ import { date, Notify } from 'quasar'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase.js'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { auth } from 'src/firebase/firebaseConfig'
 
 const { estadoCompartido, resetAbrirConductores } = useEventBus()
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
@@ -1230,7 +1265,7 @@ const {
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-  asignarUnidad,
+  //asignarUnidad,
   obtenerUnidadDeConductor,
   puedeEditarLicenciaConducir,
   puedeEditarSeguroUnidad,
@@ -1290,6 +1325,8 @@ const inputFotoTargeta = ref(null)
 const inputFotoPlacas = ref(null)
 const opcionesUnidadesFiltradas = ref([])
 
+const filtroMapaActivo = ref(false)
+
 // Listeners de Firebase
 let unsubscribeConductores = null
 let unsubscribeGrupos = null
@@ -1309,8 +1346,18 @@ const conductoresFiltrados = computed(() => {
     return []
   }
 
-  let resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  let resultado = []
 
+  // GRUPO ESPECIAL: TODOS (sin filtro de empresa)
+  if (grupoSeleccionado.value === '__todos__') {
+    resultado = conductores.value
+  }
+  // Grupos normales
+  else {
+    resultado = conductoresPorGrupo(grupoSeleccionado.value)
+  }
+
+  // Aplicar búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1515,6 +1562,76 @@ const esPlacasVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
+// 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
+const idsUnidadesVisibles = computed(() => {
+  // 🔥 Si el filtro NO está activo, retornar null para mostrar TODAS
+  if (!filtroMapaActivo.value) {
+    console.log('🗺️ Filtro desactivado → mostrando TODAS las unidades')
+    return null
+  }
+
+  // Si no hay grupo seleccionado, mostrar todas
+  if (!grupoSeleccionado.value) {
+    return null
+  }
+
+  // Grupo "TODOS" = desactivar filtro (mostrar todas)
+  if (grupoSeleccionado.value === '__todos__') {
+    console.log('🗺️ Grupo "TODOS" → mostrando TODAS las unidades')
+    return null
+  }
+
+  // Grupo normal = mostrar unidades de conductores del grupo
+  const conductoresDelGrupo = conductoresFiltrados.value
+  const idsUnidades = conductoresDelGrupo
+    .filter((c) => c.UnidadAsignada)
+    .map((c) => c.UnidadAsignada)
+
+  console.log(`🗺️ Grupo "${grupoSeleccionado.value}" → ${idsUnidades.length} unidades`)
+  return idsUnidades
+})
+
+// 🆕 Grupos con el especial "Sin Conductor" y "TODOS"
+const gruposConEspeciales = computed(() => {
+  const grupos = []
+
+  // 🆕 BOTÓN ESPECIAL: Ver TODOS los conductores
+  grupos.push({
+    id: '__todos__',
+    Nombre: '👥 Todos los Conductores',
+    ConductoresIds: [],
+    esGrupoEspecial: true,
+    icono: 'groups',
+    cantidadTotal: conductores.value.length,
+  })
+
+  // Grupos normales del usuario
+  grupos.push(...gruposConductores.value)
+
+  // Contar unidades sin conductor
+  const unidadesSinConductor = unidades.value.filter(
+    (u) =>
+      !u.ConductorAsignado &&
+      (Array.isArray(idEmpresaActual.value)
+        ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
+        : u.IdEmpresaUnidad === idEmpresaActual.value),
+  )
+
+  // Solo agregar si hay unidades sin conductor
+  if (unidadesSinConductor.length > 0) {
+    grupos.push({
+      id: '__sin_conductor__',
+      Nombre: '🚗 Unidades Sin Conductor',
+      ConductoresIds: [],
+      esGrupoEspecial: true,
+      icono: 'directions_car',
+      cantidadUnidades: unidadesSinConductor.length,
+    })
+  }
+
+  return grupos
+})
+
 // Methods
 function obtenerIniciales(nombre) {
   if (!nombre) return '??'
@@ -1526,6 +1643,34 @@ function obtenerIniciales(nombre) {
 function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
+
+  // 🔥 Si es "TODOS", desactivar filtro
+  if (grupo.id === '__todos__') {
+    filtroMapaActivo.value = false
+
+    Notify.create({
+      type: 'info',
+      message: `👥 ${grupo.Nombre}`,
+      caption: 'Mostrando todas las unidades del mapa',
+      icon: grupo.icono || 'groups',
+      position: 'top',
+      timeout: 2000,
+    })
+  } else {
+    // Para grupos específicos, activar filtro
+    filtroMapaActivo.value = true
+
+    const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
+
+    Notify.create({
+      type: 'info',
+      message: `📁 ${grupo.Nombre}`,
+      caption: `Filtrando ${cantidadUnidades} unidades en el mapa`,
+      icon: grupo.icono || 'folder',
+      position: 'top',
+      timeout: 2000,
+    })
+  }
 }
 
 async function seleccionarConductor(conductor) {
@@ -1573,14 +1718,91 @@ async function actualizarCampo(campo, valor) {
   if (!conductorEditando.value?.id) return
 
   try {
+    console.log(`📝 Actualizando campo: ${campo} = ${valor}`)
+
+    // 🔥 CASO ESPECIAL: Si está cambiando la empresa del conductor
+    if (campo === 'IdEmpresaConductor') {
+      const empresaAnterior = conductorEditando.value.IdEmpresaConductor
+      const empresaNueva = valor
+
+      console.log(`🏢 Empresa anterior: ${empresaAnterior}`)
+      console.log(`🏢 Empresa nueva: ${empresaNueva}`)
+
+      // Solo procesar si realmente cambió de empresa
+      if (empresaAnterior !== empresaNueva) {
+        console.log('✅ Cambio de empresa detectado')
+
+        // Si tiene unidad asignada, actualizar su IdEmpresaUnidad
+        if (conductorEditando.value.UnidadAsignada) {
+          const unidadId = conductorEditando.value.UnidadAsignada
+          console.log(`🚗 Actualizando empresa de unidad: ${unidadId}`)
+
+          try {
+            // 🔥 Actualizar IdEmpresaUnidad en Realtime Database
+            const { realtimeDb } = await import('src/firebase/firebaseConfig')
+            const { ref: dbRef, update } = await import('firebase/database')
+
+            const unidadKey = `unidad_${unidadId}`
+            const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
+
+            await update(unidadRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
+
+            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Realtime Database`)
+
+            // 🔥 También actualizar en Firestore
+            const { doc, updateDoc } = await import('firebase/firestore')
+            const { db } = await import('src/firebase/firebaseConfig')
+
+            const unidadFirestoreRef = doc(db, 'Unidades', unidadId)
+            await updateDoc(unidadFirestoreRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
+
+            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Firestore`)
+          } catch (unidadError) {
+            console.error('❌ Error al actualizar unidad:', unidadError)
+            // Continuar de todos modos para actualizar el conductor
+          }
+        } else {
+          console.log('ℹ️ No tiene unidad asignada')
+        }
+      } else {
+        console.log('ℹ️ No hubo cambio de empresa')
+      }
+    }
+
+    // Actualizar el campo en Firestore
+    console.log('💾 Actualizando campo en Firestore...')
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
+    console.log('✅ Campo actualizado en Firestore')
 
     Notify.create({
       type: 'positive',
       message: 'Campo actualizado correctamente',
       icon: 'check_circle',
     })
+
+    // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
+    if (campo === 'IdEmpresaConductor') {
+      console.log('🔄 Recargando datos...')
+      await recargarDatos()
+
+      dialogDetallesConductor.value = false
+
+      Notify.create({
+        type: 'info',
+        message: '🏢 Conductor movido a otra empresa',
+        caption: 'La unidad ahora pertenece a la nueva empresa',
+        icon: 'business',
+        timeout: 3000,
+      })
+    }
   } catch (error) {
+    console.error('❌ Error completo:', error)
+    console.error('❌ Stack:', error.stack)
+
     Notify.create({
       type: 'negative',
       message: 'Error al actualizar: ' + error.message,
@@ -1770,26 +1992,37 @@ async function asignarUnidadAConductor(unidadId) {
   const unidadAnteriorId = conductorEditando.value.UnidadAsignada
 
   try {
-    // CASO 1: Si unidadId es null/undefined, está QUITANDO la unidad
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    // CASO 1: Si unidadId es null, está QUITANDO la unidad
     if (!unidadId) {
       console.log('🗑️ Removiendo unidad del conductor...')
 
-      // Eliminar de Firebase Realtime Database
+      // 1. Quitar del conductor
+      const conductorRef = doc(db, 'Conductores', conductorId)
+      await updateDoc(conductorRef, {
+        UnidadAsignada: null,
+      })
+
+      // 2. 🆕 Quitar conductor de la unidad anterior
+      if (unidadAnteriorId) {
+        const unidadRef = doc(db, 'Unidades', unidadAnteriorId)
+        await updateDoc(unidadRef, {
+          ConductorAsignado: null, // 🔥 NUEVO CAMPO
+        })
+      }
+
+      // 3. Eliminar del mapa
       if (unidadAnteriorId) {
         const { realtimeDb } = await import('src/firebase/firebaseConfig')
         const { ref: dbRef, remove } = await import('firebase/database')
 
         const unidadIdKey = `unidad_${unidadAnteriorId}`
         const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
-
         await remove(unidadRef)
-        console.log(`✅ Unidad ${unidadIdKey} eliminada del mapa`)
       }
 
-      // Actualizar Firestore
-      await asignarUnidad(conductorId, null)
-
-      // Actualizar estado local
       conductorEditando.value.UnidadAsignada = null
       if (conductorSeleccionado.value) {
         conductorSeleccionado.value.UnidadAsignada = null
@@ -1802,7 +2035,6 @@ async function asignarUnidadAConductor(unidadId) {
         timeout: 2000,
       })
 
-      // Recargar datos
       await obtenerConductores()
       await obtenerUnidades()
 
@@ -1810,7 +2042,6 @@ async function asignarUnidadAConductor(unidadId) {
     }
 
     // CASO 2: Está ASIGNANDO una nueva unidad
-    // Verificar si la unidad ya está asignada a OTRO conductor
     const otroConductorConEstaUnidad = conductores.value.find(
       (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
     )
@@ -1823,33 +2054,44 @@ async function asignarUnidadAConductor(unidadId) {
         timeout: 3000,
       })
 
-      // Restaurar valor anterior
       conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
       return
     }
 
-    // Si había una unidad anterior diferente, eliminarla del mapa
+    // Si había una unidad anterior diferente, liberarla
     if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
+      // 🆕 Quitar conductor de unidad anterior
+      const unidadAnteriorRef = doc(db, 'Unidades', unidadAnteriorId)
+      await updateDoc(unidadAnteriorRef, {
+        ConductorAsignado: null,
+      })
+
+      // Eliminar del mapa
       const { realtimeDb } = await import('src/firebase/firebaseConfig')
       const { ref: dbRef, remove } = await import('firebase/database')
 
       const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
-      const unidadAnteriorRef = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
-
-      await remove(unidadAnteriorRef)
-      console.log(`✅ Unidad anterior ${unidadAnteriorKey} eliminada del mapa`)
+      const unidadAnteriorRef2 = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
+      await remove(unidadAnteriorRef2)
     }
 
-    // Ejecutar la asignación
-    await asignarUnidad(conductorId, unidadId)
+    // 1. Asignar unidad al conductor
+    const conductorRef = doc(db, 'Conductores', conductorId)
+    await updateDoc(conductorRef, {
+      UnidadAsignada: unidadId,
+    })
 
-    // Actualizar estado local
+    // 2. 🆕 Asignar conductor a la unidad
+    const unidadRef = doc(db, 'Unidades', unidadId)
+    await updateDoc(unidadRef, {
+      ConductorAsignado: conductorId, // 🔥 NUEVO CAMPO
+    })
+
     conductorEditando.value.UnidadAsignada = unidadId
     if (conductorSeleccionado.value) {
       conductorSeleccionado.value.UnidadAsignada = unidadId
     }
 
-    // Recargar datos primero
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
@@ -1862,7 +2104,6 @@ async function asignarUnidadAConductor(unidadId) {
       timeout: 3000,
     })
 
-    // Restaurar en caso de error
     conductorEditando.value.UnidadAsignada = unidadAnteriorId
   }
 }
@@ -2366,32 +2607,123 @@ async function quitarDeGrupo() {
   }
 }
 
-// Lifecycle
-onMounted(async () => {
-  if (!idEmpresaActual.value) {
-    await cargarUsuarioActual()
+async function navegarAUnidadSinConductor(unidad) {
+  if (!unidad?.UnidadAsignada) {
+    Notify.create({
+      type: 'warning',
+      message: 'No hay unidad válida',
+      icon: 'warning',
+    })
+    return
   }
 
-  console.log('🏢 Empresa:', idEmpresaActual.value)
+  // Buscar la unidad en el array de unidades
+  const unidadData = unidades.value.find((u) => u.id === unidad.UnidadAsignada)
 
-  // Ahora sí cargar conductores
-  await obtenerConductores()
-  try {
-    await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
-
-    unsubscribeConductores = escucharConductores()
-    unsubscribeGrupos = escucharGrupos()
-  } catch (error) {
-    console.error('❌ Error al conectar con Firebase:', error)
-
+  if (!unidadData) {
     Notify.create({
       type: 'negative',
-      message: 'Error al conectar con Firebase: ' + error.message,
+      message: 'Unidad no encontrada',
       icon: 'error',
-      timeout: 5000,
     })
+    return
   }
-})
+
+  // Acceder al mapa
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error: Mapa no disponible',
+      icon: 'error',
+    })
+    return
+  }
+
+  const mapaAPI = mapPage._mapaAPI
+
+  if (!mapaAPI.map) {
+    Notify.create({
+      type: 'negative',
+      message: 'Mapa no inicializado',
+      icon: 'error',
+    })
+    return
+  }
+
+  // Buscar la unidad en el mapa
+  let unidadesDisponibles = window._unidadesTrackeadas || []
+
+  if (unidadesDisponibles.length === 0) {
+    const unidadesRef = window.firebase_unidades_activas
+    if (unidadesRef) {
+      unidadesDisponibles = Object.values(unidadesRef)
+    }
+  }
+
+  const nombreBuscado = unidadData.Unidad?.toLowerCase().trim()
+
+  const unidadActiva = unidadesDisponibles.find((u) => {
+    const nombreUnidad = u.unidadNombre?.toLowerCase().trim()
+    return (
+      nombreUnidad === nombreBuscado ||
+      nombreUnidad?.includes(nombreBuscado) ||
+      nombreBuscado?.includes(nombreUnidad)
+    )
+  })
+
+  if (!unidadActiva) {
+    Notify.create({
+      type: 'negative',
+      message: `No se encontró "${unidadData.Unidad}" en el mapa`,
+      caption: 'La unidad podría no tener GPS activo',
+      icon: 'search_off',
+      timeout: 3000,
+    })
+    return
+  }
+
+  // Verificar ubicación
+  if (!unidadActiva.ubicacion || !unidadActiva.ubicacion.lat || !unidadActiva.ubicacion.lng) {
+    Notify.create({
+      type: 'negative',
+      message: 'La unidad no tiene ubicación GPS',
+      icon: 'gps_not_fixed',
+      timeout: 3000,
+    })
+    return
+  }
+
+  const { lat, lng } = unidadActiva.ubicacion
+
+  // Centrar mapa con animación suave
+  mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  // Abrir popup del marcador
+  setTimeout(() => {
+    if (mapaAPI.centrarEnUnidad) {
+      mapaAPI.centrarEnUnidad(unidadActiva.id)
+    }
+  }, 1600)
+
+  // Cerrar drawer
+  emit('close')
+
+  // Notificación de éxito
+  Notify.create({
+    type: 'positive',
+    message: `📍 ${unidadData.Unidad}`,
+    caption: 'Sin conductor asignado',
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
+}
 
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
@@ -2414,6 +2746,45 @@ watch(
   },
   { deep: true, immediate: true },
 )
+
+// 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
+watch(
+  idsUnidadesVisibles,
+  (nuevosIds) => {
+    console.log(
+      '🗺️ idsUnidadesVisibles cambió:',
+      nuevosIds ? `${nuevosIds.length} IDs` : 'NULL (todas)',
+    )
+
+    // Emitir evento para que el mapa se actualice
+    window.dispatchEvent(
+      new CustomEvent('filtrar-unidades-mapa', {
+        detail: { idsUnidades: nuevosIds },
+      }),
+    )
+  },
+  { immediate: true },
+) // 🔥 immediate: true para ejecutar al cargar
+
+// 🆕 Watch: Guardar grupo seleccionado en localStorage
+watch(grupoSeleccionado, (nuevoGrupo) => {
+  if (nuevoGrupo) {
+    const userId = auth.currentUser?.uid
+    if (userId) {
+      localStorage.setItem(`grupoSeleccionado_${userId}`, nuevoGrupo)
+      console.log(`💾 Grupo guardado: ${nuevoGrupo}`)
+    }
+  }
+})
+
+// 🆕 Watch: Guardar estado de filtro de mapa
+watch(filtroMapaActivo, (nuevoEstado) => {
+  const userId = auth.currentUser?.uid
+  if (userId) {
+    localStorage.setItem(`filtroMapaActivo_${userId}`, String(nuevoEstado))
+    console.log(`💾 Filtro de mapa guardado: ${nuevoEstado}`)
+  }
+})
 
 function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
   if (grupoId && grupoId !== grupoSeleccionado.value) {
@@ -2475,6 +2846,82 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
     }
   })
 }
+
+onMounted(async () => {
+  if (!idEmpresaActual.value) {
+    await cargarUsuarioActual()
+  }
+
+  console.log('🏢 Empresa:', idEmpresaActual.value)
+
+  await obtenerConductores()
+
+  try {
+    await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
+
+    unsubscribeConductores = escucharConductores()
+    unsubscribeGrupos = escucharGrupos()
+
+    // 🆕 RESTAURAR SELECCIÓN GUARDADA
+    const userId = auth.currentUser?.uid
+    if (userId) {
+      const grupoGuardado = localStorage.getItem(`grupoSeleccionado_${userId}`)
+      const filtroGuardado = localStorage.getItem(`filtroMapaActivo_${userId}`)
+
+      if (grupoGuardado) {
+        // Esperar a que los grupos se carguen
+        await nextTick()
+
+        // Verificar que el grupo existe
+        const grupoExiste = gruposConEspeciales.value.find((g) => g.id === grupoGuardado)
+
+        if (grupoExiste) {
+          grupoSeleccionado.value = grupoGuardado
+          console.log(`✅ Grupo restaurado: ${grupoGuardado}`)
+        } else {
+          // Si el grupo no existe, seleccionar "TODOS" por defecto
+          grupoSeleccionado.value = '__todos__'
+          console.log('⚠️ Grupo guardado no existe, usando TODOS')
+        }
+      } else {
+        // Primera vez: seleccionar "TODOS"
+        grupoSeleccionado.value = '__todos__'
+      }
+
+      // Restaurar estado de filtro
+      if (filtroGuardado !== null) {
+        filtroMapaActivo.value = filtroGuardado === 'true'
+        console.log(`✅ Filtro restaurado: ${filtroMapaActivo.value}`)
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error al conectar con Firebase:', error)
+
+    Notify.create({
+      type: 'negative',
+      message: 'Error al conectar con Firebase: ' + error.message,
+      icon: 'error',
+      timeout: 5000,
+    })
+  }
+
+  window.addEventListener('empresa-cambiada', async (event) => {
+    console.log('🔄 Empresa cambiada en Conductores, recargando...', event.detail.empresas)
+
+    try {
+      await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
+
+      Notify.create({
+        type: 'positive',
+        message: '✅ Conductores actualizados',
+        icon: 'sync',
+        timeout: 2000,
+      })
+    } catch (o) {
+      console.log('', o)
+    }
+  })
+})
 
 onUnmounted(() => {
   if (unsubscribeConductores) unsubscribeConductores()
