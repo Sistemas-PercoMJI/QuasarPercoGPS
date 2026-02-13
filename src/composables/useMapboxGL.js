@@ -1561,7 +1561,7 @@ export function useMapboxGL() {
         console.error('❌ Error en Mapbox GL:', e)
       })
 
-      // 🆕 LISTENER: Filtrar unidades del mapa por IDs
+      /* 🆕 LISTENER: Filtrar unidades del mapa por IDs
       window.addEventListener('filtrar-unidades-mapa', (event) => {
         const { idsUnidades } = event.detail
 
@@ -1596,7 +1596,7 @@ export function useMapboxGL() {
         })
 
         console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
-      })
+      })*/
 
       // ✅ Crear objeto mapaAPI con todas las funciones
       const mapaAPI = {
