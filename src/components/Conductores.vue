@@ -1641,14 +1641,20 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
 
-  // 🆕 Activar filtro de mapa automáticamente
-  filtroMapaActivo.value = true
+  // 🔥 Activar filtro automáticamente (excepto para "TODOS")
+  if (grupo.id === '__todos__') {
+    filtroMapaActivo.value = false // Desactivar filtro para "TODOS"
+  } else {
+    filtroMapaActivo.value = true // Activar filtro para grupos específicos
+  }
 
   Notify.create({
     type: 'info',
     message: `📁 ${grupo.Nombre}`,
     caption:
-      grupo.id === '__todos__' ? 'Mostrando todas las unidades' : 'Filtrando unidades en el mapa',
+      grupo.id === '__todos__'
+        ? 'Mostrando todas las unidades'
+        : `Filtrando ${conductoresFiltrados.value.length} unidades`,
     icon: grupo.icono || 'folder',
     position: 'top',
     timeout: 2000,
@@ -2731,19 +2737,19 @@ watch(
 
 // 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
 watch(idsUnidadesVisibles, (nuevosIds) => {
-  if (!filtroMapaActivo.value) return
-
-  const mapPage = document.getElementById('map-page')
-  if (!mapPage || !mapPage._mapaAPI) return
-
-  const mapaAPI = mapPage._mapaAPI
-
-  // Aplicar filtro al mapa
-  if (mapaAPI.filtrarUnidadesPorIds) {
-    mapaAPI.filtrarUnidadesPorIds(nuevosIds)
+  if (!filtroMapaActivo.value) {
+    console.log('🗺️ Filtro desactivado, mostrando todas las unidades')
+    return
   }
 
-  console.log('🗺️ Filtro de mapa actualizado:', nuevosIds ? nuevosIds.length : 'TODAS')
+  console.log('🗺️ Aplicando filtro de mapa:', nuevosIds ? nuevosIds.length : 'TODAS')
+
+  // Emitir evento para que el mapa se actualice
+  window.dispatchEvent(
+    new CustomEvent('filtrar-unidades-mapa', {
+      detail: { idsUnidades: nuevosIds },
+    }),
+  )
 })
 
 // 🆕 Watch: Guardar grupo seleccionado en localStorage
@@ -2884,6 +2890,23 @@ onMounted(async () => {
       timeout: 5000,
     })
   }
+
+  window.addEventListener('empresa-cambiada', async (event) => {
+    console.log('🔄 Empresa cambiada en Conductores, recargando...', event.detail.empresas)
+
+    try {
+      await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
+
+      Notify.create({
+        type: 'positive',
+        message: '✅ Conductores actualizados',
+        icon: 'sync',
+        timeout: 2000,
+      })
+    } catch (error) {
+      console.error('❌ Error recargando:', error)
+    }
+  })
 })
 
 onUnmounted(() => {

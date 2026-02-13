@@ -349,6 +349,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
+import { Notify } from 'quasar'
 
 const geozonasCacheCompleto = ref([])
 
@@ -2005,6 +2006,24 @@ onMounted(async () => {
       }
     }
 
+    window.addEventListener('empresa-cambiada', async (event) => {
+      console.log('🔄 Empresa cambiada, recargando página...', event.detail.empresas)
+
+      // Notificar al usuario
+      Notify.create({
+        type: 'info',
+        message: '🏢 Empresa actualizada',
+        caption: 'Recargando la página...',
+        icon: 'business',
+        timeout: 2000,
+      })
+
+      // Recargar la página completa después de 1 segundo
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    })
+
     window.verDetallesPOI = (poiId) => {
       window.abrirDetallesUbicacion({ tipo: 'poi', id: poiId })
     }
@@ -2258,6 +2277,9 @@ onMounted(async () => {
     await actualizarCapaPOIs()
   })
 })
+
+// Escuchar evento de filtrado
+
 const handleMostrarBoton = (e) => {
   mostrarBotonConfirmarGeozona.value = e.detail.mostrar
 }
