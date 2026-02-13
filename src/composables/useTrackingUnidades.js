@@ -27,23 +27,20 @@ export function useTrackingUnidades() {
     }
 
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      // Validar que tenga IdEmpresaUnidad
-      if (!unidad.IdEmpresaUnidad) {
+      // Validar que tenga IdEmpresaConductor (cambiamos a este en lugar de IdEmpresaUnidad)
+      if (!unidad.IdEmpresaConductor) {
         return false
       }
 
-      // Filtrar por empresa
-      const perteneceAEmpresa = Array.isArray(idEmpresaActual.value)
-        ? idEmpresaActual.value.includes(unidad.IdEmpresaUnidad)
-        : unidad.IdEmpresaUnidad === idEmpresaActual.value
+      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      const perteneceAMisEmpresas = Array.isArray(idEmpresaActual.value)
+        ? idEmpresaActual.value.includes(unidad.IdEmpresaConductor)
+        : unidad.IdEmpresaConductor === idEmpresaActual.value
 
-      return perteneceAEmpresa
+      return perteneceAMisEmpresas
     })
 
-    console.log(
-      `🔍 Filtrado: ${unidadesFiltradas.length}/${unidadesRaw.length} unidades para empresa "${idEmpresaActual.value}"`,
-    )
-
+    console.log(`✅ Mostrando ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades`)
     return unidadesFiltradas
   }
 
@@ -142,8 +139,6 @@ export function useTrackingUnidades() {
         const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
         unidadesActivasGlobal.value = unidadesFiltradas
         window._unidadesTrackeadas = unidadesFiltradas
-
-        console.log('🔄 Re-filtrado automático aplicado')
       }
     },
     { deep: true },

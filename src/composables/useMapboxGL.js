@@ -77,7 +77,193 @@ const COLORES_ESTADO = {
   detenido: '#FF9800', // Naranja
   inactivo: '#607D8B', // Gris azulado
 }
+const agregarBadgeACanvas = (canvas) => {
+  const ctx = canvas.getContext('2d')
+  const size = 48
 
+  // Badge amarillo en la esquina superior derecha
+  const badgeX = size - 10
+  const badgeY = 8
+  const badgeRadius = 6 // Un poco más pequeño
+
+  // Círculo amarillo con borde blanco
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius + 2, 0, Math.PI * 2)
+  ctx.fillStyle = 'white'
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2)
+  ctx.fillStyle = '#FFC107' // Amarillo
+  ctx.fill()
+
+  // ❌ ELIMINADO: Ya no agregamos el símbolo "!"
+
+  return canvas
+}
+// useMapboxGL.js - REEMPLAZAR cargarIconosMapa COMPLETA
+const cargarIconosMapa = async (map) => {
+  if (!map.loaded()) {
+    await new Promise((resolve) => map.once('load', resolve))
+  }
+
+  // 🎨 ICONO POI - Crear canvas directamente (SIN SVG)
+  const createPOIIcon = (color = '#FF5252') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Dibujar pin manualmente (sin SVG)
+    // Borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 4)
+    ctx.bezierCurveTo(size / 2 - 15, size - 15, 8, size / 2 + 5, 8, size / 2 - 5)
+    ctx.bezierCurveTo(8, 15, 15, 8, size / 2, 8)
+    ctx.bezierCurveTo(size - 15, 8, size - 8, 15, size - 8, size / 2 - 5)
+    ctx.bezierCurveTo(size - 8, size / 2 + 5, size / 2 + 15, size - 15, size / 2, size - 4)
+    ctx.closePath()
+    ctx.fillStyle = 'white'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    // Pin con color
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 6)
+    ctx.bezierCurveTo(size / 2 - 13, size - 16, 10, size / 2 + 3, 10, size / 2 - 5)
+    ctx.bezierCurveTo(10, 17, 17, 10, size / 2, 10)
+    ctx.bezierCurveTo(size - 17, 10, size - 10, 17, size - 10, size / 2 - 5)
+    ctx.bezierCurveTo(size - 10, size / 2 + 3, size / 2 + 13, size - 16, size / 2, size - 6)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+
+    // Círculo interior
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2 - 5, 6, 0, Math.PI * 2)
+    ctx.fillStyle = 'white'
+    ctx.fill()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA CIRCULAR - Canvas directo
+  const createGeozonaCircularIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Círculo con borde blanco
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, 18, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA POLIGONAL - Canvas directo
+  const createGeozonaPoligonalIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Rombo con borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, 4)
+    ctx.lineTo(size - 4, size / 2)
+    ctx.lineTo(size / 2, size - 4)
+    ctx.lineTo(4, size / 2)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // FUNCIÓN HELPER: Cargar icono si no existe
+  window._mapboxLoadIcon = (map, type, color, conBadge = false) => {
+    const colorKey = color.replace('#', '')
+    const badgeSuffix = conBadge ? '-badge' : ''
+    const iconName = `${type}-${colorKey}${badgeSuffix}`
+
+    if (map.hasImage(iconName)) {
+      return // Ya existe
+    }
+
+    let canvas
+    if (type === 'poi') {
+      canvas = createPOIIcon(color)
+    } else if (type === 'geozona-circular') {
+      canvas = createGeozonaCircularIcon(color)
+    } else if (type === 'geozona-poligonal') {
+      canvas = createGeozonaPoligonalIcon(color)
+    }
+
+    if (canvas) {
+      // 🆕 Si tiene badge, agregarlo
+      if (conBadge) {
+        canvas = agregarBadgeACanvas(canvas)
+      }
+
+      const imageData = canvas.getContext('2d').getImageData(0, 0, 48, 48)
+      map.addImage(iconName, {
+        width: 48,
+        height: 48,
+        data: imageData.data,
+      })
+    }
+  }
+
+  // Cargar iconos POI (colores comunes) - SIN y CON badge
+  const coloresPOI = [
+    '#FF5252',
+    '#2196F3',
+    '#4CAF50',
+    '#FF9800',
+    '#9C27B0',
+    '#FFC107',
+    '#E91E63',
+    '#00BCD4',
+  ]
+
+  for (const color of coloresPOI) {
+    window._mapboxLoadIcon(map, 'poi', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'poi', color, true) // Con badge
+  }
+
+  // Cargar iconos Geozona (colores comunes) - SIN y CON badge
+  const coloresGeozona = [
+    '#4ECDC4',
+    '#3498DB',
+    '#2ECC71',
+    '#9B59B6',
+    '#E67E22',
+    '#E74C3C',
+    '#F39C12',
+    '#FF6B9D',
+  ]
+
+  for (const color of coloresGeozona) {
+    window._mapboxLoadIcon(map, 'geozona-circular', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-circular', color, true) // Con badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, true) // Con badge
+  }
+}
 const cerrarPopupGlobal = () => {
   if (popupGlobalActivo) {
     try {
@@ -148,7 +334,7 @@ export function useMapboxGL() {
     return el
   }
 
-  // ✅ POPUP OPTIMIZADO - Versión más ligera
+  // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
     const estadoTexto = {
       movimiento: 'En movimiento',
@@ -164,7 +350,7 @@ export function useMapboxGL() {
   <div id="${popupId}" class="unidad-popup-container">
     <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
-      <!-- ✅ Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
+      <!-- Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
       <div class="unidad-header-top-row">
         <div class="unidad-close-placeholder"></div>
         <div class="unidad-texto">
@@ -177,7 +363,7 @@ export function useMapboxGL() {
         </button>
       </div>
 
-      <!-- ✅ Segunda fila: (Unidad + Dirección) | Ícono -->
+      <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
       <div class="unidad-info-row">
         <div class="unidad-info">
           <div class="unidad-placa">${unidad.unidadNombre}</div>
@@ -224,7 +410,7 @@ export function useMapboxGL() {
 
     return popupContent
   }
-  // ⚡ OPTIMIZADO: Procesamiento real de marcadores
+  // OPTIMIZADO: Procesamiento real de marcadores
   const procesarActualizacionMarcadores = (unidades) => {
     if (!map.value || !unidades) {
       return
@@ -289,7 +475,7 @@ export function useMapboxGL() {
             // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
-            // ✅ OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
+            // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
             if (popup && popup.isOpen()) {
               const popupContent = popup.getElement()
@@ -347,15 +533,15 @@ export function useMapboxGL() {
     })
   }
 
-  // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  // OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
   // Línea ~239
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+      console.warn(' Mapa no disponible')
       return
     }
 
-    // ⚡ Si el mapa se está moviendo O haciendo zoom, postponer
+    // Si el mapa se está moviendo O haciendo zoom, postponer
     if (isZooming || isPanning) {
       // 🆕 AGREGAR isPanning
       pendingUnidades = unidades
@@ -410,7 +596,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🔵 FUNCIONES POI CON CÍRCULOS
+  // FUNCIONES POI CON CÍRCULOS
   function crearCirculoTemporalPOI(lat, lng, radio) {
     if (!map.value) return
 
@@ -589,7 +775,6 @@ export function useMapboxGL() {
     if (clickHandlerPoligonal) {
       map.value.off('click', clickHandlerPoligonal)
       clickHandlerPoligonal = null
-      console.log('✅ Event listener poligonal desactivado')
     }
 
     // Desactivar todos los modos
@@ -601,8 +786,6 @@ export function useMapboxGL() {
     if (map.value.getCanvas()) {
       map.value.getCanvas().style.cursor = ''
     }
-
-    console.log('✅ Todos los modos de selección desactivados')
   }
 
   // 🔵 MODO SELECCIÓN GEOZONA CIRCULAR
@@ -698,7 +881,6 @@ export function useMapboxGL() {
     if (clickHandlerPoligonal) {
       map.value.off('click', clickHandlerPoligonal)
       clickHandlerPoligonal = null
-      console.log('✅ Event listener anterior eliminado')
     }
 
     limpiarPoligonoTemporal()
@@ -752,8 +934,6 @@ export function useMapboxGL() {
 
     // 🆕 REGISTRAR EL LISTENER USANDO LA VARIABLE GLOBAL
     map.value.on('click', clickHandlerPoligonal)
-    console.log('✅ Nuevo event listener registrado')
-
     return true
   }
 
@@ -767,6 +947,7 @@ export function useMapboxGL() {
     const borderColor = oscurecerColor(color, 30)
 
     if (map.value.getSource(sourceId)) {
+      // ✅ SOLO actualizar datos - esto es RÁPIDO
       map.value.getSource(sourceId).setData({
         type: 'Feature',
         geometry: {
@@ -774,14 +955,9 @@ export function useMapboxGL() {
           coordinates: [coordinates],
         },
       })
-
-      if (map.value.getLayer(`${sourceId}-fill`)) {
-        map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
-      }
-      if (map.value.getLayer(`${sourceId}-outline`)) {
-        map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
-      }
+      // ⚠️ NO actualizar paint properties aquí
     } else {
+      // Primera vez - crear source y layers
       map.value.addSource(sourceId, {
         type: 'geojson',
         data: {
@@ -815,6 +991,22 @@ export function useMapboxGL() {
     }
   }
 
+  // 🆕 NUEVA FUNCIÓN: Actualizar solo el color (llamar explícitamente cuando cambie el color)
+  const actualizarColorPoligonoTemporal = (color) => {
+    if (!map.value) return
+
+    colorPoligonoTemporal = color
+    const borderColor = oscurecerColor(color, 30)
+    const sourceId = 'geozona-temporal'
+
+    if (map.value.getLayer(`${sourceId}-fill`)) {
+      map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
+    }
+    if (map.value.getLayer(`${sourceId}-outline`)) {
+      map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
+    }
+  }
+
   const finalizarPoligonoTemporal = () => {
     if (puntosPoligono.value.length < 3) {
       console.error('❌ Se necesitan al menos 3 puntos para crear un polígono')
@@ -835,7 +1027,6 @@ export function useMapboxGL() {
       if (clickHandlerPoligonal) {
         map.value.off('click', clickHandlerPoligonal)
         clickHandlerPoligonal = null
-        console.log('✅ Event listener eliminado en limpiarPoligonoTemporal')
       }
 
       // Limpiar capas del mapa
@@ -870,8 +1061,6 @@ export function useMapboxGL() {
       if (map.value.getCanvas()) {
         map.value.getCanvas().style.cursor = ''
       }
-
-      console.log('✅ Polígono temporal limpiado completamente')
     } catch (error) {
       console.error('Error limpiando polígono temporal:', error)
     }
@@ -1089,7 +1278,7 @@ export function useMapboxGL() {
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
         // Dar tiempo para que el mapa se estabilice
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('redibujarMapa'))
+          window.dispatchEvent(new CustomEvent('restaurarCapasEstilo'))
         }, 100)
       })
 
@@ -1103,11 +1292,22 @@ export function useMapboxGL() {
   // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
+      // 🔥 Limpiar listeners antiguos si el mapa ya existe
       if (map.value) {
+        // Remover TODOS los event listeners antes de destruir
         map.value.remove()
+        map.value = null
       }
 
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      // 🔥 Limpiar flags globales
+      if (window._mapListenersRegistered) {
+        delete window._mapListenersRegistered
+        delete window._mapMoveStartHandler
+        delete window._mapMoveEndHandler
+      }
+
+      mapboxgl.accessToken =
+        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1152,7 +1352,7 @@ export function useMapboxGL() {
       map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
-      map.value.on('load', () => {
+      map.value.on('load', async () => {
         map.value.scrollZoom.setWheelZoomRate(1 / 150)
         map.value.scrollZoom.setZoomRate(1 / 100)
 
@@ -1162,6 +1362,8 @@ export function useMapboxGL() {
           maxSpeed: 1800,
           deceleration: 2200,
         })
+        await cargarIconosMapa(map.value)
+
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
 
@@ -1263,17 +1465,32 @@ export function useMapboxGL() {
             el.style.transition = 'none'
           }
         })
+
+        // 🎯 Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        const layersToHide = [
+          'pois-combined',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (map.value.getLayer(layerId)) {
+            map.value.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
-        // 🆕 REDUCIDO DE 150ms A 50ms
         PanTimeout = setTimeout(() => {
           isPanning = false
+
           if (map.value.getCanvas()) {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
+
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
             if (el) {
@@ -1281,15 +1498,30 @@ export function useMapboxGL() {
             }
           })
 
+          // 🎯 Mostrar layers combinados de nuevo
+          const layersToShow = [
+            'pois-combined',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (map.value.getLayer(layerId)) {
+              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
+
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
+
           if (map.value) {
             requestAnimationFrame(() => {
               map.value.triggerRepaint()
             })
           }
-        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+        }, 50)
       })
 
       let zoomTimeout
@@ -1369,6 +1601,7 @@ export function useMapboxGL() {
         confirmarPoligonoTemporal,
         actualizarPoligono,
         actualizarPoligonoTemporal,
+        actualizarColorPoligonoTemporal,
         eliminarPoligono: (id) => {
           console.log(`Eliminando polígono con ID: ${id}`)
         },
@@ -1529,8 +1762,6 @@ export function useMapboxGL() {
       // Eliminar de la cache
       delete marcadoresUnidades.value[unidadId]
       ultimasPosiciones.delete(unidadId)
-
-      console.log(`✅ Marcador ${unidadId} eliminado del mapa`)
     }
   }
 

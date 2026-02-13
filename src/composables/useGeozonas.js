@@ -49,23 +49,34 @@ const agregarDireccionesAPuntos = async (puntos) => {
     return []
   }
 
-  const puntosConDireccion = await Promise.all(
-    puntos.map(async (punto) => {
-      // Si ya tiene dirección, no hacer nada
-      if (punto.direccion) {
-        return punto
-      }
+  const puntosConDireccion = []
 
-      // Si no tiene, obtenerla de Mapbox
+  // 🚀 Procesar en lotes de 5 para no saturar la API
+  const BATCH_SIZE = 5
 
-      const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+  for (let i = 0; i < puntos.length; i += BATCH_SIZE) {
+    const batch = puntos.slice(i, i + BATCH_SIZE)
 
-      return {
-        ...punto,
-        direccion,
-      }
-    }),
-  )
+    const resultados = await Promise.all(
+      batch.map(async (punto) => {
+        // Si ya tiene dirección, no hacer nada
+        if (punto.direccion) {
+          return punto
+        }
+
+        // Si no tiene, obtenerla de Mapbox
+        const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+        return { ...punto, direccion }
+      }),
+    )
+
+    puntosConDireccion.push(...resultados)
+
+    // 🎯 Pequeña pausa entre lotes (100ms)
+    if (i + BATCH_SIZE < puntos.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
 
   return puntosConDireccion
 }

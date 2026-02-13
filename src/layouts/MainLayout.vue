@@ -23,7 +23,14 @@
 
             <template v-slot:append>
               <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
-              <q-btn flat dense round icon="tune" @click="mostrarFiltros = !mostrarFiltros">
+              <q-btn
+                flat
+                dense
+                round
+                icon="tune"
+                @click="mostrarFiltros = !mostrarFiltros"
+                id="filtros-panel"
+              >
                 <q-tooltip>Filtros</q-tooltip>
               </q-btn>
             </template>
@@ -174,19 +181,24 @@
                   <strong>Versión:</strong> 1.0.0
                 </div>
                 <div class="q-mb-sm">
-                  <q-icon name="code" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Quasar:</strong> v{{ $q.version }}
-                </div>
-                <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Empresa:</strong> MJ Industrias
+                  <strong>Empresa:</strong> MJ Industrial
                 </div>
               </q-card-section>
 
               <q-separator />
 
               <q-card-actions class="q-px-md q-pb-md">
-                <q-btn flat label="Tutorial" style="color: #bb0000" v-close-popup />
+                <q-btn
+                  flat
+                  label="Tutorial"
+                  style="color: #bb0000"
+                  @click="iniciarTutorial"
+                  v-close-popup
+                  icon="school"
+                >
+                  <q-tooltip>Iniciar tutorial guiado</q-tooltip>
+                </q-btn>
                 <q-space />
                 <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
               </q-card-actions>
@@ -254,6 +266,7 @@
             v-ripple
             @click="link.click"
             class="nav-item"
+            :id="`nav-${link.action || link.link}`"
           >
             <q-item-section avatar>
               <q-icon :name="link.icon" size="24px" />
@@ -287,6 +300,7 @@
             @click="handleLinkClick(link)"
             v-ripple
             class="nav-item"
+            :id="`nav-${(link.action || link.link).replace(/[^a-z0-9]/gi, '-')}`"
             :class="{
               'nav-item-active-page': esRutaActiva(link) && !link.action && !link.click,
               'nav-item-active-component': esRutaActiva(link) && (link.action || link.click),
@@ -318,7 +332,13 @@
       <!-- Botón de cerrar sesión en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
-        <q-item clickable v-ripple class="config-item" @click="confirmarCierreSesion">
+        <q-item
+          clickable
+          v-ripple
+          class="config-item"
+          @click="confirmarCierreSesion"
+          id="nav-logout"
+        >
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
               <q-icon name="logout" />
@@ -473,8 +493,12 @@ import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
+import { useTutorial } from 'src/composables/useTutorial'
 
+//const { iniciarTutorial } = useTutorial()
 const router = useRouter()
+const { iniciarTutorial } = useTutorial(router)
+
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()
 const userId = ref(auth.currentUser?.uid || '')

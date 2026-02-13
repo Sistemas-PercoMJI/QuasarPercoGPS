@@ -17,6 +17,7 @@ import { useMultiTenancy } from './useMultiTenancy'
 
 export function useConductoresFirebase() {
   const { crearQueryConEmpresa } = useMultiTenancy()
+  const { idEmpresaActual } = useMultiTenancy()
 
   // Estado reactivo
   const conductores = ref([])
@@ -883,13 +884,39 @@ export function useConductoresFirebase() {
 
   const conductoresPorGrupo = (grupoId) => {
     const grupo = gruposConductores.value.find((g) => g.id === grupoId)
-    if (!grupo) return []
-    return conductores.value.filter((c) => grupo.ConductoresIds?.includes(c.id))
+    if (!grupo?.ConductoresIds) return []
+
+    // 🔥 Filtrar por empresas del usuario
+    return conductores.value.filter((c) => {
+      if (!grupo.ConductoresIds.includes(c.id)) return false
+
+      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      if (Array.isArray(idEmpresaActual.value)) {
+        return idEmpresaActual.value.includes(c.IdEmpresaConductor)
+      } else {
+        return c.IdEmpresaConductor === idEmpresaActual.value
+      }
+    })
   }
 
   const contarConductoresPorGrupo = (grupoId) => {
     const grupo = gruposConductores.value.find((g) => g.id === grupoId)
-    return grupo?.ConductoresIds?.length || 0
+    if (!grupo?.ConductoresIds) return 0
+
+    // 🔥 Filtrar: Solo contar conductores de las empresas del usuario
+    const conductoresValidos = grupo.ConductoresIds.filter((conductorId) => {
+      const conductor = conductores.value.find((c) => c.id === conductorId)
+      if (!conductor) return false
+
+      // 🆕 SOPORTAR ARRAY DE EMPRESAS
+      if (Array.isArray(idEmpresaActual.value)) {
+        return idEmpresaActual.value.includes(conductor.IdEmpresaConductor)
+      } else {
+        return conductor.IdEmpresaConductor === idEmpresaActual.value
+      }
+    })
+
+    return conductoresValidos.length
   }
 
   const obtenerUnidadDeConductor = (conductorId) => {

@@ -63,7 +63,7 @@ export function usePOIs(userId) {
       const querySnapshot = await getDocs(collectionRef)
 
       if (querySnapshot.empty) {
-        console.warn('⚠️ No se encontraron POIs en la base de datos')
+        //console.warn('⚠️ No se encontraron POIs en la base de datos')
         pois.value = []
         return []
       }

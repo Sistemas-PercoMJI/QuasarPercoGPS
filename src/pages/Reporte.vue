@@ -4,6 +4,7 @@
     <div class="text-h4 text-weight-bold q-mb-md">Reportes</div>
 
     <q-tabs
+      id="tabs-reportes"
       v-model="tab"
       dense
       class="text-grey"
@@ -32,7 +33,7 @@
         </div>
 
         <!-- 📋 CARD: TIPO DE INFORME -->
-        <q-card flat bordered class="q-mb-md">
+        <q-card flat bordered class="q-mb-md" id="tipo-informe-card">
           <q-card-section class="bg-grey-2">
             <div class="text-h6">
               <q-icon name="assessment" class="q-mr-sm" color="primary" />
@@ -79,7 +80,7 @@
 
               <q-card-section>
                 <!-- Reportar por -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="q-select-reportar">
                   <div class="text-subtitle2 q-mb-sm">Reportar por</div>
                   <q-select
                     v-model="reportarPor"
@@ -119,7 +120,7 @@
                 </div>
 
                 <!-- Rango de fecha -->
-                <div class="q-mb-md">
+                <div class="q-mb-md" id="contenedor-rango-fecha">
                   <div class="text-subtitle2 q-mb-sm">Rango de fecha</div>
                   <q-input
                     :model-value="rangoFechaFormateado"
@@ -377,7 +378,13 @@
             </q-card>
 
             <!-- 🎯 CARD: PERSONALIZACIÓN DE COLUMNAS -->
-            <q-card v-if="tieneOpcion('seleccionColumnas')" flat bordered class="q-mb-md">
+            <q-card
+              id="card-columnas-personalizacion"
+              v-if="tieneOpcion('seleccionColumnas')"
+              flat
+              bordered
+              class="q-mb-md"
+            >
               <q-card-section class="bg-grey-2">
                 <div class="row items-center justify-between">
                   <div class="text-h6">
@@ -456,26 +463,31 @@
                 label="Generar PDF"
                 icon="picture_as_pdf"
                 unelevated
+                class="btn-report-action btn-pdf"
                 style="min-width: 200px"
                 @click="generarReporte"
                 :loading="generando"
                 :disable="generando"
               />
               <q-btn
+                id="btn-generar-excel"
                 color="positive"
                 label="Generar Excel"
                 icon="table_chart"
                 unelevated
+                class="btn-report-action btn-excel"
                 style="min-width: 200px"
                 @click="generarExcel"
                 :loading="generando"
                 :disable="generando"
               />
               <q-btn
+                id="btn-cancelar"
                 outline
                 color="grey-7"
                 label="Cancelar"
                 icon="close"
+                class="btn-report-action btn-cancel"
                 style="min-width: 200px"
                 @click="cancelarReporte"
               />
@@ -490,6 +502,7 @@
         <p class="text-grey-7">Lista de reportes generados anteriormente</p>
 
         <q-table
+          id="tabla-historial"
           flat
           bordered
           :rows="reportesAnteriores"
@@ -518,6 +531,7 @@
           <template v-slot:body-cell-acciones="props">
             <q-td :props="props">
               <q-btn
+                id="btn-accion-descargar"
                 flat
                 dense
                 icon="download"
@@ -528,16 +542,21 @@
               >
                 <q-tooltip>Descargar</q-tooltip>
               </q-btn>
+
+              <!-- 🆕 Botón con lógica condicional -->
               <q-btn
+                id="btn-accion-vista"
                 flat
                 dense
                 icon="open_in_new"
                 color="primary"
                 size="sm"
-                :href="props.row.downloadURL"
-                target="_blank"
+                :loading="loadingPreview[props.row.id]"
+                @click="abrirVistaPrevia(props.row)"
               >
-                <q-tooltip>Ver en nueva pestaña</q-tooltip>
+                <q-tooltip>
+                  {{ props.row.tipoArchivo === 'pdf' ? 'Ver en nueva pestaña' : 'Vista previa' }}
+                </q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -550,6 +569,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
+import { useExcelPreview } from 'src/composables/useExcelPreview'
 
 // 🔥 IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
@@ -565,12 +585,20 @@ import { useEventos } from 'src/composables/useEventos'
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
+import { useRouter } from 'vue-router'
+import { useTutorial } from 'src/composables/useTutorial'
 
 const $q = useQuasar()
 const auth = getAuth()
 const userId = ref(null)
 const tab = ref('crear')
 const remarcarHorasExtra = ref(true)
+const router = useRouter()
+const { iniciarTutorialReportes } = useTutorial(router)
+
+onMounted(() => {
+  iniciarTutorialReportes()
+})
 
 // Composables
 const { subirReporte, obtenerHistorialReportes, formatearTamaño } = useReportesStorage()
@@ -601,9 +629,9 @@ const {
   obtenerConfiguracionColumnas,
   procesarNotificacionesParaReporte,
   generarResumen,
-  cambiarTipoInforme: cambiarTipoInformeColumnas, // 👈 Nuevo
-  guardarColumnasActuales, // 👈 Nuevo
-  resetearColumnas, // 👈 Nuevo
+  cambiarTipoInforme: cambiarTipoInformeColumnas,
+  guardarColumnasActuales,
+  resetearColumnas,
 } = instanciaColumnas
 
 const { generarExcelEventos } = useReporteExcel()
@@ -666,6 +694,11 @@ const columnasHistorial = [
   { name: 'tamaño', label: 'Tamaño', field: 'tamaño', align: 'left' },
   { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
+
+const { obtenerVistaPrevia, descargarArchivo } = useExcelPreview()
+
+// 🆕 NUEVO REF para manejar loading por fila
+const loadingPreview = ref({})
 
 // Computed
 const etiquetaSelector = computed(() => {
@@ -1014,7 +1047,7 @@ const obtenerDatosReporte = async () => {
 
       if (idsParaBuscar.length === 0) {
         throw new Error('Los conductores seleccionados no tienen unidades asignadas')
-      }
+      } //ola
     } else if (reportarPor.value === 'Unidades') {
       idsParaBuscar = unidadesIds.map((nombre) => {
         const id = window.unidadesMap?.[nombre] || nombre
@@ -1260,31 +1293,6 @@ const generarReporte = async () => {
   try {
     const datosReales = await obtenerDatosReporte()
 
-    console.log(
-      '🔍 PRIMER TRAYECTO RAW:',
-      datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?._raw
-        : null,
-    )
-
-    console.log('🔍 PRIMER TRAYECTO PROCESADO:', {
-      duracion: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracion
-        : null,
-      duracionHoras: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.duracionHoras
-        : null,
-      kilometrajeInicio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeInicio
-        : null,
-      kilometrajeFinal: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.kilometrajeFinal
-        : null,
-      velocidadPromedio: datosReales.eventosAgrupados
-        ? Object.values(datosReales.eventosAgrupados)[0]?.[0]?.velocidadPromedio
-        : null,
-    })
-
     const config = {
       rangoFechaFormateado: rangoFechaFormateado.value,
       reportarPor: reportarPor.value,
@@ -1301,8 +1309,6 @@ const generarReporte = async () => {
 
     // 🔥 GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      console.log('🔍 DATOS QUE LLEGAN AL PDF:')
-      console.log('📊 datosReales completo:', datosReales)
       if (datosReales.eventosAgrupados) {
         Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
           console.log(
@@ -1593,7 +1599,223 @@ const cargarHistorialReportes = async () => {
     loading.value = false
   }
 }
+/**
+ * 🆕 Abre vista previa según tipo de archivo
+ */
+const abrirVistaPrevia = async (reporte) => {
+  // Si es PDF, abrir directamente en nueva pestaña
+  if (reporte.tipoArchivo === 'pdf') {
+    window.open(reporte.downloadURL, '_blank')
+    return
+  }
 
+  // Si es Excel, mostrar vista previa en modal
+  if (reporte.tipoArchivo === 'excel') {
+    loadingPreview.value[reporte.id] = true
+
+    try {
+      // 1. Descargar el Excel desde Firebase Storage
+      const excelBlob = await descargarArchivo(reporte.downloadURL)
+
+      // 2. Convertir a HTML
+      const htmlContent = await obtenerVistaPrevia(excelBlob)
+
+      // 3. Función de descarga
+      const descargarExcel = () => {
+        const url = window.URL.createObjectURL(excelBlob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${reporte.tipo}_${reporte.fecha}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+
+        $q.notify({
+          type: 'positive',
+          message: 'Archivo descargado',
+          icon: 'download',
+          position: 'top',
+        })
+      }
+
+      // 🆕 EXPONER FUNCIONES GLOBALES
+      window.descargarExcelActual = descargarExcel
+      window.cerrarDialogoActual = null
+
+      const dialogRef = $q.dialog({
+        title: 'Vista Previa del Reporte Excel',
+        message: `
+    <!-- Información del reporte -->
+<!-- Información del reporte -->
+<div style="padding: 12px 16px 12px 48px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; position: relative;">
+  <!-- ✨ BOTÓN X EN LA ESQUINA SUPERIOR DERECHA -->
+<button
+  onclick="window.cerrarDialogoActual()"
+  style="
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+  "
+  onmouseover="
+    this.style.background='rgba(0, 0, 0, 0.1)';
+    this.style.borderColor='#999';
+    this.style.color='#333';
+  "
+  onmouseout="
+    this.style.background='transparent';
+    this.style.borderColor='#ddd';
+    this.style.color='#666';
+  "
+>
+  <i class="material-icons" style="font-size: 20px;">close</i>
+</button>
+
+  <!-- Contenido del header -->
+  <div style="font-weight: 600; color: #333; font-size: 15px; margin-bottom: 8px;">
+    Informe de Trayectos
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; color: #777; font-size: 12px;">
+    <div>
+      Reportar por: ${reporte.elementos || 'N/A'} | Generado: ${reporte.fecha}
+    </div>
+    <div style="color: #666; font-size: 13px; font-weight: 500;">
+      ${reporte.periodo || 'Sin período'}
+    </div>
+  </div>
+</div>
+      <!-- Contenido scrolleable -->
+      <div style="flex: 1; overflow: auto; padding: 20px; background: #f5f5f5; min-height: 0;">
+        ${htmlContent}
+      </div>
+
+      <!-- Footer fijo con botones separados -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid #e0e0e0; background: #fafafa; flex-shrink: 0;">
+        <button
+          onclick="window.descargarExcelActual()"
+          style="
+            padding: 12px 24px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 0.3px;
+          "
+          onmouseover="
+            this.style.transform='translateY(-3px)';
+            this.style.boxShadow='0 8px 24px rgba(76, 175, 80, 0.4)';
+          "
+          onmouseout="
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';
+          "
+          onmousedown="
+            this.style.transform='translateY(-1px) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-3px)';
+          "
+        >
+          <i class="material-icons" style="font-size: 20px;">download</i>
+          <span>Descargar Excel</span>
+        </button>
+
+        <button
+          onclick="window.cerrarDialogoActual()"
+          style="
+            padding: 12px 24px;
+            background: white;
+            color: #616161;
+            border: 1px solid #616161;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          "
+          onmouseover="
+            this.style.background='rgba(0, 0, 0, 0.05)';
+            this.style.transform='translateY(-2px)';
+            this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.1)';
+          "
+          onmouseout="
+            this.style.background='white';
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='none';
+          "
+          onmousedown="
+            this.style.transform='translateY(0) scale(0.98)';
+          "
+          onmouseup="
+            this.style.transform='translateY(-2px)';
+          "
+        >
+          <i class="material-icons" style="font-size: 20px;">close</i>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
+  `,
+        html: true,
+        fullWidth: true,
+        fullHeight: true,
+        maximized: true,
+        persistent: true,
+        noEscDismiss: false,
+        ok: false,
+        cancel: false,
+        class: 'excel-preview-dialog-fullscreen',
+      })
+      // 🆕 ASIGNAR LA FUNCIÓN DE CERRAR
+      window.cerrarDialogoActual = () => {
+        dialogRef.hide()
+      }
+
+      $q.notify({
+        type: 'positive',
+        message: 'Vista previa generada',
+        icon: 'visibility',
+        position: 'top',
+      })
+    } catch (error) {
+      console.error('❌ Error al generar vista previa:', error)
+      $q.notify({
+        type: 'negative',
+        message: 'Error al generar vista previa',
+        caption: error.message,
+        icon: 'error',
+        position: 'top',
+      })
+    } finally {
+      loadingPreview.value[reporte.id] = false
+    }
+  }
+}
 // Lifecycle
 onMounted(() => {
   auth.onAuthStateChanged((user) => {
@@ -1628,10 +1850,177 @@ watch(eventos, () => {
 </script>
 
 <style scoped>
+/*estilos para los tabs*/
+:deep(.q-tab) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+/* Hover en tabs no activos */
+:deep(.q-tab):not(.q-tab--active):hover {
+  transform: translateY(-2px);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Tab activo con efecto especial */
+:deep(.q-tab--active) {
+  transform: scale(1.05);
+  font-weight: 600;
+}
+
+/* Animación del icono al hacer hover */
+:deep(.q-tab):hover .q-icon {
+  animation: tab-icon-bounce 0.5s ease;
+}
+
+/* Animación del indicador inferior */
+:deep(.q-tabs__indicator) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 3px !important;
+}
+
+/* Animación de rebote para iconos de tabs */
+@keyframes tab-icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Efecto al hacer click (active state) */
+:deep(.q-tab):active {
+  transform: scale(0.98);
+}
+
+/* Mejorar la transición del tab activo */
+:deep(.q-tab--active):hover {
+  transform: scale(1.05) translateY(-1px);
+}
+/*Estilos para los botones de generar*/
+/*Estilos para los botones de generar*/
+.btn-report-action {
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover general - MÁS ESPECÍFICO */
+.btn-report-action.btn-pdf:not(:disabled):hover,
+.btn-report-action.btn-excel:not(:disabled):hover,
+.btn-report-action.btn-cancel:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Active (al hacer click) */
+.btn-report-action.btn-pdf:not(:disabled):active,
+.btn-report-action.btn-excel:not(:disabled):active,
+.btn-report-action.btn-cancel:active {
+  transform: translateY(-1px) scale(0.98) !important;
+}
+
+/* Botón PDF - Rojo con sombra específica */
+.btn-report-action.btn-pdf:not(:disabled):hover {
+  box-shadow: 0 8px 24px rgba(211, 47, 47, 0.4) !important;
+}
+
+.btn-report-action.btn-pdf:not(:disabled):hover .q-icon {
+  animation: pulse-icon 0.6s ease;
+}
+
+/* Botón Excel - Verde con sombra específica */
+.btn-report-action.btn-excel:not(:disabled):hover {
+  box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4) !important;
+}
+
+.btn-report-action.btn-excel:not(:disabled):hover .q-icon {
+  animation: bounce-icon 0.6s ease;
+}
+
+/* Botón Cancelar */
+.btn-report-action.btn-cancel:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Animaciones de iconos */
+@keyframes pulse-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes bounce-icon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Estado de carga - MÁS ESPECÍFICO */
+.btn-report-action.q-btn--loading,
+.btn-report-action.btn-pdf.q-btn--loading,
+.btn-report-action.btn-excel.q-btn--loading {
+  transform: none !important;
+}
+
+/* Estado deshabilitado - MÁS ESPECÍFICO */
+.btn-report-action:disabled,
+.btn-report-action.btn-pdf:disabled,
+.btn-report-action.btn-excel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Efecto ripple mejorado */
+.btn-report-action :deep(.q-focus-helper) {
+  background: currentColor;
+  opacity: 0.15;
+}
 /* 🆕 ESTILOS PARA EL HEADER DE COLUMNAS */
 .columnas-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+:deep(.excel-preview-dialog-fullscreen .q-dialog__inner) {
+  padding: 0 !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card) {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card__section) {
+  padding: 0 !important;
+}
+
+:deep(.excel-preview-dialog-fullscreen .q-card__section--vert) {
+  padding: 0 !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 </style>
