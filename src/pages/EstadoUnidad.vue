@@ -12,15 +12,7 @@
             <p class="unidad-placa">{{ unidad.placa }}</p>
           </div>
         </div>
-        <q-btn 
-          flat 
-          round 
-          dense 
-          icon="close" 
-          color="white"
-          size="md"
-          @click="cerrar"
-        />
+        <q-btn flat round dense icon="close" color="white" size="md" @click="cerrar" />
       </div>
 
       <!-- Estado de conexión -->
@@ -38,15 +30,8 @@
           <span class="metrica-label">Combustible</span>
         </div>
         <div class="metrica-valor-grande">{{ datos.combustible }}%</div>
-        <q-linear-progress 
-          :value="datos.combustible / 100" 
-          color="primary"
-          size="8px"
-          rounded
-        />
-        <div class="metrica-detalle">
-          {{ calcularLitros(datos.combustible) }} litros aprox.
-        </div>
+        <q-linear-progress :value="datos.combustible / 100" color="primary" size="8px" rounded />
+        <div class="metrica-detalle">{{ calcularLitros(datos.combustible) }} litros aprox.</div>
       </div>
 
       <div class="metrica-card velocidad-card">
@@ -59,7 +44,11 @@
           <span class="unidad">km/h</span>
         </div>
         <div class="metrica-detalle">
-          <q-icon name="navigation" size="16px" :style="`transform: rotate(${datos.direccion}deg)`" />
+          <q-icon
+            name="navigation"
+            size="16px"
+            :style="`transform: rotate(${datos.direccion}deg)`"
+          />
           Dirección: {{ obtenerPuntoCardinal(datos.direccion) }}
         </div>
       </div>
@@ -72,9 +61,7 @@
         <div class="metrica-valor-estado">
           {{ datos.ignicion ? 'ENCENDIDO' : 'APAGADO' }}
         </div>
-        <div class="metrica-detalle">
-          Motor {{ datos.ignicion ? 'en marcha' : 'detenido' }}
-        </div>
+        <div class="metrica-detalle">Motor {{ datos.ignicion ? 'en marcha' : 'detenido' }}</div>
       </div>
 
       <div class="metrica-card bateria-card">
@@ -86,8 +73,8 @@
           {{ datos.voltajeBateria }}
           <span class="unidad">V</span>
         </div>
-        <q-linear-progress 
-          :value="datos.voltajeBateria / 14" 
+        <q-linear-progress
+          :value="datos.voltajeBateria / 14"
           :color="datos.voltajeBateria < 11.5 ? 'negative' : 'positive'"
           size="8px"
           rounded
@@ -104,7 +91,7 @@
         <q-icon name="satellite_alt" size="24px" />
         GPS y Conectividad
       </h3>
-      
+
       <div class="gps-grid">
         <div class="gps-item">
           <q-icon name="room" color="primary" size="20px" />
@@ -146,7 +133,7 @@
         <q-icon name="timeline" size="24px" />
         Odómetro y Tiempos
       </h3>
-      
+
       <div class="tiempos-grid">
         <div class="tiempo-card">
           <q-icon name="route" size="28px" color="primary" />
@@ -180,13 +167,11 @@
         <q-icon name="thermostat" size="24px" />
         Temperatura
       </h3>
-      
+
       <div class="temperatura-display">
-        <div class="temperatura-grande">
-          {{ datos.temperatura }}°C
-        </div>
-        <q-linear-progress 
-          :value="(datos.temperatura + 20) / 80" 
+        <div class="temperatura-grande">{{ datos.temperatura }}°C</div>
+        <q-linear-progress
+          :value="(datos.temperatura + 20) / 80"
           :color="obtenerColorTemperatura(datos.temperatura)"
           size="12px"
           rounded
@@ -204,7 +189,7 @@
         <q-icon name="warning" size="24px" />
         Alertas Activas
       </h3>
-      
+
       <q-list bordered separator class="alertas-lista">
         <q-item v-for="alerta in alertas" :key="alerta.id" class="alerta-item">
           <q-item-section avatar>
@@ -220,25 +205,25 @@
 
     <!-- Botones de acción -->
     <div class="acciones-footer">
-      <q-btn 
-        outline 
-        color="primary" 
+      <q-btn
+        outline
+        color="primary"
         icon="history"
         label="Ver Historial"
         @click="verHistorial"
         class="btn-accion"
       />
-      <q-btn 
-        outline 
-        color="primary" 
+      <q-btn
+        outline
+        color="primary"
         icon="map"
         label="Ver en Mapa"
         @click="verEnMapa"
         class="btn-accion"
       />
-      <q-btn 
-        outline 
-        color="primary" 
+      <q-btn
+        outline
+        color="primary"
         icon="download"
         label="Exportar Datos"
         @click="exportarDatos"
@@ -253,48 +238,48 @@ import { ref, computed } from 'vue'
 
 export default {
   name: 'EstadoUnidad',
-  
+
   setup(props, { emit }) {
     // Datos de la unidad (estos vendrían de Firebase/API)
     const unidad = ref({
       nombre: 'Unidad 001',
       placa: 'ABC-123',
-      capacidadTanque: 50 // litros
+      capacidadTanque: 50, // litros
     })
 
     // Datos del FMC130 (simulados - en producción vienen de Firebase en tiempo real)
     const datos = ref({
       // Combustible
       combustible: 75, // porcentaje
-      
+
       // Velocidad y dirección
       velocidad: 45,
       direccion: 135, // grados (0-360)
-      
+
       // Motor
       ignicion: true,
-      
+
       // Batería
       voltajeBateria: 12.8,
-      
+
       // GPS
       latitud: 19.4326,
       longitud: -99.1332,
       satelites: 12,
       precision: 5, // metros
-      
+
       // Conectividad
       senalGSM: 85,
-      
+
       // Odómetro
       odometroTotal: 45678.5, // km
       tiempoMotorOn: 3456, // minutos
-      
+
       // Temperatura (puede ser null si no tiene sensor)
       temperatura: 28,
-      
+
       // Timestamp
-      ultimaActualizacion: new Date()
+      ultimaActualizacion: new Date(),
     })
 
     // Estado de conexión
@@ -306,7 +291,11 @@ export default {
       if (minutos < 2) {
         return { texto: 'En línea', icono: 'wifi', clase: 'conectado' }
       } else if (minutos < 10) {
-        return { texto: 'Última señal hace ' + Math.floor(minutos) + ' min', icono: 'wifi_tethering', clase: 'intermitente' }
+        return {
+          texto: 'Última señal hace ' + Math.floor(minutos) + ' min',
+          icono: 'wifi_tethering',
+          clase: 'intermitente',
+        }
       } else {
         return { texto: 'Sin señal', icono: 'wifi_off', clase: 'desconectado' }
       }
@@ -318,8 +307,8 @@ export default {
         id: 1,
         severidad: 'orange',
         mensaje: 'Velocidad superior a límite establecido',
-        fecha: new Date()
-      }
+        fecha: new Date(),
+      },
     ])
 
     // Métodos auxiliares
@@ -334,7 +323,9 @@ export default {
     }
 
     function formatearDistancia(km) {
-      return km.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km'
+      return (
+        km.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km'
+      )
     }
 
     function formatearTiempo(minutos) {
@@ -344,12 +335,12 @@ export default {
     }
 
     function formatearFecha(fecha) {
-      return fecha.toLocaleString('es-MX', { 
+      return fecha.toLocaleString('es-MX', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       })
     }
 
@@ -366,20 +357,11 @@ export default {
       emit('cerrar')
     }
 
-    function verHistorial() {
-      console.log('Ver historial de la unidad')
-      // Implementar navegación al historial
-    }
+    function verHistorial() {}
 
-    function verEnMapa() {
-      console.log('Ver unidad en mapa')
-      // Implementar zoom al vehículo en el mapa
-    }
+    function verEnMapa() {}
 
-    function exportarDatos() {
-      console.log('Exportar datos de la unidad')
-      // Implementar exportación a Excel/PDF
-    }
+    function exportarDatos() {}
 
     return {
       unidad,
@@ -395,9 +377,9 @@ export default {
       cerrar,
       verHistorial,
       verEnMapa,
-      exportarDatos
+      exportarDatos,
     }
-  }
+  },
 }
 </script>
 
@@ -489,13 +471,13 @@ export default {
   background: white;
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
 }
 
 .metrica-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .metrica-header {
@@ -579,7 +561,7 @@ export default {
   margin: 0 20px 16px 20px;
   padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .seccion-titulo {

@@ -49,28 +49,35 @@ const agregarDireccionesAPuntos = async (puntos) => {
     return []
   }
 
-  console.log(`📍 Obteniendo direcciones para ${puntos.length} puntos...`)
+  const puntosConDireccion = []
 
-  const puntosConDireccion = await Promise.all(
-    puntos.map(async (punto) => {
-      // Si ya tiene dirección, no hacer nada
-      if (punto.direccion) {
-        console.log(`✅ Punto ya tiene dirección: ${punto.direccion}`)
-        return punto
-      }
+  // 🚀 Procesar en lotes de 5 para no saturar la API
+  const BATCH_SIZE = 5
 
-      // Si no tiene, obtenerla de Mapbox
-      console.log(`🔍 Obteniendo dirección para: ${punto.lat}, ${punto.lng}`)
-      const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+  for (let i = 0; i < puntos.length; i += BATCH_SIZE) {
+    const batch = puntos.slice(i, i + BATCH_SIZE)
 
-      return {
-        ...punto,
-        direccion,
-      }
-    }),
-  )
+    const resultados = await Promise.all(
+      batch.map(async (punto) => {
+        // Si ya tiene dirección, no hacer nada
+        if (punto.direccion) {
+          return punto
+        }
 
-  console.log(`✅ Direcciones obtenidas para ${puntosConDireccion.length} puntos`)
+        // Si no tiene, obtenerla de Mapbox
+        const direccion = await obtenerDireccionPunto(punto.lat, punto.lng)
+        return { ...punto, direccion }
+      }),
+    )
+
+    puntosConDireccion.push(...resultados)
+
+    // 🎯 Pequeña pausa entre lotes (100ms)
+    if (i + BATCH_SIZE < puntos.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
+
   return puntosConDireccion
 }
 
@@ -102,12 +109,11 @@ export function useGeozonas(userId) {
           tipo: 'geozona',
         }
 
-        console.log('📦 Geozona transformada:', geozona)
         geozonasData.push(geozona)
       })
 
       geozonas.value = geozonasData
-      console.log('✅ Geozonas transformadas:', geozonasData)
+
       return geozonasData
     } catch (err) {
       console.error('Error al obtener geozonas:', err)
@@ -126,7 +132,6 @@ export function useGeozonas(userId) {
     try {
       // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS ANTES DE GUARDAR
       if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
-        console.log('🔄 Agregando direcciones a los puntos del polígono...')
         geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
       }
 
@@ -146,7 +151,6 @@ export function useGeozonas(userId) {
       }
 
       geozonas.value.unshift(nuevaGeozona)
-      console.log('✅ Nueva geozona agregada localmente:', nuevaGeozona)
 
       return docRef.id
     } catch (err) {
@@ -166,7 +170,6 @@ export function useGeozonas(userId) {
     try {
       // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS SI FALTAN
       if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
-        console.log('🔄 Verificando direcciones en los puntos...')
         geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
       }
 
@@ -215,8 +218,6 @@ export function useGeozonas(userId) {
 
   // ⚡ NUEVA: Función para migrar geozonas existentes (ejecutar una sola vez)
   const migrarGeozonasExistentes = async () => {
-    console.log('🔄 Iniciando migración de geozonas...')
-
     try {
       const geozonasRef = collection(db, 'Usuarios', userId, 'Geozonas')
       const snapshot = await getDocs(geozonasRef)
@@ -233,8 +234,6 @@ export function useGeozonas(userId) {
           const necesitaMigracion = geozona.puntos.some((p) => !p.direccion)
 
           if (necesitaMigracion) {
-            console.log(`🔄 Migrando geozona: ${geozona.nombre}`)
-
             const puntosConDireccion = await agregarDireccionesAPuntos(geozona.puntos)
 
             await updateDoc(docSnap.ref, {
@@ -243,15 +242,10 @@ export function useGeozonas(userId) {
 
             actualizadas++
           } else {
-            console.log(`✅ Geozona "${geozona.nombre}" ya tiene direcciones`)
             sinCambios++
           }
         }
       }
-
-      console.log(`✅ Migración completada:`)
-      console.log(`  - Geozonas actualizadas: ${actualizadas}`)
-      console.log(`  - Geozonas sin cambios: ${sinCambios}`)
 
       return { actualizadas, sinCambios }
     } catch (error) {

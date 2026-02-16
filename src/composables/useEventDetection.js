@@ -34,8 +34,6 @@ export function useEventDetection() {
    * NUEVO: Construye mapa de ubicaciones que tienen eventos (para trackear solo esas)
    */
   function inicializar(eventos, pois, geozonas) {
-    console.log('🚀 Inicializando sistema de detección de eventos...')
-
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
@@ -86,12 +84,6 @@ export function useEventDetection() {
     estadoUbicaciones.value.clear()
     eventosEnCurso.value.clear()
     salidasEnCurso.value.clear()
-
-    console.log('✅ Sistema de detección inicializado')
-    console.log(`  📊 Eventos activos: ${eventosActivos.value.length}`)
-    console.log(`  📍 POIs: ${poisMapeados.value.size}`)
-    console.log(`  🗺️ Geozonas: ${geozonasMapeadas.value.size}`)
-    console.log(`  🎯 Ubicaciones a trackear: ${ubicacionesTrackeadas.value.size}`)
   }
 
   /**
@@ -196,7 +188,6 @@ export function useEventDetection() {
     const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0
 
     if (ahora - ultimaEjecucion < TRACKING_THROTTLE_MS) {
-      // console.log(`⏸️ Throttle activo para ${claveUbicacion}`)
       return
     }
 
@@ -216,8 +207,6 @@ export function useEventDetection() {
         nombre = nombre.replace(/\s+/g, ' ').trim()
         return nombre || 'Sin nombre'
       })()
-
-      console.log(`✅ ENTRADA: ${nombreConductor} → ${tipo} ${ubicacion.nombre}`)
 
       try {
         const idRutaDiaria = obtenerIdRutaDiaria()
@@ -249,8 +238,6 @@ export function useEventDetection() {
             const segs = segundos % 60
             return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
           }
-
-          console.log(`🕐 Calculando duración FUERA: ${formatearDuracion(duracionFueraFinal)}`)
 
           try {
             // Actualizar el evento de SALIDA con duración fuera
@@ -311,8 +298,6 @@ export function useEventDetection() {
           ubicacionNombre: ubicacion.nombre,
           ubicacionId: ubicacion.id,
         })
-
-        console.log(`💾 ENTRADA registrada: ${eventoRegistrado.id}`)
       } catch (err) {
         console.error('❌ Error en tracking de entrada:', err)
       }
@@ -335,8 +320,6 @@ export function useEventDetection() {
         return nombre || 'Sin nombre'
       })()
 
-      console.log(`🚪 SALIDA: ${nombreConductor} ← ${tipo} ${ubicacion.nombre}`)
-
       const claveEntrada = `${unidad.id}-${ubicacion.id}`
       const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
 
@@ -352,8 +335,6 @@ export function useEventDetection() {
           const segs = segundos % 60
           return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
         }
-
-        console.log(`🕐 Calculando duración DENTRO: ${formatearDuracion(duracionDentroFinal)}`)
 
         try {
           const idRutaDiaria = eventoEntrada.idRutaDiaria
@@ -433,10 +414,6 @@ export function useEventDetection() {
 
           // Limpiar entrada de memoria
           eventosEnCurso.value.delete(claveEntrada)
-
-          console.log(
-            `💾 SALIDA registrada: ${eventoSalidaRegistrado.id} (duración fuera pendiente)`,
-          )
         } catch (err) {
           console.error('❌ Error en tracking de salida:', err)
         }
@@ -524,8 +501,6 @@ export function useEventDetection() {
           tipo: tipo,
         },
       })
-
-      console.log(`🔔 Notificación enviada: ${evento.nombre} - ${accionTexto} ${ubicacion.nombre}`)
     }
   }
 
@@ -592,7 +567,6 @@ export function useEventDetection() {
     eventosEnCurso.value.clear()
     ubicacionesTrackeadas.value.clear()
     ultimoTrackingPorUnidad.value.clear()
-    console.log('🔄 Sistema de detección reseteado')
   }
 
   return {

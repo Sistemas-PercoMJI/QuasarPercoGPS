@@ -45,7 +45,6 @@ export function useGeocoding() {
           .trim()
 
         if (direccionFinal && direccionFinal.length > 3) {
-          console.log(`🗺️ Geocoding exitoso: ${direccionFinal}`)
           return direccionFinal
         }
       }
@@ -61,7 +60,6 @@ export function useGeocoding() {
         const parts = feature.place_name.split(',')
         const direccion = parts[0].trim()
         if (direccion && direccion.length > 3) {
-          console.log(`🗺️ Geocoding amplio: ${direccion}`)
           return direccion
         }
       }
@@ -88,7 +86,6 @@ export function useGeocoding() {
 
     // Si ya está en cache, retornar
     if (cacheGeocodificacion.value[clave]) {
-      console.log(`📦 Usando dirección en cache: ${cacheGeocodificacion.value[clave]}`)
       return cacheGeocodificacion.value[clave]
     }
 
@@ -105,7 +102,6 @@ export function useGeocoding() {
    */
   const limpiarCache = () => {
     cacheGeocodificacion.value = {}
-    console.log('🗑️ Cache de geocodificación limpiado')
   }
 
   return {

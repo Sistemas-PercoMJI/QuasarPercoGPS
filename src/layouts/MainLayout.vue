@@ -15,6 +15,7 @@
             dense
             @keyup.enter="buscar"
             @focus="onFocus"
+            style="box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)"
           >
             <template v-slot:prepend>
               <q-icon name="search" color="grey-7" />
@@ -22,7 +23,14 @@
 
             <template v-slot:append>
               <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
-              <q-btn flat dense round icon="tune" @click="mostrarFiltros = !mostrarFiltros">
+              <q-btn
+                flat
+                dense
+                round
+                icon="tune"
+                @click="mostrarFiltros = !mostrarFiltros"
+                id="filtros-panel"
+              >
                 <q-tooltip>Filtros</q-tooltip>
               </q-btn>
             </template>
@@ -173,19 +181,24 @@
                   <strong>Versión:</strong> 1.0.0
                 </div>
                 <div class="q-mb-sm">
-                  <q-icon name="code" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Quasar:</strong> v{{ $q.version }}
-                </div>
-                <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Empresa:</strong> MJ Industrias
+                  <strong>Empresa:</strong> MJ Industrial
                 </div>
               </q-card-section>
 
               <q-separator />
 
               <q-card-actions class="q-px-md q-pb-md">
-                <q-btn flat label="Tutorial" style="color: #bb0000" v-close-popup />
+                <q-btn
+                  flat
+                  label="Tutorial"
+                  style="color: #bb0000"
+                  @click="iniciarTutorial"
+                  v-close-popup
+                  icon="school"
+                >
+                  <q-tooltip>Iniciar tutorial guiado</q-tooltip>
+                </q-btn>
                 <q-space />
                 <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
               </q-card-actions>
@@ -253,6 +266,7 @@
             v-ripple
             @click="link.click"
             class="nav-item"
+            :id="`nav-${link.action || link.link}`"
           >
             <q-item-section avatar>
               <q-icon :name="link.icon" size="24px" />
@@ -286,6 +300,11 @@
             @click="handleLinkClick(link)"
             v-ripple
             class="nav-item"
+            :id="`nav-${(link.action || link.link).replace(/[^a-z0-9]/gi, '-')}`"
+            :class="{
+              'nav-item-active-page': esRutaActiva(link) && !link.action && !link.click,
+              'nav-item-active-component': esRutaActiva(link) && (link.action || link.click),
+            }"
           >
             <q-item-section avatar>
               <q-icon :name="link.icon" size="24px" />
@@ -310,22 +329,24 @@
       </q-list>
 
       <!-- Botón de configuración en la parte inferior -->
+      <!-- Botón de cerrar sesión en la parte inferior -->
       <div class="absolute-bottom q-pa-md bg-white">
         <q-separator class="q-mb-md" />
-        <q-item clickable v-ripple class="config-item">
+        <q-item
+          clickable
+          v-ripple
+          class="config-item"
+          @click="confirmarCierreSesion"
+          id="nav-logout"
+        >
           <q-item-section avatar>
             <q-avatar color="grey-3" text-color="grey-8" size="40px">
-              <q-icon name="settings" />
+              <q-icon name="logout" />
             </q-avatar>
           </q-item-section>
 
           <q-item-section v-if="drawerExpanded && !dialogAbierto">
-            <q-item-label class="text-weight-medium">Configuración</q-item-label>
-            <q-item-label caption class="text-grey-7">Ajustes del sistema</q-item-label>
-          </q-item-section>
-
-          <q-item-section side v-if="drawerExpanded && !dialogAbierto">
-            <q-icon name="expand_less" color="grey-5" />
+            <q-item-label class="text-weight-medium">Cerrar Sesión</q-item-label>
           </q-item-section>
 
           <!-- Tooltip cuando está minimizado -->
@@ -335,43 +356,8 @@
             self="center left"
             :offset="[10, 0]"
           >
-            Configuración
+            Cerrar Sesión
           </q-tooltip>
-
-          <!-- Menu de configuración -->
-          <q-menu
-            anchor="top left"
-            self="bottom left"
-            :offset="[0, 10]"
-            transition-show="jump-up"
-            transition-hide="jump-down"
-          >
-            <q-card style="width: 300px; max-width: 90vw" class="rounded-borders">
-              <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6 text-weight-bold">Configuración</div>
-                <q-space />
-                <q-btn icon="close" flat round dense v-close-popup />
-              </q-card-section>
-
-              <q-separator class="q-my-sm" />
-
-              <q-list dense>
-                <q-separator class="q-my-sm" />
-
-                <q-item clickable v-ripple @click="cerrarSesionDesdeConfig" v-close-popup>
-                  <q-item-section avatar>
-                    <q-avatar color="negative" text-color="white" size="sm">
-                      <q-icon name="logout" />
-                    </q-avatar>
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>Cerrar Sesión</q-item-label>
-                    <q-item-label class="q-pb-md" caption>Salir de tu cuenta</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card>
-          </q-menu>
         </q-item>
       </div>
     </q-drawer>
@@ -446,6 +432,42 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="mostrarConfirmacionSalir" transition-show="scale" transition-hide="scale">
+      <q-card style="min-width: 350px; border-radius: 16px; overflow: hidden">
+        <!-- Header con gradiente -->
+        <q-card-section
+          class="row items-center q-pa-md"
+          style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%)"
+        >
+          <q-avatar icon="logout" color="white" text-color="red-7" size="42px" />
+          <span class="q-ml-sm text-h6 text-white text-weight-bold">¿Seguro de salir?</span>
+          <q-space />
+          <q-btn icon="close" flat round dense color="white" v-close-popup />
+        </q-card-section>
+
+        <!-- Separador visual -->
+        <q-separator />
+
+        <!-- Contenido -->
+        <q-card-section class="q-pt-lg q-pb-md">
+          <p class="text-body1 text-grey-8 q-mb-none">¿Estás seguro de que deseas cerrar sesión?</p>
+        </q-card-section>
+
+        <!-- Acciones -->
+        <!-- Acciones -->
+        <q-card-actions align="right" class="q-px-md q-pb-md q-gutter-sm">
+          <q-btn outline label="Cancelar" color="grey-7" v-close-popup class="btn-dialog-cancel" />
+          <q-btn
+            unelevated
+            label="Cerrar sesión"
+            color="negative"
+            @click="ejecutarCierreSesion"
+            v-close-popup
+            class="btn-dialog-confirm"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -463,6 +485,7 @@ import { signOut } from 'firebase/auth'
 import { useNotifications } from 'src/composables/useNotifications.js'
 import EstadoFlota from 'src/components/EstadoFlota.vue'
 import Conductores from 'src/components/Conductores.vue'
+import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
 import GeoZonas from 'src/components/GeoZonas.vue'
 import Eventos from 'src/components/Eventos.vue'
@@ -470,15 +493,21 @@ import NotificacionesPanel from 'src/components/NotificacionesPanel.vue'
 import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
+import { useTutorial } from 'src/composables/useTutorial'
 
+//const { iniciarTutorial } = useTutorial()
 const router = useRouter()
+const { iniciarTutorial } = useTutorial(router)
+
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()
 const userId = ref(auth.currentUser?.uid || '')
 
+const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
+
 // ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
-  console.error('❌ Error crítico: estadoCompartido.value no está definido en MainLayout')
+  console.error('Error crítico: estadoCompartido.value no está definido en MainLayout')
 }
 
 // NOTIFICACIONES
@@ -518,11 +547,8 @@ const geozonas = ref([])
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
 function abrirEventosConUbicacion(data) {
-  console.log('4️⃣ MainLayout: Recibido evento crear-evento-ubicacion')
-  console.log('📦 Data recibida:', data)
-
   if (!data || !data.ubicacion || !data.tipo) {
-    console.error('❌ Datos incompletos:', data)
+    console.error('Datos incompletos:', data)
     $q.notify({
       type: 'negative',
       message: 'Error: Datos de ubicación incompletos',
@@ -531,22 +557,15 @@ function abrirEventosConUbicacion(data) {
     return
   }
 
-  console.log('5️⃣ MainLayout: Datos validados')
-
   window._ubicacionParaEvento = {
     ubicacion: data.ubicacion,
     tipo: data.tipo,
   }
 
-  console.log('6️⃣ MainLayout: Datos guardados')
-
   geozonaDrawerOpen.value = false
-  console.log('7️⃣ MainLayout: Drawer cerrado')
 
   setTimeout(() => {
-    console.log('8️⃣ MainLayout: Abriendo Eventos')
     eventosDrawerOpen.value = true
-    console.log('9️⃣ MainLayout: Eventos abierto')
   }, 350)
 }
 
@@ -556,9 +575,8 @@ const cargarDatosConductores = async () => {
     try {
       await Promise.all([obtenerConductores(), obtenerGruposConductores()])
       conductoresCargados.value = true
-      console.log('✅ Datos de conductores cargados para búsqueda')
     } catch (error) {
-      console.error('❌ Error al cargar datos de conductores:', error)
+      console.error('Error al cargar datos de conductores:', error)
     }
   }
 }
@@ -568,9 +586,8 @@ const cargarDatosUnidades = async () => {
     try {
       await obtenerUnidades()
       unidadesCargadas.value = true
-      console.log('✅ Datos de unidades cargados para búsqueda')
     } catch (error) {
-      console.error('❌ Error al cargar datos de unidades:', error)
+      console.error('Error al cargar datos de unidades:', error)
     }
   }
 }
@@ -635,8 +652,6 @@ watch(
   () => estadoCompartido.value.abrirGeozonasConPOI,
   (newValue) => {
     if (newValue && newValue.item) {
-      console.log('🚀 MainLayout: Detectado cambio en estadoCompartido, abriendo GeoZonas')
-      console.log('✅ Abriendo GeoZonas con item:', newValue.item)
       cerrarTodosLosDialogs()
       setTimeout(() => {
         geozonaDrawerOpen.value = true
@@ -647,11 +662,6 @@ watch(
 
 // 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
 async function realizarBusqueda(termino) {
-  console.log('🔍 INICIANDO BÚSQUEDA')
-  console.log('  - Término:', termino)
-  console.log('  - Filtros activos:', filtrosActivos.value)
-  console.log('  - ¿Incluye direccion?:', filtrosActivos.value.includes('direccion'))
-
   // Verificar que el término sigue siendo el actual
   if (busqueda.value !== termino) {
     buscando.value = false
@@ -662,22 +672,13 @@ async function realizarBusqueda(termino) {
 
   // Solo buscar en los filtros activos
   if (filtrosActivos.value.includes('direccion')) {
-    console.log('  ✅ Agregando búsqueda de direcciones')
     promesas.push(buscarDirecciones(termino))
-  } else {
-    console.log('  ❌ NO buscando direcciones')
   }
   if (filtrosActivos.value.includes('vehiculo')) {
-    console.log('  ✅ Agregando búsqueda de vehículos')
     promesas.push(buscarVehiculos(termino))
-  } else {
-    console.log('  ❌ NO buscando vehículos')
   }
   if (filtrosActivos.value.includes('conductor')) {
-    console.log('  ✅ Agregando búsqueda de conductores')
     promesas.push(buscarConductores(termino))
-  } else {
-    console.log('  ❌ NO buscando conductores')
   }
   if (filtrosActivos.value.includes('poi')) {
     promesas.push(buscarPOIs(termino))
@@ -697,9 +698,8 @@ async function realizarBusqueda(termino) {
     const resultados = resultadosArray.flat().filter((r) => r !== null && r !== undefined)
 
     resultadosBusqueda.value = resultados
-    console.log('✅ Resultados encontrados:', resultados.length)
   } catch (error) {
-    console.error('❌ Error en búsqueda:', error)
+    console.error('Error en búsqueda:', error)
     resultadosBusqueda.value = []
   } finally {
     buscando.value = false
@@ -709,8 +709,6 @@ async function realizarBusqueda(termino) {
 // 📍 BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
   try {
-    console.log('🔍 Buscando direcciones para:', termino)
-
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
       {
@@ -725,7 +723,6 @@ async function buscarDirecciones(termino) {
     }
 
     const data = await response.json()
-    console.log('📍 Direcciones encontradas:', data.length)
 
     return data.map((lugar) => ({
       id: `dir-${lugar.place_id}`,
@@ -736,15 +733,13 @@ async function buscarDirecciones(termino) {
       lng: parseFloat(lugar.lon),
     }))
   } catch (error) {
-    console.error('❌ Error buscando direcciones:', error)
+    console.error('Error buscando direcciones:', error)
     return []
   }
 }
 
 async function buscarVehiculos(termino) {
   try {
-    console.log('🚗 Buscando vehículos para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosUnidades()
 
@@ -774,11 +769,9 @@ async function buscarVehiculos(termino) {
         datosUnidad: unidad,
       })
     }
-
-    console.log('🚗 Vehículos encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando vehículos:', error)
+    console.error('Error buscando vehículos:', error)
     return []
   }
 }
@@ -786,8 +779,6 @@ async function buscarVehiculos(termino) {
 // 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
 async function buscarConductores(termino) {
   try {
-    console.log('👤 Buscando conductores para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosConductores()
 
@@ -816,10 +807,9 @@ async function buscarConductores(termino) {
       }
     }
 
-    console.log('👤 Conductores encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando conductores:', error)
+    console.error('Error buscando conductores:', error)
     return []
   }
 }
@@ -840,7 +830,6 @@ function limpiarBusqueda() {
   resultadosBusqueda.value = []
   mostrarSugerencias.value = false
   buscando.value = false
-  console.log('🧹 Búsqueda limpiada')
 }
 
 function seleccionarBusquedaReciente(reciente) {
@@ -849,6 +838,33 @@ function seleccionarBusquedaReciente(reciente) {
   if (reciente.length >= 3) {
     realizarBusqueda(reciente)
   }
+}
+
+function esRutaActiva(link) {
+  const rutaActual = router.currentRoute.value.path
+
+  // Si el link tiene una acción (drawer), verificar si el drawer está abierto
+  if (link.action === 'open-estado-flota') {
+    return estadoFlotaDrawerOpen.value
+  }
+  if (link.action === 'open-conductores') {
+    return conductoresDrawerOpen.value
+  }
+  if (link.action === 'open-eventos') {
+    return eventosDrawerOpen.value
+  }
+
+  // Para el drawer de geozonas (que usa click)
+  if (link.title === 'GeoZonas y Puntos de interés') {
+    return geozonaDrawerOpen.value
+  }
+
+  // Para links normales, comparar con la ruta
+  if (link.link) {
+    return rutaActual === link.link
+  }
+
+  return false
 }
 
 // Reemplaza la función toggleFiltro en tu MainLayout.vue con esta versión:
@@ -861,7 +877,6 @@ function toggleFiltro(filtro) {
   if (soloEsteActivo) {
     // Si solo este filtro está activo, activar TODOS (búsqueda general)
     filtrosActivos.value = ['direccion', 'vehiculo', 'conductor', 'poi', 'geozona']
-    console.log('🔄 Activando TODOS los filtros (búsqueda general)')
 
     $q.notify({
       message: 'Búsqueda general activada',
@@ -873,7 +888,6 @@ function toggleFiltro(filtro) {
   } else {
     // Activar SOLO este filtro
     filtrosActivos.value = [filtro]
-    console.log(`🎯 Solo filtro "${filtro}" activo`)
 
     $q.notify({
       message: `Filtrando solo por: ${filtro}`,
@@ -884,8 +898,6 @@ function toggleFiltro(filtro) {
     })
   }
 
-  console.log('🎛️ Filtros activos:', [...filtrosActivos.value])
-
   // Re-buscar si hay texto
   if (busqueda.value && busqueda.value.length >= 3) {
     resultadosBusqueda.value = []
@@ -894,21 +906,18 @@ function toggleFiltro(filtro) {
   }
 }
 function centrarMapaEn(lat, lng, zoom = 18) {
-  console.log('🎯 Intentando centrar mapa en:', { lat, lng, zoom })
-
   // Función para verificar y esperar por el mapa
   const esperarMapa = (intentos = 0) => {
     // Verificar si window.mapaGlobal existe y tiene el mapa
     if (window.mapaGlobal && window.mapaGlobal.map && window.L) {
-      console.log('✅ Mapa disponible, centrando...')
       ejecutarCentrado(lat, lng, zoom)
       return true
     } else if (intentos < 10) {
       // Máximo 10 intentos (5 segundos)
-      console.log(`⏳ Esperando mapa... intento ${intentos + 1}`)
+
       setTimeout(() => esperarMapa(intentos + 1), 500)
     } else {
-      console.error('❌ Timeout: Mapa no disponible después de 5 segundos')
+      console.error('Timeout: Mapa no disponible después de 5 segundos')
       $q.notify({
         message: 'El mapa no está disponible. Recarga la página e intenta nuevamente.',
         color: 'negative',
@@ -929,13 +938,12 @@ function ejecutarCentrado(lat, lng, zoom) {
   try {
     const map = window.mapaGlobal.map
     if (!map) {
-      console.error('❌ Mapa no disponible')
+      console.error('Mapa no disponible')
       return
     }
 
     // Si ya hay una búsqueda en progreso, la ignoramos para evitar solapamientos
     if (busquedaEnProgreso.value) {
-      console.log('⏳ Búsqueda ya en progreso, ignorando...')
       return
     }
 
@@ -946,8 +954,6 @@ function ejecutarCentrado(lat, lng, zoom) {
       animate: false,
       duration: 0,
     })
-    console.log('✅ setView ejecutado sin animación')
-
     // Actualizar o crear el marcador
     actualizarMarcadorBusqueda(lat, lng)
 
@@ -956,7 +962,7 @@ function ejecutarCentrado(lat, lng, zoom) {
       busquedaEnProgreso.value = false
     }, 300) // Un pequeño retraso para evitar clics múltiples
   } catch (error) {
-    console.error('❌ Error al centrar mapa:', error)
+    console.error('Error al centrar mapa:', error)
     $q.notify({
       message: `Error: ${error.message}`,
       color: 'negative',
@@ -969,7 +975,7 @@ function ejecutarCentrado(lat, lng, zoom) {
 
 function actualizarMarcadorBusqueda(lat, lng) {
   if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
-    console.warn('⚠️ Mapa no disponible para actualizar marcador')
+    console.warn('Mapa no disponible para actualizar marcador')
     return
   }
 
@@ -1001,25 +1007,20 @@ function actualizarMarcadorBusqueda(lat, lng) {
         closeOnEscapeKey: true,
         autoPan: true, // Permitir que el mapa se mueva para mostrar el popup
       })
-
-      console.log('✅ Marcador creado y añadido al mapa')
     } else {
       // Si ya existe, solo actualiza su posición
       window.marcadorBusqueda.setLatLng([lat, lng])
-      console.log('✅ Posición del marcador actualizada')
     }
 
     // Abrir popup
     window.marcadorBusqueda.openPopup()
   } catch (error) {
-    console.error('❌ Error al actualizar marcador:', error)
+    console.error('Error al actualizar marcador:', error)
   }
 }
 
 // Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
-  console.log('🎯 Resultado seleccionado:', resultado)
-
   // Guardar en búsquedas recientes
   if (busqueda.value && !busquedasRecientes.value.includes(busqueda.value)) {
     busquedasRecientes.value.unshift(busqueda.value)
@@ -1083,6 +1084,19 @@ function getColorTipo(tipo) {
 }
 
 onMounted(() => {
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      console.log('✅ Usuario autenticado:', user.uid)
+
+      try {
+        // Cargar datos del usuario y su empresa
+        await cargarUsuarioActual()
+        console.log('🏢 Empresa cargada:', idEmpresaActual.value)
+      } catch (error) {
+        console.error('❌ Error cargando usuario:', error)
+      }
+    }
+  })
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
   })
@@ -1096,7 +1110,6 @@ onUnmounted(() => {
   if (window.marcadorBusqueda && window.marcadorBusqueda.remove) {
     window.marcadorBusqueda.remove()
     window.marcadorBusqueda = null
-    console.log('🗑️ Marcador de búsqueda eliminado al desmontar.')
   }
   document.removeEventListener('click', handleClickOutside)
   if (timeoutBusqueda) {
@@ -1113,9 +1126,6 @@ function handleClickOutside(event) {
   if (!searchContainer.contains(event.target) && !sugerenciasContainer.contains(event.target)) {
     mostrarSugerencias.value = false
   }
-}
-function cerrarSesionDesdeConfig() {
-  logout()
 }
 
 const linksList = [
@@ -1141,16 +1151,7 @@ const linksList = [
     title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    click: () => {
-      if (router.currentRoute.value.path !== '/') {
-        router.push('/')
-        setTimeout(() => {
-          geozonaDrawerOpen.value = true
-        }, 300)
-      } else {
-        geozonaDrawerOpen.value = true
-      }
-    },
+    action: 'open-geozonas', // ✅ Cambiar a action
   },
   {
     title: 'Eventos',
@@ -1173,20 +1174,15 @@ const estadoFlotaDrawerOpen = ref(false)
 const conductoresDrawerOpen = ref(false)
 const geozonaDrawerOpen = ref(false)
 const eventosDrawerOpen = ref(false)
+const mostrarConfirmacionSalir = ref(false)
 
 // Watch para mantener el drawer abierto al cambiar de ruta
 watch(
   () => estadoCompartido.value?.abrirConductoresConConductor,
   (newValue) => {
-    console.log('👀 Conductores.vue: Watch activado')
-    console.log('📦 newValue completo:', newValue)
-
     if (newValue && newValue.conductor) {
-      console.log('📦 Datos recibidos en MainLayout:', newValue.conductor)
-
       // Asegurarse de estar en la ruta correcta
       if (router.currentRoute.value.path !== '/') {
-        console.log('🔄 Redirigiendo a ruta principal')
         router.push('/')
       }
 
@@ -1195,16 +1191,24 @@ watch(
 
       // Esperar para sincronización
       setTimeout(() => {
-        console.log('🚪 Abriendo drawer de conductores')
         conductoresDrawerOpen.value = true
 
         nextTick(() => {
-          console.log('✅ Drawer renderizado, Conductores.vue debe recibir datos')
+          console.log('Drawer renderizado, Conductores.vue debe recibir datos')
         })
       }, 150)
     }
   },
   { deep: true },
+)
+watch(
+  () => router.currentRoute.value.path,
+  (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      cerrarTodosLosDialogs()
+      limpiarBusqueda()
+    }
+  },
 )
 
 // Watch adicional por si algo intenta cerrarlo
@@ -1264,14 +1268,29 @@ function handleLinkClick(link) {
     estadoFlotaDrawerOpen.value = true
   } else if (link.action === 'open-conductores') {
     cerrarTodosLosDialogs()
-
-    // 🔥 SOLUCIÓN: Usar nextTick en lugar de setTimeout
     nextTick(() => {
       conductoresDrawerOpen.value = true
     })
   } else if (link.action === 'open-geozonas') {
+    // ✅ MEJORADO: Mejor sincronización
     cerrarTodosLosDialogs()
-    geozonaDrawerOpen.value = true
+
+    if (router.currentRoute.value.path !== '/') {
+      // Si necesitamos cambiar de ruta
+      router.push('/').then(() => {
+        // Esperar a que Vue termine de renderizar
+        nextTick(() => {
+          setTimeout(() => {
+            geozonaDrawerOpen.value = true
+          }, 100) // Pequeño delay adicional para animaciones
+        })
+      })
+    } else {
+      // Si ya estamos en la ruta correcta, abrir inmediatamente
+      nextTick(() => {
+        geozonaDrawerOpen.value = true
+      })
+    }
   } else if (link.action === 'open-eventos') {
     cerrarTodosLosDialogs()
     eventosDrawerOpen.value = true
@@ -1285,7 +1304,6 @@ function cerrarTodosLosDialogs() {
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
   eventosDrawerOpen.value = false
-  console.log('🚪 Todos los dialogs cerrados')
 }
 
 function cerrarEstadoFlota() {
@@ -1302,6 +1320,15 @@ function cerrarGeozonas() {
 
 function cerrarEventos() {
   eventosDrawerOpen.value = false
+}
+
+// ✅ FUNCIÓN PARA MOSTRAR EL DIALOG
+function confirmarCierreSesion() {
+  mostrarConfirmacionSalir.value = true
+}
+
+function ejecutarCierreSesion() {
+  logout()
 }
 
 const logout = async () => {
@@ -1333,9 +1360,8 @@ const cargarDatosPOIs = async () => {
       const poisData = await obtenerPOIs()
       pois.value = poisData
       poisCargados.value = true
-      console.log('✅ POIs cargados para búsqueda:', poisData.length)
     } catch (error) {
-      console.error('❌ Error al cargar POIs:', error)
+      console.error('Error al cargar POIs:', error)
     }
   }
 }
@@ -1349,9 +1375,8 @@ const cargarDatosGeozonas = async () => {
       const geozonasDa = await obtenerGeozonas()
       geozonas.value = geozonasDa
       geozonasCargadas.value = true
-      console.log('✅ Geozonas cargadas para búsqueda:', geozonasDa.length)
     } catch (error) {
-      console.error('❌ Error al cargar Geozonas:', error)
+      console.error('Error al cargar Geozonas:', error)
     }
   }
 }
@@ -1381,8 +1406,6 @@ function calcularCentroPoligono(puntos) {
 // ============================================
 async function buscarPOIs(termino) {
   try {
-    console.log('📌 Buscando POIs para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosPOIs()
 
@@ -1407,10 +1430,9 @@ async function buscarPOIs(termino) {
       }
     }
 
-    console.log('📌 POIs encontrados:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando POIs:', error)
+    console.error('Error buscando POIs:', error)
     return []
   }
 }
@@ -1420,8 +1442,6 @@ async function buscarPOIs(termino) {
 // ============================================
 async function buscarGeozonas(termino) {
   try {
-    console.log('🗺️ Buscando geozonas para:', termino)
-
     // Asegurarnos de que los datos estén cargados
     await cargarDatosGeozonas()
 
@@ -1466,10 +1486,9 @@ async function buscarGeozonas(termino) {
       }
     }
 
-    console.log('🗺️ Geozonas encontradas:', resultados.length)
     return resultados
   } catch (error) {
-    console.error('❌ Error buscando geozonas:', error)
+    console.error('Error buscando geozonas:', error)
     return []
   }
 }
@@ -1480,8 +1499,6 @@ async function buscarGeozonas(termino) {
 function procesarResultado(resultado) {
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
-    console.log('📍 Procesando dirección:', resultado.lat, resultado.lng)
-
     if (resultado.lat && resultado.lng) {
       centrarMapaEn(resultado.lat, resultado.lng)
       $q.notify({
@@ -1492,7 +1509,7 @@ function procesarResultado(resultado) {
         timeout: 3000,
       })
     } else {
-      console.error('❌ Coordenadas inválidas:', resultado)
+      console.error('Coordenadas inválidas:', resultado)
       $q.notify({
         message: 'Error: Ubicación sin coordenadas válidas',
         color: 'negative',
@@ -1501,7 +1518,6 @@ function procesarResultado(resultado) {
       })
     }
   } else if (resultado.tipo === 'vehiculo') {
-    console.log('🚗 Abriendo estado de flota')
     estadoFlotaDrawerOpen.value = true
     $q.notify({
       message: `🚗 Vehículo: ${resultado.nombre}`,
@@ -1510,8 +1526,6 @@ function procesarResultado(resultado) {
       position: 'top',
     })
   } else if (resultado.tipo === 'conductor') {
-    console.log('👤 Abriendo detalles del conductor:', resultado.conductorId)
-
     // Abrir el drawer de conductores
     conductoresDrawerOpen.value = true
 
@@ -1525,14 +1539,12 @@ function procesarResultado(resultado) {
     }
 
     $q.notify({
-      message: `👤 Conductor: ${resultado.nombre}`,
+      message: `Conductor: ${resultado.nombre}`,
       color: 'positive',
       icon: 'person',
       position: 'top',
     })
   } else if (resultado.tipo === 'poi') {
-    console.log('📌 Procesando POI:', resultado.poiId)
-
     if (resultado.lat && resultado.lng) {
       // Centrar en el POI con zoom cercano
       centrarMapaEn(resultado.lat, resultado.lng, 18)
@@ -1561,8 +1573,6 @@ function procesarResultado(resultado) {
       timeout: 3000,
     })
   } else if (resultado.tipo === 'geozona') {
-    console.log('🗺️ Procesando geozona:', resultado.geozonaId)
-
     if (resultado.lat && resultado.lng) {
       // Centrar en la geozona con zoom medio (para ver todo el área)
       const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
@@ -1595,6 +1605,108 @@ function procesarResultado(resultado) {
 }
 </script>
 <style scoped>
+:deep(.q-dialog__inner > .q-card) {
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+.btn-dialog-cancel,
+.btn-dialog-confirm {
+  border-radius: 10px;
+  padding: 8px 24px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+
+.btn-dialog-cancel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-dialog-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.btn-dialog-cancel:active,
+.btn-dialog-confirm:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.nav-item {
+  border-radius: 12px;
+  margin: 4px 8px;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+  background-color: rgba(187, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+/* 🔴 ESTILO PARA PÁGINAS ACTIVAS (ROJO) */
+.nav-item-active-page {
+  background-color: rgba(187, 0, 0, 0.15) !important;
+  border-left: 4px solid #bb0000;
+}
+
+.nav-item-active-page :deep(.q-item__section--avatar) {
+  color: #bb0000 !important;
+}
+
+.nav-item-active-page :deep(.q-icon) {
+  color: #bb0000 !important;
+}
+
+.nav-item-active-page :deep(.q-item__label) {
+  color: #bb0000 !important;
+  font-weight: 600 !important;
+}
+
+/* 🟢 ESTILO PARA COMPONENTES/DRAWERS ACTIVOS (VERDE AZULADO) */
+.nav-item-active-component {
+  background: linear-gradient(
+    90deg,
+    rgba(145, 198, 188, 0.2) 0%,
+    rgba(5, 150, 105, 0.15) 100%
+  ) !important;
+  border-left: 4px solid #059669;
+}
+
+.nav-item-active-component :deep(.q-item__section--avatar) {
+  color: #059669 !important;
+}
+
+.nav-item-active-component :deep(.q-icon) {
+  color: #059669 !important;
+}
+
+.nav-item-active-component :deep(.q-item__label) {
+  color: #059669 !important;
+  font-weight: 600 !important;
+}
+
+/* ✅ RESETEAR COLOR CUANDO NO ESTÁ ACTIVO */
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component)
+  :deep(.q-item__section--avatar) {
+  color: #616161 !important;
+}
+
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component) :deep(.q-icon) {
+  color: #616161 !important;
+}
+
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component) :deep(.q-item__label) {
+  color: inherit !important;
+}
+
+/* Hover especial para cada tipo */
+.nav-item:not(.nav-item-active-page):not(.nav-item-active-component):hover {
+  background-color: rgba(187, 0, 0, 0.05);
+}
+
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
@@ -1617,7 +1729,6 @@ function procesarResultado(resultado) {
   position: relative; /* Importante para el posicionamiento absoluto */
 }
 
-/* ESTILOS ESPECÍFICOS Y AISLADOS PARA LOS BOTONES DEL HEADER */
 .info-btn,
 .notif-btn {
   position: relative;
@@ -1626,24 +1737,95 @@ function procesarResultado(resultado) {
   min-width: 40px !important;
   min-height: 40px !important;
   margin: 0 4px;
-  transform: none !important;
-  transition: background-color 0.2s ease !important;
+  transition: all 0.3s ease !important;
+  border-radius: 50%;
 }
 
-/* Resetear cualquier transformación heredada */
+/* ✅ HOVER mejorado con mayor especificidad */
 .info-btn:hover,
 .notif-btn:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  transform: none !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Asegurar que los iconos estén centrados y tengan tamaño consistente */
+/* ✅ ACTIVE al hacer click */
+.info-btn:active,
+.notif-btn:active {
+  transform: scale(1.05) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Iconos centrados con transición */
 .info-btn .q-icon,
 .notif-btn .q-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
   margin: 0 auto;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Rotar icono de info */
+.info-btn:hover .q-icon {
+  transform: rotate(15deg);
+}
+
+/* ✅ Animar icono de notificaciones */
+.notif-btn:hover .q-icon {
+  animation: swing 0.6s ease;
+}
+
+/* ✅ Animación de campana */
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+}
+
+/* Badge de notificaciones */
+.notif-btn :deep(.q-badge--floating) {
+  top: 2px;
+  right: 2px;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+/* ✅ Badge se agranda al hover */
+.notif-btn:hover :deep(.q-badge--floating) {
+  transform: scale(0.95);
+}
+
+/* ✅ IMPORTANTE: Resetear estilos EXCEPTO para info-btn y notif-btn */
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn) {
+  transform: none !important;
+}
+
+:deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn):hover {
+  transform: none !important;
+}
+.search-input {
+  background: white;
+  border-radius: 500px;
+  transition: all 0.3s ease;
+}
+
+.search-input:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+.search-input:focus-within {
+  box-shadow: 0 4px 16px rgba(187, 0, 0, 0.2) !important;
+  transform: translateY(-1px);
 }
 
 /* Contener el área del badge */
@@ -1704,15 +1886,6 @@ function procesarResultado(resultado) {
 .nav-item:hover .q-icon,
 .config-item:hover .q-icon {
   transform: scale(1.1);
-}
-
-/* Resetear estilos para otros botones en el toolbar */
-:deep(.q-toolbar .q-btn) {
-  transform: none !important;
-}
-
-:deep(.q-toolbar .q-btn:hover) {
-  transform: none !important;
 }
 
 .search-input {

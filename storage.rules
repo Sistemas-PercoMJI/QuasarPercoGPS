@@ -7,15 +7,18 @@ service firebase.storage {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 🔥 Archivos de rutas diarias (CORREGIDO)
+    // 🔥 RUTAS: Lectura pública, escritura solo autenticados
     match /rutas/{unidadId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /coordenadas/{unidadId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if true;  // ✅ Cualquiera puede leer
+      allow write: if request.auth != null;  // ✅ Solo usuarios autenticados escriben
     }
     
-    // Fallback: acceso total para usuarios autenticados
+    match /coordenadas/{unidadId}/{allPaths=**} {
+      allow read: if true;  // ✅ Cualquiera puede leer
+      allow write: if request.auth != null;
+    }
+    
+    // Fallback
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
     }

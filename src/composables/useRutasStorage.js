@@ -1,22 +1,11 @@
-// src/composables/useRutasStorage.js - SOLUCIÓN DEFINITIVA PARA ERROR 403 INTERMITENTE
+// src/composables/useRutasStorage.js - CON REINTENTOS Y MEJOR MANEJO DE ERRORES
 import { ref } from 'vue'
-import { storage, auth } from 'src/firebase/firebaseConfig'
-import {
-  ref as storageRef,
-  uploadString,
-  getDownloadURL,
-  getBlob,
-  getMetadata,
-} from 'firebase/storage'
+import { storage } from 'src/firebase/firebaseConfig'
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage'
 
 export function useRutasStorage() {
   const loading = ref(false)
   const error = ref(null)
-
-  // Cache para evitar múltiples requests
-  const dataCache = new Map()
-  const requestInProgress = new Map()
-  const CACHE_DURATION = 3 * 60 * 1000 // 3 minutos
 
   /**
    * Genera la ruta del archivo JSON en Storage
@@ -26,32 +15,27 @@ export function useRutasStorage() {
   }
 
   /**
-   * 🆕 Verificar si el usuario está autenticado
+   * 🆕 Función auxiliar para reintentar operaciones
    */
-  const verificarAutenticacion = () => {
-    const user = auth.currentUser
-    if (!user) {
-      throw new Error('Usuario no autenticado')
-    }
-    return user
-  }
+  const retryOperation = async (operation, maxRetries = 3, delayMs = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation()
+      } catch (err) {
+        const isLastAttempt = i === maxRetries - 1
 
-  /**
-   * 🆕 Esperar a que el token se refresque si es necesario
-   */
-  const asegurarTokenValido = async () => {
-    const user = auth.currentUser
-    if (!user) {
-      throw new Error('Usuario no autenticado')
-    }
-
-    try {
-      // Forzar refresco del token si está cerca de expirar
-      await user.getIdToken(true) // true = forzar refresco
-      console.log('🔑 Token de autenticación refrescado')
-    } catch (err) {
-      console.error('❌ Error refrescando token:', err)
-      throw err
+        // Si es 403, esperar más tiempo antes de reintentar
+        if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
+          if (isLastAttempt) {
+            console.error(`❌ Error 403 después de ${maxRetries} intentos`)
+            throw err
+          }
+          console.warn(`⚠️ Error 403, reintentando (${i + 1}/${maxRetries})...`)
+          await new Promise((resolve) => setTimeout(resolve, delayMs * (i + 1))) // Delay exponencial
+        } else {
+          throw err // Otros errores no se reintentan
+        }
+      }
     }
   }
 
@@ -63,12 +47,8 @@ export function useRutasStorage() {
     error.value = null
 
     try {
-      // Verificar autenticación
-      verificarAutenticacion()
-
       const rutaArchivo = generarRutaStorage(unidadId, fecha)
       const archivoRef = storageRef(storage, rutaArchivo)
-      const cacheKey = `${unidadId}-${fecha}`
 
       // Validar que sea array
       if (!Array.isArray(coordenadas)) {
@@ -83,32 +63,22 @@ export function useRutasStorage() {
         timestamp: coord.timestamp || new Date().toISOString(),
       }))
 
-      console.log(`📤 Guardando ${coordenadasLimpias.length} coordenadas SIMPLES...`)
-
       // Convertir a JSON
       const jsonString = JSON.stringify(coordenadasLimpias, null, 2)
 
-      // 🆕 Subir archivo con metadata de autenticación
-      await uploadString(archivoRef, jsonString, 'raw', {
-        contentType: 'application/json',
-        customMetadata: {
-          createdBy: auth.currentUser?.uid || 'unknown',
-          createdAt: new Date().toISOString(),
-        },
+      // Subir archivo con reintentos
+      await retryOperation(async () => {
+        await uploadString(archivoRef, jsonString, 'raw', {
+          contentType: 'application/json',
+        })
       })
 
-      console.log(`✅ Archivo guardado: ${rutaArchivo}`)
-
-      // 🆕 Guardar en cache LOCAL inmediatamente
-      dataCache.set(cacheKey, {
-        data: coordenadasLimpias,
-        timestamp: Date.now(),
+      // Obtener URL con reintentos
+      const url = await retryOperation(async () => {
+        return await getDownloadURL(archivoRef)
       })
 
-      // 🆕 Pequeña pausa para que Firebase actualice permisos
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      return rutaArchivo
+      return url
     } catch (err) {
       error.value = err.message
       console.error('❌ Error guardando en Storage:', err)
@@ -119,243 +89,107 @@ export function useRutasStorage() {
   }
 
   /**
-   * 🔥 Descarga coordenadas DIRECTAMENTE usando SDK (SIN URLs)
+   * 🔥 Descarga coordenadas con REINTENTOS automáticos
    */
-  const obtenerCoordenadasDesdeStorage = async (unidadId, fecha) => {
-    const cacheKey = `${unidadId}-${fecha}`
-
-    // 🆕 1. VERIFICAR CACHE PRIMERO
-    const cached = dataCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('📦 Usando coordenadas desde cache local')
-      return cached.data
-    }
-
-    // 🆕 2. PREVENIR REQUESTS DUPLICADOS
-    if (requestInProgress.get(cacheKey)) {
-      console.log('⏳ Request en progreso, esperando...')
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Verificar cache de nuevo después de esperar
-      const cachedAfterWait = dataCache.get(cacheKey)
-      if (cachedAfterWait) {
-        return cachedAfterWait.data
-      }
-    }
-
-    requestInProgress.set(cacheKey, true)
+  const obtenerCoordenadasDesdeStorage = async (url) => {
     loading.value = true
     error.value = null
 
     try {
-      // 🆕 3. VERIFICAR AUTENTICACIÓN Y REFRESCAR TOKEN
-      verificarAutenticacion()
-      await asegurarTokenValido()
+      // 🆕 Descargar con reintentos automáticos
+      const data = await retryOperation(
+        async () => {
+          const response = await fetch(url)
 
-      const rutaArchivo = generarRutaStorage(unidadId, fecha)
-      const archivoRef = storageRef(storage, rutaArchivo)
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
 
-      console.log(`📥 Descargando: ${rutaArchivo}`)
+          return await response.json()
+        },
+        3,
+        1500,
+      ) // 3 intentos con 1.5s de delay inicial
 
-      // 🆕 4. VERIFICAR SI EL ARCHIVO EXISTE (evita 404 innecesarios)
-      let existe = true
-      try {
-        await getMetadata(archivoRef)
-        console.log('✅ Archivo existe en Storage')
-      } catch (err) {
-        if (err.code === 'storage/object-not-found') {
-          console.log('ℹ️ Archivo no existe aún (normal en primera ejecución)')
-          existe = false
-        } else {
-          throw err // Otros errores sí se propagan
-        }
+      let coordenadas = []
+
+      // CASO 1: Formato SIMPLE
+      if (Array.isArray(data)) {
+        coordenadas = data.map((coord) => ({
+          lat: coord.lat || 0,
+          lng: coord.lng || 0,
+          timestamp: coord.timestamp || new Date().toISOString(),
+        }))
       }
+      // CASO 2: Formato VIEJO (batching)
+      else if (data.coordenadas && Array.isArray(data.coordenadas)) {
+        coordenadas = data.coordenadas
+          .map((item) => {
+            const coord = item.nuevaCoordenada || item.coordenada || item
 
-      if (!existe) {
+            if (!coord.lat || !coord.lng) {
+              console.warn('⚠️ Coordenada sin lat/lng:', item)
+              return null
+            }
+
+            return {
+              lat: coord.lat,
+              lng: coord.lng,
+              timestamp: coord.timestamp || new Date().toISOString(),
+            }
+          })
+          .filter((coord) => coord !== null)
+      }
+      // CASO 3: Objeto simple
+      else if (data.lat && data.lng) {
+        coordenadas = [
+          {
+            lat: data.lat,
+            lng: data.lng,
+            timestamp: data.timestamp || new Date().toISOString(),
+          },
+        ]
+      }
+      // CASO 4: Formato desconocido
+      else {
+        console.warn('⚠️ Formato DESCONOCIDO')
+        console.warn('   Keys:', Object.keys(data))
         return []
       }
 
-      // 🆕 5. DESCARGAR USANDO getBlob (método más confiable)
-      let data
-      try {
-        const blob = await getBlob(archivoRef)
-        const text = await blob.text()
-        data = JSON.parse(text)
-        console.log('✅ Descarga exitosa con getBlob()')
-      } catch (blobError) {
-        console.warn('⚠️ getBlob() falló, intentando con getDownloadURL()...', blobError.message)
-
-        // 🆕 FALLBACK: Si getBlob falla, usar getDownloadURL
-        const url = await getDownloadURL(archivoRef)
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        data = await response.json()
-        console.log('✅ Descarga exitosa con getDownloadURL()')
+      if (coordenadas.length > 0) {
+        console.log('📦 Primera coordenada:', coordenadas[0])
       }
-
-      // 🆕 6. PROCESAR DATOS
-      let coordenadas = procesarDatos(data)
-
-      // 🆕 7. GUARDAR EN CACHE
-      dataCache.set(cacheKey, {
-        data: coordenadas,
-        timestamp: Date.now(),
-      })
-
-      console.log(`✅ ${coordenadas.length} coordenadas obtenidas y cacheadas`)
 
       return coordenadas
     } catch (err) {
-      // 🆕 MANEJO ESPECÍFICO DE ERRORES
-      if (err.code === 'storage/unauthorized' || err.message?.includes('403')) {
-        console.error('🚫 Error de permisos (403)')
-        console.error('   Causa posible: Token expirado o permisos incorrectos')
-        console.error('   Solución: Refrescando token...')
-
-        // Intentar refrescar token y reintentar UNA vez
-        try {
-          await asegurarTokenValido()
-          console.log('🔄 Reintentando después de refrescar token...')
-
-          // Limpiar flag y reintentar
-          requestInProgress.delete(cacheKey)
-          return await obtenerCoordenadasDesdeStorage(unidadId, fecha)
-        } catch (retryErr) {
-          console.error('❌ Falló incluso después de refrescar token:', retryErr)
-        }
-      } else if (err.code === 'storage/object-not-found') {
-        console.log('ℹ️ Archivo no existe')
-      } else {
-        console.error('❌ Error descargando coordenadas:', err)
-      }
-
       error.value = err.message
+      console.error('❌ Error descargando coordenadas:', err)
+
+      // 🆕 Si falla después de todos los reintentos, devolver array vacío
       return []
     } finally {
-      requestInProgress.delete(cacheKey)
       loading.value = false
     }
   }
 
   /**
-   * 🆕 Procesar diferentes formatos de datos
-   */
-  const procesarDatos = (data) => {
-    console.log('📄 Tipo de dato recibido:', typeof data)
-    console.log('📄 Es array?', Array.isArray(data))
-
-    let coordenadas = []
-
-    // CASO 1: Formato SIMPLE (array directo)
-    if (Array.isArray(data)) {
-      console.log('✅ Formato SIMPLE detectado')
-      coordenadas = data.map((coord) => ({
-        lat: coord.lat || 0,
-        lng: coord.lng || 0,
-        timestamp: coord.timestamp || new Date().toISOString(),
-      }))
-    }
-    // CASO 2: Formato VIEJO (batching)
-    else if (data.coordenadas && Array.isArray(data.coordenadas)) {
-      console.log('⚠️ Formato VIEJO detectado, migrando...')
-
-      coordenadas = data.coordenadas
-        .map((item) => {
-          const coord = item.nuevaCoordenada || item.coordenada || item
-
-          if (!coord.lat || !coord.lng) {
-            console.warn('⚠️ Coordenada sin lat/lng:', item)
-            return null
-          }
-
-          return {
-            lat: coord.lat,
-            lng: coord.lng,
-            timestamp: coord.timestamp || new Date().toISOString(),
-          }
-        })
-        .filter((coord) => coord !== null)
-
-      console.log(`✅ ${coordenadas.length} coordenadas migradas`)
-    }
-    // CASO 3: Objeto simple (una sola coordenada)
-    else if (data.lat && data.lng) {
-      console.log('✅ Coordenada única detectada')
-      coordenadas = [
-        {
-          lat: data.lat,
-          lng: data.lng,
-          timestamp: data.timestamp || new Date().toISOString(),
-        },
-      ]
-    }
-    // CASO 4: Formato desconocido
-    else {
-      console.warn('⚠️ Formato DESCONOCIDO')
-      console.warn('   Keys:', Object.keys(data))
-    }
-
-    return coordenadas
-  }
-
-  /**
-   * 🆕 Obtiene la URL del archivo (solo para visualización, NO para descargar datos)
+   * Obtiene la URL del archivo de rutas si existe
    */
   const obtenerUrlRutas = async (unidadId, fecha) => {
     const rutaArchivo = generarRutaStorage(unidadId, fecha)
     const archivoRef = storageRef(storage, rutaArchivo)
 
     try {
-      // Asegurar token válido
-      await asegurarTokenValido()
-
-      const url = await getDownloadURL(archivoRef)
-      return url
+      // 🆕 Usar reintentos también aquí
+      return await retryOperation(async () => {
+        return await getDownloadURL(archivoRef)
+      })
     } catch (err) {
       if (err.code === 'storage/object-not-found') {
         return null
       }
       throw err
-    }
-  }
-
-  /**
-   * 🆕 Limpiar cache manualmente
-   */
-  const limpiarCache = () => {
-    const size = dataCache.size
-    dataCache.clear()
-    requestInProgress.clear()
-    console.log(`🧹 Cache limpiado (${size} entradas eliminadas)`)
-  }
-
-  /**
-   * 🆕 Limpiar cache de una fecha específica
-   */
-  const limpiarCacheFecha = (unidadId, fecha) => {
-    const cacheKey = `${unidadId}-${fecha}`
-    const deleted = dataCache.delete(cacheKey)
-    if (deleted) {
-      console.log(`🧹 Cache eliminado para: ${cacheKey}`)
-    }
-  }
-
-  /**
-   * 🆕 Verificar estado del cache
-   */
-  const obtenerEstadoCache = () => {
-    return {
-      entradas: dataCache.size,
-      requestsEnProgreso: requestInProgress.size,
-      detalles: Array.from(dataCache.entries()).map(([key, value]) => ({
-        key,
-        coordenadas: value.data.length,
-        edad: Math.round((Date.now() - value.timestamp) / 1000) + 's',
-      })),
     }
   }
 
@@ -365,8 +199,5 @@ export function useRutasStorage() {
     guardarCoordenadasEnStorage,
     obtenerCoordenadasDesdeStorage,
     obtenerUrlRutas,
-    limpiarCache,
-    limpiarCacheFecha,
-    obtenerEstadoCache, // 🆕 Para debugging
   }
 }

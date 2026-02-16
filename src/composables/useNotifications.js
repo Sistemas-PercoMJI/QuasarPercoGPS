@@ -23,7 +23,6 @@ export function useNotifications() {
 
     if (notificacionData.ubicacion) {
       try {
-        console.log('🗺️ Generando mapa para notificación:', notificacionData.title)
         const mapaData = await generarMapaEvento({
           lat: notificacionData.ubicacion.lat,
           lng: notificacionData.ubicacion.lng,
@@ -34,7 +33,6 @@ export function useNotifications() {
 
         mapImage = mapaData.imagenBase64
         mapUrl = mapaData.url
-        console.log('✅ Mapa generado para notificación')
       } catch (error) {
         console.warn('⚠️ Error generando mapa para notificación:', error)
         // Continuar sin mapa si falla
@@ -59,7 +57,6 @@ export function useNotifications() {
     }
 
     notifications.value.unshift(nuevaNotificacion)
-    console.log('✅ Notificación creada:', nuevaNotificacion.title)
 
     // Auto-expirar después de 5 minutos
     setTimeout(
@@ -79,7 +76,6 @@ export function useNotifications() {
     const notif = notifications.value.find((n) => n.id === notificationId)
     if (notif && !notif.leida) {
       notif.leida = true
-      console.log('✅ Notificación marcada como leída:', notificationId)
     }
   }
 
@@ -90,7 +86,6 @@ export function useNotifications() {
     const index = notifications.value.findIndex((n) => n.id === notificationId)
     if (index > -1) {
       notifications.value.splice(index, 1)
-      console.log('✅ Notificación eliminada:', notificationId)
     }
   }
 
@@ -106,10 +101,6 @@ export function useNotifications() {
 
     // 🔥 Forzar re-render creando una nueva referencia del array
     notifications.value = [...notifications.value]
-
-    console.log('✅ Todas las notificaciones limpiadas')
-    console.log('📊 Notificaciones marcadas:', noLeidas.length)
-    console.log('📊 Total no leídas después:', totalNoLeidas.value)
   }
 
   /**
@@ -119,7 +110,6 @@ export function useNotifications() {
     const antes = notifications.value.length
     const notificacionesLeidas = notifications.value.filter((n) => n.leida).length
 
-    console.log('🧹 Limpiando historial...')
     console.log('📊 Notificaciones leídas a eliminar:', notificacionesLeidas)
 
     // 🔥 Filtrar y mantener solo las NO leídas
@@ -128,8 +118,6 @@ export function useNotifications() {
     const eliminadas = antes - notifications.value.length
 
     console.log(`✅ ${eliminadas} notificaciones leídas eliminadas`)
-    console.log('📊 Total después de limpiar:', notifications.value.length)
-    console.log('📊 Notificaciones restantes:', notifications.value.length)
   }
 
   // Computed properties para filtrar notificaciones

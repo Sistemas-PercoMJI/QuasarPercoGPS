@@ -128,10 +128,6 @@ export function useProcesamientoTrayectos() {
         }
       }
 
-      console.log(
-        `✅ ${rutas.length} rutas procesadas con un total de ${rutas.reduce((acc, r) => acc + r.totalPuntos, 0)} puntos`,
-      )
-
       return rutas
     } catch (err) {
       console.error('❌ Error procesando trayectos para mapa:', err)
@@ -153,8 +149,6 @@ export function useProcesamientoTrayectos() {
     error.value = null
 
     try {
-      console.log('🗺️ Generando mapa de trayectos...')
-
       // 1. Procesar trayectos y obtener coordenadas
       const rutas = await procesarTrayectosParaMapa(trayectos)
 
@@ -169,8 +163,6 @@ export function useProcesamientoTrayectos() {
         mostrarMarcadores: opciones.mostrarMarcadores !== false,
         estilo: opciones.estilo || 'streets-v12',
       })
-
-      console.log('✅ Mapa de trayectos generado exitosamente')
 
       return {
         dataURL,
@@ -279,8 +271,6 @@ export function useProcesamientoTrayectos() {
       return []
     }
 
-    console.log(`🔄 Procesando ${trayectos.length} trayecto(s) para PDF...`)
-
     // Importar geocoding dinámicamente para evitar dependencias circulares
 
     const trayectosProcesados = await Promise.all(
@@ -321,10 +311,6 @@ export function useProcesamientoTrayectos() {
             ultimaCoord.lng,
           )
 
-          console.log(
-            `✅ Trayecto ${trayecto.id}: ${kilometrajeRecorrido} km, ${velocidadPromedio} km/h`,
-          )
-
           return {
             ...trayecto,
             kilometrajeRecorrido,
@@ -344,8 +330,6 @@ export function useProcesamientoTrayectos() {
         }
       }),
     )
-
-    console.log(`✅ ${trayectosProcesados.length} trayecto(s) procesado(s)`)
 
     return trayectosProcesados
   }

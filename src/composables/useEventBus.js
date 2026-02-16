@@ -13,10 +13,9 @@ const estadoCompartido = ref({
 export function useEventBus() {
   // Función para abrir GeoZonas con un POI/Geozona específico
   const abrirGeozonasConPOI = (item) => {
-    console.log('📍 Guardando en estado compartido para abrir GeoZonas con:', item)
     estadoCompartido.value.abrirGeozonasConPOI = {
       item, // Renombrado de 'poi' a 'item' para mayor claridad
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
   }
 
@@ -24,7 +23,7 @@ export function useEventBus() {
   const abrirEstadoFlotaConVehiculo = (vehiculo) => {
     estadoCompartido.value.abrirEstadoFlotaConVehiculo = {
       vehiculo,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
   }
 
@@ -32,7 +31,7 @@ export function useEventBus() {
   const abrirConductoresConConductor = (conductor) => {
     estadoCompartido.value.abrirConductoresConConductor = {
       conductor,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
   }
 

@@ -9,12 +9,7 @@
     @click="expanded = true"
     size="md"
   >
-    <q-badge
-      v-if="stats.total > 0"
-      color="red"
-      floating
-      rounded
-    >
+    <q-badge v-if="stats.total > 0" color="red" floating rounded>
       {{ stats.total }}
     </q-badge>
     <q-tooltip>
@@ -35,21 +30,14 @@
           </div>
         </div>
       </div>
-      
-      <q-btn
-        round
-        dense
-        flat
-        icon="close"
-        color="white"
-        @click="expanded = false"
-      >
+
+      <q-btn round dense flat icon="close" color="white" @click="expanded = false">
         <q-tooltip>Minimizar</q-tooltip>
       </q-btn>
     </q-card-section>
 
     <q-separator />
-    
+
     <q-card-section>
       <!-- Estadísticas -->
       <div class="stats-container">
@@ -112,16 +100,14 @@
 
       <!-- Estado del sistema -->
       <div class="status-section">
-        <q-linear-progress 
-          :value="stats.porcentajeActivo / 100" 
+        <q-linear-progress
+          :value="stats.porcentajeActivo / 100"
           color="positive"
           class="q-mb-sm"
           rounded
           size="8px"
         />
-        <div class="status-text">
-          Sistema operando automáticamente
-        </div>
+        <div class="status-text">Sistema operando automáticamente</div>
       </div>
 
       <!-- Log de actividad (compacto) -->
@@ -154,12 +140,12 @@ const $q = useQuasar()
 const props = defineProps({
   poisIniciales: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   geozonasIniciales: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['iniciar-simulacion'])
@@ -182,23 +168,13 @@ const totalDestinos = computed(() => {
 const stats = computed(() => estadisticas())
 
 const conductoresConUnidad = computed(() => {
-  return conductores.value.filter(c => c.UnidadAsignada).length
+  return conductores.value.filter((c) => c.UnidadAsignada).length
 })
 
 // 🔧 Función para cargar datos
 const cargarDatos = async () => {
   try {
-    await Promise.all([
-      obtenerConductores(),
-      obtenerUnidades()
-    ])
-    
-    console.log('🔄 Datos cargados:', {
-      conductores: conductores.value.length,
-      unidades: unidades.value.length,
-      pois: pois.value.length,
-      geozonas: geozonas.value.length
-    })
+    await Promise.all([obtenerConductores(), obtenerUnidades()])
   } catch (error) {
     console.error('Error al cargar datos:', error)
   }
@@ -207,39 +183,35 @@ const cargarDatos = async () => {
 // 🚀 Función para iniciar simulación automáticamente
 const iniciarSimulacionAutomatica = async () => {
   if (simulacionActiva.value) {
-    console.log('⚠️ Simulación ya está activa')
     return
   }
 
   if (conductoresConUnidad.value === 0) {
-    console.log('⚠️ Esperando conductores con unidades asignadas...')
     return
   }
 
   try {
-    console.log('🚀 Iniciando simulación automática...')
-    
     await iniciarSimulacion(conductores.value, unidades.value)
-    
+
     addLog('play_circle', `Simulación iniciada con ${conductoresConUnidad.value} unidades`, 'green')
-    
+
     $q.notify({
       type: 'positive',
       message: `Simulador GPS activo: ${conductoresConUnidad.value} unidades`,
       position: 'top',
-      timeout: 3000
+      timeout: 3000,
     })
 
     emit('iniciar-simulacion', {
       activa: true,
-      unidades: conductoresConUnidad.value
+      unidades: conductoresConUnidad.value,
     })
   } catch (error) {
     console.error('Error al iniciar simulación:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al iniciar simulación',
-      position: 'top'
+      position: 'top',
     })
   }
 }
@@ -247,29 +219,32 @@ const iniciarSimulacionAutomatica = async () => {
 // 📊 Agregar log de actividad
 const addLog = (icon, message, color) => {
   const now = new Date()
-  const time = now.toLocaleTimeString('es-MX', { 
-    hour: '2-digit', 
-    minute: '2-digit'
+  const time = now.toLocaleTimeString('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
   })
-  
+
   activityLogs.value.unshift({
     icon,
     message,
     color,
-    time
+    time,
   })
-  
+
   if (activityLogs.value.length > 5) {
     activityLogs.value.pop()
   }
 }
 
 // 👀 Watch para logs de cambio de estado
-watch(() => stats.value.enMovimiento, (newVal, oldVal) => {
-  if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
-    addLog('directions_car', `${newVal} unidades en movimiento`, 'primary')
-  }
-})
+watch(
+  () => stats.value.enMovimiento,
+  (newVal, oldVal) => {
+    if (simulacionActiva.value && newVal !== oldVal && newVal > 0) {
+      addLog('directions_car', `${newVal} unidades en movimiento`, 'primary')
+    }
+  },
+)
 
 // 👀 Watch para iniciar cuando lleguen datos
 watch(
@@ -277,29 +252,24 @@ watch(
   async ([nuevosPois, nuevasGeozonas, conductoresCount]) => {
     if ((nuevosPois.length > 0 || nuevasGeozonas.length > 0) && conductoresCount > 0) {
       if (!simulacionActiva.value) {
-        console.log('✅ Datos listos, iniciando simulación...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await iniciarSimulacionAutomatica()
       }
     }
   },
-  { deep: true }
+  { deep: true },
 )
 
 // 🎬 Al montar el componente
 onMounted(async () => {
-  console.log('📱 SimuladorControl montado - Modo automático')
-  
   await cargarDatos()
-  
+
   // Esperar un poco para que todo se cargue
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
+  await new Promise((resolve) => setTimeout(resolve, 1500))
+
   // Intentar iniciar automáticamente
   if (conductoresConUnidad.value > 0) {
     await iniciarSimulacionAutomatica()
-  } else {
-    console.log('⏳ Esperando asignación de unidades...')
   }
 })
 </script>
@@ -371,7 +341,8 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

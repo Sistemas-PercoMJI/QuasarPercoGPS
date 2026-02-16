@@ -12,9 +12,6 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   // 🔥 Usar la agrupación REAL que se aplicó, no la del selector
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
-  console.log('🔍 generarHeaderGrupo - agruparPor:', agruparPor)
-  console.log('🔍 nombreGrupo:', nombreGrupo)
-
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
     // 🔥 CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
@@ -93,7 +90,8 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   // Si agrupamos por UNIDAD (o por defecto)
   if (agruparPor === 'unidad' || config.reportarPor === 'Unidades') {
     const primerEvento = eventos[0]
-    const placa = primerEvento?.unidadPlaca || 'Sin placa'
+    const placa =
+      primerEvento?.Placa || primerEvento?.placa || primerEvento?.unidadPlaca || 'Sin placa'
     const conductores = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
     const conductorTexto =
       conductores.length > 0 ? conductores.join(', ') : 'Sin conductor asignado'
@@ -414,7 +412,7 @@ function generarHeaderSubGrupo(nombreSubGrupo, eventos, config) {
 
     case 'unidad': {
       titulo = `UNIDAD: ${nombreSubGrupo}`
-      const placa = eventos[0]?.placa || 'Sin placa'
+      const placa = eventos[0]?.Placa || eventos[0]?.placa || eventos[0]?.unidadPlaca || 'Sin placa'
       const conductoresUnicos = [...new Set(eventos.map((e) => e.conductorNombre).filter(Boolean))]
       subtitulo = `Placa: ${placa}`
       if (conductoresUnicos.length > 0) {
@@ -463,16 +461,6 @@ export function useReportePDF() {
    */
 
   const generarPDFEventos = (config, datosReales) => {
-    console.log('🔍 CONFIG COMPLETO:', config)
-    console.log('🔍 columnasVisibles en config:', config.columnasVisibles)
-    //  console.log('🔍 config.reportarPor:', config.reportarPor)
-    // console.log('🔍 config.agruparPor:', config.agruparPor)
-    //console.log('🔍 Claves de eventosAgrupados:', Object.keys(datosReales.eventosAgrupados || {}))
-
-    //console.log('📊 datosReales en PDF Eventos:', datosReales)
-    //console.log('📊 eventosAgrupados:', datosReales.eventosAgrupados)
-    //console.log('📊 Primer evento:', Object.values(datosReales.eventosAgrupados)[0]?.[0])
-    //console.log('📊 datosColumnas[0]:', datosReales.datosColumnas?.[0])
     const doc = new jsPDF('landscape') // Modo horizontal para más columnas
     let yPosition = 20
 
@@ -525,7 +513,7 @@ export function useReportePDF() {
         head: [resumenPorTipo.headers],
         body: resumenPorTipo.rows,
         theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
         styles: { fontSize: 8 },
       })
 
@@ -637,7 +625,7 @@ export function useReportePDF() {
         body: tableData,
         theme: 'striped',
         headStyles: {
-          fillColor: [66, 139, 202],
+          fillColor: [145, 198, 188],
           fontStyle: 'bold',
           fontSize: 5, // 🔥 Reducido de 8 a 5
           cellPadding: 1, // 🔥 Reducido de 2 a 1
@@ -690,7 +678,7 @@ export function useReportePDF() {
 
           doc.setFontSize(16)
           doc.setFont('helvetica', 'bold')
-          doc.setTextColor(41, 128, 185)
+          doc.setTextColor(75, 157, 169)
           doc.text(headerInfo.titulo, 20, yPosition)
           yPosition += 8
 
@@ -720,14 +708,8 @@ export function useReportePDF() {
         // ========================================
         const subGrupos = subAgruparEventos(eventos, config, datosReales)
 
-        console.log('🔍 Sub-grupos creados:', Object.keys(subGrupos))
-        console.log('🔍 Primer evento del primer sub-grupo:', Object.values(subGrupos)[0]?.[0])
-
         const pageHeight = doc.internal.pageSize.getHeight()
         Object.entries(subGrupos).forEach(([nombreSubGrupo, eventosSubGrupo], indexSubGrupo) => {
-          console.log(`🔍 Sub-grupo "${nombreSubGrupo}":`, eventosSubGrupo.length, 'eventos')
-          console.log('🔍 Primer evento:', eventosSubGrupo[0])
-
           if (!eventosSubGrupo || eventosSubGrupo.length === 0) return
 
           // Header del sub-grupo
@@ -745,7 +727,7 @@ export function useReportePDF() {
 
             doc.setFontSize(12)
             doc.setFont('helvetica', 'bold')
-            doc.setTextColor(52, 152, 219)
+            doc.setTextColor(75, 157, 169)
             doc.text(headerSubGrupo.titulo, 25, yPosition)
             yPosition += 6
 
@@ -765,8 +747,6 @@ export function useReportePDF() {
               yPosition += 8
             }
           }
-          console.log('🔍 Columnas visibles:', config.columnasVisibles)
-          console.log('🔍 Número de columnas:', config.columnasVisibles?.length)
 
           // ========================================
           // TABLA DE EVENTOS DEL SUB-GRUPO
@@ -861,14 +841,6 @@ export function useReportePDF() {
             return nombres[col] || col
           })
 
-          console.log('📋 DEBUG configuracionColumnas completa:')
-          console.log('   - Existe?:', !!datosReales.configuracionColumnas)
-          console.log('   - Total columnas:', datosReales.configuracionColumnas?.length)
-          console.log(
-            '   - Labels disponibles:',
-            datosReales.configuracionColumnas?.map((c) => c.label),
-          )
-          console.log('   - Headers buscados:', headers)
           // 🔥 SIMPLIFICADO: Usar configuracionColumnas directamente
           const tableData = eventosSubGrupo.map((evento) => {
             return columnasVisibles.map((col) => {
@@ -878,32 +850,10 @@ export function useReportePDF() {
                 (c) => c.label === nombreHeader,
               )
 
-              // 🔥 DEBUG PARA CONDICIÓN DE EVENTO
-              if (nombreHeader === 'Condición de evento') {
-                console.log('🔍 DEBUG Condición de evento en PDF:')
-                console.log('   - nombreHeader:', nombreHeader)
-                console.log('   - columnaConfig encontrada?:', !!columnaConfig)
-                console.log('   - columnaConfig.label:', columnaConfig?.label)
-                console.log(
-                  '   - columnaConfig.obtenerValor existe?:',
-                  !!columnaConfig?.obtenerValor,
-                )
-                console.log('   - evento completo:', evento)
-                console.log(
-                  '   - configuracionColumnas disponibles:',
-                  datosReales.configuracionColumnas?.map((c) => c.label),
-                )
-              }
-
               // Si la columna tiene obtenerValor, usarlo
               if (columnaConfig && columnaConfig.obtenerValor) {
                 try {
                   const valor = columnaConfig.obtenerValor(evento)
-
-                  // 🔥 DEBUG RESULTADO
-                  if (nombreHeader === 'Condición de evento') {
-                    console.log('   ✅ Valor obtenido:', valor)
-                  }
 
                   return valor !== null && valor !== undefined ? String(valor) : 'N/A'
                 } catch (error) {
@@ -916,9 +866,6 @@ export function useReportePDF() {
               const valor = evento[col]
 
               // 🔥 DEBUG FALLBACK
-              if (nombreHeader === 'Condición de evento') {
-                console.log('   ⚠️ Usando fallback - valor:', valor)
-              }
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'
             })
@@ -935,7 +882,7 @@ export function useReportePDF() {
               cellPadding: 2,
             },
             headStyles: {
-              fillColor: [52, 152, 219],
+              fillColor: [145, 198, 188],
               textColor: 255,
               fontStyle: 'bold',
               halign: 'center',
@@ -999,7 +946,7 @@ export function useReportePDF() {
       head: [columnas],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [66, 139, 202] },
+      headStyles: { fillColor: [145, 198, 188] },
       styles: { fontSize: 8 },
     })
 
@@ -1091,7 +1038,7 @@ export function useReportePDF() {
           head: [['Concepto', 'Valor']],
           body: resumenData,
           theme: 'grid',
-          headStyles: { fillColor: [66, 139, 202] },
+          headStyles: { fillColor: [145, 198, 188] },
           styles: { fontSize: 10 },
         })
 
@@ -1157,7 +1104,7 @@ export function useReportePDF() {
         // ========================================
         doc.setFontSize(16)
         doc.setFont(undefined, 'bold')
-        doc.setTextColor(41, 128, 185) // Azul oscuro
+        doc.setTextColor(75, 157, 169) // Azul oscuro
 
         const headerTitulo =
           config.reportarPor === 'Unidades'
@@ -1174,7 +1121,12 @@ export function useReportePDF() {
 
         const primerTrayecto = trayectos[0]
         if (config.reportarPor === 'Unidades') {
-          const placa = primerTrayecto.unidadPlaca || 'Sin placa'
+          const placa =
+            primerTrayecto.Placa ||
+            primerTrayecto.placa ||
+            primerTrayecto.unidadPlaca ||
+            'Sin placa'
+
           const conductores = [...new Set(trayectos.map((t) => t.conductorNombre).filter(Boolean))]
           doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
         } else {
@@ -1224,7 +1176,7 @@ export function useReportePDF() {
           body: tableData,
           theme: 'grid',
           headStyles: {
-            fillColor: [76, 175, 80],
+            fillColor: [145, 198, 188],
             fontStyle: 'bold',
             fontSize: necesitaMultilinea ? 7 : 8,
             minCellHeight: necesitaMultilinea ? 10 : 8,
@@ -1304,7 +1256,13 @@ export function useReportePDF() {
               // Info del mapa
               doc.setFontSize(10)
               doc.setFont(undefined, 'normal')
-              doc.text(`Placa: ${primerTrayecto.unidadPlaca || 'N/A'}`, 20, yPos)
+              const placaDisplay =
+                primerTrayecto.Placa ||
+                primerTrayecto.placa ||
+                primerTrayecto.unidadPlaca ||
+                'Sin placa'
+
+              doc.text(`Placa: ${placaDisplay}`, 20, yPos)
               yPos += 6
               doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
               yPos += 10
@@ -1525,7 +1483,7 @@ export function useReportePDF() {
         ],
         body: resumenData,
         theme: 'grid',
-        headStyles: { fillColor: [66, 139, 202], fontSize: 9 },
+        headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
         styles: { fontSize: 8 },
         columnStyles: {
           0: { cellWidth: 80 },
@@ -1552,10 +1510,6 @@ export function useReportePDF() {
       }
       registrosPorEntidad[clave].push(registro)
     })
-
-    console.log('📊 Registros agrupados por:', config.reportarPor)
-    console.log('📊 Grupos creados:', Object.keys(registrosPorEntidad))
-
     // ========================================
     // MAPEO DE COLUMNAS (español → propiedades)
     // ========================================
@@ -1582,15 +1536,12 @@ export function useReportePDF() {
       .filter(Boolean) // Eliminar undefined
       .filter((prop) => !columnasAgregadas.includes(prop))
 
-    console.log('🔍 Columnas para viajes:', columnasVisiblesViajes)
-
     // Preparar headers en español
     const headersViajes = config.columnasSeleccionadas.filter((col) => {
       const prop = nombreColumnaAPropiedad[col]
       return prop && !columnasAgregadas.includes(prop)
     })
 
-    console.log('🔍 Headers para tabla:', headersViajes)
     // Convertir columnas seleccionadas de español a propiedades
     const columnasVisibles = config.columnasSeleccionadas.map((nombreEspanol) => {
       return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
@@ -1614,7 +1565,7 @@ export function useReportePDF() {
       // ========================================
       doc.setFontSize(16)
       doc.setFont(undefined, 'bold')
-      doc.setTextColor(41, 128, 185) // Azul oscuro
+      doc.setTextColor(75, 157, 169) // Azul oscuro
 
       const headerTitulo =
         config.reportarPor === 'Unidades'
@@ -1631,7 +1582,8 @@ export function useReportePDF() {
 
       const primerRegistro = registros[0]
       if (config.reportarPor === 'Unidades') {
-        const placa = primerRegistro.unidadPlaca || 'Sin placa'
+        const placa =
+          primerRegistro.Placa || primerRegistro.placa || primerRegistro.unidadPlaca || 'Sin placa'
         const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
         doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
       } else {
@@ -1659,8 +1611,6 @@ export function useReportePDF() {
         // ==========================================
         // OPCIÓN 1: DÍAS DETALLADOS (resumen + viajes)
         // ==========================================
-        console.log('📅 Generando días detallados...')
-
         // Agrupar por fecha
         const registrosPorFecha = {}
         registros.forEach((registro) => {
@@ -1681,7 +1631,7 @@ export function useReportePDF() {
 
           doc.setFontSize(12)
           doc.setFont(undefined, 'bold')
-          doc.setTextColor(52, 152, 219) // Azul claro
+          doc.setTextColor(75, 157, 169) // Azul claro
 
           const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', {
             weekday: 'long',
@@ -1825,7 +1775,7 @@ export function useReportePDF() {
               head: [headersViajes], // 🔥 USAR HEADERS CONFIGURABLES
               body: todosLosViajes,
               theme: 'grid',
-              headStyles: { fillColor: [76, 175, 80], fontSize: 8 },
+              headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
               styles: { fontSize: 7, cellPadding: 2 },
               margin: { left: 20, right: 20 },
             })
@@ -1861,8 +1811,6 @@ export function useReportePDF() {
         // ==========================================
         // OPCIÓN 3: DÍAS RESUMIDOS (solo resumen, sin tabla de viajes)
         // ==========================================
-        console.log('📊 Generando días resumidos...')
-
         // Agrupar por fecha
         const registrosPorFecha = {}
         registros.forEach((registro) => {
@@ -1931,7 +1879,7 @@ export function useReportePDF() {
             head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
             body: resumenPorDia,
             theme: 'grid',
-            headStyles: { fillColor: [76, 175, 80], fontSize: 9 },
+            headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
             styles: { fontSize: 8, cellPadding: 3 },
             columnStyles: {
               0: { cellWidth: 80 },

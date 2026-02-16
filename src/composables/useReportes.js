@@ -26,7 +26,7 @@ export function useReportes() {
    * OBTENER DATOS SEGÚN TIPO DE INFORME
    * ============================================
    */
-  
+
   /**
    * Función principal que obtiene datos según el tipo de informe
    * @param {string} tipoInforme - 'eventos', 'trayectos', 'horas_trabajo'
@@ -38,9 +38,6 @@ export function useReportes() {
     error.value = null
 
     try {
-      console.log(`📊 Obteniendo datos para: ${tipoInforme}`)
-      console.log('⚙️ Configuración:', configuracion)
-
       // Obtener IDs de unidades según el filtro
       const unidadesIds = await obtenerUnidadesSegunFiltro(configuracion)
 
@@ -52,7 +49,7 @@ export function useReportes() {
             unidadesIds,
             configuracion.fechaInicio,
             configuracion.fechaFin,
-            configuracion.eventosNombres || []
+            configuracion.eventosNombres || [],
           )
           break
 
@@ -60,7 +57,7 @@ export function useReportes() {
           datos = await reportesTrayectos.obtenerTrayectos(
             unidadesIds,
             configuracion.fechaInicio,
-            configuracion.fechaFin
+            configuracion.fechaFin,
           )
           // Enriquecer con datos de unidades
           datos = await reportesTrayectos.enriquecerConDatosUnidades(datos)
@@ -74,8 +71,8 @@ export function useReportes() {
             {
               diasLaborables: configuracion.diasLaborables,
               horarioInicio: configuracion.horarioInicio,
-              horarioFin: configuracion.horarioFin
-            }
+              horarioFin: configuracion.horarioFin,
+            },
           )
           break
 
@@ -83,9 +80,7 @@ export function useReportes() {
           throw new Error(`Tipo de informe no válido: ${tipoInforme}`)
       }
 
-      console.log(`✅ Datos obtenidos: ${datos.length} registros`)
       return datos
-
     } catch (err) {
       console.error('❌ Error al obtener datos:', err)
       error.value = err.message
@@ -140,9 +135,9 @@ export function useReportes() {
       const unidadesRef = collection(db, 'Unidades')
       const snapshot = await getDocs(unidadesRef)
 
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
     } catch (err) {
       console.error('Error al obtener unidades:', err)
@@ -156,7 +151,7 @@ export function useReportes() {
    */
   const obtenerTodasLasUnidades = async () => {
     const unidades = await obtenerUnidades()
-    return unidades.map(u => u.id)
+    return unidades.map((u) => u.id)
   }
 
   /**
@@ -168,9 +163,9 @@ export function useReportes() {
       const conductoresRef = collection(db, 'Conductores')
       const snapshot = await getDocs(conductoresRef)
 
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }))
     } catch (err) {
       console.error('Error al obtener conductores:', err)
@@ -185,16 +180,16 @@ export function useReportes() {
    */
   const obtenerUnidadesPorConductores = async (conductoresNombres) => {
     const unidades = await obtenerUnidades()
-    
+
     // Filtrar unidades que tienen asignado alguno de los conductores
-    const unidadesFiltradas = unidades.filter(unidad => {
+    const unidadesFiltradas = unidades.filter((unidad) => {
       // Aquí asumimos que tienes un campo como "conductorAsignado" en Unidades
       // Ajusta según tu estructura real
       const conductorAsignado = unidad.ConductorAsignado || unidad.conductorNombre
       return conductoresNombres.includes(conductorAsignado)
     })
 
-    return unidadesFiltradas.map(u => u.id)
+    return unidadesFiltradas.map((u) => u.id)
   }
 
   /**
@@ -206,26 +201,24 @@ export function useReportes() {
   const obtenerUnidadesPorGrupos = async (gruposNombres, userId) => {
     // Obtener los grupos de conductores del usuario
     const grupos = await obtenerGruposConductores(userId)
-    
+
     // Filtrar grupos seleccionados
-    const gruposFiltrados = grupos.filter(g => gruposNombres.includes(g.nombre))
-    
+    const gruposFiltrados = grupos.filter((g) => gruposNombres.includes(g.nombre))
+
     // Obtener todos los IDs de conductores de esos grupos
     const conductoresIds = new Set()
-    gruposFiltrados.forEach(grupo => {
+    gruposFiltrados.forEach((grupo) => {
       if (grupo.conductoresIds) {
-        grupo.conductoresIds.forEach(id => conductoresIds.add(id))
+        grupo.conductoresIds.forEach((id) => conductoresIds.add(id))
       }
     })
 
     // Obtener conductores completos
     const todosConductores = await obtenerConductores()
-    const conductoresDelGrupo = todosConductores.filter(c => 
-      conductoresIds.has(c.id)
-    )
+    const conductoresDelGrupo = todosConductores.filter((c) => conductoresIds.has(c.id))
 
     // Obtener unidades de esos conductores
-    const nombresConductores = conductoresDelGrupo.map(c => c.Nombre)
+    const nombresConductores = conductoresDelGrupo.map((c) => c.Nombre)
     return await obtenerUnidadesPorConductores(nombresConductores)
   }
 
@@ -239,11 +232,11 @@ export function useReportes() {
       const gruposRef = collection(db, 'Usuarios', userId, 'GruposConductores')
       const snapshot = await getDocs(gruposRef)
 
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
         nombre: doc.data().Nombre,
         conductoresIds: doc.data().ConductoresIds || [],
-        ...doc.data()
+        ...doc.data(),
       }))
     } catch (err) {
       console.error('Error al obtener grupos:', err)
@@ -261,10 +254,10 @@ export function useReportes() {
       const geozonasRef = collection(db, 'Usuarios', userId, 'Geozonas')
       const snapshot = await getDocs(geozonasRef)
 
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
         nombre: doc.data().nombre,
-        ...doc.data()
+        ...doc.data(),
       }))
     } catch (err) {
       console.error('Error al obtener geozonas:', err)
@@ -287,7 +280,7 @@ export function useReportes() {
   const agruparDatos = (datos, criterio) => {
     const agrupados = {}
 
-    datos.forEach(dato => {
+    datos.forEach((dato) => {
       let clave = ''
 
       switch (criterio) {
@@ -329,7 +322,7 @@ export function useReportes() {
       return datos
     }
 
-    return datos.filter(dato => {
+    return datos.filter((dato) => {
       let valorDato = ''
 
       switch (tipoFiltro) {
@@ -359,8 +352,8 @@ export function useReportes() {
   const calcularEstadisticas = (datos) => {
     return {
       total: datos.length,
-      conductoresUnicos: new Set(datos.map(d => d.conductorNombre)).size,
-      unidadesUnicas: new Set(datos.map(d => d.unidadNombre)).size,
+      conductoresUnicos: new Set(datos.map((d) => d.conductorNombre)).size,
+      unidadesUnicas: new Set(datos.map((d) => d.unidadNombre)).size,
       // Agregar más estadísticas según necesites
     }
   }
@@ -383,6 +376,6 @@ export function useReportes() {
     // Re-exportar funciones específicas por si se necesitan
     ...reportesEventos,
     ...reportesTrayectos,
-    ...reportesHoras
+    ...reportesHoras,
   }
 }

@@ -1,3 +1,4 @@
+/*AuthLoader.vue*/
 <template>
   <div v-if="loading" class="fullscreen flex flex-center bg-primary">
     <q-spinner-gears size="80px" color="white" />

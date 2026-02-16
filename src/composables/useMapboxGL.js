@@ -1,6 +1,30 @@
+/*MapBoxGl */
 import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+
+const originalWarn = console.warn
+console.warn = function (...args) {
+  const message = args[0]?.toString() || ''
+
+  // Lista de warnings que queremos ignorar
+  const ignoredWarnings = [
+    //ola
+    'Image "',
+    'could not be loaded',
+    'Cannot mix SDF and non-SDF icons',
+    'Unable to perform style diff',
+    'setSprite',
+  ]
+
+  // Si el mensaje contiene algún warning ignorado, no lo mostrar
+  if (ignoredWarnings.some((warning) => message.includes(warning))) {
+    return
+  }
+
+  // Para otros warnings, usar el comportamiento original
+  originalWarn.apply(console, args)
+}
 
 // Referencia reactiva al mapa
 const map = ref(null)
@@ -17,6 +41,7 @@ const poligonoTemporal = ref(null)
 const circuloTemporalPOI = ref(null)
 let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
+let clickHandlerPoligonal = null
 let isZooming = false
 let lastZoomLevel = 0
 let PanTimeout = null
@@ -53,13 +78,198 @@ const COLORES_ESTADO = {
   detenido: '#FF9800', // Naranja
   inactivo: '#607D8B', // Gris azulado
 }
+const agregarBadgeACanvas = (canvas) => {
+  const ctx = canvas.getContext('2d')
+  const size = 48
 
+  // Badge amarillo en la esquina superior derecha
+  const badgeX = size - 10
+  const badgeY = 8
+  const badgeRadius = 6 // Un poco más pequeño
+
+  // Círculo amarillo con borde blanco
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius + 2, 0, Math.PI * 2)
+  ctx.fillStyle = 'white'
+  ctx.fill()
+
+  ctx.beginPath()
+  ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2)
+  ctx.fillStyle = '#FFC107' // Amarillo
+  ctx.fill()
+
+  // ❌ ELIMINADO: Ya no agregamos el símbolo "!"
+
+  return canvas
+}
+// useMapboxGL.js - REEMPLAZAR cargarIconosMapa COMPLETA
+const cargarIconosMapa = async (map) => {
+  if (!map.loaded()) {
+    await new Promise((resolve) => map.once('load', resolve))
+  }
+
+  // 🎨 ICONO POI - Crear canvas directamente (SIN SVG)
+  const createPOIIcon = (color = '#FF5252') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Dibujar pin manualmente (sin SVG)
+    // Borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 4)
+    ctx.bezierCurveTo(size / 2 - 15, size - 15, 8, size / 2 + 5, 8, size / 2 - 5)
+    ctx.bezierCurveTo(8, 15, 15, 8, size / 2, 8)
+    ctx.bezierCurveTo(size - 15, 8, size - 8, 15, size - 8, size / 2 - 5)
+    ctx.bezierCurveTo(size - 8, size / 2 + 5, size / 2 + 15, size - 15, size / 2, size - 4)
+    ctx.closePath()
+    ctx.fillStyle = 'white'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    // Pin con color
+    ctx.beginPath()
+    ctx.moveTo(size / 2, size - 6)
+    ctx.bezierCurveTo(size / 2 - 13, size - 16, 10, size / 2 + 3, 10, size / 2 - 5)
+    ctx.bezierCurveTo(10, 17, 17, 10, size / 2, 10)
+    ctx.bezierCurveTo(size - 17, 10, size - 10, 17, size - 10, size / 2 - 5)
+    ctx.bezierCurveTo(size - 10, size / 2 + 3, size / 2 + 13, size - 16, size / 2, size - 6)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+
+    // Círculo interior
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2 - 5, 6, 0, Math.PI * 2)
+    ctx.fillStyle = 'white'
+    ctx.fill()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA CIRCULAR - Canvas directo
+  const createGeozonaCircularIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Círculo con borde blanco
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, 18, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // 🎨 ICONO GEOZONA POLIGONAL - Canvas directo
+  const createGeozonaPoligonalIcon = (color = '#4ECDC4') => {
+    const canvas = document.createElement('canvas')
+    const size = 48
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+
+    // Rombo con borde blanco
+    ctx.beginPath()
+    ctx.moveTo(size / 2, 4)
+    ctx.lineTo(size - 4, size / 2)
+    ctx.lineTo(size / 2, size - 4)
+    ctx.lineTo(4, size / 2)
+    ctx.closePath()
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 4
+    ctx.stroke()
+
+    return canvas
+  }
+
+  // FUNCIÓN HELPER: Cargar icono si no existe
+  window._mapboxLoadIcon = (map, type, color, conBadge = false) => {
+    const colorKey = color.replace('#', '')
+    const badgeSuffix = conBadge ? '-badge' : ''
+    const iconName = `${type}-${colorKey}${badgeSuffix}`
+
+    if (map.hasImage(iconName)) {
+      return // Ya existe
+    }
+
+    let canvas
+    if (type === 'poi') {
+      canvas = createPOIIcon(color)
+    } else if (type === 'geozona-circular') {
+      canvas = createGeozonaCircularIcon(color)
+    } else if (type === 'geozona-poligonal') {
+      canvas = createGeozonaPoligonalIcon(color)
+    }
+
+    if (canvas) {
+      // 🆕 Si tiene badge, agregarlo
+      if (conBadge) {
+        canvas = agregarBadgeACanvas(canvas)
+      }
+
+      const imageData = canvas.getContext('2d').getImageData(0, 0, 48, 48)
+      map.addImage(iconName, {
+        width: 48,
+        height: 48,
+        data: imageData.data,
+      })
+    }
+  }
+
+  // Cargar iconos POI (colores comunes) - SIN y CON badge
+  const coloresPOI = [
+    '#FF5252',
+    '#2196F3',
+    '#4CAF50',
+    '#FF9800',
+    '#9C27B0',
+    '#FFC107',
+    '#E91E63',
+    '#00BCD4',
+  ]
+
+  for (const color of coloresPOI) {
+    window._mapboxLoadIcon(map, 'poi', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'poi', color, true) // Con badge
+  }
+
+  // Cargar iconos Geozona (colores comunes) - SIN y CON badge
+  const coloresGeozona = [
+    '#4ECDC4',
+    '#3498DB',
+    '#2ECC71',
+    '#9B59B6',
+    '#E67E22',
+    '#E74C3C',
+    '#F39C12',
+    '#FF6B9D',
+  ]
+
+  for (const color of coloresGeozona) {
+    window._mapboxLoadIcon(map, 'geozona-circular', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-circular', color, true) // Con badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, false) // Sin badge
+    window._mapboxLoadIcon(map, 'geozona-poligonal', color, true) // Con badge
+  }
+}
 const cerrarPopupGlobal = () => {
   if (popupGlobalActivo) {
     try {
       popupGlobalActivo.remove()
       popupGlobalActivo = null
-      console.log('🔒 Popup global cerrado')
     } catch (error) {
       console.warn('⚠️ Error al cerrar popup:', error)
       popupGlobalActivo = null
@@ -92,39 +302,40 @@ export function useMapboxGL() {
     el.style.width = '36px'
     el.style.height = '36px'
     el.innerHTML = `
+    <div class="icono-unidad-hover" style="
+      width: 36px;
+      height: 36px;
+      background-color: ${color};
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+      </svg>
       <div style="
-        width: 36px;
-        height: 36px;
-        background-color: ${color};
-        border: 3px solid white;
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        width: 12px;
+        height: 12px;
+        background: ${colorIndicador};
+        border: 2px solid white;
         border-radius: 50%;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        cursor: pointer;
-      ">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-          <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-        </svg>
-        <div style="
-          position: absolute;
-          bottom: -4px;
-          right: -4px;
-          width: 12px;
-          height: 12px;
-          background: ${colorIndicador};
-          border: 2px solid white;
-          border-radius: 50%;
-          ${estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
-        "></div>
-      </div>
-    `
+        ${estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
+      "></div>
+    </div>
+  `
     return el
   }
 
-  // ✅ POPUP OPTIMIZADO - Versión más ligera
+  // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
     const estadoTexto = {
       movimiento: 'En movimiento',
@@ -137,20 +348,14 @@ export function useMapboxGL() {
     const popupId = `popup-unidad-${unidadId}`
 
     const popupContent = `
-    <div id="${popupId}" class="unidad-popup-container">
-      <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
-      <div class="unidad-popup-header">
-        <div class="unidad-info">
-          <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-              <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-            </svg>
-          </div>
-          <div class="unidad-texto">
-            <strong>${unidad.conductorNombre}</strong>
-            <div>${unidad.unidadNombre}</div>
-            <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
-          </div>
+  <div id="${popupId}" class="unidad-popup-container">
+    <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
+    <div class="unidad-popup-header">
+      <!-- Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
+      <div class="unidad-header-top-row">
+        <div class="unidad-close-placeholder"></div>
+        <div class="unidad-texto">
+          <strong>${unidad.conductorNombre}</strong>
         </div>
         <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -159,41 +364,54 @@ export function useMapboxGL() {
         </button>
       </div>
 
-      <!-- CUERPO (OCULTO POR DEFECTO) -->
-      <div class="unidad-popup-body">
-        <div class="popup-section">
-          <span class="label">Estado:</span>
-          <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+      <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
+      <div class="unidad-info-row">
+        <div class="unidad-info">
+          <div class="unidad-placa">${unidad.unidadNombre}</div>
+          <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
         </div>
-        <div class="popup-section">
-          <span class="label">Velocidad:</span>
-          <span class="value">${unidad.velocidad || 0} km/h</span>
+        <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
         </div>
-        <div class="popup-section">
-          <span class="label">Batería:</span>
-          <span class="value">${unidad.bateria || 0}%</span>
-        </div>
-        <div class="popup-section">
-          <span class="label">Coordenadas:</span>
-          <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
-        </div>
-
-        <button
-          class="details-btn"
-          data-action="ver-detalles-conductor"
-          data-conductor-id="${unidad.conductorId || unidad.id}"
-          data-conductor-nombre="${unidad.conductorNombre}"
-        >
-          Ver Detalles del Conductor
-        </button>
       </div>
     </div>
+
+    <!-- CUERPO (OCULTO POR DEFECTO) -->
+    <div class="unidad-popup-body">
+      <div class="popup-section">
+        <span class="label">Estado:</span>
+        <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Velocidad:</span>
+        <span class="value">${unidad.velocidad || 0} km/h</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Batería:</span>
+        <span class="value">${unidad.bateria || 0}%</span>
+      </div>
+      <div class="popup-section">
+        <span class="label">Coordenadas:</span>
+        <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
+      </div>
+
+      <button
+        class="details-btn"
+        data-action="ver-detalles-conductor"
+        data-conductor-id="${unidad.conductorId || unidad.id}"
+        data-conductor-nombre="${unidad.conductorNombre}"
+      >
+        Ver Detalles del Conductor
+      </button>
+    </div>
+  </div>
   `
 
     return popupContent
   }
-
-  // ⚡ OPTIMIZADO: Procesamiento real de marcadores
+  // OPTIMIZADO: Procesamiento real de marcadores
   const procesarActualizacionMarcadores = (unidades) => {
     if (!map.value || !unidades) {
       return
@@ -258,7 +476,7 @@ export function useMapboxGL() {
             // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
 
-            // ✅ OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
+            // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
             if (popup && popup.isOpen()) {
               const popupContent = popup.getElement()
@@ -316,15 +534,15 @@ export function useMapboxGL() {
     })
   }
 
-  // ⚡ OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
+  // OPTIMIZADO: Con requestAnimationFrame + throttle mejorado
   // Línea ~239
   const actualizarMarcadoresUnidades = (unidades) => {
     if (!map.value) {
-      console.warn('⚠️ Mapa no disponible')
+      console.warn(' Mapa no disponible')
       return
     }
 
-    // ⚡ Si el mapa se está moviendo O haciendo zoom, postponer
+    // Si el mapa se está moviendo O haciendo zoom, postponer
     if (isZooming || isPanning) {
       // 🆕 AGREGAR isPanning
       pendingUnidades = unidades
@@ -360,7 +578,6 @@ export function useMapboxGL() {
     ultimasPosiciones.clear()
     pendingUnidades = null
     pendingUpdate = false
-    console.log('🧹 Marcadores GPS limpiados')
   }
 
   const centrarEnUnidad = (unidadId) => {
@@ -380,7 +597,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🔵 FUNCIONES POI CON CÍRCULOS
+  // FUNCIONES POI CON CÍRCULOS
   function crearCirculoTemporalPOI(lat, lng, radio) {
     if (!map.value) return
 
@@ -431,8 +648,6 @@ export function useMapboxGL() {
         },
       })
     }
-
-    console.log(`🔵 Círculo temporal POI creado: ${radio}m`)
   }
 
   function metersToPixelsAtMaxZoom(meters, latitude) {
@@ -442,7 +657,6 @@ export function useMapboxGL() {
   function actualizarRadioCirculoTemporal(lat, lng, nuevoRadio) {
     if (!map.value) return
     crearCirculoTemporalPOI(lat, lng, nuevoRadio)
-    console.log(`🔄 Radio actualizado: ${nuevoRadio}m`)
   }
 
   function limpiarCirculoTemporalPOI() {
@@ -450,7 +664,6 @@ export function useMapboxGL() {
       map.value.removeLayer('poi-circle-temp')
       map.value.removeSource('poi-circle-temp')
       circuloTemporalPOI.value = null
-      console.log('🧹 Círculo temporal POI limpiado')
     }
   }
 
@@ -551,21 +764,29 @@ export function useMapboxGL() {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
       }
-
-      console.log('📍 Ubicación seleccionada:', ubicacionSeleccionada.value)
     })
 
-    console.log('✅ Modo selección activado')
     return true
   }
 
   const desactivarModoSeleccion = () => {
     if (!map.value) return
+
+    // 🆕 LIMPIAR LISTENER DE POLÍGONO
+    if (clickHandlerPoligonal) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+    }
+
+    // Desactivar todos los modos
     modoSeleccionActivo.value = false
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
-    map.value.getCanvas().style.cursor = ''
-    console.log('❌ Todos los modos de selección desactivados')
+
+    // Restaurar cursor
+    if (map.value.getCanvas()) {
+      map.value.getCanvas().style.cursor = ''
+    }
   }
 
   // 🔵 MODO SELECCIÓN GEOZONA CIRCULAR
@@ -628,11 +849,8 @@ export function useMapboxGL() {
         direccion: direccionObtenida,
         radio: radioInicial,
       }
-
-      console.log('🔵 Geozona circular seleccionada:', ubicacionSeleccionada.value)
     })
 
-    console.log('✅ Modo selección geozona circular activado')
     return true
   }
 
@@ -654,19 +872,24 @@ export function useMapboxGL() {
     }
   }
 
-  // 🔷 MODO SELECCIÓN GEOZONA POLIGONAL
   const activarModoSeleccionGeozonaPoligonal = (puntosExistentes = [], color = '#4ECDC4') => {
     if (!map.value) {
       console.error('❌ Mapa no inicializado')
       return false
     }
+
+    // 🆕 LIMPIAR LISTENER ANTERIOR SI EXISTE
+    if (clickHandlerPoligonal) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+    }
+
     limpiarPoligonoTemporal()
     colorPoligonoTemporal = color
     modoSeleccionGeozonaPoligonal.value = true
     colorGeozonaActual.value = color
 
     if (puntosExistentes && puntosExistentes.length > 0) {
-      console.log('🔄 Restaurando puntos existentes:', puntosExistentes.length)
       setPuntosSeleccionados(puntosExistentes)
     } else {
       puntosPoligono.value = []
@@ -675,7 +898,8 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     map.value.getCanvas().style.cursor = 'crosshair'
 
-    const clickHandler = (e) => {
+    // 🆕 ASIGNAR A LA VARIABLE GLOBAL
+    clickHandlerPoligonal = (e) => {
       if (!modoSeleccionGeozonaPoligonal.value) return
 
       const { lng, lat } = e.lngLat
@@ -700,10 +924,7 @@ export function useMapboxGL() {
         actualizarPoligonoTemporal(puntosPoligono.value)
       }
 
-      console.log(`📍 Punto ${puntosPoligono.value.length} agregado con color: ${color}`)
-
       if (puntosPoligono.value.length >= 3) {
-        console.log('🎯 ¡Tercer punto colocado! Mostrando botones de confirmación.')
         window.dispatchEvent(
           new CustomEvent('mostrarBotonConfirmarGeozona', {
             detail: { mostrar: true },
@@ -712,9 +933,8 @@ export function useMapboxGL() {
       }
     }
 
-    map.value.on('click', clickHandler)
-
-    console.log('✅ Modo selección geozona poligonal activado con color:', color)
+    // 🆕 REGISTRAR EL LISTENER USANDO LA VARIABLE GLOBAL
+    map.value.on('click', clickHandlerPoligonal)
     return true
   }
 
@@ -728,6 +948,7 @@ export function useMapboxGL() {
     const borderColor = oscurecerColor(color, 30)
 
     if (map.value.getSource(sourceId)) {
+      // ✅ SOLO actualizar datos - esto es RÁPIDO
       map.value.getSource(sourceId).setData({
         type: 'Feature',
         geometry: {
@@ -735,14 +956,9 @@ export function useMapboxGL() {
           coordinates: [coordinates],
         },
       })
-
-      if (map.value.getLayer(`${sourceId}-fill`)) {
-        map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
-      }
-      if (map.value.getLayer(`${sourceId}-outline`)) {
-        map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
-      }
+      // ⚠️ NO actualizar paint properties aquí
     } else {
+      // Primera vez - crear source y layers
       map.value.addSource(sourceId, {
         type: 'geojson',
         data: {
@@ -774,8 +990,22 @@ export function useMapboxGL() {
         },
       })
     }
+  }
 
-    console.log('✅ Polígono temporal actualizado con', puntos.length, 'puntos y color', color)
+  // 🆕 NUEVA FUNCIÓN: Actualizar solo el color (llamar explícitamente cuando cambie el color)
+  const actualizarColorPoligonoTemporal = (color) => {
+    if (!map.value) return
+
+    colorPoligonoTemporal = color
+    const borderColor = oscurecerColor(color, 30)
+    const sourceId = 'geozona-temporal'
+
+    if (map.value.getLayer(`${sourceId}-fill`)) {
+      map.value.setPaintProperty(`${sourceId}-fill`, 'fill-color', color)
+    }
+    if (map.value.getLayer(`${sourceId}-outline`)) {
+      map.value.setPaintProperty(`${sourceId}-outline`, 'line-color', borderColor)
+    }
   }
 
   const finalizarPoligonoTemporal = () => {
@@ -784,7 +1014,7 @@ export function useMapboxGL() {
       return false
     }
     poligonoFinalizado.value = true
-    console.log('✅ Polígono finalizado con', puntosPoligono.value.length, 'puntos')
+
     return true
   }
 
@@ -794,6 +1024,13 @@ export function useMapboxGL() {
     const sourceId = 'geozona-temporal'
 
     try {
+      // 🆕 ELIMINAR EVENT LISTENER
+      if (clickHandlerPoligonal) {
+        map.value.off('click', clickHandlerPoligonal)
+        clickHandlerPoligonal = null
+      }
+
+      // Limpiar capas del mapa
       if (map.value.getLayer(`${sourceId}-outline`)) {
         map.value.removeLayer(`${sourceId}-outline`)
       }
@@ -805,6 +1042,7 @@ export function useMapboxGL() {
         map.value.removeSource(sourceId)
       }
 
+      // Limpiar marcadores
       if (marcadoresPuntosPoligono && marcadoresPuntosPoligono.length > 0) {
         marcadoresPuntosPoligono.forEach((marker) => {
           try {
@@ -816,18 +1054,22 @@ export function useMapboxGL() {
         marcadoresPuntosPoligono = []
       }
 
+      // Limpiar datos
       puntosPoligono.value = []
       poligonoFinalizado.value = false
 
-      console.log('✅ Polígono temporal limpiado completamente')
+      // 🆕 RESTAURAR CURSOR
+      if (map.value.getCanvas()) {
+        map.value.getCanvas().style.cursor = ''
+      }
     } catch (error) {
-      console.error('❌ Error limpiando polígono temporal:', error)
+      console.error('Error limpiando polígono temporal:', error)
     }
   }
 
   const confirmarPoligonoTemporal = (nombre) => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
-      console.log(`✅ Polígono confirmado: ${nombre}`, puntosPoligono.value)
+      console.log(`Polígono confirmado: ${nombre}`, puntosPoligono.value)
       limpiarPoligonoTemporal()
     }
   }
@@ -874,8 +1116,6 @@ export function useMapboxGL() {
         'circle-stroke-color': borderColor,
       },
     })
-
-    console.log(`✅ Círculo actualizado con color: ${color}`)
   }
 
   const actualizarPoligono = (id, puntos, nombre, color = '#4ECDC4') => {
@@ -924,8 +1164,6 @@ export function useMapboxGL() {
         'line-width': 3,
       },
     })
-
-    console.log(`✅ Polígono actualizado con color: ${color}`)
   }
 
   // 🌐 OBTENER DIRECCIÓN
@@ -954,89 +1192,95 @@ export function useMapboxGL() {
       const center = map.value.getCenter()
       const zoom = map.value.getZoom()
 
+      // Guardar estado del tráfico
+      const traficoVisible = map.value.getLayer('traffic')
+        ? map.value.getLayoutProperty('traffic', 'visibility') === 'visible'
+        : false
+
       // Cambiar estilo
       const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
       estiloActual.value = nuevoEstilo
 
-      console.log(`🗺️ Cambiando estilo a: ${nuevoEstilo}`)
-
       // Aplicar nuevo estilo
       map.value.setStyle(ESTILOS_MAPA[nuevoEstilo])
 
-      // Esperar a que el estilo se cargue
+      // Esperar a que el estilo se cargue completamente
       map.value.once('style.load', () => {
-        console.log('✅ Nuevo estilo cargado')
-
         // Restaurar centro y zoom
         map.value.jumpTo({ center, zoom })
 
         // 🔄 RE-AGREGAR CAPA DE TRÁFICO
-        if (!map.value.getSource('mapbox-traffic')) {
-          map.value.addSource('mapbox-traffic', {
-            type: 'vector',
-            url: 'mapbox://mapbox.mapbox-traffic-v1',
-          })
-        }
-
-        // Buscar la primera capa de etiquetas
-        const layers = map.value.getStyle().layers
-        let labelLayerId
-        for (let i = 0; i < layers.length; i++) {
-          if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
-            labelLayerId = layers[i].id
-            break
+        try {
+          if (!map.value.getSource('mapbox-traffic')) {
+            map.value.addSource('mapbox-traffic', {
+              type: 'vector',
+              url: 'mapbox://mapbox.mapbox-traffic-v1',
+            })
           }
-        }
 
-        // Insertar tráfico antes de las etiquetas
-        if (!map.value.getLayer('traffic')) {
-          map.value.addLayer(
-            {
-              id: 'traffic',
-              type: 'line',
-              source: 'mapbox-traffic',
-              'source-layer': 'traffic',
-              paint: {
-                'line-width': [
-                  'interpolate',
-                  ['exponential', 1.5],
-                  ['zoom'],
-                  10,
-                  1,
-                  13,
-                  2,
-                  15,
-                  3,
-                  18,
-                  6,
-                  20,
-                  10,
-                ],
-                'line-color': [
-                  'case',
-                  ['==', ['get', 'congestion'], 'low'],
-                  '#4CAF50',
-                  ['==', ['get', 'congestion'], 'moderate'],
-                  '#FF9800',
-                  ['==', ['get', 'congestion'], 'heavy'],
-                  '#F44336',
-                  ['==', ['get', 'congestion'], 'severe'],
-                  '#9C27B0',
-                  '#888888',
-                ],
+          // Buscar la primera capa de etiquetas
+          const layers = map.value.getStyle().layers
+          let labelLayerId
+          for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+              labelLayerId = layers[i].id
+              break
+            }
+          }
+
+          // Insertar tráfico antes de las etiquetas
+          if (!map.value.getLayer('traffic')) {
+            map.value.addLayer(
+              {
+                id: 'traffic',
+                type: 'line',
+                source: 'mapbox-traffic',
+                'source-layer': 'traffic',
+                paint: {
+                  'line-width': [
+                    'interpolate',
+                    ['exponential', 1.5],
+                    ['zoom'],
+                    10,
+                    1,
+                    13,
+                    2,
+                    15,
+                    3,
+                    18,
+                    6,
+                    20,
+                    10,
+                  ],
+                  'line-color': [
+                    'case',
+                    ['==', ['get', 'congestion'], 'low'],
+                    '#4CAF50',
+                    ['==', ['get', 'congestion'], 'moderate'],
+                    '#FF9800',
+                    ['==', ['get', 'congestion'], 'heavy'],
+                    '#F44336',
+                    ['==', ['get', 'congestion'], 'severe'],
+                    '#9C27B0',
+                    '#888888',
+                  ],
+                },
+                layout: {
+                  visibility: traficoVisible ? 'visible' : 'none', // ✅ Restaurar estado
+                },
               },
-              layout: {
-                visibility: 'none',
-              },
-            },
-            labelLayerId,
-          )
+              labelLayerId,
+            )
+          }
+        } catch (error) {
+          console.warn('⚠️ Error al agregar capa de tráfico:', error)
         }
 
         // 🔄 DISPARAR EVENTO PARA REDIBUJAR CAPAS PERSONALIZADAS
-        window.dispatchEvent(new CustomEvent('redibujarMapa'))
-
-        console.log(`✅ Estilo cambiado a ${nuevoEstilo}`)
+        // Dar tiempo para que el mapa se estabilice
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('restaurarCapasEstilo'))
+        }, 100)
       })
 
       return nuevoEstilo === 'streets'
@@ -1049,13 +1293,22 @@ export function useMapboxGL() {
   // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
+      // 🔥 Limpiar listeners antiguos si el mapa ya existe
       if (map.value) {
+        // Remover TODOS los event listeners antes de destruir
         map.value.remove()
+        map.value = null
       }
 
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      // 🔥 Limpiar flags globales
+      if (window._mapListenersRegistered) {
+        delete window._mapListenersRegistered
+        delete window._mapMoveStartHandler
+        delete window._mapMoveEndHandler
+      }
 
-      console.log('🗺️ Inicializando mapa Mapbox GL OPTIMIZADO v2...')
+      mapboxgl.accessToken =
+        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1100,8 +1353,7 @@ export function useMapboxGL() {
       map.value.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
       // ✅ Cuando el mapa cargue, agregar capa de tráfico
-      map.value.on('load', () => {
-        console.log('✅ Mapa Mapbox GL cargado correctamente')
+      map.value.on('load', async () => {
         map.value.scrollZoom.setWheelZoomRate(1 / 150)
         map.value.scrollZoom.setZoomRate(1 / 100)
 
@@ -1111,12 +1363,33 @@ export function useMapboxGL() {
           maxSpeed: 1800,
           deceleration: 2200,
         })
+        await cargarIconosMapa(map.value)
+
         map.value.on('styleimagemissing', (e) => {
           const id = e.id
+
+          // Crear imagen válida de 64x64 píxeles (tamaño estándar de Mapbox)
+          const size = 64
           const canvas = document.createElement('canvas')
-          canvas.width = 1
-          canvas.height = 1
-          map.value.addImage(id, canvas)
+          canvas.width = size
+          canvas.height = size
+          const context = canvas.getContext('2d')
+
+          // Crear imagen transparente válida
+          const imageData = context.createImageData(size, size)
+
+          // Verificar que la imagen no exista antes de agregarla
+          if (!map.value.hasImage(id)) {
+            try {
+              map.value.addImage(id, {
+                width: size,
+                height: size,
+                data: imageData.data,
+              })
+            } catch (error) {
+              console.warn(`⚠️ No se pudo agregar imagen placeholder para: ${id}`, error)
+            }
+          }
         })
 
         // Agregar fuente de tráfico
@@ -1177,8 +1450,6 @@ export function useMapboxGL() {
           },
           labelLayerId,
         )
-
-        console.log('🚦 Capa de tráfico agregada (desactivada por defecto)')
       })
 
       map.value.on('movestart', () => {
@@ -1196,18 +1467,31 @@ export function useMapboxGL() {
           }
         })
 
-        console.log('🤚 Pan iniciado')
+        // 🎯 Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        const layersToHide = [
+          'pois-combined',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (map.value.getLayer(layerId)) {
+            map.value.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
 
-        // 🆕 REDUCIDO DE 150ms A 50ms
         PanTimeout = setTimeout(() => {
           isPanning = false
+
           if (map.value.getCanvas()) {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
+
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
             if (el) {
@@ -1215,17 +1499,30 @@ export function useMapboxGL() {
             }
           })
 
+          // 🎯 Mostrar layers combinados de nuevo
+          const layersToShow = [
+            'pois-combined',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (map.value.getLayer(layerId)) {
+              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
+
           if (pendingUnidades) {
-            console.log('🔄 Actualizando marcadores después del pan')
             procesarActualizacionMarcadores(pendingUnidades)
           }
+
           if (map.value) {
             requestAnimationFrame(() => {
               map.value.triggerRepaint()
             })
           }
-          console.log('✅ Pan completado')
-        }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
+        }, 50)
       })
 
       let zoomTimeout
@@ -1261,6 +1558,42 @@ export function useMapboxGL() {
         }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
       })
 
+      window.addEventListener('filtrar-unidades-mapa', (event) => {
+        const { idsUnidades } = event.detail
+
+        console.log(
+          '🗺️ Filtrando marcadores en mapa:',
+          idsUnidades ? `${idsUnidades.length} unidades` : 'TODAS',
+        )
+
+        // Si idsUnidades es null o undefined, mostrar todos
+        if (!idsUnidades) {
+          Object.values(marcadoresUnidades.value).forEach((marcador) => {
+            if (marcador && marcador.getElement) {
+              marcador.getElement().style.display = 'block'
+            }
+          })
+          console.log('✅ Mostrando todos los marcadores')
+          return
+        }
+
+        // Filtrar: mostrar solo los que están en idsUnidades
+        Object.entries(marcadoresUnidades.value).forEach(([key, marcador]) => {
+          if (!marcador || !marcador.getElement) return
+
+          // El key puede ser el unidadId directamente
+          const unidadId = key.replace('unidad_', '') // Por si tiene prefijo
+
+          if (idsUnidades.includes(unidadId) || idsUnidades.includes(key)) {
+            marcador.getElement().style.display = 'block' // Mostrar
+          } else {
+            marcador.getElement().style.display = 'none' // Ocultar
+          }
+        })
+
+        console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
+      })
+
       map.value.on('error', (e) => {
         console.error('❌ Error en Mapbox GL:', e)
       })
@@ -1271,7 +1604,6 @@ export function useMapboxGL() {
         resize: () => {
           if (map.value && map.value.resize) {
             map.value.resize()
-            console.log('🔄 Mapa redimensionado')
           }
         },
         setPuntosSeleccionados,
@@ -1286,17 +1618,17 @@ export function useMapboxGL() {
           }
         },
         actualizarMarcador: (_lat, _lng, nombre) => {
-          console.log(`🔄 Actualizando marcador: ${nombre}`)
+          console.log(`Actualizando marcador: ${nombre}`)
         },
         eliminarMarcadorPorCoordenadas: (lat, lng) => {
-          console.log(`🗑️ Eliminando marcador en: ${lat}, ${lng}`)
+          console.log(`Eliminando marcador en: ${lat}, ${lng}`)
         },
         activarModoSeleccionGeozonaCircular,
         limpiarCirculoTemporal,
         confirmarCirculoTemporal,
         actualizarCirculo,
         eliminarCirculo: (id) => {
-          console.log(`🗑️ Eliminando círculo con ID: ${id}`)
+          console.log(`Eliminando círculo con ID: ${id}`)
         },
         activarModoSeleccionGeozonaPoligonal,
         getPuntosSeleccionados: () => puntosPoligono.value,
@@ -1306,8 +1638,9 @@ export function useMapboxGL() {
         confirmarPoligonoTemporal,
         actualizarPoligono,
         actualizarPoligonoTemporal,
+        actualizarColorPoligonoTemporal,
         eliminarPoligono: (id) => {
-          console.log(`🗑️ Eliminando polígono con ID: ${id}`)
+          console.log(`Eliminando polígono con ID: ${id}`)
         },
         crearCirculoTemporalPOI,
         actualizarRadioCirculoTemporal,
@@ -1321,16 +1654,16 @@ export function useMapboxGL() {
 
           if (visibility === 'visible') {
             map.value.setLayoutProperty('traffic', 'visibility', 'none')
-            console.log('🚫 Tráfico desactivado')
+
             return false
           } else {
             map.value.setLayoutProperty('traffic', 'visibility', 'visible')
-            console.log('✅ Tráfico activado')
+
             return true
           }
         },
-        cambiarEstiloMapa, // ✅ NUEVA FUNCIÓN
-        getEstiloActual: () => estiloActual.value, // ✅ GETTER
+        cambiarEstiloMapa,
+        getEstiloActual: () => estiloActual.value,
         actualizarMarcadoresUnidades,
         limpiarMarcadoresUnidades,
         centrarEnUnidad,
@@ -1341,11 +1674,8 @@ export function useMapboxGL() {
       const mapPage = document.getElementById('map-page')
       if (mapPage) {
         mapPage._mapaAPI = mapaAPI
-        console.log('✅ _mapaAPI expuesto en map-page')
       }
 
-      console.log('✅ Mapa Mapbox GL inicializado con OPTIMIZACIONES v2')
-      console.log('⚡ Throttle: 250ms | requestAnimationFrame: ✅ | Popups optimizados: ✅')
       return map.value
     } catch (error) {
       console.error('❌ Error crítico inicializando mapa:', error)
@@ -1385,14 +1715,18 @@ export function useMapboxGL() {
     if (puntos.length >= 2) {
       actualizarPoligonoTemporal(puntos)
     }
-
-    console.log(`✅ ${puntos.length} puntos restaurados`)
   }
 
   const cleanup = () => {
     limpiarMarcadoresUnidades()
     ultimasPosiciones.clear()
     cerrarPopupGlobal()
+
+    // 🆕 AGREGAR ESTA LÍNEA
+    if (clickHandlerPoligonal && map.value) {
+      map.value.off('click', clickHandlerPoligonal)
+      clickHandlerPoligonal = null
+    }
 
     if (map.value) {
       map.value.remove()
@@ -1409,7 +1743,6 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     pendingUnidades = null
     pendingUpdate = false
-    console.log('🧹 Mapa limpiado completamente')
   }
 
   const toggleTrafico = () => {
@@ -1428,11 +1761,11 @@ export function useMapboxGL() {
 
       if (visibility === 'visible') {
         map.value.setLayoutProperty('traffic', 'visibility', 'none')
-        console.log('🚫 Tráfico desactivado')
+
         return false
       } else {
         map.value.setLayoutProperty('traffic', 'visibility', 'visible')
-        console.log('✅ Tráfico activado')
+
         return true
       }
     } catch (error) {
@@ -1451,6 +1784,22 @@ export function useMapboxGL() {
     g = Math.floor(g * (1 - porcentaje / 100))
     b = Math.floor(b * (1 - porcentaje / 100))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  const eliminarMarcadorUnidad = (unidadId) => {
+    if (!map.value) {
+      console.warn('⚠️ Mapa no disponible')
+      return
+    }
+
+    if (marcadoresUnidades.value[unidadId]) {
+      // Eliminar el marcador del mapa
+      marcadoresUnidades.value[unidadId].remove()
+
+      // Eliminar de la cache
+      delete marcadoresUnidades.value[unidadId]
+      ultimasPosiciones.delete(unidadId)
+    }
   }
 
   return {
@@ -1480,22 +1829,22 @@ export function useMapboxGL() {
     limpiarMarcadorTemporal,
     confirmarMarcadorTemporal: (nombre) => {
       if (ubicacionSeleccionada.value) {
-        console.log(`✅ Marcador confirmado: ${nombre}`)
+        console.log(`Marcador confirmado: ${nombre}`)
         limpiarMarcadorTemporal()
       }
     },
     actualizarMarcador: (_lat, _lng, nombre) => {
-      console.log(`🔄 Actualizando marcador: ${nombre}`)
+      console.log(`Actualizando marcador: ${nombre}`)
     },
     eliminarMarcadorPorCoordenadas: (lat, lng) => {
-      console.log(`🗑️ Eliminando marcador en: ${lat}, ${lng}`)
+      console.log(`Eliminando marcador en: ${lat}, ${lng}`)
     },
     activarModoSeleccionGeozonaCircular,
     limpiarCirculoTemporal,
     confirmarCirculoTemporal,
     actualizarCirculo,
     eliminarCirculo: (id) => {
-      console.log(`🗑️ Eliminando círculo con ID: ${id}`)
+      console.log(`Eliminando círculo con ID: ${id}`)
     },
     activarModoSeleccionGeozonaPoligonal,
     getPuntosSeleccionados: () => puntosPoligono.value,
@@ -1506,7 +1855,7 @@ export function useMapboxGL() {
     actualizarPoligono,
     actualizarPoligonoTemporal,
     eliminarPoligono: (id) => {
-      console.log(`🗑️ Eliminando polígono con ID: ${id}`)
+      console.log(`Eliminando polígono con ID: ${id}`)
     },
     crearCirculoTemporalPOI,
     actualizarRadioCirculoTemporal,
@@ -1514,11 +1863,12 @@ export function useMapboxGL() {
     confirmarMarcadorConCirculo,
     actualizarMarcadorConCirculo,
     toggleTrafico,
-    cambiarEstiloMapa, // ✅ EXPORTAR NUEVA FUNCIÓN
-    getEstiloActual: () => estiloActual.value, // ✅ EXPORTAR GETTER
+    cambiarEstiloMapa,
+    getEstiloActual: () => estiloActual.value,
     actualizarMarcadoresUnidades,
     limpiarMarcadoresUnidades,
     centrarEnUnidad,
     setPuntosSeleccionados,
+    eliminarMarcadorUnidad,
   }
 }

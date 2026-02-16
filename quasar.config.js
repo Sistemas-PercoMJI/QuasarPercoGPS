@@ -14,7 +14,7 @@ export default defineConfig((/* ctx */) => {
     boot: ['axios'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
-    css: ['app.scss'],
+    css: ['app.scss', 'tutorial.css'],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
@@ -91,7 +91,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Notify'],
+      plugins: ['Notify', 'Dialog'], // ✅ AGREGAR 'Dialog' aquí
     },
 
     // animations: 'all', // --- includes all animations

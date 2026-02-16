@@ -181,12 +181,6 @@ export function useReportesHorasTrabajo() {
     error.value = null
 
     try {
-      console.log('⏰ Calculando horas de trabajo...')
-      console.log('📦 Unidades:', unidadesIds)
-      console.log('📅 Desde:', fechaInicio.toLocaleDateString())
-      console.log('📅 Hasta:', fechaFin.toLocaleDateString())
-      console.log('⚙️ Opciones:', opciones)
-
       // Configuración de horario laboral
       const {
         diasLaborables = [1, 2, 3, 4, 5], // Lunes a Viernes por defecto
@@ -198,10 +192,7 @@ export function useReportesHorasTrabajo() {
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
       trayectos = await enriquecerConDatosUnidades(trayectos)
 
-      console.log(`✅ ${trayectos.length} trayectos procesados para calcular horas`)
-
       if (trayectos.length === 0) {
-        console.log('⚠️ No hay trayectos para calcular horas')
         return []
       }
 
@@ -213,27 +204,23 @@ export function useReportesHorasTrabajo() {
         let coordenadas = trayecto.coordenadas || []
 
         if (coordenadas.length === 0 && trayecto._raw?.rutas_url) {
-          console.log(
-            `📥 Descargando coordenadas para ${trayecto.unidadNombre} - ${trayecto.fecha}`,
-          )
           try {
             coordenadas = await obtenerCoordenadasDesdeStorage(trayecto._raw.rutas_url)
           } catch (err) {
-            console.error('❌ Error descargando coordenadas:', err)
+            console.error('Error descargando coordenadas:', err)
           }
         }
 
         if (coordenadas.length === 0) {
-          console.warn(`⚠️ Sin coordenadas para ${trayecto.unidadNombre} - ${trayecto.fecha}`)
+          console.warn(`Sin coordenadas para ${trayecto.unidadNombre} - ${trayecto.fecha}`)
           continue
         }
 
         // 🔥 DETECTAR VIAJES POR IGNICIÓN
         const viajes = detectarViajesPorIgnicion(coordenadas)
-        console.log(`   🚗 ${viajes.length} viajes detectados para ${trayecto.unidadNombre}`)
 
         if (viajes.length === 0) {
-          console.warn(`   ⚠️ No se detectaron viajes`)
+          console.warn(`No se detectaron viajes`)
           continue
         }
 
@@ -301,7 +288,7 @@ export function useReportesHorasTrabajo() {
           idUnidad: trayecto.idUnidad,
           conductorNombre: trayecto.conductorNombre || 'Sin conductor',
           unidadNombre: trayecto.unidadNombre,
-          unidadPlaca: trayecto.unidadPlaca || 'N/A',
+          Placa: trayecto.Placa || trayecto.placa || trayecto.unidadPlaca || 'Sin placa',
           horaInicioTrabajo: new Date(primeraCoordenada.timestamp).toLocaleString('es-MX', {
             hour: '2-digit',
             minute: '2-digit',
@@ -325,11 +312,9 @@ export function useReportesHorasTrabajo() {
         })
       }
 
-      console.log(`✅ ${registrosPorDia.length} registros de horas calculados`)
-
       return registrosPorDia
     } catch (err) {
-      console.error('❌ Error al calcular horas:', err)
+      console.error('Error al calcular horas:', err)
       error.value = err.message
       throw err
     } finally {

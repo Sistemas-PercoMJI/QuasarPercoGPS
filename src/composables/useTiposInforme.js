@@ -136,7 +136,6 @@ export function useTiposInforme() {
   }
   const cambiarTipoInforme = (nuevoTipo) => {
     tipoInformeSeleccionado.value = nuevoTipo
-    console.log('📊 Tipo de informe cambiado a:', nuevoTipo)
 
     // 🔥 AGREGAR: Cambiar columnas también
     if (instanciaColumnas && instanciaColumnas.cambiarTipoInforme) {

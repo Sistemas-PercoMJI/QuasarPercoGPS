@@ -81,7 +81,6 @@ export function useEventoDiario() {
 
       await setDoc(eventoRef, nuevoEvento)
 
-      console.log(`✅ Evento diario registrado: ${idEvento} - ${nuevoEvento.NombreEvento}`)
       return { id: idEvento, ...nuevoEvento }
     } catch (err) {
       error.value = err.message
@@ -119,8 +118,6 @@ export function useEventoDiario() {
           lng: coordenadasSalida.lng || 0,
         },
       })
-
-      console.log(`✅ Evento finalizado: ${idEvento}`)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al finalizar evento:', err)
@@ -138,13 +135,6 @@ export function useEventoDiario() {
     error.value = null
 
     try {
-      console.log('🔍 actualizarDuracionEvento llamado con:', {
-        unidadId,
-        idRutaDiaria,
-        idEvento,
-        duracionMinutos,
-        tipo: typeof duracionMinutos,
-      })
       const eventoRef = doc(
         db,
         'Unidades',
@@ -154,13 +144,10 @@ export function useEventoDiario() {
         'EventoDiario',
         idEvento,
       )
-      console.log('🔍 Path del documento:', eventoRef.path)
 
       await updateDoc(eventoRef, {
         DuracionDentro: duracionMinutos,
       })
-
-      console.log(`✅ Duración actualizada para evento: ${idEvento} - ${duracionMinutos} min`)
     } catch (err) {
       error.value = err.message
       console.error('❌ Error al actualizar duración:', err)
@@ -200,7 +187,6 @@ export function useEventoDiario() {
         ...doc.data(),
       }))
 
-      console.log(`✅ Eventos diarios cargados: ${eventos.length}`)
       return eventos
     } catch (err) {
       error.value = err.message
@@ -241,7 +227,6 @@ export function useEventoDiario() {
         ...doc.data(),
       }))
 
-      console.log(`✅ Eventos de tipo "${tipoEvento}" cargados: ${eventos.length}`)
       return eventos
     } catch (err) {
       error.value = err.message
