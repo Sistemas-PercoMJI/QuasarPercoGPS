@@ -1558,6 +1558,42 @@ export function useMapboxGL() {
         }, 50) // 🆕 CAMBIADO DE 150ms A 50ms
       })
 
+      window.addEventListener('filtrar-unidades-mapa', (event) => {
+        const { idsUnidades } = event.detail
+
+        console.log(
+          '🗺️ Filtrando marcadores en mapa:',
+          idsUnidades ? `${idsUnidades.length} unidades` : 'TODAS',
+        )
+
+        // Si idsUnidades es null o undefined, mostrar todos
+        if (!idsUnidades) {
+          Object.values(marcadoresUnidades.value).forEach((marcador) => {
+            if (marcador && marcador.getElement) {
+              marcador.getElement().style.display = 'block'
+            }
+          })
+          console.log('✅ Mostrando todos los marcadores')
+          return
+        }
+
+        // Filtrar: mostrar solo los que están en idsUnidades
+        Object.entries(marcadoresUnidades.value).forEach(([key, marcador]) => {
+          if (!marcador || !marcador.getElement) return
+
+          // El key puede ser el unidadId directamente
+          const unidadId = key.replace('unidad_', '') // Por si tiene prefijo
+
+          if (idsUnidades.includes(unidadId) || idsUnidades.includes(key)) {
+            marcador.getElement().style.display = 'block' // Mostrar
+          } else {
+            marcador.getElement().style.display = 'none' // Ocultar
+          }
+        })
+
+        console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
+      })
+
       map.value.on('error', (e) => {
         console.error('❌ Error en Mapbox GL:', e)
       })

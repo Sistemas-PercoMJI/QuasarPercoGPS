@@ -1,7 +1,7 @@
 // src/composables/useMultiTenancy.js - VERSIÓN SIMPLIFICADA (SOLO FILTRADO)
 import { ref, computed } from 'vue'
 import { auth, db } from 'src/firebase/firebaseConfig'
-import { doc, getDoc, collection, query, where } from 'firebase/firestore'
+import { doc, collection, query, where } from 'firebase/firestore'
 
 // Estado global compartido
 const usuarioActual = ref(null)
@@ -19,6 +19,9 @@ export function useMultiTenancy() {
   /**
    * Cargar datos del usuario actual desde Firestore
    */
+  /**
+   * Cargar datos del usuario actual desde Firestore Y escuchar cambios
+   */
   const cargarUsuarioActual = async () => {
     cargandoUsuario.value = true
     try {
@@ -31,31 +34,45 @@ export function useMultiTenancy() {
       }
 
       const userDocRef = doc(db, 'Usuarios', userId)
-      const userSnap = await getDoc(userDocRef)
 
-      if (userSnap.exists()) {
-        const userData = { id: userSnap.id, ...userSnap.data() }
-        usuarioActual.value = userData
-        idEmpresaActual.value = userData.IdEmpresaUsuario || null
+      // 🆕 LISTENER: Escuchar cambios en tiempo real
+      const { onSnapshot } = await import('firebase/firestore')
 
-        // 🔥 CAMBIADO: Usar "Usuario" en lugar de "Nombre"
-        console.log('✅ Usuario cargado:', userData.Usuario)
-        console.log('🏢 Empresa:', idEmpresaActual.value)
+      onSnapshot(
+        userDocRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const userData = { id: snapshot.id, ...snapshot.data() }
+            usuarioActual.value = userData
+            idEmpresaActual.value = userData.IdEmpresaUsuario || null
 
-        return userData
-      } else {
-        console.error('❌ Usuario no encontrado en Firestore')
-        usuarioActual.value = null
-        idEmpresaActual.value = null
-        return null
-      }
+            console.log('✅ Usuario actualizado:', userData.Usuario)
+            console.log('🏢 Empresa(s):', idEmpresaActual.value)
+
+            // 🆕 Emitir evento global cuando cambia la empresa
+            window.dispatchEvent(
+              new CustomEvent('empresa-cambiada', {
+                detail: { empresas: idEmpresaActual.value },
+              }),
+            )
+          } else {
+            console.error('❌ Usuario no encontrado en Firestore')
+            usuarioActual.value = null
+            idEmpresaActual.value = null
+          }
+          cargandoUsuario.value = false
+        },
+        (error) => {
+          console.error('❌ Error escuchando usuario:', error)
+          cargandoUsuario.value = false
+        },
+      )
     } catch (error) {
       console.error('❌ Error cargando usuario:', error)
       usuarioActual.value = null
       idEmpresaActual.value = null
-      throw error
-    } finally {
       cargandoUsuario.value = false
+      throw error
     }
   }
 
