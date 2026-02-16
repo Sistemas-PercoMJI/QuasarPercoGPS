@@ -9,6 +9,7 @@ console.warn = function (...args) {
 
   // Lista de warnings que queremos ignorar
   const ignoredWarnings = [
+    //ola
     'Image "',
     'could not be loaded',
     'Cannot mix SDF and non-SDF icons',
