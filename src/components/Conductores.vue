@@ -169,7 +169,7 @@
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">
-                {{ conductor.esPseudoConductor ? '🚗 Sin conductor' : conductor.Telefono }}
+                {{ conductor.esPseudoConductor ? 'Sin conductor' : conductor.Telefono }}
               </div>
             </div>
           </q-card-section>
@@ -288,6 +288,16 @@
                         @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
                         class="field-input"
                       />
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="business" size="20px" />
+                        Empresa
+                      </div>
+                      <div class="field-value-readonly">
+                        {{ conductorEditando.IdEmpresaConductor || 'Sin asignar' }}
+                      </div>
                     </div>
                   </div>
                 </q-card-section>
@@ -1564,24 +1574,19 @@ const esPlacasVigente = computed(() => {
 
 // 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  // 🔥 Si el filtro NO está activo, retornar null para mostrar TODAS
+  // 🔥 Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
-    console.log('🗺️ Filtro desactivado → mostrando TODAS las unidades')
-    return null
+    console.log('🗺️ Filtro desactivado → NO mostrar unidades')
+    return [] // ← Cambiar de null a []
   }
 
-  // Si no hay grupo seleccionado, mostrar todas
-  if (!grupoSeleccionado.value) {
-    return null
-  }
-
-  // Grupo "TODOS" = desactivar filtro (mostrar todas)
+  // 🔥 SOLO si es el grupo "TODOS" mostrar todas las unidades
   if (grupoSeleccionado.value === '__todos__') {
     console.log('🗺️ Grupo "TODOS" → mostrando TODAS las unidades')
-    return null
+    return null // null = mostrar todas
   }
 
-  // Grupo normal = mostrar unidades de conductores del grupo
+  // Para cualquier otro grupo = filtrado estricto
   const conductoresDelGrupo = conductoresFiltrados.value
   const idsUnidades = conductoresDelGrupo
     .filter((c) => c.UnidadAsignada)
@@ -1644,9 +1649,9 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
 
-  // 🔥 Si es "TODOS", desactivar filtro
+  // 🔥 Si es "TODOS", desactivar filtro para mostrar TODAS
   if (grupo.id === '__todos__') {
-    filtroMapaActivo.value = false
+    filtroMapaActivo.value = true // ← Cambiar a true
 
     Notify.create({
       type: 'info',
@@ -2753,7 +2758,7 @@ watch(
   (nuevosIds) => {
     console.log(
       '🗺️ idsUnidadesVisibles cambió:',
-      nuevosIds ? `${nuevosIds.length} IDs` : 'NULL (todas)',
+      nuevosIds === null ? 'TODAS' : nuevosIds.length === 0 ? 'NINGUNA' : `${nuevosIds.length} IDs`,
     )
 
     // Emitir evento para que el mapa se actualice
@@ -2764,7 +2769,7 @@ watch(
     )
   },
   { immediate: true },
-) // 🔥 immediate: true para ejecutar al cargar
+)
 
 // 🆕 Watch: Guardar grupo seleccionado en localStorage
 watch(grupoSeleccionado, (nuevoGrupo) => {
@@ -3264,6 +3269,19 @@ function navegarAUnidad() {
 
 .bg-gradient {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
+}
+
+.field-value-readonly {
+  padding: 10px 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #212121;
+  font-weight: 500;
 }
 
 /* ============================================ */

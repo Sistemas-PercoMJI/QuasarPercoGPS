@@ -46,6 +46,7 @@ let isZooming = false
 let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
+let idsUnidadesFiltradas = null
 
 // 🗺️ SISTEMA DE ESTILOS DE MAPA
 const estiloActual = ref('satellite') // 'satellite' o 'streets'
@@ -419,6 +420,17 @@ export function useMapboxGL() {
 
     const idsActuales = new Set()
 
+    const debeEstarVisible = (unidadId) => {
+      if (idsUnidadesFiltradas === null) return true
+      if (Array.isArray(idsUnidadesFiltradas) && idsUnidadesFiltradas.length === 0) return false
+
+      const unidadIdLimpio = String(unidadId).replace('unidad_', '')
+      return (
+        idsUnidadesFiltradas.includes(unidadIdLimpio) ||
+        idsUnidadesFiltradas.includes(String(unidadId))
+      )
+    }
+
     unidades.forEach((unidad) => {
       if (
         !unidad.ubicacion ||
@@ -462,8 +474,15 @@ export function useMapboxGL() {
               registrarPopupActivo(popup)
             })
 
+            const element = crearIconoUnidad(unidad.estado)
+
+            // 🔥 APLICAR FILTRO AL CREAR
+            if (!debeEstarVisible(unidadId)) {
+              element.style.display = 'none'
+            }
+
             const marker = new mapboxgl.Marker({
-              element: crearIconoUnidad(unidad.estado),
+              element: element,
               anchor: 'center',
             })
               .setLngLat([lng, lat])
@@ -511,8 +530,15 @@ export function useMapboxGL() {
           registrarPopupActivo(popup)
         })
 
+        const element = crearIconoUnidad(unidad.estado)
+
+        // 🔥 APLICAR FILTRO AL CREAR
+        if (!debeEstarVisible(unidadId)) {
+          element.style.display = 'none'
+        }
+
         const marker = new mapboxgl.Marker({
-          element: crearIconoUnidad(unidad.estado),
+          element: element,
           anchor: 'center',
         })
           .setLngLat([lng, lat])
@@ -1561,33 +1587,50 @@ export function useMapboxGL() {
       window.addEventListener('filtrar-unidades-mapa', (event) => {
         const { idsUnidades } = event.detail
 
+        // 🔥 GUARDAR EN VARIABLE GLOBAL
+        idsUnidadesFiltradas = idsUnidades
+
         console.log(
-          '🗺️ Filtrando marcadores en mapa:',
-          idsUnidades ? `${idsUnidades.length} unidades` : 'TODAS',
+          '🗺️ Filtrando marcadores:',
+          idsUnidades === null
+            ? 'TODAS'
+            : Array.isArray(idsUnidades) && idsUnidades.length === 0
+              ? 'NINGUNA'
+              : `${idsUnidades.length} unidades`,
         )
 
-        // Si idsUnidades es null o undefined, mostrar todos
-        if (!idsUnidades) {
+        // 🔥 Si es null = mostrar TODAS
+        if (idsUnidades === null) {
           Object.values(marcadoresUnidades.value).forEach((marcador) => {
             if (marcador && marcador.getElement) {
               marcador.getElement().style.display = 'block'
             }
           })
-          console.log('✅ Mostrando todos los marcadores')
+          console.log('✅ Mostrando TODOS los marcadores')
           return
         }
 
-        // Filtrar: mostrar solo los que están en idsUnidades
+        // 🔥 Si es array vacío = ocultar TODAS
+        if (Array.isArray(idsUnidades) && idsUnidades.length === 0) {
+          Object.values(marcadoresUnidades.value).forEach((marcador) => {
+            if (marcador && marcador.getElement) {
+              marcador.getElement().style.display = 'none'
+            }
+          })
+          console.log('❌ Ocultando TODOS los marcadores')
+          return
+        }
+
+        // 🔥 Filtrado normal por IDs
         Object.entries(marcadoresUnidades.value).forEach(([key, marcador]) => {
           if (!marcador || !marcador.getElement) return
 
-          // El key puede ser el unidadId directamente
-          const unidadId = key.replace('unidad_', '') // Por si tiene prefijo
+          const unidadId = key.replace('unidad_', '')
 
           if (idsUnidades.includes(unidadId) || idsUnidades.includes(key)) {
-            marcador.getElement().style.display = 'block' // Mostrar
+            marcador.getElement().style.display = 'block'
           } else {
-            marcador.getElement().style.display = 'none' // Ocultar
+            marcador.getElement().style.display = 'none'
           }
         })
 
