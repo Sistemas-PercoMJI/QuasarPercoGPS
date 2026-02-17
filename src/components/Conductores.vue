@@ -95,7 +95,7 @@
             </q-item-label>
           </q-item-section>
 
-          <!-- Menú contextual para grupos -->
+          <!-- Menú contextual para grupos nooooooooooooooooooooonoooooooooooooo-->
           <q-item-section side>
             <q-btn
               flat
@@ -169,7 +169,7 @@
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">
-                {{ conductor.esPseudoConductor ? 'Sin conductor' : conductor.Telefono }}
+                {{ conductor.esPseudoConductor ? 'Sin conductor' : conductor.IdEmpresaConductor }}
               </div>
             </div>
           </q-card-section>
@@ -206,8 +206,6 @@
     <q-inner-loading :showing="loading">
       <q-spinner-gears size="50px" color="primary" />
     </q-inner-loading>
-
-    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada) -->
 
     <!-- Dialog: Detalles del Conductor (Interfaz Mejorada COMPLETA) -->
     <q-dialog
@@ -1126,8 +1124,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Menú contextual para grupos -->
-
     <!-- Menú contextual para conductores -->
     <q-menu
       v-model="menuConductorVisible"
@@ -1572,17 +1568,17 @@ const esPlacasVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
-// 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
+// Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  // 🔥 Si el filtro NO está activo, NO mostrar nada
+  // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
-    console.log('🗺️ Filtro desactivado → NO mostrar unidades')
+    console.log('Filtro desactivado → NO mostrar unidades')
     return [] // ← Cambiar de null a []
   }
 
-  // 🔥 SOLO si es el grupo "TODOS" mostrar todas las unidades
+  // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
   if (grupoSeleccionado.value === '__todos__') {
-    console.log('🗺️ Grupo "TODOS" → mostrando TODAS las unidades')
+    console.log('Grupo "TODOS" → mostrando TODAS las unidades')
     return null // null = mostrar todas
   }
 
@@ -1724,8 +1720,6 @@ async function actualizarCampo(campo, valor) {
 
   try {
     console.log(`📝 Actualizando campo: ${campo} = ${valor}`)
-
-    // 🔥 CASO ESPECIAL: Si está cambiando la empresa del conductor
     if (campo === 'IdEmpresaConductor') {
       const empresaAnterior = conductorEditando.value.IdEmpresaConductor
       const empresaNueva = valor
@@ -1771,10 +1765,10 @@ async function actualizarCampo(campo, valor) {
             // Continuar de todos modos para actualizar el conductor
           }
         } else {
-          console.log('ℹ️ No tiene unidad asignada')
+          console.log('ℹNo tiene unidad asignada')
         }
       } else {
-        console.log('ℹ️ No hubo cambio de empresa')
+        console.log('ℹNo hubo cambio de empresa')
       }
     }
 
