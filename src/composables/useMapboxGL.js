@@ -302,9 +302,6 @@ export function useMapboxGL() {
     el.className = 'custom-marker-unidad'
     el.style.width = '36px'
     el.style.height = '36px'
-
-    // ✅ SIN addEventListener aquí
-
     el.innerHTML = `
     <div class="icono-unidad-hover" style="
       width: 36px;
@@ -474,22 +471,7 @@ export function useMapboxGL() {
             }).setHTML(crearPopupUnidad(unidad))
 
             popup.on('open', () => {
-              // Cerrar popup global de POI/Geozona
-              if (window.popupGlobalActivo) {
-                window.popupGlobalActivo.remove()
-                window.popupGlobalActivo = null
-              }
               registrarPopupActivo(popup)
-
-              // 🔥 AGREGAR: Detener propagación en el siguiente frame
-              setTimeout(() => {
-                const popupElement = popup.getElement()
-                if (popupElement) {
-                  popupElement.addEventListener('click', (e) => {
-                    e.stopPropagation()
-                  })
-                }
-              }, 0)
             })
 
             const element = crearIconoUnidad(unidad.estado)
@@ -545,22 +527,7 @@ export function useMapboxGL() {
         }).setHTML(crearPopupUnidad(unidad))
 
         popup.on('open', () => {
-          // Cerrar popup global de POI/Geozona
-          if (window.popupGlobalActivo) {
-            window.popupGlobalActivo.remove()
-            window.popupGlobalActivo = null
-          }
           registrarPopupActivo(popup)
-
-          // 🔥 AGREGAR: Detener propagación en el siguiente frame
-          setTimeout(() => {
-            const popupElement = popup.getElement()
-            if (popupElement) {
-              popupElement.addEventListener('click', (e) => {
-                e.stopPropagation()
-              })
-            }
-          }, 0)
         })
 
         const element = crearIconoUnidad(unidad.estado)
