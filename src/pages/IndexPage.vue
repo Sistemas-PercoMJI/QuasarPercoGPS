@@ -912,10 +912,23 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           'icon-ignore-placement': false,
         },
       })
+
       mapaAPI.map.on('click', sourceId, (e) => {
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
+        }
+
+        // 🔥 AGREGAR: Verificar si el click fue en un marcador de unidad
+        const clickEnUnidad = e.originalEvent.target.closest('.custom-marker-unidad')
+        if (clickEnUnidad) {
+          return // No hacer nada si el click fue en una unidad
+        }
+
+        // Cerrar popup global de POI/Geozona
+        if (window.popupGlobalActivo) {
+          window.popupGlobalActivo.remove()
+          window.popupGlobalActivo = null
         }
 
         const feature = e.features[0]
@@ -1100,6 +1113,18 @@ const dibujarPOIsCombinados = async (pois) => {
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
+        }
+
+        // 🔥 AGREGAR: Verificar si el click fue en un marcador de unidad
+        const clickEnUnidad = e.originalEvent.target.closest('.custom-marker-unidad')
+        if (clickEnUnidad) {
+          return // No hacer nada si el click fue en una unidad
+        }
+
+        // Cerrar popup global de POI/Geozona
+        if (window.popupGlobalActivo) {
+          window.popupGlobalActivo.remove()
+          window.popupGlobalActivo = null
         }
 
         const feature = e.features[0]
@@ -3192,6 +3217,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 :deep(.custom-marker-unidad) {
   will-change: transform;
   transform: translateZ(0);
+}
+
+/* Los iconos de POI y Geozonas deben estar por debajo */
+:deep(.mapboxgl-marker:not(.custom-marker-unidad)) {
+  z-index: 100 !important;
 }
 
 .floating-confirm-btn {
