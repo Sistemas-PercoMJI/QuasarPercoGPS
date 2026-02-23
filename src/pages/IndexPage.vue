@@ -342,7 +342,7 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
-import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
+//import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
@@ -365,7 +365,7 @@ const {
 const geozonasDibujadas = ref(new Set())
 const poisDibujados = ref(new Set())
 
-const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
+const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
 const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
@@ -389,7 +389,7 @@ const poisCargados = ref([])
 const geozonasCargadas = ref([])
 
 const $q = useQuasar()
-const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
+//const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
 
 const { obtenerCentroGeozona } = useGeozonaUtils()
 const { obtenerDireccion } = useGeocoding() // 🔥 Agregar esta línea
@@ -405,8 +405,8 @@ const {
 
 const { estadoCompartido } = useEventBus()
 
-const simuladorActivo = ref(false)
-let simuladorYaIniciado = false
+//const simuladorActivo = ref(false)
+//let simuladorYaIniciado = false
 
 let watchId = null
 let mapaAPI = null
@@ -468,7 +468,7 @@ function detenerEvaluacionEventos() {
   }
 }
 
-const iniciarSimuladorAutomatico = async () => {
+/*const iniciarSimuladorAutomatico = async () => {
   if (simuladorYaIniciado || simulacionActiva.value) {
     return
   }
@@ -523,7 +523,7 @@ const iniciarSimuladorAutomatico = async () => {
       timeout: 3000,
     })
   }
-}
+}*/
 
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
@@ -1923,6 +1923,13 @@ onMounted(async () => {
   await cargarUsuarioActual()
 
   try {
+    await obtenerUnidades()
+    console.log(`✅ ${unidades.value.length} unidades cargadas`)
+  } catch (error) {
+    console.error('❌ Error al cargar unidades:', error)
+  }
+
+  try {
     const defaultCoords = [32.504421823945805, -116.9514484543167]
     const defaultZoom = 13
 
@@ -2058,9 +2065,9 @@ onMounted(async () => {
 
     iniciarTracking()
 
-    setTimeout(async () => {
+    /* setTimeout(async () => {
       await iniciarSimuladorAutomatico()
-    }, 1000)
+    }, 1000)*/
 
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
