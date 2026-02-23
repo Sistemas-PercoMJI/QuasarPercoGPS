@@ -1813,7 +1813,6 @@ window.dibujarRutaTrayecto = dibujarRutaTrayecto
 window.limpiarRuta = limpiarRuta
 
 // 🆕 Función para mostrar popup de geozona con dirección geocodificada
-// 🆕 Función para mostrar popup de geozona con dirección geocodificada
 const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
   // Calcular centroide con dirección
   const centroInfo = await obtenerCentroGeozona(geozona)
