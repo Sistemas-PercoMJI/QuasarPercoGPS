@@ -79,6 +79,43 @@ const COLORES_ESTADO = {
   detenido: '#FF9800', // Naranja
   inactivo: '#607D8B', // Gris azulado
 }
+
+function formatearTiempo(minutos) {
+  if (minutos < 1) {
+    return 'menos de 1 minuto'
+  } else if (minutos < 60) {
+    return `${minutos} minuto${minutos > 1 ? 's' : ''}`
+  } else if (minutos < 1440) {
+    const horas = Math.floor(minutos / 60)
+    return `${horas} hora${horas > 1 ? 's' : ''}`
+  } else {
+    const dias = Math.floor(minutos / 1440)
+    return `${dias} día${dias > 1 ? 's' : ''}`
+  }
+}
+function obtenerColorPorTiempo(unidad) {
+  const TIEMPO_INACTIVIDAD_MAX = 5 * 60 * 1000 // 5 minutos
+  const ahora = Date.now()
+  const ultimaActualizacion = unidad.ultimoPuntoTiempo || unidad.timestamp || 0
+  const tiempoInactivo = ahora - ultimaActualizacion
+
+  // Si lleva más de 5 minutos sin actualizar → GRIS
+  if (tiempoInactivo > TIEMPO_INACTIVIDAD_MAX) {
+    return {
+      color: '#9E9E9E', // Gris
+      esInactivo: true,
+      minutosInactivo: Math.floor(tiempoInactivo / 60000),
+    }
+  }
+
+  // Si es reciente → color según estado
+  return {
+    color: COLORES_ESTADO[unidad.estado] || '#9E9E9E',
+    esInactivo: false,
+    minutosInactivo: 0,
+  }
+}
+
 const agregarBadgeACanvas = (canvas) => {
   const ctx = canvas.getContext('2d')
   const size = 48
@@ -294,9 +331,14 @@ export function useMapboxGL() {
   let marcadorTemporalElement = null
 
   // 🆕 FUNCIONES PARA TRACKING DE UNIDADES GPS
-  const crearIconoUnidad = (estado) => {
-    const color = COLORES_ESTADO[estado] || '#9E9E9E'
-    const colorIndicador = COLORES_ESTADO[estado] || '#9E9E9E'
+  const crearIconoUnidad = (unidad) => {
+    // 🆕 OBTENER COLOR SEGÚN TIEMPO (solo las variables que usamos)
+    const { color, esInactivo } = obtenerColorPorTiempo(unidad)
+    const colorIndicador = color
+
+    // 🆕 DETERMINAR OPACIDAD Y BORDE
+    //const opacity = esInactivo ? 0.5 : 1
+    const borderStyle = esInactivo ? 'dashed' : 'solid'
 
     const el = document.createElement('div')
     el.className = 'custom-marker-unidad'
@@ -307,9 +349,11 @@ export function useMapboxGL() {
       width: 36px;
       height: 36px;
       background-color: ${color};
+
       border: 3px solid white;
+      border-style: ${borderStyle};
       border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,${esInactivo ? '0.2' : '0.4'});
       display: flex;
       align-items: center;
       justify-content: center;
@@ -329,8 +373,32 @@ export function useMapboxGL() {
         background: ${colorIndicador};
         border: 2px solid white;
         border-radius: 50%;
-        ${estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
+        ${!esInactivo && unidad.estado === 'movimiento' ? 'animation: pulse-gps 2s infinite;' : ''}
       "></div>
+      ${
+        esInactivo
+          ? `
+      <div style="
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #FF5722;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid white;
+      ">
+        ⏱
+      </div>
+      `
+          : ''
+      }
     </div>
   `
     return el
@@ -338,6 +406,9 @@ export function useMapboxGL() {
 
   // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
+    // 🆕 DETECTAR INACTIVIDAD (solo las variables que usamos)
+    const { esInactivo, minutosInactivo } = obtenerColorPorTiempo(unidad)
+
     const estadoTexto = {
       movimiento: 'En movimiento',
       detenido: 'Detenido',
@@ -349,16 +420,63 @@ export function useMapboxGL() {
     const popupId = `popup-unidad-${unidadId}`
 
     const popupContent = `
-  <div id="${popupId}" class="unidad-popup-container">
-    <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
+  <div id="${popupId}" class="unidad-popup-container ${esInactivo ? 'unidad-inactiva' : ''}">
+    ${
+      esInactivo
+        ? `
+    <div style="
+      background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    ">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/>
+      </svg>
+      <span>Última ubicación conocida</span>
+    </div>
+    <div style="
+      background: #FFF3E0;
+      color: #E65100;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      border-bottom: 1px solid #FFB74D;
+    ">
+      Sin datos desde hace ${formatearTiempo(minutosInactivo)}
+    </div>
+    `
+        : ''
+    }
+
+        <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
-      <!-- Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
-      <div class="unidad-header-top-row">
-        <div class="unidad-close-placeholder"></div>
-        <div class="unidad-texto">
-          <strong>${unidad.conductorNombre}</strong>
+      <!-- Primera fila: Nombre del conductor + Chevron -->
+      <div class="unidad-header-top-row" style="
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 16px 8px 16px !important;
+      ">
+        <div class="unidad-texto" style="
+          text-align: left !important;
+          flex: 1 !important;
+          margin: 0 !important;
+        ">
+          <strong style="display: block; text-align: left !important;">${unidad.conductorNombre}</strong>
         </div>
-        <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
+        <button class="toggle-popup-btn" data-unidad-id="${unidadId}" style="
+          margin-left: 12px !important;
+          flex-shrink: 0 !important;
+        ">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -371,7 +489,7 @@ export function useMapboxGL() {
           <div class="unidad-placa">${unidad.unidadNombre}</div>
           <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
         </div>
-        <div class="unidad-icon" style="background-color: ${estadoColor[unidad.estado]};">
+        <div class="unidad-icon" style="background-color: ${esInactivo ? '#9E9E9E' : estadoColor[unidad.estado]};">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
             <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
           </svg>
@@ -383,8 +501,13 @@ export function useMapboxGL() {
     <div class="unidad-popup-body">
       <div class="popup-section">
         <span class="label">Estado:</span>
-        <span class="value" style="color: ${estadoColor[unidad.estado]}; font-weight: bold;">${estadoTexto[unidad.estado]}</span>
+        <span class="value" style="color: ${esInactivo ? '#9E9E9E' : estadoColor[unidad.estado]}; font-weight: bold;">
+          ${esInactivo ? 'Sin transmisión GPS' : estadoTexto[unidad.estado]}
+        </span>
       </div>
+      ${
+        !esInactivo
+          ? `
       <div class="popup-section">
         <span class="label">Velocidad:</span>
         <span class="value">${unidad.velocidad || 0} km/h</span>
@@ -393,6 +516,9 @@ export function useMapboxGL() {
         <span class="label">Batería:</span>
         <span class="value">${unidad.bateria || 0}%</span>
       </div>
+      `
+          : ''
+      }
       <div class="popup-section">
         <span class="label">Coordenadas:</span>
         <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
@@ -474,7 +600,7 @@ export function useMapboxGL() {
               registrarPopupActivo(popup)
             })
 
-            const element = crearIconoUnidad(unidad.estado)
+            const element = crearIconoUnidad(unidad)
 
             // 🔥 APLICAR FILTRO AL CREAR
             if (!debeEstarVisible(unidadId)) {
@@ -530,7 +656,7 @@ export function useMapboxGL() {
           registrarPopupActivo(popup)
         })
 
-        const element = crearIconoUnidad(unidad.estado)
+        const element = crearIconoUnidad(unidad)
 
         // 🔥 APLICAR FILTRO AL CREAR
         if (!debeEstarVisible(unidadId)) {
