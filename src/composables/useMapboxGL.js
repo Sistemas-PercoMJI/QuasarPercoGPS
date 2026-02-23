@@ -337,7 +337,7 @@ export function useMapboxGL() {
     const colorIndicador = color
 
     // 🆕 DETERMINAR OPACIDAD Y BORDE
-    const opacity = esInactivo ? 0.5 : 1
+    //const opacity = esInactivo ? 0.5 : 1
     const borderStyle = esInactivo ? 'dashed' : 'solid'
 
     const el = document.createElement('div')
@@ -349,7 +349,7 @@ export function useMapboxGL() {
       width: 36px;
       height: 36px;
       background-color: ${color};
-      opacity: ${opacity};
+
       border: 3px solid white;
       border-style: ${borderStyle};
       border-radius: 50%;
@@ -457,15 +457,26 @@ export function useMapboxGL() {
         : ''
     }
 
-    <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
+        <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
-      <!-- Primera fila: Botón cerrar + Nombre del conductor + Chevron -->
-      <div class="unidad-header-top-row">
-        <div class="unidad-close-placeholder"></div>
-        <div class="unidad-texto">
-          <strong>${unidad.conductorNombre}</strong>
+      <!-- Primera fila: Nombre del conductor + Chevron -->
+      <div class="unidad-header-top-row" style="
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 16px 8px 16px !important;
+      ">
+        <div class="unidad-texto" style="
+          text-align: left !important;
+          flex: 1 !important;
+          margin: 0 !important;
+        ">
+          <strong style="display: block; text-align: left !important;">${unidad.conductorNombre}</strong>
         </div>
-        <button class="toggle-popup-btn" data-unidad-id="${unidadId}">
+        <button class="toggle-popup-btn" data-unidad-id="${unidadId}" style="
+          margin-left: 12px !important;
+          flex-shrink: 0 !important;
+        ">
           <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
