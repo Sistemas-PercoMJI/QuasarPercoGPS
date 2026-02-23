@@ -102,7 +102,7 @@ export function useMultiTenancy() {
 
     // Sin empresa = sin filtro (super admin)
     if (!idEmpresa || (Array.isArray(idEmpresa) && idEmpresa.length === 0)) {
-      console.warn('⚠️ No hay empresa asignada, mostrando TODO')
+      //console.warn('⚠️ No hay empresa asignada, mostrando TODO')
       return query(collection(db, coleccion))
     }
 
