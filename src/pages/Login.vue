@@ -30,7 +30,6 @@ const login = async () => {
     // Intentar login con Firebase
     const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
     await cargarUsuarioActual()
-    console.log('✅ Usuario y empresa cargados')
 
     // Login exitoso
     console.log('Usuario logueado:', userCredential.user)

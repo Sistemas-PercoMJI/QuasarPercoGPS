@@ -680,7 +680,6 @@ const cargarConductoresFirebase = async () => {
       ...doc.data(),
     }))
 
-    console.log(`✅ ${conductoresLista.value.length} conductores cargados`)
     return conductoresLista.value
   } catch (error) {
     console.error('❌ Error cargando conductores:', error)
@@ -967,7 +966,6 @@ const cambiarDiaEventos = (dias) => {
   hoy.setHours(23, 59, 59, 999)
 
   if (nuevaFecha <= hoy) {
-    console.log('🔄 Cambiando a fecha:', nuevaFecha.toISOString().split('T')[0])
     fechaSeleccionadaEventos.value = nuevaFecha
 
     // 🔥 Recargar eventos explícitamente
@@ -1009,8 +1007,6 @@ const mostrarEventoEnMapa = async (evento) => {
     console.warn('⚠️ Evento sin coordenadas')
     return
   }
-
-  console.log('📍 Mostrando evento en mapa:', evento)
 
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
@@ -1154,8 +1150,6 @@ const mostrarEventoEnMapa = async (evento) => {
   }, 1600)
 
   hayElementosEnMapa.value = true
-
-  console.log('✅ Evento marcado en el mapa')
 }
 
 const limpiarTodoDelMapa = () => {
@@ -1296,8 +1290,6 @@ function getEstadoTexto(estado) {
 
 // UN SOLO WATCHER para vehiculoSeleccionado
 watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
-  console.log('🔄 Cambio de vehículo:', nuevoVehiculo?.nombre)
-
   if (vehiculoAnterior) {
     detenerEscucha()
   }
@@ -1337,7 +1329,6 @@ watch(fechaSeleccionada, () => {
 // Watcher para cambio de fecha de eventos
 watch(fechaSeleccionadaEventos, (nuevaFecha) => {
   if (vehiculoSeleccionado.value) {
-    console.log('📅 Cambiando fecha eventos:', nuevaFecha.toISOString().split('T')[0])
     escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
   }
 })

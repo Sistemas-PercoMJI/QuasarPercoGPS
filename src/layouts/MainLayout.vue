@@ -1086,8 +1086,6 @@ function getColorTipo(tipo) {
 onMounted(() => {
   auth.onAuthStateChanged(async (user) => {
     if (user) {
-      console.log('✅ Usuario autenticado:', user.uid)
-
       try {
         // Cargar datos del usuario y su empresa
         await cargarUsuarioActual()
@@ -1193,9 +1191,7 @@ watch(
       setTimeout(() => {
         conductoresDrawerOpen.value = true
 
-        nextTick(() => {
-          console.log('Drawer renderizado, Conductores.vue debe recibir datos')
-        })
+        nextTick(() => {})
       }, 150)
     }
   },

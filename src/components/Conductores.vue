@@ -1572,13 +1572,11 @@ const esPlacasVigente = computed(() => {
 const idsUnidadesVisibles = computed(() => {
   // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
-    console.log('Filtro desactivado → NO mostrar unidades')
     return [] // ← Cambiar de null a []
   }
 
   // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
   if (grupoSeleccionado.value === '__todos__') {
-    console.log('Grupo "TODOS" → mostrando TODAS las unidades')
     return null // null = mostrar todas
   }
 
@@ -1588,7 +1586,6 @@ const idsUnidadesVisibles = computed(() => {
     .filter((c) => c.UnidadAsignada)
     .map((c) => c.UnidadAsignada)
 
-  console.log(`🗺️ Grupo "${grupoSeleccionado.value}" → ${idsUnidades.length} unidades`)
   return idsUnidades
 })
 
@@ -1719,22 +1716,15 @@ async function actualizarCampo(campo, valor) {
   if (!conductorEditando.value?.id) return
 
   try {
-    console.log(`📝 Actualizando campo: ${campo} = ${valor}`)
     if (campo === 'IdEmpresaConductor') {
       const empresaAnterior = conductorEditando.value.IdEmpresaConductor
       const empresaNueva = valor
 
-      console.log(`🏢 Empresa anterior: ${empresaAnterior}`)
-      console.log(`🏢 Empresa nueva: ${empresaNueva}`)
-
       // Solo procesar si realmente cambió de empresa
       if (empresaAnterior !== empresaNueva) {
-        console.log('✅ Cambio de empresa detectado')
-
         // Si tiene unidad asignada, actualizar su IdEmpresaUnidad
         if (conductorEditando.value.UnidadAsignada) {
           const unidadId = conductorEditando.value.UnidadAsignada
-          console.log(`🚗 Actualizando empresa de unidad: ${unidadId}`)
 
           try {
             // 🔥 Actualizar IdEmpresaUnidad en Realtime Database
@@ -1748,8 +1738,6 @@ async function actualizarCampo(campo, valor) {
               IdEmpresaUnidad: empresaNueva,
             })
 
-            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Realtime Database`)
-
             // 🔥 También actualizar en Firestore
             const { doc, updateDoc } = await import('firebase/firestore')
             const { db } = await import('src/firebase/firebaseConfig')
@@ -1758,8 +1746,6 @@ async function actualizarCampo(campo, valor) {
             await updateDoc(unidadFirestoreRef, {
               IdEmpresaUnidad: empresaNueva,
             })
-
-            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Firestore`)
           } catch (unidadError) {
             console.error('❌ Error al actualizar unidad:', unidadError)
             // Continuar de todos modos para actualizar el conductor
@@ -1773,9 +1759,8 @@ async function actualizarCampo(campo, valor) {
     }
 
     // Actualizar el campo en Firestore
-    console.log('💾 Actualizando campo en Firestore...')
+
     await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
-    console.log('✅ Campo actualizado en Firestore')
 
     Notify.create({
       type: 'positive',
@@ -1785,7 +1770,6 @@ async function actualizarCampo(campo, valor) {
 
     // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
     if (campo === 'IdEmpresaConductor') {
-      console.log('🔄 Recargando datos...')
       await recargarDatos()
 
       dialogDetallesConductor.value = false
@@ -1996,8 +1980,6 @@ async function asignarUnidadAConductor(unidadId) {
 
     // CASO 1: Si unidadId es null, está QUITANDO la unidad
     if (!unidadId) {
-      console.log('🗑️ Removiendo unidad del conductor...')
-
       // 1. Quitar del conductor
       const conductorRef = doc(db, 'Conductores', conductorId)
       await updateDoc(conductorRef, {
@@ -2750,11 +2732,6 @@ watch(
 watch(
   idsUnidadesVisibles,
   (nuevosIds) => {
-    console.log(
-      '🗺️ idsUnidadesVisibles cambió:',
-      nuevosIds === null ? 'TODAS' : nuevosIds.length === 0 ? 'NINGUNA' : `${nuevosIds.length} IDs`,
-    )
-
     // Emitir evento para que el mapa se actualice
     window.dispatchEvent(
       new CustomEvent('filtrar-unidades-mapa', {
@@ -2771,7 +2748,6 @@ watch(grupoSeleccionado, (nuevoGrupo) => {
     const userId = auth.currentUser?.uid
     if (userId) {
       localStorage.setItem(`grupoSeleccionado_${userId}`, nuevoGrupo)
-      console.log(`💾 Grupo guardado: ${nuevoGrupo}`)
     }
   }
 })
@@ -2781,7 +2757,6 @@ watch(filtroMapaActivo, (nuevoEstado) => {
   const userId = auth.currentUser?.uid
   if (userId) {
     localStorage.setItem(`filtroMapaActivo_${userId}`, String(nuevoEstado))
-    console.log(`💾 Filtro de mapa guardado: ${nuevoEstado}`)
   }
 })
 
@@ -2851,8 +2826,6 @@ onMounted(async () => {
     await cargarUsuarioActual()
   }
 
-  console.log('🏢 Empresa:', idEmpresaActual.value)
-
   await obtenerConductores()
 
   try {
@@ -2876,11 +2849,9 @@ onMounted(async () => {
 
         if (grupoExiste) {
           grupoSeleccionado.value = grupoGuardado
-          console.log(`✅ Grupo restaurado: ${grupoGuardado}`)
         } else {
           // Si el grupo no existe, seleccionar "TODOS" por defecto
           grupoSeleccionado.value = '__todos__'
-          console.log('⚠️ Grupo guardado no existe, usando TODOS')
         }
       } else {
         // Primera vez: seleccionar "TODOS"
@@ -2890,7 +2861,6 @@ onMounted(async () => {
       // Restaurar estado de filtro
       if (filtroGuardado !== null) {
         filtroMapaActivo.value = filtroGuardado === 'true'
-        console.log(`✅ Filtro restaurado: ${filtroMapaActivo.value}`)
       }
     }
   } catch (error) {

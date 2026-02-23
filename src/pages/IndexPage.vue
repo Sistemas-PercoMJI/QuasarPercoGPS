@@ -1453,9 +1453,6 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
   const map = mapPage._mapaAPI.map
 
   try {
-    console.log('📍 Dibujando ruta con', trayecto.coordenadas?.length, 'puntos')
-    console.log('🎨 Color del trayecto:', trayecto.color)
-
     // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
     const capasRuta = [
       'ruta-trayecto-borde',
@@ -1727,8 +1724,6 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       timeout: 2000,
       icon: 'route',
     })
-
-    console.log('✅ Ruta dibujada correctamente')
   } catch (error) {
     console.error('❌ Error dibujando ruta:', error)
     $q.notify({
@@ -1804,8 +1799,6 @@ const limpiarRuta = () => {
   // También limpiar por clase (por si quedó alguno)
   const marcadoresHTML = document.querySelectorAll('.marcador-ruta-custom')
   marcadoresHTML.forEach((m) => m.remove())
-
-  console.log('✅ Ruta limpiada correctamente')
 }
 
 // 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
@@ -2402,8 +2395,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
     const mapPage = document.getElementById('map-page')
     if (mapPage?._mapaAPI?.map) {
       mapPage._mapaAPI.map.once('styledata', async () => {
-        console.log('✅ Estilo cargado, redibujando capas...')
-
         // 🎯 Esperar un momento para que el estilo termine de cargar completamente
         await new Promise((resolve) => setTimeout(resolve, 500))
 
@@ -2414,8 +2405,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
         if (unidadesActivas.value && unidadesActivas.value.length > 0) {
           actualizarMarcadoresUnidades(unidadesActivas.value)
         }
-
-        console.log('✅ Capas redibujadas después de cambio de estilo')
       })
     }
   }
