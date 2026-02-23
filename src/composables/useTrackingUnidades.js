@@ -26,7 +26,6 @@ export function useTrackingUnidades() {
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
       // 🔥 IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
       if (!unidad.IdEmpresaConductor) {
-        console.log(`⚠️ Unidad sin IdEmpresaConductor:`, unidad.unidadNombre)
         return false
       }
 
@@ -38,9 +37,6 @@ export function useTrackingUnidades() {
       return perteneceAMisEmpresas
     })
 
-    console.log(
-      `🔍 Filtradas ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades por IdEmpresaConductor`,
-    )
     return unidadesFiltradas
   }
 
@@ -49,20 +45,17 @@ export function useTrackingUnidades() {
    */
   const iniciarTracking = () => {
     if (trackingIniciado) {
-      console.log('✅ Tracking ya está activo')
       return
     }
 
     if (!idEmpresaActual.value) {
       console.warn('⚠️ No se puede iniciar tracking: IdEmpresa no disponible')
-      console.log('⏳ Reintentando en 1 segundo...')
+
       setTimeout(() => {
         iniciarTracking()
       }, 1000)
       return
     }
-
-    console.log('🚀 Iniciando tracking para empresa:', idEmpresaActual.value)
 
     loadingGlobal.value = true
     errorGlobal.value = null
@@ -123,7 +116,6 @@ export function useTrackingUnidades() {
       )
 
       trackingIniciado = true
-      console.log('✅ Tracking iniciado correctamente')
     } catch (err) {
       console.error('❌ Error al iniciar tracking:', err)
       errorGlobal.value = err.message
@@ -152,7 +144,6 @@ export function useTrackingUnidades() {
       trackingIniciado = false
       unidadesRawGlobal.value = []
       unidadesActivasGlobal.value = []
-      console.log('🛑 Tracking detenido manualmente')
     }
   }
 

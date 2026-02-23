@@ -22,10 +22,7 @@ export function useUnidadesWatcher() {
           const unidadAnterior = unidadesCache.get(unidad.id)
 
           if (unidadAnterior && unidadAnterior.IdEmpresaUnidad !== unidad.IdEmpresaUnidad) {
-            console.log(
-              `🔄 CAMBIO DE EMPRESA EN UNIDAD ${unidad.id}:`,
-              `"${unidadAnterior.IdEmpresaUnidad}" → "${unidad.IdEmpresaUnidad}"`,
-            )
+
 
             callback({
               tipo: 'cambio-empresa-unidad',
@@ -65,10 +62,7 @@ export function useUnidadesWatcher() {
             conductorAnterior &&
             conductorAnterior.IdEmpresaConductor !== conductor.IdEmpresaConductor
           ) {
-            console.log(
-              `🔄 CAMBIO DE EMPRESA EN CONDUCTOR ${conductor.id}:`,
-              `"${conductorAnterior.IdEmpresaConductor}" → "${conductor.IdEmpresaConductor}"`,
-            )
+
 
             callback({
               tipo: 'cambio-empresa-conductor',
@@ -81,10 +75,7 @@ export function useUnidadesWatcher() {
 
           // 🆕 DETECTAR CAMBIO DE ASIGNACIÓN DE UNIDAD
           if (conductorAnterior && conductorAnterior.UnidadAsignada !== conductor.UnidadAsignada) {
-            console.log(
-              `🚗 CAMBIO DE ASIGNACIÓN EN CONDUCTOR ${conductor.id}:`,
-              `"${conductorAnterior.UnidadAsignada || 'Sin unidad'}" → "${conductor.UnidadAsignada || 'Sin unidad'}"`,
-            )
+
 
             callback({
               tipo: 'cambio-asignacion-unidad',

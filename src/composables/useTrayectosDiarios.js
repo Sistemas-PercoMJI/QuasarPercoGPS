@@ -45,7 +45,6 @@ export function useTrayectosDiarios() {
     if (!rutasUrl) return []
 
     try {
-      console.log('🌐 Descargando coordenadas desde Storage...')
       const response = await fetch(rutasUrl)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
@@ -76,7 +75,6 @@ export function useTrayectosDiarios() {
         }))
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
-      console.log(`✅ ${coordenadasNormalizadas.length} coordenadas descargadas`)
       return coordenadasNormalizadas
     } catch (err) {
       console.error('❌ Error descargando coordenadas:', err)
@@ -140,7 +138,6 @@ export function useTrayectosDiarios() {
         enMovimiento = true
         trayectoActual.inicio = coord
         trayectoActual.coordenadas = [coord]
-        console.log(`🚗 Inicio de trayecto en ${formatearHora(coord.timestamp)}`)
       }
 
       // Si está en movimiento, agregar coordenada
@@ -175,9 +172,6 @@ export function useTrayectosDiarios() {
 
           // Guardar trayecto solo si tiene suficientes coordenadas
           if (trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
-            console.log(
-              `🏁 Fin de trayecto en ${formatearHora(coord.timestamp)} - ${trayectoActual.distancia.toFixed(2)} km`,
-            )
             trayectos.push({ ...trayectoActual })
           }
 
@@ -206,7 +200,6 @@ export function useTrayectosDiarios() {
       trayectos.push(trayectoActual)
     }
 
-    console.log(`✅ Total de trayectos detectados: ${trayectos.length}`)
     return trayectos
   }
 
@@ -224,7 +217,6 @@ export function useTrayectosDiarios() {
       const rutaSnap = await getDoc(rutaRef)
 
       if (!rutaSnap.exists()) {
-        console.log(`❌ No hay datos para ${unidadId}/${fechaStr}`)
         return {
           existenDatos: false,
           trayectos: [],
@@ -233,12 +225,6 @@ export function useTrayectosDiarios() {
       }
 
       const data = rutaSnap.data()
-      console.log('📦 Datos de RutaDiaria:', {
-        duracion: data.duracion_total_minutos,
-        distancia: data.distancia_recorrida_km,
-        paradas: data.paradas?.length,
-        tiene_rutas_url: !!data.rutas_url,
-      })
 
       // Descargar coordenadas
       let coordenadas = []
@@ -247,7 +233,6 @@ export function useTrayectosDiarios() {
       }
 
       if (coordenadas.length === 0) {
-        console.log('⚠️ No hay coordenadas para analizar')
         return {
           existenDatos: true,
           trayectos: [],
@@ -260,8 +245,6 @@ export function useTrayectosDiarios() {
 
       // Generar resumen
       const resumen = await generarResumenDesdeData(data, trayectos)
-
-      console.log(`=== FIN OBTENCIÓN TRAYECTOS ===\n`)
 
       return {
         existenDatos: true,
@@ -358,22 +341,18 @@ export function useTrayectosDiarios() {
 
       // 🔥 Geocodificar ubicación de inicio
       if (primerTrayecto.inicio) {
-        console.log('🌍 Geocodificando ubicación de inicio...')
         ubicacionInicio = await obtenerDireccion({
           lat: primerTrayecto.inicio.lat,
           lng: primerTrayecto.inicio.lng,
         })
-        console.log('✅ Inicio:', ubicacionInicio)
       }
 
       // 🔥 Geocodificar ubicación de fin
       if (ultimoTrayecto.fin) {
-        console.log('🌍 Geocodificando ubicación de fin...')
         ubicacionFin = await obtenerDireccion({
           lat: ultimoTrayecto.fin.lat,
           lng: ultimoTrayecto.fin.lng,
         })
-        console.log('✅ Fin:', ubicacionFin)
       }
     }
 

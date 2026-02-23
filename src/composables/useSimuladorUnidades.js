@@ -374,7 +374,6 @@ export function useSimuladorUnidades() {
     if (indiceIntervalo !== -1) {
       clearInterval(intervalos.value[indiceIntervalo].intervalo)
       intervalos.value.splice(indiceIntervalo, 1)
-      console.log(`⏸️ Intervalo detenido para ${unidadKey}`)
     }
 
     // Eliminar de unidadesSimuladas
@@ -386,7 +385,6 @@ export function useSimuladorUnidades() {
     // Eliminar de Realtime Database
     try {
       await remove(dbRef(realtimeDb, `unidades_activas/${unidadKey}`))
-      console.log(`🗑️ Unidad ${unidadKey} eliminada de Realtime Database`)
     } catch (err) {
       console.error(`Error eliminando ${unidadKey}:`, err)
     }
@@ -394,8 +392,6 @@ export function useSimuladorUnidades() {
 
   // 🆕 NUEVA FUNCIÓN: Reiniciar una unidad específica
   const reiniciarUnidadEspecifica = async (unidad, conductor) => {
-    console.log(`🔄 Reiniciando unidad ${unidad.id} con nuevo IdEmpresa: ${unidad.IdEmpresaUnidad}`)
-
     // Primero detener la unidad actual
     await detenerUnidadEspecifica(unidad.id)
 
@@ -404,8 +400,6 @@ export function useSimuladorUnidades() {
 
     // Reiniciar con los nuevos datos
     await iniciarSimulacionUnidad(conductor, unidad)
-
-    console.log(`✅ Unidad ${unidad.id} reiniciada con éxito`)
   }
 
   const iniciarIntervaloActualizacion = (conductor, unidad, unidadRef) => {
@@ -551,8 +545,6 @@ export function useSimuladorUnidades() {
     // MONITOREAR CAMBIOS EN UNIDADES
     iniciarMonitoreoUnidades(async (cambio) => {
       if (cambio.tipo === 'cambio-empresa-unidad') {
-        console.log(`🚨 Detectado cambio de empresa en UNIDAD ${cambio.unidadId}`)
-
         const conductor = conductoresConUnidad.find((c) => c.UnidadAsignada === cambio.unidadId)
 
         if (conductor) {
@@ -567,8 +559,6 @@ export function useSimuladorUnidades() {
     iniciarMonitoreoConductores(async (cambio) => {
       // Cambio de empresa del conductor
       if (cambio.tipo === 'cambio-empresa-conductor') {
-        console.log(`🚨 Detectado cambio de empresa en CONDUCTOR ${cambio.conductorId}`)
-
         const conductor = cambio.conductor
         if (conductor.UnidadAsignada) {
           const unidad = unidades.find((u) => u.id === conductor.UnidadAsignada)
@@ -580,23 +570,18 @@ export function useSimuladorUnidades() {
 
       // 🆕 CAMBIO DE ASIGNACIÓN DE UNIDAD
       if (cambio.tipo === 'cambio-asignacion-unidad') {
-        console.log(`🚗 Detectado cambio de asignación en CONDUCTOR ${cambio.conductorId}`)
-
         // CASO 1: Se quitó la unidad (unidadNueva = null)
         if (!cambio.unidadNueva && cambio.unidadAnterior) {
-          console.log(`🗑️ Removiendo unidad ${cambio.unidadAnterior} del conductor`)
           await detenerUnidadEspecifica(cambio.unidadAnterior)
         }
         // CASO 2: Se asignó una unidad nueva
         else if (cambio.unidadNueva) {
           // Si había una unidad anterior, primero detenerla
           if (cambio.unidadAnterior && cambio.unidadAnterior !== cambio.unidadNueva) {
-            console.log(`🗑️ Removiendo unidad anterior ${cambio.unidadAnterior}`)
             await detenerUnidadEspecifica(cambio.unidadAnterior)
           }
 
           // Buscar la nueva unidad en Firestore
-          console.log(`🆕 Asignando nueva unidad ${cambio.unidadNueva}`)
 
           // Recargar unidades desde Firestore para obtener la más reciente
           const { collection, query, where, getDocs } = await import('firebase/firestore')
@@ -612,8 +597,6 @@ export function useSimuladorUnidades() {
 
             // Iniciar simulación con la nueva unidad
             await iniciarSimulacionUnidad(cambio.conductor, unidadData)
-
-            console.log(`✅ Unidad ${cambio.unidadNueva} iniciada en el simulador`)
           } else {
             console.error(`❌ No se encontró la unidad ${cambio.unidadNueva} en Firestore`)
           }
@@ -640,7 +623,6 @@ export function useSimuladorUnidades() {
     for (const { unidadId } of unidadesSimuladas.value) {
       try {
         await remove(dbRef(realtimeDb, `unidades_activas/${unidadId}`))
-        console.log(`✅ Unidad ${unidadId} eliminada del simulador`)
       } catch (err) {
         console.error(`Error finalizando ${unidadId}:`, err)
       }

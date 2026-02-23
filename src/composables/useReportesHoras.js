@@ -9,7 +9,6 @@ export function useReportesHoras() {
   const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
 
   const calcularHorasTrabajo = async (unidadesIds, fechaInicio, fechaFin, opciones = {}) => {
-    console.log('🚨🚨🚨 HORAS - INICIO DE FUNCIÓN', { unidadesIds, fechaInicio, fechaFin }) // 🔥 AGREGAR ESTO
     loading.value = true
     error.value = null
 
@@ -17,11 +16,9 @@ export function useReportesHoras() {
       // Obtener trayectos (reales o simulados)
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
       trayectos = await enriquecerConDatosUnidades(trayectos)
-      console.log('🔍 HORAS - Trayectos después de enriquecer:')
+
       trayectos.forEach((t, index) => {
         console.log(`  ${index}. ${t.unidadNombre}:`, {
-          Placa: t.Placa,
-          placa: t.placa,
           unidadPlaca: t.unidadPlaca,
           todasLasPropiedades: Object.keys(t),
         })
