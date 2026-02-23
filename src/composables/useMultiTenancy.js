@@ -46,9 +46,6 @@ export function useMultiTenancy() {
             usuarioActual.value = userData
             idEmpresaActual.value = userData.IdEmpresaUsuario || null
 
-            console.log('✅ Usuario actualizado:', userData.Usuario)
-            console.log('🏢 Empresa(s):', idEmpresaActual.value)
-
             // 🆕 Emitir evento global cuando cambia la empresa
             window.dispatchEvent(
               new CustomEvent('empresa-cambiada', {
@@ -108,8 +105,6 @@ export function useMultiTenancy() {
 
     // Array de empresas = filtro múltiple
     if (Array.isArray(idEmpresa)) {
-      console.log(`🔍 Filtrando ${coleccion} por ${campoEmpresa} in [${idEmpresa.join(', ')}]`)
-
       // ⚠️ Firebase 'in' soporta máximo 10 valores
       if (idEmpresa.length > 10) {
         console.warn('⚠️ Solo se pueden filtrar hasta 10 empresas a la vez')
@@ -120,7 +115,7 @@ export function useMultiTenancy() {
     }
 
     // String simple = filtro único
-    console.log(`🔍 Filtrando ${coleccion} por ${campoEmpresa} = ${idEmpresa}`)
+
     return query(collection(db, coleccion), where(campoEmpresa, '==', idEmpresa))
   }
 

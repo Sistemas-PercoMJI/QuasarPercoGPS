@@ -718,7 +718,6 @@ export function useReporteExcel() {
             }
 
             if (!incluirViaje) {
-              console.log('Viaje excluido por filtro:', config.tipoInformeComercial)
               return
             }
 

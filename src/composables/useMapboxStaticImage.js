@@ -186,7 +186,6 @@ function prepararDatosTrayectos(registros) {
       Array.isArray(registro.coordenadas) &&
       registro.coordenadas.length > 0
     ) {
-      console.log(`  📍 Agregando ${registro.coordenadas.length} coordenadas de ${vehiculoNombre}`)
       trayectosPorVehiculo[vehiculoId].coordenadas.push(...registro.coordenadas)
     }
     // Fallback: si solo tiene lat/lng individuales
@@ -219,9 +218,9 @@ function prepararDatosTrayectos(registros) {
       }
     })
 
-  trayectos.forEach((t, i) => {
+  /*trayectos.forEach((t, i) => {
     console.log(`   ${i + 1}. ${t.vehiculoNombre}: ${t.coordenadas.length} puntos`)
-  })
+  })*/
 
   return trayectos
 }
@@ -316,9 +315,9 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     }
   })
 
-  overlays.forEach((overlay, i) => {
+  /*overlays.forEach((overlay, i) => {
     console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
-  })
+  })*/
 
   // Construir URL
   const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`

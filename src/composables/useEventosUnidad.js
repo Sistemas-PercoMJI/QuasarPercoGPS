@@ -25,8 +25,6 @@ export function useEventosUnidad() {
     error.value = null
 
     try {
-      console.log(`📊 Obteniendo eventos para unidad: ${unidadId}`)
-
       const eventosRef = collection(db, 'Eventos')
       const q = query(
         eventosRef,
@@ -38,7 +36,6 @@ export function useEventosUnidad() {
       const snapshot = await getDocs(q)
 
       if (snapshot.empty) {
-        console.log('⚠️ No hay eventos para esta unidad')
         return []
       }
 
@@ -64,7 +61,6 @@ export function useEventosUnidad() {
         }
       })
 
-      console.log(`✅ ${eventos.length} eventos encontrados`)
       return eventos
     } catch (err) {
       console.error('❌ Error obteniendo eventos:', err)
@@ -93,8 +89,6 @@ export function useEventosUnidad() {
       const hoy = new Date()
       const fechaStr = hoy.toISOString().split('T')[0]
 
-      console.log(`📊 Obteniendo eventos diarios de unidad ${unidadId} - Fecha: ${fechaStr}`)
-
       // Ruta: /Unidades/{idUnidad}/RutaDiaria/{fecha}/EventoDiario
       const eventosRef = collection(
         db,
@@ -110,7 +104,6 @@ export function useEventosUnidad() {
       const snapshot = await getDocs(q)
 
       if (snapshot.empty) {
-        console.log('⚠️ No hay eventos diarios')
         return []
       }
 
@@ -147,7 +140,6 @@ export function useEventosUnidad() {
         if (!direccion || esFormatoCoordenadas) {
           try {
             direccion = await obtenerDireccion({ lat, lng })
-            console.log(`📍 Geocoding aplicado: ${direccion}`)
           } catch (err) {
             console.warn('⚠️ Error en geocoding, usando coordenadas:', err)
             direccion = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
@@ -178,7 +170,6 @@ export function useEventosUnidad() {
       // Esperar a que todos los eventos se procesen (incluyendo geocoding)
       const eventos = await Promise.all(eventosPromesas)
 
-      console.log(`✅ ${eventos.length} eventos diarios obtenidos con geocoding`)
       return eventos
     } catch (err) {
       console.error('❌ Error obteniendo eventos diarios:', err)

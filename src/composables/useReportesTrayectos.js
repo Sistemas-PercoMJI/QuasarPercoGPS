@@ -344,26 +344,15 @@ export function useReportesTrayectos() {
     try {
       // Si ya tienen nombre de unidad (simulados), no hace falta enriquecer
       if (trayectos.length > 0 && trayectos[0]._simulado) {
-        console.log('🔍 Trayectos simulados, saltando enriquecimiento')
         return trayectos
       }
 
       const unidadesRef = collection(db, 'Unidades')
       const unidadesSnapshot = await getDocs(unidadesRef)
 
-      console.log('🔍 Total de unidades en Firebase:', unidadesSnapshot.size)
-
       const unidadesMap = {}
       unidadesSnapshot.docs.forEach((doc) => {
         const data = doc.data()
-
-        // 🔥 DEBUG: Ver qué campos tiene cada unidad
-        console.log(`🔍 Unidad ${doc.id}:`, {
-          Unidad: data.Unidad,
-          Placa: data.Placa,
-          SeguroUnidad: data.SeguroUnidad,
-          todosLosCampos: Object.keys(data),
-        })
 
         unidadesMap[doc.id] = {
           nombre: data.Unidad || doc.id,
@@ -371,16 +360,8 @@ export function useReportesTrayectos() {
         }
       })
 
-      console.log('🔍 Mapa de unidades creado:', unidadesMap)
-
       const trayectosEnriquecidos = trayectos.map((trayecto) => {
         const unidadInfo = unidadesMap[trayecto.idUnidad]
-
-        console.log(`🔍 Enriqueciendo trayecto:`, {
-          idUnidad: trayecto.idUnidad,
-          unidadInfo: unidadInfo,
-          placaFinal: unidadInfo?.placa || trayecto.Placa || 'Sin placa',
-        })
 
         return {
           ...trayecto,
@@ -388,14 +369,6 @@ export function useReportesTrayectos() {
           Placa: unidadInfo?.placa || trayecto.Placa || 'Sin placa',
         }
       })
-
-      console.log(
-        '🔍 Trayectos enriquecidos:',
-        trayectosEnriquecidos.map((t) => ({
-          unidad: t.unidadNombre,
-          placa: t.Placa,
-        })),
-      )
 
       return trayectosEnriquecidos
     } catch (err) {

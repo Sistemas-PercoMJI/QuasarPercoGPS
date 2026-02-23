@@ -57,7 +57,6 @@ export function useConductoresFirebase() {
         ...doc.data(),
       }))
 
-      console.log(`✅ ${conductores.value.length} conductores de la empresa cargados`)
       return conductores.value
     } catch (err) {
       console.error('Error al obtener conductores:', err)
@@ -79,7 +78,6 @@ export function useConductoresFirebase() {
           id: doc.id,
           ...doc.data(),
         }))
-        console.log(`🔄 ${conductores.value.length} conductores actualizados`)
       },
       (err) => {
         console.error('Error en listener de conductores:', err)
@@ -725,7 +723,6 @@ export function useConductoresFirebase() {
         ...doc.data(),
       }))
 
-      console.log(`✅ ${unidades.value.length} unidades de la empresa cargadas`)
       return unidades.value
     } catch (err) {
       console.error('Error al obtener unidades:', err)
@@ -995,7 +992,6 @@ export function useConductoresFirebase() {
 
         // Eliminar de unidades_activas
         await remove(unidadRef)
-        console.log(`✅ Unidad ${unidadId} eliminada del mapa`)
       }
 
       // 4. Actualizar el estado local

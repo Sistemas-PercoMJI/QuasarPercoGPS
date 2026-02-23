@@ -52,12 +52,7 @@ export function useReportesHoras() {
         // Calcular horas laborales vs no laborales
         const horasLaborales = dentroHorario.horasLaborales
         const horasNoLaborales = parseFloat(duracionHoras) - horasLaborales
-        console.log('🔍 HORAS - Procesando trayecto:', {
-          unidad: trayecto.unidadNombre,
-          'trayecto.Placa': trayecto.Placa,
-          'trayecto.placa': trayecto.placa,
-          'trayecto.unidadPlaca': trayecto.unidadPlaca,
-        })
+
         return {
           fecha: trayecto.fecha,
           idUnidad: trayecto.idUnidad,
@@ -91,7 +86,7 @@ export function useReportesHoras() {
           _simulado: trayecto._simulado || false,
         }
       })
-      console.log('🔍 HORAS - Registros finales:')
+
       registros.forEach((r, index) => {
         console.log(`  ${index}. ${r.unidadNombre}:`, {
           Placa: r.Placa,

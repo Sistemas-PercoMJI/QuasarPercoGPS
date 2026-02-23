@@ -819,10 +819,8 @@ export function useColumnasReportes() {
     const columnasGuardadas = obtenerColumnasGuardadas(tipo)
 
     if (columnasGuardadas && columnasGuardadas.length > 0) {
-      console.log(`📋 Cargando ${columnasGuardadas.length} columnas guardadas para ${tipo}`)
       return [...columnasGuardadas]
     } else {
-      console.log(`📋 Usando ${COLUMNAS_DEFAULT[tipo].length} columnas por defecto para ${tipo}`)
       return [...COLUMNAS_DEFAULT[tipo]]
     }
   }
@@ -842,9 +840,6 @@ export function useColumnasReportes() {
   const guardarColumnasActuales = () => {
     if (columnasSeleccionadas.value.length > 0) {
       guardarColumnasSeleccionadas(tipoInformeActivo.value, columnasSeleccionadas.value)
-      console.log(
-        `💾 Guardadas ${columnasSeleccionadas.value.length} columnas para ${tipoInformeActivo.value}`,
-      )
     }
   }
 
@@ -963,7 +958,6 @@ export function useColumnasReportes() {
   const resetearColumnas = () => {
     columnasSeleccionadas.value = [...COLUMNAS_DEFAULT[tipoInformeActivo.value]]
     resetearPreferencias(tipoInformeActivo.value)
-    console.log(`🔄 Reseteado a ${columnasSeleccionadas.value.length} columnas por defecto`)
   }
 
   // 🚀 INICIALIZACIÓN (solo una vez)

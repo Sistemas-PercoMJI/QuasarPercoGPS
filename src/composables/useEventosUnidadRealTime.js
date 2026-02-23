@@ -11,7 +11,6 @@ export function useEventosUnidadRealTime() {
 
   const escucharEventosDia = async (unidadId, fecha = new Date()) => {
     if (unsubscribe) {
-      console.log('🛑 Deteniendo listener anterior')
       unsubscribe()
       unsubscribe = null
     }
@@ -31,14 +30,6 @@ export function useEventosUnidadRealTime() {
 
     const fechaStr = fechaLocal.toISOString().split('T')[0]
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('📡 INICIANDO LISTENER DE EVENTOS')
-    console.log('   Unidad:', unidadId)
-    console.log('   Fecha objeto:', fecha)
-    console.log('   Fecha local:', fechaLocal)
-    console.log('   Fecha string:', fechaStr)
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-
     try {
       const eventosRef = collection(
         db,
@@ -53,7 +44,6 @@ export function useEventosUnidadRealTime() {
 
       // 🔍 DEBUG - usar 'q' en lugar de 'eventosRef'
       const testSnapshot = await getDocs(q)
-      console.log(`🔍 TEST: ${testSnapshot.size} documentos encontrados en ${fechaStr}`)
 
       // 🔥 Si no hay docs, mostrar la ruta exacta
       if (testSnapshot.size === 0) {
@@ -66,8 +56,6 @@ export function useEventosUnidadRealTime() {
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          console.log(`✅ ${snapshot.size} eventos recibidos para ${fechaStr}`)
-
           if (snapshot.size === 0) {
             console.warn('⚠️ No hay eventos en snapshot para', fechaStr)
             eventosUnidad.value = []
@@ -129,7 +117,6 @@ export function useEventosUnidadRealTime() {
 
           eventosUnidad.value = eventosArray
           loadingEventos.value = false
-          console.log('✅ Eventos únicos cargados:', eventosUnidad.value.length)
         },
         (error) => {
           console.error('❌ ERROR EN SNAPSHOT:', error)
@@ -138,8 +125,6 @@ export function useEventosUnidadRealTime() {
           loadingEventos.value = false
         },
       )
-
-      console.log('✅ Listener configurado para', fechaStr)
     } catch (error) {
       console.error('❌ ERROR:', error)
       errorEventos.value = error.message
@@ -150,7 +135,6 @@ export function useEventosUnidadRealTime() {
 
   const detenerEscucha = () => {
     if (unsubscribe) {
-      console.log('🛑 Deteniendo listener')
       unsubscribe()
       unsubscribe = null
     }
