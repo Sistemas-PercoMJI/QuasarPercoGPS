@@ -1646,19 +1646,19 @@ function filtrarPorGrupo(grupo) {
   if (grupo.id === '__todos__') {
     filtroMapaActivo.value = true // ← Cambiar a true
 
-    Notify.create({
+    /*Notify.create({
       type: 'info',
       message: `👥 ${grupo.Nombre}`,
       caption: 'Mostrando todas las unidades del mapa',
       icon: grupo.icono || 'groups',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   } else {
     // Para grupos específicos, activar filtro
     filtroMapaActivo.value = true
 
-    const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
+    /*const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
 
     Notify.create({
       type: 'info',
@@ -1667,7 +1667,7 @@ function filtrarPorGrupo(grupo) {
       icon: grupo.icono || 'folder',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
 

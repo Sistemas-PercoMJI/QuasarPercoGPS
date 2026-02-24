@@ -1,4 +1,4 @@
-/*EstadoFlota.vue */
+<!-- EstadoFlota.vue -->
 <template>
   <div class="estado-flota-wrapper">
     <!-- Header principal -->
