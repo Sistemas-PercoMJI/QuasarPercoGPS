@@ -631,7 +631,7 @@ const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
 
 // ==================== PROPS & EMITS ====================
 const props = defineProps({
-  vehiculo: { type: Object, required: true },
+  vehiculo: { type: Object, default: null },
 })
 
 const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
