@@ -2880,12 +2880,12 @@ onMounted(async () => {
     try {
       await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
-      Notify.create({
+      /*Notify.create({
         type: 'positive',
         message: '✅ Conductores actualizados',
         icon: 'sync',
         timeout: 2000,
-      })
+      })*/
     } catch (o) {
       console.log('', o)
     }

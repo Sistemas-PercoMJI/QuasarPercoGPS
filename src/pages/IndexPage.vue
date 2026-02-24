@@ -349,7 +349,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
-import { Notify } from 'quasar'
+//import { Notify } from 'quasar'
 
 const geozonasCacheCompleto = ref([])
 
@@ -1410,13 +1410,13 @@ const limpiarCapasDelMapa = () => {
 
 const recentrarEnUsuario = () => {
   if (!marcadorUsuario.value) {
-    $q.notify({
+    /*$q.notify({
       type: 'warning',
       message: '⚠️ Ubicación GPS no disponible',
       caption: 'Esperando señal GPS...',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
     return
   }
 
@@ -1432,13 +1432,13 @@ const recentrarEnUsuario = () => {
     essential: true,
   })
 
-  $q.notify({
+  /*$q.notify({
     type: 'positive',
     message: '🎯 Centrado en tu ubicación',
     position: 'top',
     timeout: 1500,
     icon: 'my_location',
-  })
+  })*/
 }
 
 // En IndexPage.vue, reemplaza el método dibujarRutaTrayecto completo:
@@ -2008,14 +2008,14 @@ onMounted(async () => {
     window.addEventListener('empresa-cambiada', async (event) => {
       console.log('🔄 Empresa cambiada:', event.detail.empresas)
 
-      // Solo notificar, NO recargar
+      /*// Solo notificar, NO recargar
       Notify.create({
         type: 'info',
         message: '🏢 Empresa actualizada',
         caption: 'Los datos se actualizarán automáticamente',
         icon: 'business',
         timeout: 2000,
-      })
+      })*/
 
       // NO hacer: window.location.reload()
     })
@@ -2095,7 +2095,7 @@ onMounted(async () => {
       const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
       if (detailsBtn) {
         const conductorId = detailsBtn.dataset.conductorId
-        const conductorNombre = detailsBtn.dataset.conductorNombre
+        //const conductorNombre = detailsBtn.dataset.conductorNombre
 
         if (conductorId) {
           obtenerConductores().then(() => {
@@ -2121,32 +2121,32 @@ onMounted(async () => {
                       timestamp: Date.now(),
                     }
 
-                    $q.notify({
+                    /*$q.notify({
                       type: 'positive',
                       message: `Abriendo detalles de ${conductorNombre}`,
                       icon: 'person',
                       position: 'top',
                       timeout: 2000,
-                    })
+                    })*/
                   }, 100)
                 } else {
                   console.warn('⚠️ Conductor sin grupo')
-                  $q.notify({
+                  /*$q.notify({
                     type: 'warning',
                     message: 'El conductor no está asignado a ningún grupo',
                     icon: 'warning',
                     position: 'top',
-                  })
+                  })*/
                 }
               })
             } else {
               console.error('❌ Conductor no encontrado')
-              $q.notify({
+              /*$q.notify({
                 type: 'negative',
                 message: 'No se encontró el conductor',
                 icon: 'error',
                 position: 'top',
-              })
+              })*/
             }
           })
         }
@@ -2198,13 +2198,13 @@ onMounted(async () => {
               essential: true,
             })
 
-            $q.notify({
+            /* $q.notify({
               type: 'positive',
               message: 'Mapa centrado en tu ubicación',
               position: 'top',
               timeout: 2000,
               icon: 'my_location',
-            })
+            })*/
           }
         },
         () => {
@@ -2219,12 +2219,12 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error('❌ Error inicializando mapa:', error)
-    $q.notify({
+    /*$q.notify({
       type: 'negative',
       message: 'Error al inicializar el mapa',
       icon: 'error',
       position: 'top',
-    })
+    })*/
   }
 
   // ✅ LISTENERS GLOBALES (fuera del try-catch)
@@ -2314,13 +2314,13 @@ const cancelarGeozona = () => {
 
   const $q = window.$q
   if ($q && $q.notify) {
-    $q.notify({
+    /*$q.notify({
       type: 'info',
       message: 'Creación de geozona cancelada',
       icon: 'cancel',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
 
@@ -2382,14 +2382,14 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   if (resultado !== null) {
     estiloMapa.value = nuevoEstilo
 
-    $q.notify({
+    /*$q.notify({
       type: 'info',
       message:
         nuevoEstilo === 'streets' ? '🗺️ Vista de calles activada' : '🛰️ Vista satelital activada',
       position: 'top',
       timeout: 1500,
       icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
-    })
+    })*/
 
     // 🆕 ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
     const mapPage = document.getElementById('map-page')
