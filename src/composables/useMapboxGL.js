@@ -425,23 +425,37 @@ export function useMapboxGL() {
       esInactivo
         ? `
     <div style="
-      background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 8px 8px 0 0;
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    ">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/>
-      </svg>
-      <span>Última ubicación conocida</span>
-    </div>
+  background: linear-gradient(135deg, #FF5722 0%, #F44336 100%);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+">
+  <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7V7z"/>
+    </svg>
+    <span>Última ubicación conocida</span>
+  </div>
+  <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+    background: rgba(255,255,255,0.25);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+  ">×</button>
+</div>
     <div style="
       background: #FFF3E0;
       color: #E65100;
@@ -460,28 +474,20 @@ export function useMapboxGL() {
         <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
     <div class="unidad-popup-header">
       <!-- Primera fila: Nombre del conductor + Chevron -->
-      <div class="unidad-header-top-row" style="
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 12px 16px 8px 16px !important;
-      ">
-        <div class="unidad-texto" style="
-          text-align: left !important;
-          flex: 1 !important;
-          margin: 0 !important;
-        ">
-          <strong style="display: block; text-align: left !important;">${unidad.conductorNombre}</strong>
-        </div>
-        <button class="toggle-popup-btn" data-unidad-id="${unidadId}" style="
-          margin-left: 12px !important;
-          flex-shrink: 0 !important;
-        ">
-          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
+   <div class="unidad-header-top-row" style="display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 12px 16px 8px 16px !important;">
+
+  <!-- Nombre del conductor centrado -->
+  <div class="unidad-texto" style="flex: 1 !important; text-align: left !important; margin: 0 8px 0 0 !important;">
+    <strong style="display: block; font-size: 15px; color: #1f2937;">${unidad.conductorNombre}</strong>
+  </div>
+
+  <!-- Chevron a la derecha -->
+  <button class="toggle-popup-btn" data-unidad-id="${unidadId}" style="flex-shrink: 0 !important; background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center;">
+    <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
 
       <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
       <div class="unidad-info-row">
@@ -591,7 +597,7 @@ export function useMapboxGL() {
 
             const popup = new mapboxgl.Popup({
               offset: 25,
-              closeButton: true,
+              closeButton: false,
               closeOnClick: false,
               maxWidth: '300px',
             }).setHTML(crearPopupUnidad(unidad))
@@ -647,7 +653,7 @@ export function useMapboxGL() {
         // Crear nuevo marcador
         const popup = new mapboxgl.Popup({
           offset: 25,
-          closeButton: true,
+          closeButton: false,
           closeOnClick: false,
           maxWidth: '300px',
         }).setHTML(crearPopupUnidad(unidad))
