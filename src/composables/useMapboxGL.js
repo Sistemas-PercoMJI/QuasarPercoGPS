@@ -1722,15 +1722,6 @@ export function useMapboxGL() {
         // 🔥 GUARDAR EN VARIABLE GLOBAL
         idsUnidadesFiltradas = idsUnidades
 
-        console.log(
-          '🗺️ Filtrando marcadores:',
-          idsUnidades === null
-            ? 'TODAS'
-            : Array.isArray(idsUnidades) && idsUnidades.length === 0
-              ? 'NINGUNA'
-              : `${idsUnidades.length} unidades`,
-        )
-
         // 🔥 Si es null = mostrar TODAS
         if (idsUnidades === null) {
           Object.values(marcadoresUnidades.value).forEach((marcador) => {
@@ -1738,7 +1729,7 @@ export function useMapboxGL() {
               marcador.getElement().style.display = 'block'
             }
           })
-          console.log('✅ Mostrando TODOS los marcadores')
+
           return
         }
 
@@ -1749,7 +1740,7 @@ export function useMapboxGL() {
               marcador.getElement().style.display = 'none'
             }
           })
-          console.log('❌ Ocultando TODOS los marcadores')
+
           return
         }
 
@@ -1765,8 +1756,6 @@ export function useMapboxGL() {
             marcador.getElement().style.display = 'none'
           }
         })
-
-        console.log(`✅ Filtrado aplicado: ${idsUnidades.length} unidades visibles`)
       })
 
       map.value.on('error', (e) => {
