@@ -2469,10 +2469,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 /* 🔥 Botón específico para POPUP DE UNIDADES (a la izquierda) */
 .unidad-popup-container .mapboxgl-popup-close-button {
-  top: 16px !important;
-  left: 16px !important;
-  background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280 !important;
+  display: none !important;
 }
 
 .unidad-popup-container .mapboxgl-popup-close-button:hover {
