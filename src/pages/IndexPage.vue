@@ -105,7 +105,7 @@
                 @click="cambiarEstiloDesdeMenu('streets')"
               >
                 <div class="style-preview">
-                  <!-- 🔥 SVG COMPLETO CALLES -->
+                  <!-- SVG COMPLETO CALLES -->
                   <svg
                     width="150"
                     height="100"
@@ -383,7 +383,7 @@ const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
 const { obtenerEventos } = useEventos(userId.value)
 const traficoActivo = ref(false)
-const estiloMapa = ref('satellite') // ✅ NUEVO ESTADO
+const estiloMapa = ref('satellite')
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
@@ -392,7 +392,7 @@ const $q = useQuasar()
 //const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
 
 const { obtenerCentroGeozona } = useGeozonaUtils()
-const { obtenerDireccion } = useGeocoding() // 🔥 Agregar esta línea
+const { obtenerDireccion } = useGeocoding()
 
 const {
   conductores,
@@ -480,7 +480,7 @@ function detenerEvaluacionEventos() {
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error('Error:', error)
   }
 
   try {
@@ -489,7 +489,7 @@ function detenerEvaluacionEventos() {
     const conductoresConUnidad = conductores.value.filter((c) => c.UnidadAsignada)
 
     if (conductoresConUnidad.length === 0) {
-      console.warn('⚠️ No hay conductores con unidades asignadas')
+      console.warn('No hay conductores con unidades asignadas')
       $q.notify({
         type: 'warning',
         message: 'No hay conductores con unidades para simular',
@@ -513,7 +513,7 @@ function detenerEvaluacionEventos() {
       icon: 'explore',
     })
   } catch (error) {
-    console.error('❌ Error al iniciar simulador automático:', error)
+    console.error('Error al iniciar simulador automático:', error)
     simuladorYaIniciado = false
 
     $q.notify({
@@ -620,7 +620,7 @@ function actualizarMarcadorUsuario(lat, lng) {
 
 function iniciarSeguimientoGPS() {
   if (!navigator.geolocation) {
-    console.error('❌ Geolocalización no soportada en este navegador')
+    console.error('Geolocalización no soportada en este navegador')
     return
   }
 
@@ -987,7 +987,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
             .setHTML(popupContent)
             .addTo(mapaAPI.map)
         } else {
-          console.error('❌ Geozona NO encontrada')
+          console.error('Geozona NO encontrada')
         }
       })
 
@@ -1195,7 +1195,7 @@ const actualizarCapaPOIs = async () => {
       }
     })
 
-  // 🚀 SOLO ACTUALIZAR EL SOURCE (no recrear layers)
+  // SOLO ACTUALIZAR EL SOURCE (no recrear layers)
   const sourceId = 'pois-combined'
   if (mapaAPI.map.getSource(sourceId)) {
     mapaAPI.map.getSource(sourceId).setData({
@@ -1229,7 +1229,7 @@ const dibujarTodosEnMapa = async () => {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   } catch (error) {
-    console.error('❌ Error al cargar y dibujar items:', error)
+    console.error('Error al cargar y dibujar items:', error)
   }
 }
 
@@ -1373,7 +1373,7 @@ const limpiarCapasDelMapa = () => {
       try {
         marker.remove()
       } catch (e) {
-        console.warn('⚠️ Error al remover marcador:', e)
+        console.warn('Error al remover marcador:', e)
       }
     })
     marcadoresPOIs.value = []
@@ -1412,7 +1412,7 @@ const recentrarEnUsuario = () => {
   if (!marcadorUsuario.value) {
     /*$q.notify({
       type: 'warning',
-      message: '⚠️ Ubicación GPS no disponible',
+      message: 'Ubicación GPS no disponible',
       caption: 'Esperando señal GPS...',
       position: 'top',
       timeout: 2000,
@@ -1434,7 +1434,7 @@ const recentrarEnUsuario = () => {
 
   /*$q.notify({
     type: 'positive',
-    message: '🎯 Centrado en tu ubicación',
+    message: 'Centrado en tu ubicación',
     position: 'top',
     timeout: 1500,
     icon: 'my_location',
@@ -1453,7 +1453,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
   const map = mapPage._mapaAPI.map
 
   try {
-    // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
+    // IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
     const capasRuta = [
       'ruta-trayecto-borde',
       'ruta-trayecto',
@@ -1500,7 +1500,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     const coordenadas = trayecto.coordenadas || []
 
     if (coordenadas.length === 0) {
-      console.warn('⚠️ Trayecto sin coordenadas')
+      console.warn('Trayecto sin coordenadas')
       return
     }
 
@@ -1526,7 +1526,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#000000',
-        'line-width': 10, // 👈 Cambiar de 8 a 12
+        'line-width': 10,
         'line-opacity': 1,
       },
     })
@@ -1538,12 +1538,11 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#FFFFFF',
-        'line-width': 8, // 👈 Cambiar de 5 a 8
+        'line-width': 8,
         'line-opacity': 1,
       },
     })
 
-    // 🎯 NUEVO: Agregar FLECHAS direccionales
     // Cargar el icono de flecha si no existe
     if (!map.hasImage('arrow-icon')) {
       const arrowSvg = `
@@ -1577,7 +1576,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       })
     }, 100)
 
-    // 🎯 NUEVO: Agregar CÍRCULOS de sombra en inicio y fin
+    // Agregar CÍRCULOS de sombra en inicio y fin
     const inicio = coordenadas[0]
     const fin = coordenadas[coordenadas.length - 1]
 
@@ -1600,7 +1599,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       paint: {
         'circle-radius': 20,
         'circle-color': '#1976D2',
-        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-opacity': 0.4,
         'circle-blur': 0.5,
       },
     })
@@ -1624,7 +1623,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       paint: {
         'circle-radius': 20,
         'circle-color': '#FF6D00',
-        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-opacity': 0.4,
         'circle-blur': 0.5,
       },
     })
@@ -1725,17 +1724,17 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       icon: 'route',
     })
   } catch (error) {
-    console.error('❌ Error dibujando ruta:', error)
-    $q.notify({
+    console.error('Error dibujando ruta:', error)
+    /*$q.notify({
       type: 'negative',
       message: 'Error al mostrar la ruta',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
 // 🆕 MÉTODO PARA LIMPIAR RUTA
-const marcadoresRuta = ref([]) // 🆕 Para guardar referencias de marcadores A y B
+const marcadoresRuta = ref([]) // Para guardar referencias de marcadores A y B
 
 const limpiarRuta = () => {
   const mapPage = document.getElementById('map-page')
@@ -1743,7 +1742,7 @@ const limpiarRuta = () => {
 
   const map = mapPage._mapaAPI.map
 
-  // 🔥 PRIMERO remover LAYERS
+  // PRIMERO remover LAYERS
   const capas = [
     'ruta-trayecto-borde',
     'ruta-trayecto',
@@ -1765,7 +1764,7 @@ const limpiarRuta = () => {
     }
   })
 
-  // 🔥 DESPUÉS remover SOURCES
+  // DESPUÉS remover SOURCES
   const sources = [
     'ruta-trayecto',
     'ruta-flechas',
@@ -1786,7 +1785,7 @@ const limpiarRuta = () => {
     }
   })
 
-  // 🔥 Limpiar marcadores HTML (A y B)
+  // Limpiar marcadores HTML
   marcadoresRuta.value.forEach((marker) => {
     try {
       marker.remove()
@@ -1801,17 +1800,17 @@ const limpiarRuta = () => {
   marcadoresHTML.forEach((m) => m.remove())
 }
 
-// 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
+// EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
 window.limpiarRuta = limpiarRuta
 
-// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+// Función para mostrar popup de geozona con dirección geocodificada
 const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
   // Calcular centroide con dirección
   const centroInfo = await obtenerCentroGeozona(geozona)
 
   if (!centroInfo) {
-    console.error('❌ No se pudo calcular centroide')
+    console.error('No se pudo calcular centroide')
     return
   }
 
@@ -1845,7 +1844,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
         <div class="header-info">
           <div class="header-title">${geozona.nombre}</div>
           <div class="header-divider"></div>
-          <!-- 🔥 CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
+          <!-- CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
           <div class="header-subtitle">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
@@ -1917,9 +1916,9 @@ onMounted(async () => {
 
   try {
     await obtenerUnidades()
-    console.log(`✅ ${unidades.value.length} unidades cargadas`)
+    console.log(`${unidades.value.length} unidades cargadas`)
   } catch (error) {
-    console.error('❌ Error al cargar unidades:', error)
+    console.error('Error al cargar unidades:', error)
   }
 
   try {
@@ -1930,7 +1929,7 @@ onMounted(async () => {
 
     const mapPage = document.getElementById('map-page')
     if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-      console.error('❌ Error: Mapa no inicializado correctamente')
+      console.error('Error: Mapa no inicializado correctamente')
       return
     }
     await new Promise((resolve) => {
@@ -1990,23 +1989,23 @@ onMounted(async () => {
           if (poi) {
             abrirGeozonasConPOI(poi)
           } else {
-            console.error('❌ POI no encontrado:', ubicacionData.id)
+            console.error('POI no encontrado:', ubicacionData.id)
           }
         } else if (ubicacionData.tipo === 'geozona') {
           const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
           if (geozona) {
             abrirGeozonasConPOI(geozona)
           } else {
-            console.error('❌ Geozona no encontrada:', ubicacionData.id)
+            console.error('Geozona no encontrada:', ubicacionData.id)
           }
         }
       } catch (error) {
-        console.error('❌ Error al abrir detalles:', error)
+        console.error('Error al abrir detalles:', error)
       }
     }
 
     window.addEventListener('empresa-cambiada', async (event) => {
-      console.log('🔄 Empresa cambiada:', event.detail.empresas)
+      console.log('Empresa cambiada:', event.detail.empresas)
 
       /*// Solo notificar, NO recargar
       Notify.create({
@@ -2064,7 +2063,7 @@ onMounted(async () => {
 
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
-        console.warn('⚠️ Evento sin target válido')
+        console.warn('Evento sin target válido')
         return
       }
 
@@ -2130,7 +2129,7 @@ onMounted(async () => {
                     })*/
                   }, 100)
                 } else {
-                  console.warn('⚠️ Conductor sin grupo')
+                  console.warn('Conductor sin grupo')
                   /*$q.notify({
                     type: 'warning',
                     message: 'El conductor no está asignado a ningún grupo',
@@ -2140,7 +2139,7 @@ onMounted(async () => {
                 }
               })
             } else {
-              console.error('❌ Conductor no encontrado')
+              console.error('Conductor no encontrado')
               /*$q.notify({
                 type: 'negative',
                 message: 'No se encontró el conductor',
@@ -2208,7 +2207,7 @@ onMounted(async () => {
           }
         },
         () => {
-          console.warn('⚠️ No se pudo obtener la ubicación GPS inicial')
+          console.warn('No se pudo obtener la ubicación GPS inicial')
         },
         {
           enableHighAccuracy: false,
@@ -2218,7 +2217,7 @@ onMounted(async () => {
       )
     }
   } catch (error) {
-    console.error('❌ Error inicializando mapa:', error)
+    console.error('Error inicializando mapa:', error)
     /*$q.notify({
       type: 'negative',
       message: 'Error al inicializar el mapa',
@@ -2227,7 +2226,7 @@ onMounted(async () => {
     })*/
   }
 
-  // ✅ LISTENERS GLOBALES (fuera del try-catch)
+  // LISTENERS GLOBALES (fuera del try-catch)
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -2325,7 +2324,7 @@ const cancelarGeozona = () => {
 }
 
 onUnmounted(() => {
-  // 🔥 Limpiar listeners globales
+  // Limpiar listeners globales
   const mapPage = document.getElementById('map-page')
 
   if (window._mapMoveStartHandler && mapPage?._mapaAPI?.map) {
@@ -2372,7 +2371,7 @@ const manejarToggleTrafico = () => {
   traficoActivo.value = nuevoEstado
 }
 
-// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
+// NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
 const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   if (estiloMapa.value === nuevoEstilo) {
     return // Ya está en ese estilo
@@ -2395,13 +2394,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
     const mapPage = document.getElementById('map-page')
     if (mapPage?._mapaAPI?.map) {
       mapPage._mapaAPI.map.once('styledata', async () => {
-        // 🎯 Esperar un momento para que el estilo termine de cargar completamente
+        // Esperar un momento para que el estilo termine de cargar completamente
         await new Promise((resolve) => setTimeout(resolve, 500))
 
-        // 🎯 Redibujar TODO (POIs, Geozonas, Unidades)
+        // Redibujar TODO (POIs, Geozonas, Unidades)
         await dibujarTodosEnMapa()
 
-        // 🎯 Actualizar marcadores de unidades si existen
+        // Actualizar marcadores de unidades si existen
         if (unidadesActivas.value && unidadesActivas.value.length > 0) {
           actualizarMarcadoresUnidades(unidadesActivas.value)
         }
@@ -2423,7 +2422,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-top-color: #ffffff !important;
 }
 
-/* 🔥 Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
+/* Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
 .mapboxgl-popup-close-button {
   position: absolute !important;
   top: 14px !important;
@@ -2453,11 +2452,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   transform: scale(1.05) !important;
 }
 
-/* 🔥 Botón específico para POPUP DE EVENTOS (a la derecha) */
+/* Botón específico para POPUP DE EVENTOS (a la derecha) */
 .evento-popup-mejorado .mapboxgl-popup-close-button {
   top: 16px !important;
   right: 16px !important;
-  left: auto !important; /* 🔥 IMPORTANTE: Anular el left del estilo por defecto */
+  left: auto !important;
   color: #6b7280 !important;
 }
 
@@ -2467,7 +2466,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   transform: scale(1.05) !important;
 }
 
-/* 🔥 Botón específico para POPUP DE UNIDADES (a la izquierda) */
+/* Botón específico para POPUP DE UNIDADES (a la izquierda) */
 .unidad-popup-container .mapboxgl-popup-close-button {
   display: none !important;
 }
@@ -2956,7 +2955,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   padding: 2px 8px;
   border-radius: 4px;
 }
-/* ... tus estilos existentes de IndexPage ... */
 
 /* ============================================ */
 /* === POPUP MEJORADO EVENTOS (FONDO BLANCO) === */
@@ -2980,16 +2978,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: white;
 }
 
-/* 🔥 NUEVO: Header blanco */
+/*  Header blanco */
 .evento-popup-header-white {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 56px 16px 18px; /* 🔥 Aumentado de 50px a 56px */
+  padding: 18px 56px 16px 18px;
   background: white;
 }
 
-/* 🔥 NUEVO: Icono con color (verde/naranja) */
+/*Icono con color (verde/naranja) */
 .evento-icon-white {
   width: 42px;
   height: 42px;
@@ -3007,7 +3005,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   min-width: 0;
 }
 
-/* 🔥 NUEVO: Título en negro */
+/* Título en negro */
 .evento-titulo-white {
   font-size: 17px;
   font-weight: 700;
@@ -3017,7 +3015,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
 }
 
-/* 🔥 NUEVO: Subtítulo en negro */
+/*  Subtítulo en negro */
 .evento-tipo-white {
   font-size: 13px;
   line-height: 1.3;
@@ -3025,7 +3023,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #4b5563;
 }
 
-/* 🔥 NUEVO: Separador estilo geozona */
+/* Separador estilo geozona */
 .header-divider-evento {
   width: 100%;
   height: 1px;
@@ -3341,11 +3339,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* ✅ NUEVO: Botón principal de capas */
+/* NUEVO: Botón principal de capas */
 .layers-menu-btn {
   position: fixed !important;
   top: 80px;
-  right: 20px; /* 🔥 DERECHA */
+  right: 20px;
   z-index: 1000;
 
   /* Glassmorphism */
@@ -3366,8 +3364,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 .recenter-btn {
   position: fixed !important;
-  top: 150px; /* 🔥 80px + 52px (tamaño) + 18px (espacio) = 150px */
-  right: 20px; /* 🔥 DERECHA */
+  top: 150px;
+  right: 20px;
   z-index: 1000;
 
   /* Glassmorphism */
@@ -3459,7 +3457,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: transparent !important;
 }
 
-/* ✅ SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
+/* SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
 .map-styles-section {
   background: #f9fafb;
   padding-bottom: 16px;
@@ -3469,7 +3467,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: transparent;
 }
 
-/* ✅ TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
+/* TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
 .traffic-section {
   background: white;
   padding-bottom: 8px;
@@ -3479,7 +3477,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   margin: 0;
 }
 
-/* ✅ LÍNEA DIVISORIA */
+/* LÍNEA DIVISORIA */
 .menu-separator {
   background-color: #949791cd !important;
   margin: 0 !important;
@@ -3647,7 +3645,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   image-rendering: crisp-edges;
 }
 
-/* 🎯 Optimización: Suavizar transiciones de opacidad */
+/* Optimización: Suavizar transiciones de opacidad */
 :deep(.custom-marker-unidad),
 :deep(.marker-container-poi),
 :deep(.marker-container-geozona) {
@@ -3655,17 +3653,17 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   will-change: opacity;
 }
 
-/* 🎯 Cursor durante panning */
+/* Cursor durante panning */
 :deep(.mapboxgl-canvas-container.mapboxgl-touch-drag-pan) {
   cursor: grabbing !important;
 }
 
-/* 🎯 Optimizar rendering del canvas durante movimiento */
+/* Optimizar rendering del canvas durante movimiento */
 :deep(.mapboxgl-canvas) {
   will-change: transform;
 }
 
-/* 🎯 Reducir peso visual de hover effects */
+/* Reducir peso visual de hover effects */
 :deep(.icono-poi-hover:hover),
 :deep(.icono-geozona-hover:hover),
 :deep(.icono-unidad-hover:hover) {
