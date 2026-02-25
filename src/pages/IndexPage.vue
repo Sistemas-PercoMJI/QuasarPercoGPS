@@ -2767,8 +2767,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .unidad-popup-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 0;
+  padding: 0;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -2791,6 +2791,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   gap: 12px;
   justify-content: space-between;
   width: 100%;
+  padding: 0 16px 12px 16px;
 }
 .unidad-info {
   display: flex;
