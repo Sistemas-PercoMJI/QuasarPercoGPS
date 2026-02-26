@@ -21,7 +21,7 @@
     <q-tab-panels v-model="tab" animated>
       <!-- Tab de Crear Reporte -->
       <q-tab-panel name="crear">
-        <!-- 🎯 HEADER CON TÍTULO Y SUBTÍTULO -->
+        <!--  HEADER CON TÍTULO Y SUBTÍTULO -->
         <div class="q-mb-lg">
           <div class="text-h5 text-weight-bold">
             <q-icon name="description" size="sm" class="q-mr-sm" />
@@ -69,7 +69,7 @@
         <div class="row q-col-gutter-md">
           <!-- COLUMNA IZQUIERDA -->
           <div class="col-12 col-md-6">
-            <!-- 🎯 CARD: CONFIGURACIÓN BÁSICA -->
+            <!--  CARD: CONFIGURACIÓN BÁSICA -->
             <q-card flat bordered class="q-mb-md">
               <q-card-section class="bg-grey-2">
                 <div class="text-h6">
@@ -157,7 +157,7 @@
               </q-card-section>
             </q-card>
 
-            <!-- 🎯 CARD: FILTROS (solo si tiene eventos) -->
+            <!--  CARD: FILTROS (solo si tiene eventos) -->
             <q-card v-if="tieneOpcion('seleccionarEventos')" flat bordered class="q-mb-md">
               <q-card-section class="bg-grey-2">
                 <div class="text-h6">
@@ -191,7 +191,7 @@
               </q-card-section>
             </q-card>
 
-            <!-- 🎯 CARD: OPCIONES ESPECÍFICAS -->
+            <!--  CARD: OPCIONES ESPECÍFICAS -->
             <q-card
               v-if="
                 tieneOpcion('metodoAgrupacion') ||
@@ -322,8 +322,8 @@
 
           <!-- COLUMNA DERECHA -->
           <div class="col-12 col-md-6">
-            <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
-            <!-- 🎯 CARD: OPCIONES DE VISUALIZACIÓN -->
+            <!--  CARD: OPCIONES DE VISUALIZACIÓN -->
+            <!--  CARD: OPCIONES DE VISUALIZACIÓN -->
             <q-card
               v-if="
                 (tieneOpcion('mostrarMapaTrayecto') || tieneOpcion('mostrarMapaZona')) &&
@@ -377,7 +377,7 @@
               </q-card-section>
             </q-card>
 
-            <!-- 🎯 CARD: PERSONALIZACIÓN DE COLUMNAS -->
+            <!--  CARD: PERSONALIZACIÓN DE COLUMNAS -->
             <q-card
               id="card-columnas-personalizacion"
               v-if="tieneOpcion('seleccionColumnas')"
@@ -454,7 +454,7 @@
           </div>
         </div>
 
-        <!-- 🎯 BOTONES DE ACCIÓN (SIEMPRE VISIBLES) -->
+        <!--  BOTONES DE ACCIÓN (SIEMPRE VISIBLES) -->
         <q-card flat bordered class="q-mt-lg">
           <q-card-section class="bg-grey-1">
             <div class="row q-gutter-md justify-center">
@@ -543,7 +543,7 @@
                 <q-tooltip>Descargar</q-tooltip>
               </q-btn>
 
-              <!-- 🆕 Botón con lógica condicional -->
+              <!--  Botón con lógica condicional -->
               <q-btn
                 id="btn-accion-vista"
                 flat
@@ -571,7 +571,7 @@ import { useQuasar } from 'quasar'
 import { getAuth } from 'firebase/auth'
 import { useExcelPreview } from 'src/composables/useExcelPreview'
 
-// 🔥 IMPORTS ACTUALIZADOS
+//  IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
 const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo } = useReportePDF()
@@ -581,7 +581,7 @@ import { useColumnasReportes } from 'src/composables/useColumnasReportes'
 import { useTiposInforme } from 'src/composables/useTiposInforme'
 import { useEventos } from 'src/composables/useEventos'
 
-// 🆕 NUEVOS IMPORTS - Para los 3 tipos de informes
+//  NUEVOS IMPORTS - Para los 3 tipos de informes
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
@@ -664,7 +664,7 @@ const opcionesReportar = ['Unidades', 'Conductores']
 const opcionesSelector = ref([])
 const listaEventosDisponibles = ref([])
 
-// 🔥 NUEVOS REFS PARA OPCIONES FILTRADAS
+//  NUEVOS REFS PARA OPCIONES FILTRADAS
 const opcionesSelectorFiltradas = ref([])
 const eventosDisponiblesFiltrados = ref([])
 
@@ -697,7 +697,7 @@ const columnasHistorial = [
 
 const { obtenerVistaPrevia, descargarArchivo } = useExcelPreview()
 
-// 🆕 NUEVO REF para manejar loading por fila
+//  NUEVO REF para manejar loading por fila
 const loadingPreview = ref({})
 
 // Computed
@@ -711,7 +711,7 @@ const etiquetaSelector = computed(() => {
   return labels[reportarPor.value] || 'Seleccionar'
 })
 
-// 🔥 NUEVAS FUNCIONES DE FILTRADO
+//  NUEVAS FUNCIONES DE FILTRADO
 const filtrarOpcionesSelector = (val, update) => {
   update(() => {
     if (val === '') {
@@ -742,7 +742,7 @@ const aplicarRangoFecha = () => {
   rangoFecha.value = rangoFechaTemporal.value
 }
 
-// 🆕 NUEVA: Función wrapper para cambiar tipo de informe
+//  NUEVA: Función wrapper para cambiar tipo de informe
 const cambiarTipoInforme = (nuevoTipo) => {
   // Cambiar en useTiposInforme (tu lógica existente)
   cambiarTipoInformeOriginal(nuevoTipo)
@@ -751,7 +751,7 @@ const cambiarTipoInforme = (nuevoTipo) => {
   cambiarTipoInformeColumnas(nuevoTipo)
 }
 
-// 🆕 NUEVA: Función para resetear columnas
+//  NUEVA: Función para resetear columnas
 const onResetearColumnas = () => {
   resetearColumnas()
 
@@ -811,7 +811,7 @@ const cargarOpcionesSelector = async () => {
     switch (reportarPor.value) {
       case 'Unidades': {
         const unidades = await obtenerUnidades()
-        // 🔥 Guardar mapeo de nombre -> ID
+        //  Guardar mapeo de nombre -> ID
         window.unidadesMap = {}
         unidades.forEach((u) => {
           const nombre = u.Unidad || u.id
@@ -874,7 +874,7 @@ const cargarOpcionesSelector = async () => {
 
 const cargarEventosDisponibles = async () => {
   if (!userId.value) {
-    console.warn('⚠️ No hay userId para cargar eventos')
+    console.warn(' No hay userId para cargar eventos')
     return
   }
 
@@ -892,10 +892,10 @@ const cargarEventosDisponibles = async () => {
     eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
 
     if (listaEventosDisponibles.value.length === 0) {
-      console.warn('⚠️ No se encontraron eventos activos')
+      console.warn(' No se encontraron eventos activos')
     }
   } catch (error) {
-    console.error('❌ Error al cargar eventos desde Firebase:', error)
+    console.error(' Error al cargar eventos desde Firebase:', error)
     listaEventosDisponibles.value = []
     eventosDisponiblesFiltrados.value = []
 
@@ -941,7 +941,7 @@ const validarFormulario = () => {
   return true
 }
 
-// 🔥 FUNCIÓN ACTUALIZADA Y MEJORADA - PARSEO DE FECHAS ROBUSTO
+//  FUNCIÓN ACTUALIZADA Y MEJORADA - PARSEO DE FECHAS ROBUSTO
 const obtenerDatosReporte = async () => {
   if (!userId.value) {
     throw new Error('Usuario no autenticado')
@@ -951,17 +951,17 @@ const obtenerDatosReporte = async () => {
     throw new Error('No se ha seleccionado ningún rango de fechas')
   }
 
-  // ✅ HELPER PARA PARSEAR FECHAS
+  //  HELPER PARA PARSEAR FECHAS
   const parsearFechaString = (fechaStr) => {
     if (!fechaStr || typeof fechaStr !== 'string') {
-      console.error('❌ fechaStr inválido:', fechaStr)
+      console.error(' fechaStr inválido:', fechaStr)
       throw new Error(`Formato de fecha inválido: ${fechaStr}`)
     }
 
     const partes = fechaStr.trim().split('/').map(Number)
 
     if (partes.length !== 3 || partes.some(isNaN)) {
-      console.error('❌ Partes de fecha inválidas:', partes)
+      console.error(' Partes de fecha inválidas:', partes)
       throw new Error(`No se pudo parsear la fecha: ${fechaStr}`)
     }
 
@@ -975,7 +975,7 @@ const obtenerDatosReporte = async () => {
     }
   }
 
-  // ✅ PARSEAR FECHAS - MANEJA TODOS LOS CASOS
+  //  PARSEAR FECHAS - MANEJA TODOS LOS CASOS
   let fechaInicio, fechaFin
 
   if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
@@ -1021,11 +1021,11 @@ const obtenerDatosReporte = async () => {
   let criterioPrincipal = ''
   let datosAgrupados = {}
 
-  // 🔥 OBTENER DATOS SEGÚN TIPO
+  //  OBTENER DATOS SEGÚN TIPO
   if (tipoInforme === 'eventos') {
     const { obtenerEventosReales } = useReportesEventos()
 
-    // 🔥 DETERMINAR QUÉ IDs PASAR A LA FUNCIÓN
+    //  DETERMINAR QUÉ IDs PASAR A LA FUNCIÓN
     let idsParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
@@ -1038,10 +1038,10 @@ const obtenerDatosReporte = async () => {
           if (conductor.UnidadAsignada) {
             idsParaBuscar.push(conductor.UnidadAsignada)
           } else {
-            console.warn(`   ⚠️ Conductor sin UnidadAsignada`)
+            console.warn(`    Conductor sin UnidadAsignada`)
           }
         } else {
-          console.warn(`❌ Conductor "${nombreConductor}" no encontrado`)
+          console.warn(` Conductor "${nombreConductor}" no encontrado`)
         }
       }
 
@@ -1059,7 +1059,7 @@ const obtenerDatosReporte = async () => {
       idsParaBuscar = unidadesIds
     }
 
-    // 🔥 LLAMAR CON LOS IDs CORRECTOS
+    //  LLAMAR CON LOS IDs CORRECTOS
     datosInforme = await obtenerEventosReales(
       idsParaBuscar,
       fechaInicio,
@@ -1069,7 +1069,7 @@ const obtenerDatosReporte = async () => {
   } else if (tipoInforme === 'trayectos') {
     const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
 
-    // 🔥 NUEVA LÓGICA: Convertir conductores a unidades
+    //  NUEVA LÓGICA: Convertir conductores a unidades
     let unidadesParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
@@ -1082,10 +1082,10 @@ const obtenerDatosReporte = async () => {
           if (conductor.UnidadAsignada) {
             unidadesParaBuscar.push(conductor.UnidadAsignada)
           } else {
-            console.warn(`   ⚠️ No tiene UnidadAsignada`)
+            console.warn(`    No tiene UnidadAsignada`)
           }
         } else {
-          console.warn(`❌ Conductor "${nombreConductor}" no encontrado en Firebase`)
+          console.warn(` Conductor "${nombreConductor}" no encontrado en Firebase`)
         }
       }
 
@@ -1105,7 +1105,7 @@ const obtenerDatosReporte = async () => {
     datosInforme = await obtenerTrayectos(unidadesParaBuscar, fechaInicio, fechaFin)
     datosInforme = await enriquecerConDatosUnidades(datosInforme)
 
-    // 🔥 AGREGAR: AGRUPAR TRAYECTOS POR UNIDAD/CONDUCTOR
+    //  AGREGAR: AGRUPAR TRAYECTOS POR UNIDAD/CONDUCTOR
     datosAgrupados = datosInforme.reduce((acc, trayecto) => {
       let clave = ''
 
@@ -1124,7 +1124,7 @@ const obtenerDatosReporte = async () => {
   } else if (tipoInforme === 'horas_trabajo') {
     const { calcularHorasTrabajo } = useReportesHorasTrabajo()
 
-    // 🔥 DETERMINAR QUÉ IDs PASAR
+    //  DETERMINAR QUÉ IDs PASAR
     let idsParaBuscar = []
 
     if (reportarPor.value === 'Conductores') {
@@ -1164,7 +1164,7 @@ const obtenerDatosReporte = async () => {
 
   // Agrupar datos
   if (tipoInforme === 'eventos') {
-    // 🔥 PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
+    //  PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
     criterioPrincipal = ''
 
     if (reportarPor.value === 'Unidades') {
@@ -1179,7 +1179,7 @@ const obtenerDatosReporte = async () => {
       criterioPrincipal = 'unidad'
     }
 
-    // 🔥 PASO 2: Agrupar por criterio principal
+    //  PASO 2: Agrupar por criterio principal
     datosAgrupados = datosFiltrados.reduce((acc, dato) => {
       let clavePrincipal = ''
 
@@ -1228,7 +1228,7 @@ const obtenerDatosReporte = async () => {
   )
 
   if (elementosSinDatos.length > 0) {
-    console.log('⚠️ Elementos sin datos:', elementosSinDatos)
+    console.log(' Elementos sin datos:', elementosSinDatos)
   }
 
   // Procesar para columnas
@@ -1307,12 +1307,12 @@ const generarReporte = async () => {
 
     let pdfResult
 
-    // 🔥 GENERAR PDF SEGÚN TIPO
+    //  GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
       if (datosReales.eventosAgrupados) {
         Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
           console.log(
-            `📦 ${nombre}:`,
+            ` ${nombre}:`,
             trayectos.map((t) => ({
               unidad: t.unidadNombre,
               placa: t.Placa,
@@ -1394,12 +1394,12 @@ const generarReporte = async () => {
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
     }
 
-    // ✅ VALIDAR QUE SE GENERÓ EL PDF
+    //  VALIDAR QUE SE GENERÓ EL PDF
     if (!pdfResult || !pdfResult.blob) {
       throw new Error('No se pudo generar el archivo PDF')
     }
 
-    // ✅ GUARDAR Y DESCARGAR
+    //  GUARDAR Y DESCARGAR
     const metadata = {
       nombre: `Reporte ${reportarPor.value}`,
       tipo: 'pdf',
@@ -1493,7 +1493,7 @@ const generarExcel = async () => {
       Object.keys(datosReales.datosColumnas[0] || {})
     }
 
-    // 🔥 DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
+    //  DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       const { generarExcelHorasTrabajo } = useReporteExcel()
       const resultado = await generarExcelHorasTrabajo(config, datosReales)
@@ -1600,7 +1600,7 @@ const cargarHistorialReportes = async () => {
   }
 }
 /**
- * 🆕 Abre vista previa según tipo de archivo
+ *  Abre vista previa según tipo de archivo
  */
 const abrirVistaPrevia = async (reporte) => {
   // Si es PDF, abrir directamente en nueva pestaña
@@ -1639,7 +1639,7 @@ const abrirVistaPrevia = async (reporte) => {
         })
       }
 
-      // 🆕 EXPONER FUNCIONES GLOBALES
+      //  EXPONER FUNCIONES GLOBALES
       window.descargarExcelActual = descargarExcel
       window.cerrarDialogoActual = null
 
@@ -1791,7 +1791,7 @@ const abrirVistaPrevia = async (reporte) => {
         cancel: false,
         class: 'excel-preview-dialog-fullscreen',
       })
-      // 🆕 ASIGNAR LA FUNCIÓN DE CERRAR
+      //  ASIGNAR LA FUNCIÓN DE CERRAR
       window.cerrarDialogoActual = () => {
         dialogRef.hide()
       }
@@ -1803,7 +1803,7 @@ const abrirVistaPrevia = async (reporte) => {
         position: 'top',
       })
     } catch (error) {
-      console.error('❌ Error al generar vista previa:', error)
+      console.error(' Error al generar vista previa:', error)
       $q.notify({
         type: 'negative',
         message: 'Error al generar vista previa',
@@ -1841,7 +1841,7 @@ watch(elementosSeleccionados, () => {
   }
 })
 
-// 🔥 NUEVO: Limpiar input de eventos cuando se selecciona algo
+//  NUEVO: Limpiar input de eventos cuando se selecciona algo
 watch(eventos, () => {
   if (selectorEventos.value) {
     selectorEventos.value.updateInputValue('')
@@ -1995,7 +1995,7 @@ watch(eventos, () => {
   background: currentColor;
   opacity: 0.15;
 }
-/* 🆕 ESTILOS PARA EL HEADER DE COLUMNAS */
+/*  ESTILOS PARA EL HEADER DE COLUMNAS */
 .columnas-header {
   display: flex;
   justify-content: space-between;

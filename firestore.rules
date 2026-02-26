@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 🆕 FUNCIÓN HELPER: Verificar si es Super Admin
+    //  FUNCIÓN HELPER: Verificar si es Super Admin
     function isSuperAdmin() {
       return exists(/databases/$(database)/documents/SuperAdmin/$(request.auth.uid));
     }
@@ -39,7 +39,7 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
     
-    // 🆕 USUARIOS: Super Admins pueden ver todo, usuarios normales solo lo suyo
+    //  USUARIOS: Super Admins pueden ver todo, usuarios normales solo lo suyo
     match /Usuarios/{userId} {
       allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       
@@ -53,7 +53,7 @@ service cloud.firestore {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
       
-      // 🆕 NUEVA: SUBCOLECCIÓN GruposGeozonas
+      //  NUEVA: SUBCOLECCIÓN GruposGeozonas
       match /GruposGeozonas/{grupoId} {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       }
@@ -74,7 +74,7 @@ service cloud.firestore {
       }
     }
     
-    // 🆕 LISTAR USUARIOS: Super Admins pueden listar, usuarios normales pueden listar (para buscar)
+    //  LISTAR USUARIOS: Super Admins pueden listar, usuarios normales pueden listar (para buscar)
     match /Usuarios {
       allow list: if request.auth != null;
     }

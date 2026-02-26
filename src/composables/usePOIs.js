@@ -42,9 +42,9 @@ export function usePOIs(userId) {
 
       return docRef.id
     } catch (err) {
-      console.error('❌ Error al crear POI:', err)
-      console.error('❌ Código:', err.code)
-      console.error('❌ Mensaje:', err.message)
+      console.error(' Error al crear POI:', err)
+      console.error(' Código:', err.code)
+      console.error(' Mensaje:', err.message)
       error.value = err.message
       throw err
     } finally {
@@ -63,7 +63,7 @@ export function usePOIs(userId) {
       const querySnapshot = await getDocs(collectionRef)
 
       if (querySnapshot.empty) {
-        //console.warn('⚠️ No se encontraron POIs en la base de datos')
+        //console.warn(' No se encontraron POIs en la base de datos')
         pois.value = []
         return []
       }
@@ -94,9 +94,9 @@ export function usePOIs(userId) {
 
       return poisData
     } catch (err) {
-      console.error('❌ Error al obtener POIs:', err)
-      console.error('❌ Código:', err.code)
-      console.error('❌ Mensaje:', err.message)
+      console.error(' Error al obtener POIs:', err)
+      console.error(' Código:', err.code)
+      console.error(' Mensaje:', err.message)
       error.value = err.message
       throw err
     } finally {
@@ -127,7 +127,7 @@ export function usePOIs(userId) {
 
       return true
     } catch (err) {
-      console.error('❌ Error al actualizar POI:', err)
+      console.error(' Error al actualizar POI:', err)
       error.value = err.message
       throw err
     } finally {
@@ -148,7 +148,7 @@ export function usePOIs(userId) {
 
       return true
     } catch (err) {
-      console.error('❌ Error al eliminar POI:', err)
+      console.error(' Error al eliminar POI:', err)
       error.value = err.message
       throw err
     } finally {

@@ -80,7 +80,7 @@
           rounded
         />
         <div class="metrica-detalle">
-          {{ datos.voltajeBateria < 11.5 ? '⚠️ Batería baja' : '✓ Estado normal' }}
+          {{ datos.voltajeBateria < 11.5 ? ' Batería baja' : ' Estado normal' }}
         </div>
       </div>
     </div>

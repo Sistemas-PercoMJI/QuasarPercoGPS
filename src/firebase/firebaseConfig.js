@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
-import { getDatabase } from 'firebase/database' // 🆕 AGREGAR ESTO
+import { getDatabase } from 'firebase/database'
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -14,7 +14,7 @@ const firebaseConfig = {
   messagingSenderId: '122667950807',
   appId: '1:122667950807:web:5715854bfaa45c76880692',
   measurementId: 'G-CPR9K26MBF',
-  databaseURL: 'https://gpsmjindust-default-rtdb.firebaseio.com' // 🆕 AGREGAR ESTO
+  databaseURL: 'https://gpsmjindust-default-rtdb.firebaseio.com',
 }
 
 // Initialize Firebase
@@ -24,7 +24,7 @@ const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 const auth = getAuth(app)
 const storage = getStorage(app)
-const realtimeDb = getDatabase(app) // 🆕 AGREGAR ESTO
+const realtimeDb = getDatabase(app)
 
 // Exportar servicios
-export { db, auth, storage, realtimeDb } // 🆕 Agregar realtimeDb
+export { db, auth, storage, realtimeDb }

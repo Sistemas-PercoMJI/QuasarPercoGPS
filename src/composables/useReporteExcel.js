@@ -38,7 +38,7 @@ export function useReporteExcel() {
     infoSheet.addRow([])
 
     // ========================================
-    // 🔥 NUEVO: Resumen estadístico mejorado
+    //  NUEVO: Resumen estadístico mejorado
     // ========================================
     if (config.mostrarResumen && datosReales.resumen) {
       infoSheet.addRow(['RESUMEN DEL INFORME'])
@@ -127,7 +127,7 @@ export function useReporteExcel() {
     infoSheet.getColumn(2).width = 20
 
     // ========================================
-    // 🔥 HOJA 2: Todos los eventos (sin agrupar)
+    //  HOJA 2: Todos los eventos (sin agrupar)
     // ========================================
     // Siempre crear la hoja, aunque no haya datos
     const todosSheet = workbook.addWorksheet('Todos los Eventos')
@@ -138,7 +138,7 @@ export function useReporteExcel() {
     todosSheet.addRow([`Total: ${datosReales.totalEventos || 0} eventos`])
     todosSheet.addRow([])
 
-    // 🔥 Headers de columnas = columnas seleccionadas (SIEMPRE mostrar)
+    //  Headers de columnas = columnas seleccionadas (SIEMPRE mostrar)
     const headerRow = todosSheet.addRow(config.columnasSeleccionadas)
     headerRow.font = { bold: true }
     headerRow.fill = {
@@ -158,17 +158,17 @@ export function useReporteExcel() {
       }
     })
 
-    // 🔥 Si hay datos, agregarlos
+    //  Si hay datos, agregarlos
     if (datosReales.eventosAgrupados) {
       // Extraer todos los eventos originales de los grupos
       const todosLosEventos = Object.values(datosReales.eventosAgrupados).flat()
 
       todosLosEventos.forEach((evento) => {
-        // 🔥 USAR obtenerValor() igual que en las hojas individuales
+        //  USAR obtenerValor() igual que en las hojas individuales
         const rowData = config.columnasSeleccionadas.map((nombreCol) => {
           const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
           if (columnaConfig && columnaConfig.obtenerValor) {
-            return columnaConfig.obtenerValor(evento) // 👈 AQUÍ está la clave
+            return columnaConfig.obtenerValor(evento) //  AQUÍ está la clave
           }
           return 'N/A'
         })
@@ -186,7 +186,7 @@ export function useReporteExcel() {
         })
       })
     } else {
-      // 🔥 Si no hay datos, mostrar mensaje
+      //  Si no hay datos, mostrar mensaje
       const emptyRow = todosSheet.addRow(['No hay eventos en el período seleccionado'])
       emptyRow.getCell(1).alignment = { horizontal: 'center' }
       emptyRow.getCell(1).font = { italic: true, color: { argb: 'FF999999' } }
@@ -200,7 +200,7 @@ export function useReporteExcel() {
       )
     }
 
-    // 🔥 Ajustar anchos según configuración de columnas
+    //  Ajustar anchos según configuración de columnas
     config.columnasSeleccionadas.forEach((nombreCol, index) => {
       const columnaConfig = COLUMNAS_POR_TIPO.eventos[nombreCol]
       if (columnaConfig) {
@@ -211,7 +211,7 @@ export function useReporteExcel() {
     })
 
     // ========================================
-    // 🔥 HOJAS 3+: Eventos agrupados (opcional)
+    //  HOJAS 3+: Eventos agrupados (opcional)
     // ========================================
     if (datosReales.eventosAgrupados) {
       Object.entries(datosReales.eventosAgrupados).forEach(([nombreElemento, eventos]) => {
@@ -477,7 +477,7 @@ export function useReporteExcel() {
     const fecha = new Date().toISOString().split('T')[0]
     const filename = `Informe_Eventos_${fecha}.xlsx`
 
-    // 🔥 Descargar automáticamente
+    //  Descargar automáticamente
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -485,7 +485,7 @@ export function useReporteExcel() {
     link.click()
     window.URL.revokeObjectURL(url)
 
-    // ✅ DEVOLVER BLOB Y FILENAME (para subir a Firebase)
+    //  DEVOLVER BLOB Y FILENAME (para subir a Firebase)
     return {
       blob: blob,
       filename: filename,
@@ -520,7 +520,7 @@ export function useReporteExcel() {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
     })
 
-    // 🔥 NUEVO: Usar sistema de columnas dinámicas
+    //  NUEVO: Usar sistema de columnas dinámicas
     eventos.forEach((evento) => {
       const rowData = columnas.map((nombreCol) => {
         const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
@@ -532,7 +532,7 @@ export function useReporteExcel() {
       sheet.addRow(rowData)
     })
 
-    // 🔥 Ajustar anchos según configuración
+    //  Ajustar anchos según configuración
     columnas.forEach((nombreCol, index) => {
       const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
       if (columnaConfig) {
@@ -551,7 +551,7 @@ export function useReporteExcel() {
     const fecha = new Date().toISOString().split('T')[0]
     const filename = `${titulo}_${fecha}.xlsx`
 
-    // 🔥 Descargar automáticamente
+    //  Descargar automáticamente
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -718,11 +718,10 @@ export function useReporteExcel() {
             }
 
             if (!incluirViaje) {
-              console.log('Viaje excluido por filtro:', config.tipoInformeComercial)
               return
             }
 
-            hayDatos = true // ✅ Marcamos que sí hay datos
+            hayDatos = true //  Marcamos que sí hay datos
 
             // Combinar datos del registro padre con el viaje
             const itemCombinado = {
@@ -778,7 +777,7 @@ export function useReporteExcel() {
 
     // Si no hay datos después de aplicar filtros
     if (!hayDatos) {
-      console.warn('⚠️ No hay datos para mostrar después de aplicar filtros')
+      console.warn(' No hay datos para mostrar después de aplicar filtros')
 
       const emptyRow = todosSheet.addRow(['No hay viajes que coincidan con los filtros aplicados'])
       emptyRow.getCell(1).alignment = { horizontal: 'center' }

@@ -37,7 +37,6 @@ export function useUnidadesFirebase() {
         ...doc.data(),
       }))
 
-      console.log(`✅ ${unidades.value.length} unidades de la empresa cargadas`)
       return unidades.value
     } catch (err) {
       console.error('Error al obtener unidades:', err)

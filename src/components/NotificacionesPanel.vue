@@ -262,7 +262,7 @@ const notificacionesFiltradas = computed(() => {
   overflow: hidden;
 }
 
-/* 🎨 SCROLLBAR MODERNO Y DISCRETO */
+/*  SCROLLBAR MODERNO Y DISCRETO */
 .scroll-area-animated :deep(.q-scrollarea__bar) {
   width: 8px;
   right: 0;

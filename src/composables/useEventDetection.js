@@ -12,14 +12,14 @@ const ubicacionActual = ref(null)
 const eventosDisparados = ref(new Set())
 const estadoUbicaciones = ref(new Map())
 
-// 🆕 Mapa de ubicaciones que tienen eventos configurados (para trackear)
+//  Mapa de ubicaciones que tienen eventos configurados (para trackear)
 const ubicacionesTrackeadas = ref(new Map())
 
 // Mapa para rastrear eventos de ENTRADA activos (para calcular duración)
 const eventosEnCurso = ref(new Map())
 const salidasEnCurso = ref(new Map())
 
-// 🔥 NUEVO: Throttle para tracking (evita llamadas duplicadas rápidas)
+//  NUEVO: Throttle para tracking (evita llamadas duplicadas rápidas)
 const ultimoTrackingPorUnidad = ref(new Map())
 const TRACKING_THROTTLE_MS = 2000 // 2 segundos
 
@@ -30,7 +30,7 @@ const { registrarEventoDiario, finalizarEventoDiario, actualizarDuracionEvento }
 
 export function useEventDetection() {
   /**
-   * 🆕 Inicializa el sistema con eventos, POIs y geozonas
+   *  Inicializa el sistema con eventos, POIs y geozonas
    * NUEVO: Construye mapa de ubicaciones que tienen eventos (para trackear solo esas)
    */
   function inicializar(eventos, pois, geozonas) {
@@ -46,7 +46,7 @@ export function useEventDetection() {
       geozonasMapeadas.value.set(geozona.id, geozona)
     })
 
-    // 🔥 NUEVO: Construir mapa de ubicaciones a trackear
+    //  NUEVO: Construir mapa de ubicaciones a trackear
     ubicacionesTrackeadas.value.clear()
 
     eventosActivos.value.forEach((evento) => {
@@ -91,7 +91,7 @@ export function useEventDetection() {
    */
   function estaDentroDelPOI(lat, lng, poi) {
     if (!poi.coordenadas) {
-      console.warn(`⚠️ POI sin coordenadas: ${poi.nombre}`)
+      console.warn(` POI sin coordenadas: ${poi.nombre}`)
       return false
     }
 
@@ -107,7 +107,7 @@ export function useEventDetection() {
    */
   function estaDentroDeGeozona(lat, lng, geozona) {
     if (!geozona.puntos || !Array.isArray(geozona.puntos) || geozona.puntos.length === 0) {
-      console.warn(`⚠️ Geozona sin puntos válidos: ${geozona.nombre}`)
+      console.warn(` Geozona sin puntos válidos: ${geozona.nombre}`)
       return false
     }
 
@@ -165,7 +165,7 @@ export function useEventDetection() {
   }
 
   /**
-   * 🆕 Verifica si está dentro de una ubicación (POI o Geozona)
+   *  Verifica si está dentro de una ubicación (POI o Geozona)
    */
   function verificarSiEstaDentro(unidad, ubicacion, tipo) {
     if (tipo === 'POI') {
@@ -177,13 +177,13 @@ export function useEventDetection() {
   }
 
   /**
-   * 🔥 NUEVO: Gestiona el tracking automático de entrada/salida
+   *  NUEVO: Gestiona el tracking automático de entrada/salida
    * Solo se ejecuta para ubicaciones que tienen eventos configurados
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
 
-    // 🔥 THROTTLE: Evitar procesamiento duplicado rápido
+    //  THROTTLE: Evitar procesamiento duplicado rápido
     const ahora = Date.now()
     const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0
 
@@ -222,7 +222,7 @@ export function useEventDetection() {
           },
         })
 
-        // 🔥 PASO 1: Verificar si hay una SALIDA previa de esta ubicación
+        //  PASO 1: Verificar si hay una SALIDA previa de esta ubicación
         const claveSalida = `${unidad.id}-${ubicacion.id}`
         const salidaPrevia = salidasEnCurso.value.get(claveSalida)
 
@@ -248,16 +248,16 @@ export function useEventDetection() {
               duracionFueraSegundos,
             )
 
-            console.log(`✅ Duración FUERA actualizada: ${formatearDuracion(duracionFueraFinal)}`)
+            console.log(` Duración FUERA actualizada: ${formatearDuracion(duracionFueraFinal)}`)
           } catch (err) {
-            console.error('❌ Error actualizando duración fuera:', err)
+            console.error(' Error actualizando duración fuera:', err)
           }
 
           // Limpiar salida de memoria
           salidasEnCurso.value.delete(claveSalida)
         }
 
-        // 🔥 PASO 2: Registrar nueva ENTRADA
+        //  PASO 2: Registrar nueva ENTRADA
         const primerEventoId = tracking.eventos[0] || ''
         const eventosIdsString = tracking.eventos.join(',') || ''
 
@@ -299,7 +299,7 @@ export function useEventDetection() {
           ubicacionId: ubicacion.id,
         })
       } catch (err) {
-        console.error('❌ Error en tracking de entrada:', err)
+        console.error(' Error en tracking de entrada:', err)
       }
 
       if (tracking.tieneEventoEntrada) {
@@ -324,7 +324,7 @@ export function useEventDetection() {
       const eventoEntrada = eventosEnCurso.value.get(claveEntrada)
 
       if (eventoEntrada) {
-        // 🔥 PASO 1: Calcular duración DENTRO
+        //  PASO 1: Calcular duración DENTRO
         const duracionDentroMilisegundos = Date.now() - eventoEntrada.timestampEntrada
         const duracionDentroSegundos = Math.floor(duracionDentroMilisegundos / 1000)
         const duracionDentroFinal = Math.max(0, duracionDentroSegundos)
@@ -352,9 +352,9 @@ export function useEventDetection() {
             duracionDentroFinal,
           )
 
-          console.log(`✅ Duración DENTRO actualizada: ${formatearDuracion(duracionDentroFinal)}`)
+          console.log(` Duración DENTRO actualizada: ${formatearDuracion(duracionDentroFinal)}`)
 
-          // 🔥 PASO 2: Registrar evento de SALIDA
+          //  PASO 2: Registrar evento de SALIDA
           await iniciarOActualizarRutaDiaria(unidad.id, {
             conductor_id: unidad.conductorId || '',
             conductor_nombre: nombreConductor,
@@ -402,7 +402,7 @@ export function useEventDetection() {
             eventoSalidaData,
           )
 
-          // 🔥 PASO 3: Guardar SALIDA en memoria para calcular duración FUERA
+          //  PASO 3: Guardar SALIDA en memoria para calcular duración FUERA
           const claveSalida = `${unidad.id}-${ubicacion.id}`
           salidasEnCurso.value.set(claveSalida, {
             idEvento: eventoSalidaRegistrado.id,
@@ -415,10 +415,10 @@ export function useEventDetection() {
           // Limpiar entrada de memoria
           eventosEnCurso.value.delete(claveEntrada)
         } catch (err) {
-          console.error('❌ Error en tracking de salida:', err)
+          console.error(' Error en tracking de salida:', err)
         }
       } else {
-        console.warn(`⚠️ Salida sin entrada previa: ${ubicacion.nombre}`)
+        console.warn(` Salida sin entrada previa: ${ubicacion.nombre}`)
       }
 
       if (tracking.tieneEventoSalida) {
@@ -430,11 +430,11 @@ export function useEventDetection() {
   }
 
   /**
-   * 🆕 Envía notificaciones para eventos configurados
-   * 🔥 ACTUALIZADO: async + coordenadas reales de la ubicación
+   *  Envía notificaciones para eventos configurados
+   *  ACTUALIZADO: async + coordenadas reales de la ubicación
    */
   async function notificarEventos(unidad, ubicacion, tipo, accion, eventosIds) {
-    // 🔥 ELIMINAR DUPLICADOS de eventosIds
+    //  ELIMINAR DUPLICADOS de eventosIds
     const eventosUnicos = [...new Set(eventosIds)]
 
     for (const eventoId of eventosUnicos) {
@@ -463,7 +463,7 @@ export function useEventDetection() {
       const accionTexto = accion === 'Entrada' ? 'entró a' : 'salió de'
       const tipoNotificacion = accion === 'Entrada' ? 'positive' : 'warning'
 
-      // 🔥 OBTENER COORDENADAS REALES DE LA UBICACIÓN
+      //  OBTENER COORDENADAS REALES DE LA UBICACIÓN
       let latUbicacion, lngUbicacion
 
       if (tipo === 'POI' && ubicacion.coordenadas) {
@@ -505,7 +505,7 @@ export function useEventDetection() {
   }
 
   /**
-   * 🆕 Evalúa eventos para todas las unidades activas
+   *  Evalúa eventos para todas las unidades activas
    * NUEVO: Solo revisa ubicaciones que tienen eventos configurados
    */
   function evaluarEventosParaUnidadesSimulacion(unidades) {
@@ -518,7 +518,7 @@ export function useEventDetection() {
       const lng = unidad.ubicacion?.lng || unidad.lng
 
       if (!lat || !lng) {
-        console.warn(`⚠️ Unidad sin coordenadas válidas:`, unidad)
+        console.warn(` Unidad sin coordenadas válidas:`, unidad)
         return
       }
 
@@ -531,7 +531,7 @@ export function useEventDetection() {
         conductorNombre: unidad.conductorNombre || unidad.nombre || 'Sin nombre',
       }
 
-      // 🔥 NUEVO: Solo revisar ubicaciones que tienen eventos configurados
+      //  NUEVO: Solo revisar ubicaciones que tienen eventos configurados
       ubicacionesTrackeadas.value.forEach((tracking) => {
         const { tipo, ubicacionId } = tracking
 
@@ -576,6 +576,6 @@ export function useEventDetection() {
     eventosActivos,
     ubicacionActual,
     eventosEnCurso,
-    ubicacionesTrackeadas, // 🆕 Exponer para debugging
+    ubicacionesTrackeadas, //  Exponer para debugging
   }
 }

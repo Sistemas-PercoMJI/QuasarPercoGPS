@@ -1,6 +1,6 @@
 /* src/css/tutorial.css - SOLO ESTILOS PARA POPOVERS */
 
-/* 🎨 TEMA PERSONALIZADO PARA LOS POPOVERS */
+/* TEMA PERSONALIZADO PARA LOS POPOVERS */
 
 /* ========================================
    POPOVER PRINCIPAL
@@ -111,7 +111,7 @@
   transition: all 0.2s ease !important;
   border: none !important;
   cursor: pointer !important;
-  /* 🔥 ANTI-ALIASING para texto nítido */
+  /* ANTI-ALIASING para texto nítido */
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: optimizeLegibility !important;
@@ -124,7 +124,7 @@
   background: #bb0000 !important; /* Color sólido en lugar de gradiente */
   color: white !important;
   box-shadow: 0 4px 12px rgba(187, 0, 0, 0.3) !important;
-  /* 🔥 Renderizado nítido */
+  /* Renderizado nítido */
   transform: translate3d(0, 0, 0) !important;
   will-change: transform !important;
 }

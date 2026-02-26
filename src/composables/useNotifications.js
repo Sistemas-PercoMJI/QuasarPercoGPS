@@ -5,7 +5,7 @@ import { useMapboxStaticImage } from './useMapboxStaticImage'
 const notifications = ref([])
 let notificationIdCounter = 0
 
-// 🆕 Instancia del composable de mapas
+//  Instancia del composable de mapas
 const { generarMapaEvento } = useMapboxStaticImage()
 
 export function useNotifications() {
@@ -17,7 +17,7 @@ export function useNotifications() {
     const ahora = Date.now()
     const expiraEn = ahora + 5 * 60 * 1000 // 5 minutos
 
-    // 🆕 GENERAR MAPA SI HAY UBICACIÓN
+    //  GENERAR MAPA SI HAY UBICACIÓN
     let mapImage = null
     let mapUrl = null
 
@@ -34,7 +34,7 @@ export function useNotifications() {
         mapImage = mapaData.imagenBase64
         mapUrl = mapaData.url
       } catch (error) {
-        console.warn('⚠️ Error generando mapa para notificación:', error)
+        console.warn(' Error generando mapa para notificación:', error)
         // Continuar sin mapa si falla
       }
     }
@@ -52,8 +52,8 @@ export function useNotifications() {
       timestamp: ahora,
       expiraEn,
       leida: false,
-      mapImage, // 🆕 Imagen del mapa en base64
-      mapUrl, // 🆕 URL del mapa para abrir en nueva pestaña
+      mapImage, //  Imagen del mapa en base64
+      mapUrl, //  URL del mapa para abrir en nueva pestaña
     }
 
     notifications.value.unshift(nuevaNotificacion)
@@ -99,7 +99,7 @@ export function useNotifications() {
       notif.leida = true
     })
 
-    // 🔥 Forzar re-render creando una nueva referencia del array
+    //  Forzar re-render creando una nueva referencia del array
     notifications.value = [...notifications.value]
   }
 
@@ -110,14 +110,14 @@ export function useNotifications() {
     const antes = notifications.value.length
     const notificacionesLeidas = notifications.value.filter((n) => n.leida).length
 
-    console.log('📊 Notificaciones leídas a eliminar:', notificacionesLeidas)
+    console.log(' Notificaciones leídas a eliminar:', notificacionesLeidas)
 
-    // 🔥 Filtrar y mantener solo las NO leídas
+    //  Filtrar y mantener solo las NO leídas
     notifications.value = notifications.value.filter((n) => !n.leida)
 
     const eliminadas = antes - notifications.value.length
 
-    console.log(`✅ ${eliminadas} notificaciones leídas eliminadas`)
+    console.log(` ${eliminadas} notificaciones leídas eliminadas`)
   }
 
   // Computed properties para filtrar notificaciones

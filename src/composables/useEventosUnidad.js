@@ -2,13 +2,13 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore'
-import { useGeocoding } from './useGeocoding' // 🆕 Importar geocoding
+import { useGeocoding } from './useGeocoding' //  Importar geocoding
 
 export function useEventosUnidad() {
   const loading = ref(false)
   const error = ref(null)
 
-  // 🆕 Inicializar geocoding
+  //  Inicializar geocoding
   const { obtenerDireccion } = useGeocoding()
 
   // ========================================
@@ -25,8 +25,6 @@ export function useEventosUnidad() {
     error.value = null
 
     try {
-      console.log(`📊 Obteniendo eventos para unidad: ${unidadId}`)
-
       const eventosRef = collection(db, 'Eventos')
       const q = query(
         eventosRef,
@@ -38,7 +36,6 @@ export function useEventosUnidad() {
       const snapshot = await getDocs(q)
 
       if (snapshot.empty) {
-        console.log('⚠️ No hay eventos para esta unidad')
         return []
       }
 
@@ -64,10 +61,9 @@ export function useEventosUnidad() {
         }
       })
 
-      console.log(`✅ ${eventos.length} eventos encontrados`)
       return eventos
     } catch (err) {
-      console.error('❌ Error obteniendo eventos:', err)
+      console.error(' Error obteniendo eventos:', err)
       error.value = err.message
       return []
     } finally {
@@ -76,7 +72,7 @@ export function useEventosUnidad() {
   }
 
   // ========================================
-  // 🆕 NUEVA FUNCIÓN - Para eventos diarios con GEOCODING
+  //  NUEVA FUNCIÓN - Para eventos diarios con GEOCODING
   // ========================================
   /**
    * Obtiene eventos diarios de /Unidades/{id}/RutaDiaria/{fecha}/EventoDiario
@@ -93,8 +89,6 @@ export function useEventosUnidad() {
       const hoy = new Date()
       const fechaStr = hoy.toISOString().split('T')[0]
 
-      console.log(`📊 Obteniendo eventos diarios de unidad ${unidadId} - Fecha: ${fechaStr}`)
-
       // Ruta: /Unidades/{idUnidad}/RutaDiaria/{fecha}/EventoDiario
       const eventosRef = collection(
         db,
@@ -110,11 +104,10 @@ export function useEventosUnidad() {
       const snapshot = await getDocs(q)
 
       if (snapshot.empty) {
-        console.log('⚠️ No hay eventos diarios')
         return []
       }
 
-      // 🆕 Mapear y hacer geocoding en paralelo
+      //  Mapear y hacer geocoding en paralelo
       const eventosPromesas = snapshot.docs.map(async (doc) => {
         const data = doc.data()
 
@@ -138,7 +131,7 @@ export function useEventosUnidad() {
         const lat = data.Coordenadas?.lat || 0
         const lng = data.Coordenadas?.lng || 0
 
-        // 🔥 GEOCODING: Obtener dirección si no existe o está en formato de coordenadas
+        //  GEOCODING: Obtener dirección si no existe o está en formato de coordenadas
         let direccion = data.Direccion || ''
 
         // Si la dirección parece ser coordenadas (contiene números decimales largos)
@@ -147,9 +140,8 @@ export function useEventosUnidad() {
         if (!direccion || esFormatoCoordenadas) {
           try {
             direccion = await obtenerDireccion({ lat, lng })
-            console.log(`📍 Geocoding aplicado: ${direccion}`)
           } catch (err) {
-            console.warn('⚠️ Error en geocoding, usando coordenadas:', err)
+            console.warn(' Error en geocoding, usando coordenadas:', err)
             direccion = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
           }
         }
@@ -161,7 +153,7 @@ export function useEventosUnidad() {
           id: doc.id,
           titulo: data.NombreEvento || 'Evento sin nombre',
           descripcion: `${data.TipoEvento} en ${data.GeozonaNombre || 'ubicación'}`,
-          ubicacion: direccion, // 🔥 Dirección geocodificada
+          ubicacion: direccion, //  Dirección geocodificada
           coordenadas: { lat, lng },
           fechaTexto,
           conductorNombre: 'Conductor', // Puedes agregarlo si está disponible
@@ -178,10 +170,9 @@ export function useEventosUnidad() {
       // Esperar a que todos los eventos se procesen (incluyendo geocoding)
       const eventos = await Promise.all(eventosPromesas)
 
-      console.log(`✅ ${eventos.length} eventos diarios obtenidos con geocoding`)
       return eventos
     } catch (err) {
-      console.error('❌ Error obteniendo eventos diarios:', err)
+      console.error(' Error obteniendo eventos diarios:', err)
       error.value = err.message
       return []
     } finally {
@@ -330,7 +321,7 @@ export function useEventosUnidad() {
   }
 
   // ========================================
-  // 🆕 FUNCIONES AUXILIARES NUEVAS
+  //  FUNCIONES AUXILIARES NUEVAS
   // ========================================
 
   /**
@@ -371,8 +362,8 @@ export function useEventosUnidad() {
   return {
     loading,
     error,
-    obtenerEventosUnidad, // ✅ Original
-    obtenerEventosDiarios, // 🆕 Nueva con geocoding
-    filtrarEventosPorTipo, // ✅ Original
+    obtenerEventosUnidad, //  Original
+    obtenerEventosDiarios, //  Nueva con geocoding
+    filtrarEventosPorTipo, //  Original
   }
 }
