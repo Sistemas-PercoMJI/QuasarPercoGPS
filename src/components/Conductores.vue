@@ -1,5 +1,5 @@
 <!-- eslint-disable vue/multi-word-component-names -->
-/*COnductores.vue */
+<!-- Conductores.vue -->
 <template>
   <div class="conductores-drawer">
     <!-- Header con gradiente y estadísticas -->
@@ -95,7 +95,7 @@
             </q-item-label>
           </q-item-section>
 
-          <!-- Menú contextual para grupos nooooooooooooooooooooonoooooooooooooo-->
+          <!-- Menú contextual para grupos nooooooooooooooooooooooooooooooo-->
           <q-item-section side>
             <q-btn
               flat
@@ -109,7 +109,7 @@
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
 
-              <!-- ✅ EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
+              <!-- EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
               <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
                 <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
                   <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
@@ -302,9 +302,7 @@
               </q-card>
             </q-expansion-item>
 
-            <!-- ========================================= -->
             <!-- Licencia de Conducir -->
-            <!-- ========================================= -->
             <q-expansion-item
               icon="badge"
               label="Licencia de Conducir"
@@ -462,10 +460,8 @@
                 </q-card-section>
               </q-card>
             </q-expansion-item>
-
-            <!-- ========================================= -->
             <!-- Unidad Asignada -->
-            <!-- ========================================= -->
+
             <q-expansion-item
               icon="directions_car"
               label="Unidad Asignada"
@@ -1017,7 +1013,7 @@
               </q-card>
             </q-expansion-item>
           </div>
-          <!-- 🔥 CIERRE detalle-content-wrapper -->
+          <!-- CIERRE detalle-content-wrapper -->
         </q-scroll-area>
       </q-card>
     </q-dialog>
@@ -1174,7 +1170,7 @@ const { estadoCompartido, resetAbrirConductores } = useEventBus()
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 if (!estadoCompartido.value) {
-  console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
+  console.error('Error crítico: estadoCompartido.value no está definido en Conductores')
 }
 
 const opcionesUnidades = computed(() => {
@@ -1197,7 +1193,7 @@ const opcionesUnidades = computed(() => {
     return {
       label: `${unidad.Unidad}${asignaciones[unidad.id] ? ` (Ocupada por: ${asignaciones[unidad.id]})` : ''}${esMiUnidadActual ? ' (Mi unidad actual)' : ''}`,
       value: unidad.id,
-      disabled: estaOcupada && !esMiUnidadActual, // Deshabilitar si está ocupada por otro
+      disabled: estaOcupada && !esMiUnidadActual,
       conductorActual: asignaciones[unidad.id],
       esMiUnidadActual: esMiUnidadActual,
     }
@@ -1230,7 +1226,7 @@ watch(
 
         Notify.create({
           type: 'positive',
-          message: `👤 Conductor seleccionado: ${conductorEncontrado.Nombre}`,
+          message: ` Conductor seleccionado: ${conductorEncontrado.Nombre}`,
           caption: `Grupo: ${newValue.conductor.grupoNombre || 'Sin grupo'}`,
           icon: 'person',
           timeout: 2500,
@@ -1572,12 +1568,12 @@ const esPlacasVigente = computed(() => {
 const idsUnidadesVisibles = computed(() => {
   // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
-    return [] // ← Cambiar de null a []
+    return []
   }
 
   // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
   if (grupoSeleccionado.value === '__todos__') {
-    return null // null = mostrar todas
+    return null
   }
 
   // Para cualquier otro grupo = filtrado estricto
@@ -1589,11 +1585,11 @@ const idsUnidadesVisibles = computed(() => {
   return idsUnidades
 })
 
-// 🆕 Grupos con el especial "Sin Conductor" y "TODOS"
+// Grupos con el especial "Sin Conductor" y "TODOS"
 const gruposConEspeciales = computed(() => {
   const grupos = []
 
-  // 🆕 BOTÓN ESPECIAL: Ver TODOS los conductores
+  // BOTÓN ESPECIAL: Ver TODOS los conductores
   grupos.push({
     id: '__todos__',
     Nombre: '👥 Todos los Conductores',
@@ -1642,7 +1638,7 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
 
-  // 🔥 Si es "TODOS", desactivar filtro para mostrar TODAS
+  // Si es "TODOS", desactivar filtro para mostrar TODAS
   if (grupo.id === '__todos__') {
     filtroMapaActivo.value = true // ← Cambiar a true
 
@@ -1662,7 +1658,7 @@ function filtrarPorGrupo(grupo) {
 
     Notify.create({
       type: 'info',
-      message: `📁 ${grupo.Nombre}`,
+      message: `${grupo.Nombre}`,
       caption: `Filtrando ${cantidadUnidades} unidades en el mapa`,
       icon: grupo.icono || 'folder',
       position: 'top',
@@ -1727,7 +1723,7 @@ async function actualizarCampo(campo, valor) {
           const unidadId = conductorEditando.value.UnidadAsignada
 
           try {
-            // 🔥 Actualizar IdEmpresaUnidad en Realtime Database
+            // Actualizar IdEmpresaUnidad en Realtime Database
             const { realtimeDb } = await import('src/firebase/firebaseConfig')
             const { ref: dbRef, update } = await import('firebase/database')
 
@@ -1738,7 +1734,7 @@ async function actualizarCampo(campo, valor) {
               IdEmpresaUnidad: empresaNueva,
             })
 
-            // 🔥 También actualizar en Firestore
+            // También actualizar en Firestore
             const { doc, updateDoc } = await import('firebase/firestore')
             const { db } = await import('src/firebase/firebaseConfig')
 
@@ -1747,7 +1743,7 @@ async function actualizarCampo(campo, valor) {
               IdEmpresaUnidad: empresaNueva,
             })
           } catch (unidadError) {
-            console.error('❌ Error al actualizar unidad:', unidadError)
+            console.error('Error al actualizar unidad:', unidadError)
             // Continuar de todos modos para actualizar el conductor
           }
         } else {
@@ -1768,7 +1764,7 @@ async function actualizarCampo(campo, valor) {
       icon: 'check_circle',
     })
 
-    // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
+    // Si cambió de empresa, cerrar el diálogo y recargar
     if (campo === 'IdEmpresaConductor') {
       await recargarDatos()
 
@@ -1776,15 +1772,15 @@ async function actualizarCampo(campo, valor) {
 
       Notify.create({
         type: 'info',
-        message: '🏢 Conductor movido a otra empresa',
+        message: ' Conductor movido a otra empresa',
         caption: 'La unidad ahora pertenece a la nueva empresa',
         icon: 'business',
         timeout: 3000,
       })
     }
   } catch (error) {
-    console.error('❌ Error completo:', error)
-    console.error('❌ Stack:', error.stack)
+    console.error('Error completo:', error)
+    console.error('Stack:', error.stack)
 
     Notify.create({
       type: 'negative',
@@ -1794,7 +1790,7 @@ async function actualizarCampo(campo, valor) {
   }
 }
 
-// ✅ AGREGAR ESTA NUEVA FUNCIÓN
+// AGREGAR ESTA NUEVA FUNCIÓN
 async function actualizarCampoUnidad(campo, valor) {
   if (!unidadAsociada.value?.id) return
 
@@ -1986,11 +1982,11 @@ async function asignarUnidadAConductor(unidadId) {
         UnidadAsignada: null,
       })
 
-      // 2. 🆕 Quitar conductor de la unidad anterior
+      // 2. Quitar conductor de la unidad anterior
       if (unidadAnteriorId) {
         const unidadRef = doc(db, 'Unidades', unidadAnteriorId)
         await updateDoc(unidadRef, {
-          ConductorAsignado: null, // 🔥 NUEVO CAMPO
+          ConductorAsignado: null,
         })
       }
 
@@ -2041,7 +2037,7 @@ async function asignarUnidadAConductor(unidadId) {
 
     // Si había una unidad anterior diferente, liberarla
     if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
-      // 🆕 Quitar conductor de unidad anterior
+      // Quitar conductor de unidad anterior
       const unidadAnteriorRef = doc(db, 'Unidades', unidadAnteriorId)
       await updateDoc(unidadAnteriorRef, {
         ConductorAsignado: null,
@@ -2062,10 +2058,10 @@ async function asignarUnidadAConductor(unidadId) {
       UnidadAsignada: unidadId,
     })
 
-    // 2. 🆕 Asignar conductor a la unidad
+    // 2.  Asignar conductor a la unidad
     const unidadRef = doc(db, 'Unidades', unidadId)
     await updateDoc(unidadRef, {
-      ConductorAsignado: conductorId, // 🔥 NUEVO CAMPO
+      ConductorAsignado: conductorId,
     })
 
     conductorEditando.value.UnidadAsignada = unidadId
@@ -2076,7 +2072,7 @@ async function asignarUnidadAConductor(unidadId) {
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
-    console.error('❌ Error al gestionar unidad:', error)
+    console.error('Error al gestionar unidad:', error)
 
     Notify.create({
       type: 'negative',
@@ -2089,7 +2085,7 @@ async function asignarUnidadAConductor(unidadId) {
   }
 }
 
-// 📸 Cargar todas las fotos del conductor y su unidad
+// Cargar todas las fotos del conductor y su unidad
 async function cargarFotosConductor() {
   if (!conductorEditando.value?.id) return
 
@@ -2162,7 +2158,7 @@ async function descargarFotoHandler(url, nombreArchivo) {
   }
 }
 
-// === FUNCIONES PARA SUBIR FOTOS ===
+// FUNCIONES PARA SUBIR FOTOS
 
 function abrirSelectorFotoLicencia() {
   inputFotoLicencia.value?.click()
@@ -2323,7 +2319,7 @@ async function subirNuevaFotoPlacas(event) {
   }
 }
 
-// === FUNCIONES PARA ELIMINAR FOTOS ===
+// FUNCIONES PARA ELIMINAR FOTOS
 
 async function eliminarFotoLicenciaHandler(fotoUrl) {
   try {
@@ -2469,7 +2465,7 @@ async function guardarGrupo() {
       return
     }
 
-    // ✅ MODO EDICIÓN
+    // MODO EDICIÓN
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -2482,12 +2478,12 @@ async function guardarGrupo() {
         icon: 'check_circle',
       })
     }
-    // ✅ MODO CREACIÓN
+    // MODO CREACIÓN
     else {
       const { collection, addDoc, Timestamp } = await import('firebase/firestore')
       const { db, auth } = await import('src/firebase/firebaseConfig')
 
-      // ✅ IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
+      // IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
       const userId = auth.currentUser.uid
 
       const grupoData = {
@@ -2497,7 +2493,7 @@ async function guardarGrupo() {
         updatedAt: Timestamp.now(),
       }
 
-      // 🔥 Ruta correcta: /Usuarios/{userId}/GruposConductores
+      // Ruta correcta: /Usuarios/{userId}/GruposConductores
       await addDoc(collection(db, `Usuarios/${userId}/GruposConductores`), grupoData)
 
       Notify.create({
@@ -2698,7 +2694,7 @@ async function navegarAUnidadSinConductor(unidad) {
   // Notificación de éxito
   Notify.create({
     type: 'positive',
-    message: `📍 ${unidadData.Unidad}`,
+    message: `${unidadData.Unidad}`,
     caption: 'Sin conductor asignado',
     icon: 'my_location',
     position: 'top',
@@ -2714,7 +2710,7 @@ watch(
       const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
 
       if (!grupoExiste) {
-        console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
+        console.warn('Grupo no encontrado, esperando a que se cargue...')
         setTimeout(() => {
           procesarSeleccionConductor(id, grupoId, grupoNombre)
         }, 500)
@@ -2728,7 +2724,7 @@ watch(
   { deep: true, immediate: true },
 )
 
-// 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
+// Actualizar filtro del mapa cuando cambie la selección
 watch(
   idsUnidadesVisibles,
   (nuevosIds) => {
@@ -2742,7 +2738,7 @@ watch(
   { immediate: true },
 )
 
-// 🆕 Watch: Guardar grupo seleccionado en localStorage
+// Guardar grupo seleccionado en localStorage
 watch(grupoSeleccionado, (nuevoGrupo) => {
   if (nuevoGrupo) {
     const userId = auth.currentUser?.uid
@@ -2752,7 +2748,7 @@ watch(grupoSeleccionado, (nuevoGrupo) => {
   }
 })
 
-// 🆕 Watch: Guardar estado de filtro de mapa
+// Guardar estado de filtro de mapa
 watch(filtroMapaActivo, (nuevoEstado) => {
   const userId = auth.currentUser?.uid
   if (userId) {
@@ -2778,20 +2774,20 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
           elemento.classList.add('flash-highlight')
           setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
         } else {
-          console.warn('⚠️ Elemento DOM no encontrado para scroll')
+          console.warn(' Elemento DOM no encontrado para scroll')
         }
       }, 400)
 
       Notify.create({
         type: 'positive',
-        message: `👤 ${conductorEncontrado.Nombre}`,
+        message: ` ${conductorEncontrado.Nombre}`,
         caption: `Grupo: ${grupoNombre || 'Sin grupo'}`,
         icon: 'person',
         timeout: 2500,
         position: 'top',
       })
     } else {
-      console.warn('⚠️ Conductor no encontrado en lista filtrada')
+      console.warn(' Conductor no encontrado en lista filtrada')
 
       const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
 
@@ -2807,7 +2803,7 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
           seleccionarConductor(conductorEnTodos)
         }
       } else {
-        console.error('❌ Conductor no existe en la base de datos')
+        console.error(' Conductor no existe en la base de datos')
 
         Notify.create({
           type: 'negative',
@@ -2834,7 +2830,7 @@ onMounted(async () => {
     unsubscribeConductores = escucharConductores()
     unsubscribeGrupos = escucharGrupos()
 
-    // 🆕 RESTAURAR SELECCIÓN GUARDADA
+    //  RESTAURAR SELECCIÓN GUARDADA
     const userId = auth.currentUser?.uid
     if (userId) {
       const grupoGuardado = localStorage.getItem(`grupoSeleccionado_${userId}`)
@@ -2864,7 +2860,7 @@ onMounted(async () => {
       }
     }
   } catch (error) {
-    console.error('❌ Error al conectar con Firebase:', error)
+    console.error(' Error al conectar con Firebase:', error)
 
     Notify.create({
       type: 'negative',
@@ -2882,7 +2878,7 @@ onMounted(async () => {
 
       /*Notify.create({
         type: 'positive',
-        message: '✅ Conductores actualizados',
+        message: ' Conductores actualizados',
         icon: 'sync',
         timeout: 2000,
       })*/
@@ -2918,7 +2914,7 @@ function navegarAUnidad() {
     return
   }
 
-  // 🎯 NUEVA ESTRATEGIA: Obtener marcadores directamente del mapa
+  //   Obtener marcadores directamente del mapa
   const mapaAPI = mapPage._mapaAPI
 
   // Los marcadores están en mapaAPI (revisa useMapboxGL.js)
@@ -2946,7 +2942,7 @@ function navegarAUnidad() {
   }
 
   if (unidadesDisponibles.length === 0) {
-    console.error('❌ No hay unidades en el sistema')
+    console.error(' No hay unidades en el sistema')
 
     Notify.create({
       type: 'warning',
@@ -2984,7 +2980,7 @@ function navegarAUnidad() {
   })
 
   if (!unidadActiva) {
-    console.error('❌ Unidad no encontrada')
+    console.error(' Unidad no encontrada')
 
     Notify.create({
       type: 'negative',
@@ -3031,7 +3027,7 @@ function navegarAUnidad() {
   // Notificación de éxito
   Notify.create({
     type: 'positive',
-    message: `📍 ${unidadAsignadaData.value.Unidad}`,
+    message: ` ${unidadAsignadaData.value.Unidad}`,
     caption: `Conductor: ${conductorEditando.value.Nombre}`,
     icon: 'my_location',
     position: 'top',
@@ -3046,12 +3042,12 @@ function navegarAUnidad() {
 /* ============================================ */
 .conductor-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 0; /* 🔥 Quitamos margin porque ya hay gap */
+  margin-bottom: 0; /*  Quitamos margin porque ya hay gap */
   border-radius: 12px;
   overflow: hidden;
   position: relative;
   border: 2px solid transparent;
-  /* 🔥 IMPORTANTE: esto permite que la sombra se vea completa */
+  /*  IMPORTANTE: esto permite que la sombra se vea completa */
   will-change: transform;
 }
 
@@ -3082,7 +3078,7 @@ function navegarAUnidad() {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
   border-color: #42a5f5;
-  z-index: 10; /* 🔥 Eleva la tarjeta por encima de las demás */
+  z-index: 10; /*  Eleva la tarjeta por encima de las demás */
 }
 .conductor-card:hover::before {
   transform: translateX(100%);
@@ -3115,7 +3111,7 @@ function navegarAUnidad() {
   box-shadow: 0 16px 32px rgba(25, 118, 210, 0.5) !important;
   border-color: #0d47a1 !important;
   background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%) !important;
-  z-index: 10; /* 🔥 Eleva la tarjeta */
+  z-index: 10; /*  Eleva la tarjeta */
 }
 
 /* Flash highlight para notificaciones */
@@ -3321,7 +3317,7 @@ function navegarAUnidad() {
 }
 .group-item .q-avatar {
   transition: all 0.3s ease;
-  flex-shrink: 0; /* 🔥 No se encoge */
+  flex-shrink: 0; /*  No se encoge */
 }
 
 .group-item:hover::before {
@@ -3343,7 +3339,7 @@ function navegarAUnidad() {
   transform: scale(1.08);
 }
 .group-item .q-avatar .q-icon {
-  font-size: 18px !important; /* 🔥 Tamaño fijo del icono */
+  font-size: 18px !important; /*  Tamaño fijo del icono */
 }
 @keyframes avatar-grow-rotate {
   0% {
@@ -3361,7 +3357,7 @@ function navegarAUnidad() {
 /* === LISTA DE CONDUCTORES (TARJETAS) === */
 /* ============================================ */
 .conductores-list {
-  padding: 20px; /* 🔥 Más padding */
+  padding: 20px; /*  Más padding */
   overflow: visible;
   flex: 1;
 }
@@ -3370,7 +3366,7 @@ function navegarAUnidad() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
-  padding: 10px 10px 40px 5px; /* 🔥 24px arriba, 20px a los lados, 40px abajo */
+  padding: 10px 10px 40px 5px; /*  24px arriba, 20px a los lados, 40px abajo */
 }
 .card-header {
   display: flex;
@@ -3603,14 +3599,14 @@ function navegarAUnidad() {
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 .detalle-card-fixed {
-  width: 480px !important; /* 🔥 ANCHO FIJO */
+  width: 480px !important; /*  ANCHO FIJO */
   max-width: 480px !important;
   min-width: 480px !important;
   height: 100vh;
   display: flex;
   flex-direction: column;
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  overflow: hidden; /* 🔥 IMPORTANTE */
+  overflow: hidden; /*  IMPORTANTE */
 }
 .detalle-header {
   display: flex;
@@ -3857,14 +3853,14 @@ function navegarAUnidad() {
 /* Scroll area CON ALTURA FIJA */
 .detalle-scroll-area {
   flex: 1;
-  height: 100%; /* 🔥 IMPORTANTE */
+  height: 100%; /*  IMPORTANTE */
   overflow-y: auto;
-  overflow-x: hidden; /* 🔥 Evita scroll horizontal */
+  overflow-x: hidden; /*  Evita scroll horizontal */
 }
 
 .detalle-content-wrapper {
   padding: 0 0 24px 0;
-  width: 100%; /* 🔥 IMPORTANTE */
+  width: 100%; /*  IMPORTANTE */
 }
 
 /* Expansion items mejorados */
