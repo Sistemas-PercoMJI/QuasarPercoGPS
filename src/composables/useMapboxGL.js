@@ -115,6 +115,27 @@ function obtenerColorPorTiempo(unidad) {
     minutosInactivo: 0,
   }
 }
+const animacionesActivas = new Map()
+function animarMarcador(marcador, unidadId, fromLat, fromLng, toLat, toLng, duracionMs = 10000) {
+  if (animacionesActivas.has(unidadId)) {
+    cancelAnimationFrame(animacionesActivas.get(unidadId))
+    animacionesActivas.delete(unidadId)
+  }
+  const inicio = performance.now()
+  function step(ahora) {
+    const progreso = Math.min((ahora - inicio) / duracionMs, 1)
+    const t = progreso < 0.5 ? 2 * progreso * progreso : -1 + (4 - 2 * progreso) * progreso
+    const lat = fromLat + (toLat - fromLat) * t
+    const lng = fromLng + (toLng - fromLng) * t
+    marcador.setLngLat([lng, lat])
+    if (progreso < 1) {
+      animacionesActivas.set(unidadId, requestAnimationFrame(step))
+    } else {
+      animacionesActivas.delete(unidadId)
+    }
+  }
+  animacionesActivas.set(unidadId, requestAnimationFrame(step))
+}
 
 const agregarBadgeACanvas = (canvas) => {
   const ctx = canvas.getContext('2d')
@@ -628,10 +649,25 @@ export function useMapboxGL() {
               lng,
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
+              timestamp: unidad.timestamp,
             })
           } else {
             // Solo cambió posición - mover marcador
-            marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
+            const posAnterior = ultimasPosiciones.get(unidadId)
+            const duracion =
+              unidad.timestamp && posAnterior?.timestamp
+                ? Math.min(Math.max(unidad.timestamp - posAnterior.timestamp, 5000), 60000)
+                : 15000
+
+            animarMarcador(
+              marcadoresUnidades.value[unidadId],
+              unidadId,
+              posAnterior?.lat || lat,
+              posAnterior?.lng || lng,
+              lat,
+              lng,
+              duracion,
+            )
 
             // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
@@ -657,6 +693,7 @@ export function useMapboxGL() {
               lng,
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
+              timestamp: unidad.timestamp,
             })
           }
         }
@@ -694,6 +731,7 @@ export function useMapboxGL() {
           lng,
           estado: unidad.estado,
           direccionTexto: unidad.direccionTexto,
+          timestamp: unidad.timestamp,
         })
       }
     })
