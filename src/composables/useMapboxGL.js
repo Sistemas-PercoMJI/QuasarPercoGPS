@@ -96,7 +96,7 @@ function formatearTiempo(minutos) {
 function obtenerColorPorTiempo(unidad) {
   const TIEMPO_INACTIVIDAD_MAX = 5 * 60 * 1000 // 5 minutos
   const ahora = Date.now()
-  const ultimaActualizacion = unidad.ultimoPuntoTiempo || unidad.timestamp || 0
+  const ultimaActualizacion = unidad.timestamp || unidad.ultimoPuntoTiempo || 0
   const tiempoInactivo = ahora - ultimaActualizacion
 
   // Si lleva más de 5 minutos sin actualizar → GRIS
@@ -587,7 +587,8 @@ export function useMapboxGL() {
         !ultimaPos ||
         Math.abs(ultimaPos.lat - lat) > 0.00005 ||
         Math.abs(ultimaPos.lng - lng) > 0.00005 ||
-        ultimaPos.estado !== unidad.estado
+        ultimaPos.estado !== unidad.estado ||
+        ultimaPos.direccionTexto !== unidad.direccionTexto
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
@@ -622,7 +623,12 @@ export function useMapboxGL() {
               .addTo(map.value)
 
             marcadoresUnidades.value[unidadId] = marker
-            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+            ultimasPosiciones.set(unidadId, {
+              lat,
+              lng,
+              estado: unidad.estado,
+              direccionTexto: unidad.direccionTexto,
+            })
           } else {
             // Solo cambió posición - mover marcador
             marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
@@ -646,7 +652,12 @@ export function useMapboxGL() {
               }
             }
 
-            ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+            ultimasPosiciones.set(unidadId, {
+              lat,
+              lng,
+              estado: unidad.estado,
+              direccionTexto: unidad.direccionTexto,
+            })
           }
         }
       } else {
@@ -678,7 +689,12 @@ export function useMapboxGL() {
           .addTo(map.value)
 
         marcadoresUnidades.value[unidadId] = marker
-        ultimasPosiciones.set(unidadId, { lat, lng, estado: unidad.estado })
+        ultimasPosiciones.set(unidadId, {
+          lat,
+          lng,
+          estado: unidad.estado,
+          direccionTexto: unidad.direccionTexto,
+        })
       }
     })
 

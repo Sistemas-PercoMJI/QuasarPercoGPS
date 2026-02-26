@@ -4,6 +4,7 @@ import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useGeocoding } from 'src/composables/useGeocoding'
 
 // Variables globales
 let unsubscribeGlobal = null
@@ -43,6 +44,8 @@ export function useTrackingUnidades() {
   /**
    * Inicia el tracking en tiempo real
    */
+  const { obtenerDireccion } = useGeocoding()
+
   const iniciarTracking = () => {
     if (trackingIniciado) {
       return
@@ -88,17 +91,45 @@ export function useTrackingUnidades() {
               .map(([key, value]) => ({
                 id: value.unidadId || value.id || key,
                 ...value,
+                timestamp: value.timestamp || Date.now(),
                 lat: value.ubicacion.lat,
                 lng: value.ubicacion.lng,
                 nombre: value.conductorNombre,
+                direccionTexto:
+                  value.direccionTexto === 'Obteniendo...' ? null : value.direccionTexto,
               }))
 
             //  Actualizar datos raw
             unidadesRawGlobal.value = todasLasUnidades
 
-            //  Aplicar filtrado
-            const unidadesFiltradas = filtrarUnidadesPorEmpresa(todasLasUnidades)
+            // Geocodificar las que no tienen direccion
+            todasLasUnidades.forEach(async (unidad, index) => {
+              if (!unidad.direccionTexto && unidad.ubicacion) {
+                try {
+                  const direccion = await obtenerDireccion({
+                    lat: unidad.ubicacion.lat,
+                    lng: unidad.ubicacion.lng,
+                  })
+                  // Mutar el array reactivo directamente para disparar reactividad
+                  if (unidadesRawGlobal.value[index]) {
+                    unidadesRawGlobal.value[index] = {
+                      ...unidadesRawGlobal.value[index],
+                      direccionTexto: direccion,
+                    }
+                  }
+                } catch (e) {
+                  if (unidadesRawGlobal.value[index]) {
+                    unidadesRawGlobal.value[index] = {
+                      ...unidadesRawGlobal.value[index],
+                      direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)},${e.message}`,
+                    }
+                  }
+                }
+              }
+            })
 
+            //  Aplicar filtrado
+            const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
             unidadesActivasGlobal.value = unidadesFiltradas
             window._unidadesTrackeadas = unidadesFiltradas
           } else {

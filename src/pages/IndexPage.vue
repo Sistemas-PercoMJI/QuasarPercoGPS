@@ -436,9 +436,11 @@ watch(
     }
 
     const nuevoHash = nuevasUnidades
-      .map((u) => `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}`)
+      .map(
+        (u) =>
+          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}`,
+      )
       .join('|')
-
     if (nuevoHash !== ultimoHashUnidades) {
       actualizarMarcadoresUnidades(nuevasUnidades)
       ultimoHashUnidades = nuevoHash
