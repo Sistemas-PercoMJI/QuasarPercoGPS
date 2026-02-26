@@ -1166,7 +1166,7 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { auth } from 'src/firebase/firebaseConfig'
 
-const { estadoCompartido, resetAbrirConductores } = useEventBus()
+const { estadoCompartido, resetAbrirConductores, actualizarFiltroUnidades } = useEventBus()
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 if (!estadoCompartido.value) {
@@ -2725,15 +2725,19 @@ watch(
 )
 
 // Actualizar filtro del mapa cuando cambie la selección
+// Sincronizar el filtro de unidades con EstadoFlota y el mapa
 watch(
   idsUnidadesVisibles,
   (nuevosIds) => {
-    // Emitir evento para que el mapa se actualice
+    // Actualizar el mapa (comportamiento existente)
     window.dispatchEvent(
       new CustomEvent('filtrar-unidades-mapa', {
         detail: { idsUnidades: nuevosIds },
       }),
     )
+
+    // Sincronizar con EstadoFlota a traves del event bus
+    actualizarFiltroUnidades(filtroMapaActivo.value, nuevosIds)
   },
   { immediate: true },
 )
@@ -2753,6 +2757,10 @@ watch(filtroMapaActivo, (nuevoEstado) => {
   const userId = auth.currentUser?.uid
   if (userId) {
     localStorage.setItem(`filtroMapaActivo_${userId}`, String(nuevoEstado))
+  }
+
+  if (!nuevoEstado) {
+    actualizarFiltroUnidades(false, null)
   }
 })
 

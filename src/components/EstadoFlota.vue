@@ -610,6 +610,7 @@ import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTime'
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
+import { useEventBus } from 'src/composables/useEventBus.js'
 
 // ==================== COMPOSABLES ====================
 const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
@@ -619,6 +620,8 @@ const { obtenerTrayectosDia } = useTrayectosDiarios()
 
 //  Agregar composable de geocoding
 const { obtenerDireccion } = useGeocoding()
+
+const { estadoCompartido: estadoEventBus } = useEventBus()
 
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
@@ -793,10 +796,21 @@ const estadosVehiculos = computed(() => {
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
+  // Aplicar filtro por grupo de conductores si esta activo
+  if (
+    estadoEventBus.value.filtroUnidadesActivo &&
+    estadoEventBus.value.idsUnidadesFiltradas !== null
+  ) {
+    const idsFiltrados = estadoEventBus.value.idsUnidadesFiltradas
+    resultado = resultado.filter((v) => idsFiltrados.includes(v.id))
+  }
+
+  // Filtro por estado (comportamiento existente)
   if (estadoSeleccionado.value !== 'todos') {
     resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
+  // Filtro por busqueda (comportamiento existente)
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
