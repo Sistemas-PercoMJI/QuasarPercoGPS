@@ -35,7 +35,7 @@ export function useSimuladorUnidades() {
   const DURACION_ESTADO = 30000
   const TIEMPO_ACTUALIZACION_DIRECCION = 30000
   const DISTANCIA_MIN_ACTUALIZACION = 50
-  // 🆕 Reducimos la frecuencia de actualización para disminuir la carga
+  //  Reducimos la frecuencia de actualización para disminuir la carga
   const INTERVALO_ACTUALIZACION = 10000 // 10 segundos en lugar de 5
 
   const obtenerDireccionDesdeCoordenadas = async (lat, lng) => {
@@ -93,7 +93,7 @@ export function useSimuladorUnidades() {
       console.error('Error en geocoding:', error)
     }
 
-    return '📍 Sin nombre de calle'
+    return ' Sin nombre de calle'
   }
 
   const determinarSiguienteEstado = () => {
@@ -277,7 +277,7 @@ export function useSimuladorUnidades() {
     const unidadId = `unidad_${unidad.id}`
     const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
 
-    // ✅ Verificar si ya existe en Firebase
+    //  Verificar si ya existe en Firebase
     let estadoExistente = null
     try {
       const snapshot = await new Promise((resolve, reject) => {
@@ -288,7 +288,7 @@ export function useSimuladorUnidades() {
       console.warn(`${unidad.Unidad}: No hay estado previo`)
     }
 
-    // ✅ SI EXISTE: Restaurar ubicación anterior
+    //  SI EXISTE: Restaurar ubicación anterior
     if (estadoExistente && estadoExistente.ubicacion) {
       await update(unidadRef, {
         timestamp: Date.now(),
@@ -297,7 +297,7 @@ export function useSimuladorUnidades() {
         conductorId: conductor.id,
         conductorNombre: [conductor.Nombre, conductor.Apellido].filter(Boolean).join(' '),
         conductorFoto: conductor.LicenciaConducirFoto || null,
-        // 🆕 AGREGAR IdEmpresaUnidad
+        //  AGREGAR IdEmpresaUnidad
         IdEmpresaUnidad: unidad.IdEmpresaUnidad || 'SIN_EMPRESA',
         IdEmpresaConductor: conductor.IdEmpresaConductor || 'SIN_EMPRESA',
       })
@@ -305,7 +305,7 @@ export function useSimuladorUnidades() {
       return
     }
 
-    // ✅ SI NO EXISTE: Crear nueva posición
+    //  SI NO EXISTE: Crear nueva posición
     const ubicacionInicial = generarUbicacionAleatoria()
     const destinoInicial = generarDestinoAleatorio(ubicacionInicial)
     const velocidadBase = Math.floor(Math.random() * 20) + 40
@@ -323,7 +323,7 @@ export function useSimuladorUnidades() {
       unidadId: unidad.id,
       unidadNombre: unidad.Unidad,
       unidadPlaca: unidad.Placa || 'N/A',
-      // 🆕 AGREGAR IdEmpresaUnidad e IdEmpresaConductor
+      //  AGREGAR IdEmpresaUnidad e IdEmpresaConductor
       IdEmpresaUnidad: unidad.IdEmpresaUnidad || 'SIN_EMPRESA',
       IdEmpresaConductor: conductor.IdEmpresaConductor || 'SIN_EMPRESA',
       ubicacion: ubicacionInicial,
@@ -390,7 +390,7 @@ export function useSimuladorUnidades() {
     }
   }
 
-  // 🆕 NUEVA FUNCIÓN: Reiniciar una unidad específica
+  //  NUEVA FUNCIÓN: Reiniciar una unidad específica
   const reiniciarUnidadEspecifica = async (unidad, conductor) => {
     // Primero detener la unidad actual
     await detenerUnidadEspecifica(unidad.id)
@@ -452,7 +452,7 @@ export function useSimuladorUnidades() {
           nuevoMovimiento.direccion = estadoActual.direccion
         }
 
-        // 🔥 AQUÍ ESTÁ EL CAMBIO IMPORTANTE
+        //  AQUÍ ESTÁ EL CAMBIO IMPORTANTE
         await update(unidadRef, {
           ubicacion: nuevoMovimiento.ubicacion,
           velocidad: nuevoMovimiento.velocidad,
@@ -473,7 +473,7 @@ export function useSimuladorUnidades() {
           unidadNombre: estadoActual.unidadNombre,
           unidadPlaca: estadoActual.unidadPlaca,
           bateria: estadoActual.bateria,
-          // 🆕 MANTENER LOS IdEmpresa EN CADA ACTUALIZACIÓN
+          //  MANTENER LOS IdEmpresa EN CADA ACTUALIZACIÓN
           IdEmpresaUnidad: estadoActual.IdEmpresaUnidad || unidad.IdEmpresaUnidad || 'SIN_EMPRESA',
           IdEmpresaConductor:
             estadoActual.IdEmpresaConductor || conductor.IdEmpresaConductor || 'SIN_EMPRESA',
@@ -536,7 +536,7 @@ export function useSimuladorUnidades() {
     const conductoresConUnidad = conductores.filter((c) => c.UnidadAsignada)
 
     if (conductoresConUnidad.length === 0) {
-      console.warn('⚠️ Sin conductores asignados')
+      console.warn(' Sin conductores asignados')
       return
     }
 
@@ -568,7 +568,7 @@ export function useSimuladorUnidades() {
         }
       }
 
-      // 🆕 CAMBIO DE ASIGNACIÓN DE UNIDAD
+      //  CAMBIO DE ASIGNACIÓN DE UNIDAD
       if (cambio.tipo === 'cambio-asignacion-unidad') {
         // CASO 1: Se quitó la unidad (unidadNueva = null)
         if (!cambio.unidadNueva && cambio.unidadAnterior) {
@@ -598,7 +598,7 @@ export function useSimuladorUnidades() {
             // Iniciar simulación con la nueva unidad
             await iniciarSimulacionUnidad(cambio.conductor, unidadData)
           } else {
-            console.error(`❌ No se encontró la unidad ${cambio.unidadNueva} en Firestore`)
+            console.error(` No se encontró la unidad ${cambio.unidadNueva} en Firestore`)
           }
         }
       }
@@ -615,7 +615,7 @@ export function useSimuladorUnidades() {
   }
 
   const detenerSimulacion = async () => {
-    // 🆕 DETENER MONITOREO
+    //  DETENER MONITOREO
     detenerMonitoreo()
 
     intervalos.value.forEach(({ intervalo }) => clearInterval(intervalo))
@@ -647,7 +647,7 @@ export function useSimuladorUnidades() {
     iniciarSimulacion,
     detenerSimulacion,
     toggleSimulacion,
-    // 🆕 EXPORTAR NUEVAS FUNCIONES (por si las necesitas)
+    //  EXPORTAR NUEVAS FUNCIONES (por si las necesitas)
     detenerUnidadEspecifica,
     reiniciarUnidadEspecifica,
   }

@@ -1,8 +1,4 @@
 // src/composables/useReportesHorasTrabajo.js
-// 🆕 Sistema completo de reportes de horas de trabajo
-// ✅ Detecta viajes por cambios de ignición
-// ✅ Calcula horas dentro/fuera de horario comercial
-// ✅ Integrado con RutaDiaria + Storage
 
 import { ref } from 'vue'
 import { useReportesTrayectos } from './useReportesTrayectos'
@@ -21,14 +17,14 @@ function formatearDuracion(horas) {
   const minutosEnteros = Math.floor(minutosDecimales)
   let segundos = Math.round((minutosDecimales - minutosEnteros) * 60)
 
-  // 🔥 CORRECCIÓN: Si segundos llega a 60, ajustar
+  //  CORRECCIÓN: Si segundos llega a 60, ajustar
   let minutosFinales = minutosEnteros
   if (segundos >= 60) {
     segundos = 0
     minutosFinales += 1
   }
 
-  // 🔥 CORRECCIÓN: Si minutos llega a 60, ajustar
+  //  CORRECCIÓN: Si minutos llega a 60, ajustar
   let horasFinales = horasEnteras
   if (minutosFinales >= 60) {
     minutosFinales = 0
@@ -47,7 +43,7 @@ export function useReportesHorasTrabajo() {
   const { obtenerCoordenadasDesdeStorage } = useRutasStorage()
 
   /**
-   * 🔥 Detecta viajes basándose en el campo ignicion
+   *  Detecta viajes basándose en el campo ignicion
    * Un viaje = desde que enciende el motor hasta que lo apaga
    */
   const detectarViajesPorIgnicion = (coordenadas) => {
@@ -85,7 +81,7 @@ export function useReportesHorasTrabajo() {
           }
         }
       } else {
-        // ✅ DETECCIÓN CON IGNICIÓN
+        //  DETECCIÓN CON IGNICIÓN
         if (ignicion && !motorEncendido) {
           // Motor se encendió - iniciar viaje
           motorEncendido = true
@@ -112,7 +108,7 @@ export function useReportesHorasTrabajo() {
   }
 
   /**
-   * 🔥 Calcula si un timestamp está dentro del horario comercial
+   *  Calcula si un timestamp está dentro del horario comercial
    */
   const estaDentroHorarioComercial = (timestamp, horarioInicio, horarioFin, diasLaborables) => {
     const fecha = new Date(timestamp)
@@ -138,7 +134,7 @@ export function useReportesHorasTrabajo() {
   }
 
   /**
-   * 🔥 Calcula duración dentro y fuera de horario para un viaje
+   *  Calcula duración dentro y fuera de horario para un viaje
    */
   const calcularDuracionesHorario = (viaje, horarioInicio, horarioFin, diasLaborables) => {
     let duracionDentro = 0
@@ -174,7 +170,7 @@ export function useReportesHorasTrabajo() {
   }
 
   /**
-   * 🔥 Función principal: Calcula horas de trabajo
+   *  Función principal: Calcula horas de trabajo
    */
   const calcularHorasTrabajo = async (unidadesIds, fechaInicio, fechaFin, opciones = {}) => {
     loading.value = true
@@ -216,7 +212,7 @@ export function useReportesHorasTrabajo() {
           continue
         }
 
-        // 🔥 DETECTAR VIAJES POR IGNICIÓN
+        //  DETECTAR VIAJES POR IGNICIÓN
         const viajes = detectarViajesPorIgnicion(coordenadas)
 
         if (viajes.length === 0) {
@@ -270,15 +266,15 @@ export function useReportesHorasTrabajo() {
               hour: '2-digit',
               minute: '2-digit',
             }),
-            ubicacionInicio: direccionInicio, // 🔥 CAMBIO
-            ubicacionFin: direccionFin, // 🔥 CAMBIO
-            duracionDentro: formatearDuracion(duracionDentro), // 🔥 CAMBIO
-            duracionFuera: formatearDuracion(duracionFuera), // 🔥 CAMBIO
-            duracionTotal: formatearDuracion(duracionViaje), // 🔥 CAMBIO
+            ubicacionInicio: direccionInicio, //  CAMBIO
+            ubicacionFin: direccionFin, //  CAMBIO
+            duracionDentro: formatearDuracion(duracionDentro), //  CAMBIO
+            duracionFuera: formatearDuracion(duracionFuera), //  CAMBIO
+            duracionTotal: formatearDuracion(duracionViaje), //  CAMBIO
           })
         }
 
-        // 🔥 PRIMER PUNTO Y ÚLTIMO PUNTO DEL DÍA
+        //  PRIMER PUNTO Y ÚLTIMO PUNTO DEL DÍA
         const primeraCoordenada = coordenadas[0]
         const ultimaCoordenada = coordenadas[coordenadas.length - 1]
         const ubicacionInicioDia = await obtenerDireccion(primeraCoordenada)
@@ -299,14 +295,14 @@ export function useReportesHorasTrabajo() {
           }),
           ubicacionInicio: ubicacionInicioDia,
           ubicacionFin: ubicacionFinDia,
-          duracionTotal: formatearDuracion(duracionTotalDia), // 🔥 CAMBIO
-          duracionDentroHorario: formatearDuracion(duracionDentroDia), // 🔥 CAMBIO
+          duracionTotal: formatearDuracion(duracionTotalDia), //  CAMBIO
+          duracionDentroHorario: formatearDuracion(duracionDentroDia), //  CAMBIO
           duracionFueraHorario: formatearDuracion(duracionFueraDia),
           totalViajes: viajes.length,
           viajesDentroHorario: viajesDentroDia,
           viajesFueraHorario: viajesFueraDia,
           detallesViajes: detallesViajes,
-          coordenadas: coordenadas, // 🔥 Para el mapa
+          coordenadas: coordenadas, //  Para el mapa
           _trayecto: trayecto,
           _simulado: trayecto._simulado || false,
         })

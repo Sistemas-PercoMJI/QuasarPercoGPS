@@ -77,13 +77,13 @@ export function useTrayectosDiarios() {
 
       return coordenadasNormalizadas
     } catch (err) {
-      console.error('❌ Error descargando coordenadas:', err)
+      console.error(' Error descargando coordenadas:', err)
       return []
     }
   }
 
   /**
-   * 🔥 Analiza coordenadas y calcula velocidades entre puntos
+   *  Analiza coordenadas y calcula velocidades entre puntos
    */
   const enriquecerCoordenadasConVelocidad = (coordenadas) => {
     if (coordenadas.length < 2) return []
@@ -112,7 +112,7 @@ export function useTrayectosDiarios() {
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    // 🔥 Primero calcular velocidades
+    //  Primero calcular velocidades
     const coordsConVelocidad = enriquecerCoordenadasConVelocidad(coordenadas)
 
     const trayectos = []
@@ -264,7 +264,7 @@ export function useTrayectosDiarios() {
         resumen,
       }
     } catch (err) {
-      console.error('❌ Error obteniendo trayectos:', err)
+      console.error(' Error obteniendo trayectos:', err)
       error.value = err.message
       return {
         existenDatos: false,
@@ -277,7 +277,7 @@ export function useTrayectosDiarios() {
   }
 
   /**
-   * 🆕 Geocodifica coordenadas a dirección legible usando Nominatim
+   *  Geocodifica coordenadas a dirección legible usando Nominatim
    */
   const geocodificarCoordenadas = async (lat, lng) => {
     try {
@@ -339,7 +339,7 @@ export function useTrayectosDiarios() {
       const primerTrayecto = trayectos[0]
       const ultimoTrayecto = trayectos[trayectos.length - 1]
 
-      // 🔥 Geocodificar ubicación de inicio
+      //  Geocodificar ubicación de inicio
       if (primerTrayecto.inicio) {
         ubicacionInicio = await obtenerDireccion({
           lat: primerTrayecto.inicio.lat,
@@ -347,7 +347,7 @@ export function useTrayectosDiarios() {
         })
       }
 
-      // 🔥 Geocodificar ubicación de fin
+      //  Geocodificar ubicación de fin
       if (ultimoTrayecto.fin) {
         ubicacionFin = await obtenerDireccion({
           lat: ultimoTrayecto.fin.lat,

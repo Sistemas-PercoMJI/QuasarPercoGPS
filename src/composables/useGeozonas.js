@@ -12,11 +12,11 @@ import {
 } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 
-// ⚡ CONSTANTES PARA MAPBOX
+//  CONSTANTES PARA MAPBOX
 const MAPBOX_TOKEN =
   'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
-// ⚡ FUNCIÓN AUXILIAR: Obtener dirección de Mapbox
+//  FUNCIÓN AUXILIAR: Obtener dirección de Mapbox
 const obtenerDireccionPunto = async (lat, lng) => {
   try {
     const response = await fetch(
@@ -38,12 +38,12 @@ const obtenerDireccionPunto = async (lat, lng) => {
 
     return 'Dirección no disponible'
   } catch (error) {
-    console.error('❌ Error obteniendo dirección:', error)
+    console.error(' Error obteniendo dirección:', error)
     return 'Error al obtener dirección'
   }
 }
 
-// ⚡ FUNCIÓN: Agregar direcciones a los puntos
+//  FUNCIÓN: Agregar direcciones a los puntos
 const agregarDireccionesAPuntos = async (puntos) => {
   if (!puntos || puntos.length === 0) {
     return []
@@ -51,7 +51,7 @@ const agregarDireccionesAPuntos = async (puntos) => {
 
   const puntosConDireccion = []
 
-  // 🚀 Procesar en lotes de 5 para no saturar la API
+  //  Procesar en lotes de 5 para no saturar la API
   const BATCH_SIZE = 5
 
   for (let i = 0; i < puntos.length; i += BATCH_SIZE) {
@@ -72,7 +72,7 @@ const agregarDireccionesAPuntos = async (puntos) => {
 
     puntosConDireccion.push(...resultados)
 
-    // 🎯 Pequeña pausa entre lotes (100ms)
+    //  Pequeña pausa entre lotes (100ms)
     if (i + BATCH_SIZE < puntos.length) {
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -124,13 +124,13 @@ export function useGeozonas(userId) {
     }
   }
 
-  // ✅ MODIFICADA: crearGeozona ahora agrega direcciones automáticamente
+  //  MODIFICADA: crearGeozona ahora agrega direcciones automáticamente
   const crearGeozona = async (geozonaData) => {
     loading.value = true
     error.value = null
 
     try {
-      // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS ANTES DE GUARDAR
+      //  AGREGAR DIRECCIONES A LOS PUNTOS ANTES DE GUARDAR
       if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
         geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
       }
@@ -162,13 +162,13 @@ export function useGeozonas(userId) {
     }
   }
 
-  // ✅ MODIFICADA: actualizarGeozona también agrega direcciones si faltan
+  //  MODIFICADA: actualizarGeozona también agrega direcciones si faltan
   const actualizarGeozona = async (id, geozonaData) => {
     loading.value = true
     error.value = null
 
     try {
-      // ⚡ AGREGAR DIRECCIONES A LOS PUNTOS SI FALTAN
+      //  AGREGAR DIRECCIONES A LOS PUNTOS SI FALTAN
       if (geozonaData.tipo === 'poligono' && geozonaData.puntos && geozonaData.puntos.length > 0) {
         geozonaData.puntos = await agregarDireccionesAPuntos(geozonaData.puntos)
       }
@@ -216,7 +216,7 @@ export function useGeozonas(userId) {
     }
   }
 
-  // ⚡ NUEVA: Función para migrar geozonas existentes (ejecutar una sola vez)
+  //  NUEVA: Función para migrar geozonas existentes (ejecutar una sola vez)
   const migrarGeozonasExistentes = async () => {
     try {
       const geozonasRef = collection(db, 'Usuarios', userId, 'Geozonas')
@@ -249,7 +249,7 @@ export function useGeozonas(userId) {
 
       return { actualizadas, sinCambios }
     } catch (error) {
-      console.error('❌ Error en migración:', error)
+      console.error(' Error en migración:', error)
       throw error
     }
   }
@@ -262,6 +262,6 @@ export function useGeozonas(userId) {
     crearGeozona,
     actualizarGeozona,
     eliminarGeozona,
-    migrarGeozonasExistentes, // ⬅️ NUEVA FUNCIÓN
+    migrarGeozonasExistentes,
   }
 }

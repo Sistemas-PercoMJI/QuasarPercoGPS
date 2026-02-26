@@ -16,7 +16,7 @@ export function useEventosUnidadRealTime() {
     }
 
     if (!unidadId) {
-      console.warn('⚠️ No se proporcionó unidadId')
+      console.warn(' No se proporcionó unidadId')
       eventosUnidad.value = []
       return
     }
@@ -24,7 +24,7 @@ export function useEventosUnidadRealTime() {
     loadingEventos.value = true
     errorEventos.value = null
 
-    // 🔥 ASEGURARSE que la fecha esté en la zona horaria correcta
+    //  ASEGURARSE que la fecha esté en la zona horaria correcta
     const fechaLocal = new Date(fecha)
     fechaLocal.setHours(0, 0, 0, 0) // Reset a medianoche
 
@@ -42,22 +42,19 @@ export function useEventosUnidadRealTime() {
 
       const q = query(eventosRef)
 
-      // 🔍 DEBUG - usar 'q' en lugar de 'eventosRef'
+      //  DEBUG - usar 'q' en lugar de 'eventosRef'
       const testSnapshot = await getDocs(q)
 
-      // 🔥 Si no hay docs, mostrar la ruta exacta
+      //  Si no hay docs, mostrar la ruta exacta
       if (testSnapshot.size === 0) {
-        console.warn(
-          '⚠️ RUTA COMPLETA:',
-          `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`,
-        )
+        console.warn(' RUTA COMPLETA:', `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`)
       }
 
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
           if (snapshot.size === 0) {
-            console.warn('⚠️ No hay eventos en snapshot para', fechaStr)
+            console.warn(' No hay eventos en snapshot para', fechaStr)
             eventosUnidad.value = []
             loadingEventos.value = false
             return
@@ -119,14 +116,14 @@ export function useEventosUnidadRealTime() {
           loadingEventos.value = false
         },
         (error) => {
-          console.error('❌ ERROR EN SNAPSHOT:', error)
+          console.error(' ERROR EN SNAPSHOT:', error)
           errorEventos.value = error.message
           eventosUnidad.value = []
           loadingEventos.value = false
         },
       )
     } catch (error) {
-      console.error('❌ ERROR:', error)
+      console.error(' ERROR:', error)
       errorEventos.value = error.message
       eventosUnidad.value = []
       loadingEventos.value = false

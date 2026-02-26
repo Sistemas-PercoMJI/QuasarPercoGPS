@@ -22,8 +22,6 @@ export function useUnidadesWatcher() {
           const unidadAnterior = unidadesCache.get(unidad.id)
 
           if (unidadAnterior && unidadAnterior.IdEmpresaUnidad !== unidad.IdEmpresaUnidad) {
-
-
             callback({
               tipo: 'cambio-empresa-unidad',
               unidadId: unidad.id,
@@ -57,13 +55,11 @@ export function useUnidadesWatcher() {
         if (change.type === 'modified') {
           const conductorAnterior = conductoresCache.get(conductor.id)
 
-          // 🆕 DETECTAR CAMBIO DE IdEmpresaConductor
+          //  DETECTAR CAMBIO DE IdEmpresaConductor
           if (
             conductorAnterior &&
             conductorAnterior.IdEmpresaConductor !== conductor.IdEmpresaConductor
           ) {
-
-
             callback({
               tipo: 'cambio-empresa-conductor',
               conductorId: conductor.id,
@@ -73,10 +69,8 @@ export function useUnidadesWatcher() {
             })
           }
 
-          // 🆕 DETECTAR CAMBIO DE ASIGNACIÓN DE UNIDAD
+          //  DETECTAR CAMBIO DE ASIGNACIÓN DE UNIDAD
           if (conductorAnterior && conductorAnterior.UnidadAsignada !== conductor.UnidadAsignada) {
-
-
             callback({
               tipo: 'cambio-asignacion-unidad',
               conductorId: conductor.id,

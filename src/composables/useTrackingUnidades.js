@@ -8,7 +8,7 @@ import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 // Variables globales
 let unsubscribeGlobal = null
 const unidadesActivasGlobal = ref([])
-const unidadesRawGlobal = ref([]) // 🆕 Guardamos los datos sin filtrar
+const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
@@ -19,12 +19,12 @@ export function useTrackingUnidades() {
 
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
     if (!idEmpresaActual.value) {
-      console.warn('⚠️ No hay IdEmpresa, retornando array vacío')
+      console.warn(' No hay IdEmpresa, retornando array vacío')
       return []
     }
 
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      // 🔥 IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
+      //  IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
       if (!unidad.IdEmpresaConductor) {
         return false
       }
@@ -49,7 +49,7 @@ export function useTrackingUnidades() {
     }
 
     if (!idEmpresaActual.value) {
-      console.warn('⚠️ No se puede iniciar tracking: IdEmpresa no disponible')
+      console.warn(' No se puede iniciar tracking: IdEmpresa no disponible')
 
       setTimeout(() => {
         iniciarTracking()
@@ -69,7 +69,7 @@ export function useTrackingUnidades() {
           const data = snapshot.val()
 
           if (data) {
-            // 🆕 Guardar TODAS las unidades sin filtrar
+            //  Guardar TODAS las unidades sin filtrar
             const todasLasUnidades = Object.entries(data)
               .filter(([, value]) => {
                 // Solo validación básica de ubicación
@@ -93,10 +93,10 @@ export function useTrackingUnidades() {
                 nombre: value.conductorNombre,
               }))
 
-            // 🆕 Actualizar datos raw
+            //  Actualizar datos raw
             unidadesRawGlobal.value = todasLasUnidades
 
-            // 🆕 Aplicar filtrado
+            //  Aplicar filtrado
             const unidadesFiltradas = filtrarUnidadesPorEmpresa(todasLasUnidades)
 
             unidadesActivasGlobal.value = unidadesFiltradas
@@ -109,7 +109,7 @@ export function useTrackingUnidades() {
           loadingGlobal.value = false
         },
         (err) => {
-          console.error('❌ Error en tracking:', err)
+          console.error(' Error en tracking:', err)
           errorGlobal.value = err.message
           loadingGlobal.value = false
         },
@@ -117,13 +117,13 @@ export function useTrackingUnidades() {
 
       trackingIniciado = true
     } catch (err) {
-      console.error('❌ Error al iniciar tracking:', err)
+      console.error(' Error al iniciar tracking:', err)
       errorGlobal.value = err.message
       loadingGlobal.value = false
     }
   }
 
-  // 🆕 WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
+  //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
   watch(
     [idEmpresaActual, unidadesRawGlobal],
     () => {

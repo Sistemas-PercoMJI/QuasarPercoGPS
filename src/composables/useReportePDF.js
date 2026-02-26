@@ -9,12 +9,12 @@ import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
 const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
-  // 🔥 Usar la agrupación REAL que se aplicó, no la del selector
+  //  Usar la agrupación REAL que se aplicó, no la del selector
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
-    // 🔥 CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
+    //  CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
     let fechaISO = nombreGrupo
 
     if (nombreGrupo.includes('/')) {
@@ -32,7 +32,7 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
 
     const fecha = new Date(fechaISO + 'T00:00:00')
 
-    // 🔥 Validar que la fecha es válida
+    //  Validar que la fecha es válida
     if (isNaN(fecha.getTime())) {
       return {
         titulo: `DÍA: ${nombreGrupo}`,
@@ -117,7 +117,7 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
 const generarResumenPorTipo = (datosReales, config) => {
   if (!config.mostrarResumen) return null
 
-  // 🔥 NUEVO: Considerar agruparPor
+  //  NUEVO: Considerar agruparPor
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
   // Si agrupamos por DÍA
@@ -486,7 +486,7 @@ export function useReportePDF() {
     doc.text(`Total de eventos: ${metadata.totalEventos}`, 14, yPosition)
     yPosition += 10
     // ========================================
-    // 🔥 NUEVO: Resumen estadístico
+    //  NUEVO: Resumen estadístico
     // ========================================
     const resumenPorTipo = generarResumenPorTipo(datosReales, config)
 
@@ -521,13 +521,13 @@ export function useReportePDF() {
     }
 
     // ========================================
-    // 🔥 NUEVO: Tabla de eventos con columnas dinámicas
+    //  NUEVO: Tabla de eventos con columnas dinámicas
     // ========================================
     // ========================================
-    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
+    //  TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
     // ========================================
     // ========================================
-    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS (OPTIMIZADA PARA 22 COLUMNAS)
+    //  TABLA DE EVENTOS CON COLUMNAS DINÁMICAS (OPTIMIZADA PARA 22 COLUMNAS)
     // ========================================
     if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
       if (yPosition > 200) {
@@ -543,14 +543,14 @@ export function useReportePDF() {
       const headers = config.columnasSeleccionadas
       const configuracionColumnas = datosReales.configuracionColumnas || []
 
-      // 🔥 OBTENER DATOS ORIGINALES (NO PROCESADOS)
+      //  OBTENER DATOS ORIGINALES (NO PROCESADOS)
       const rows = datosReales.eventosAgrupados
         ? Object.values(datosReales.eventosAgrupados).flat()
         : datosReales.datosColumnas
 
       const tableData = rows.map((evento) => {
         return headers.map((nombreCol) => {
-          // 🔥 MAPEO DE NOMBRES
+          //  MAPEO DE NOMBRES
           const nombreMapeado = nombreCol === 'Condición de evento' ? 'Condición' : nombreCol
 
           const columnaConfig = configuracionColumnas.find((c) => c.label === nombreMapeado)
@@ -569,13 +569,13 @@ export function useReportePDF() {
         })
       })
 
-      // 🔥 CONFIGURACIÓN DE ANCHOS INTELIGENTES
+      //  CONFIGURACIÓN DE ANCHOS INTELIGENTES
       const pageWidth = doc.internal.pageSize.width
       const margins = 28 // left + right
       const availableWidth = pageWidth - margins
       const totalColumnas = headers.length
 
-      // 🔥 DEFINIR PRIORIDADES DE COLUMNAS
+      //  DEFINIR PRIORIDADES DE COLUMNAS
       const columnasImportantes = [
         'Nombre de evento',
         'Hora de inicio de evento',
@@ -595,7 +595,7 @@ export function useReportePDF() {
         'Batería',
       ]
 
-      // 🔥 ASIGNAR ANCHOS DINÁMICOS
+      //  ASIGNAR ANCHOS DINÁMICOS
       const columnStyles = {}
 
       headers.forEach((nombreCol, index) => {
@@ -612,13 +612,13 @@ export function useReportePDF() {
 
         columnStyles[index] = {
           cellWidth: ancho,
-          overflow: 'linebreak', // 🔥 CRÍTICO: permite saltos de línea
+          overflow: 'linebreak', //  CRÍTICO: permite saltos de línea
           valign: 'middle',
           halign: 'left',
         }
       })
 
-      // 🔥 GENERAR TABLA OPTIMIZADA
+      //  GENERAR TABLA OPTIMIZADA
       autoTable(doc, {
         startY: yPosition,
         head: [headers],
@@ -627,15 +627,15 @@ export function useReportePDF() {
         headStyles: {
           fillColor: [145, 198, 188],
           fontStyle: 'bold',
-          fontSize: 5, // 🔥 Reducido de 8 a 5
-          cellPadding: 1, // 🔥 Reducido de 2 a 1
+          fontSize: 5, //  Reducido de 8 a 5
+          cellPadding: 1, //  Reducido de 2 a 1
           valign: 'middle',
           halign: 'center',
-          minCellHeight: 6, // 🔥 Altura mínima para headers
+          minCellHeight: 6, //  Altura mínima para headers
         },
         styles: {
-          fontSize: 5, // 🔥 Reducido de 7 a 5
-          cellPadding: 0.8, // 🔥 Reducido de 2 a 0.8
+          fontSize: 5, //  Reducido de 7 a 5
+          cellPadding: 0.8, //  Reducido de 2 a 0.8
           overflow: 'linebreak',
           cellWidth: 'wrap',
           minCellHeight: 5,
@@ -669,7 +669,7 @@ export function useReportePDF() {
           yPosition = 20
         }
 
-        // 🔥 NUEVO: Usar header contextual
+        //  NUEVO: Usar header contextual
         const headerInfo = generarHeaderGrupo(nombreGrupo, eventos, config, datosReales)
         if (headerInfo) {
           const pageWidth = doc.internal.pageSize.width
@@ -841,7 +841,7 @@ export function useReportePDF() {
             return nombres[col] || col
           })
 
-          // 🔥 SIMPLIFICADO: Usar configuracionColumnas directamente
+          //  SIMPLIFICADO: Usar configuracionColumnas directamente
           const tableData = eventosSubGrupo.map((evento) => {
             return columnasVisibles.map((col) => {
               // Buscar la configuración de la columna
@@ -865,7 +865,7 @@ export function useReportePDF() {
               // Fallback: usar la propiedad directamente
               const valor = evento[col]
 
-              // 🔥 DEBUG FALLBACK
+              //  DEBUG FALLBACK
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'
             })
@@ -930,7 +930,7 @@ export function useReportePDF() {
     doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, 14, 28)
     doc.text(`Total de eventos: ${eventos.length}`, 14, 34)
 
-    // 🔥 NUEVO: Usar sistema de columnas dinámicas
+    //  NUEVO: Usar sistema de columnas dinámicas
     const tableData = eventos.map((evento) => {
       return columnas.map((nombreCol) => {
         const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
@@ -961,7 +961,7 @@ export function useReportePDF() {
   }
 
   /**
-   * 🆕 Genera un PDF con trayectos e incluye mapa
+   *  Genera un PDF con trayectos e incluye mapa
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos obtenidos de Firebase
    * @param {Object} mapaData - Datos del mapa (opcional) { dataURL, rutas }
@@ -1313,7 +1313,7 @@ export function useReportePDF() {
   }
 
   /**
-   * 🆕 Genera un PDF con reporte de horas de trabajo
+   *  Genera un PDF con reporte de horas de trabajo
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos calculados de horas
    */
@@ -1375,7 +1375,7 @@ export function useReportePDF() {
       doc.text('Resumen del Informe', 14, yPos)
       yPos += 8
 
-      // 🔥 PASO 1: RECALCULAR LOS TOTALES A PARTIR DE LOS DATOS DETALLADOS
+      //  PASO 1: RECALCULAR LOS TOTALES A PARTIR DE LOS DATOS DETALLADOS
       const resumenRecalculado = {}
       const totalesRecalculados = { duracionFuera: '00:00:00', duracionDentro: '00:00:00' }
 
@@ -1412,7 +1412,7 @@ export function useReportePDF() {
         )
       })
 
-      // 🔥 PASO 2: PREPARAR LOS DATOS PARA LA TABLA USANDO NUESTRO RESUMEN RECALCULADO
+      //  PASO 2: PREPARAR LOS DATOS PARA LA TABLA USANDO NUESTRO RESUMEN RECALCULADO
       const resumenData = Object.values(resumenRecalculado).map((item) => {
         // Calcular duración total
         const duracionTotal = sumarTiempos(item.duracionFuera, item.duracionDentro)
@@ -1442,7 +1442,7 @@ export function useReportePDF() {
         ]
       })
 
-      // 🔥 PASO 3: AÑADIR LA FILA DE TOTALES RECALCULADA
+      //  PASO 3: AÑADIR LA FILA DE TOTALES RECALCULADA
       const duracionTotalFinal = sumarTiempos(
         totalesRecalculados.duracionFuera,
         totalesRecalculados.duracionDentro,
@@ -1470,7 +1470,7 @@ export function useReportePDF() {
         { content: totalesRecalculados.duracionDentro, styles: { fontStyle: 'bold' } },
       ])
 
-      // 🔥 PASO 4: DIBUJAR LA TABLA
+      //  PASO 4: DIBUJAR LA TABLA
       autoTable(doc, {
         startY: yPos,
         head: [
@@ -1547,7 +1547,7 @@ export function useReportePDF() {
       return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
     })
 
-    console.log('🔍 Columnas convertidas:', columnasVisibles)
+    console.log(' Columnas convertidas:', columnasVisibles)
 
     // ========================================
     // LOOP POR CADA UNIDAD/CONDUCTOR
@@ -1695,7 +1695,7 @@ export function useReportePDF() {
             // Asegúrate de usar registrosDelDia aquí
             if (registro.detallesViajes && registro.detallesViajes.length > 0) {
               registro.detallesViajes.forEach((viaje) => {
-                // 🔥 PASO 1: Calcular si tiene horas extra (usando nombres de propiedad correctos y valores por defecto)
+                //  PASO 1: Calcular si tiene horas extra (usando nombres de propiedad correctos y valores por defecto)
                 const duracionDentro = viaje.duracionDentro || '00:00:00'
                 const duracionFuera = viaje.duracionFuera || '00:00:00'
 
@@ -1716,7 +1716,7 @@ export function useReportePDF() {
 
                 if (!incluirViaje) return
 
-                // 🔥 PASO 2: Mapear valores según columnas seleccionadas
+                //  PASO 2: Mapear valores según columnas seleccionadas
                 const fila = columnasVisiblesViajes.map((prop) => {
                   let valor = 'N/A'
 
@@ -1737,7 +1737,7 @@ export function useReportePDF() {
                     } else if (prop === 'duracionFueraHorario') {
                       valor = duracionFuera // Usar la variable que ya preparamos
                     }
-                    // 🔥 CORRECCIÓN AQUÍ: Mapear los nombres de las horas
+                    //  CORRECCIÓN AQUÍ: Mapear los nombres de las horas
                     else if (prop === 'horaInicioTrabajo') {
                       valor = viaje.horaInicio || 'N/A'
                     } else if (prop === 'horaFinTrabajo') {
@@ -1749,7 +1749,7 @@ export function useReportePDF() {
                     }
                   }
 
-                  // 🔥 PASO 3: Aplicar estilo especial para horas fuera de horario
+                  //  PASO 3: Aplicar estilo especial para horas fuera de horario
                   if (prop === 'duracionFueraHorario' && config.remarcarHorasExtra && tieneFuera) {
                     return {
                       content: valor,
@@ -1772,7 +1772,7 @@ export function useReportePDF() {
           if (todosLosViajes.length > 0) {
             autoTable(doc, {
               startY: yPos,
-              head: [headersViajes], // 🔥 USAR HEADERS CONFIGURABLES
+              head: [headersViajes], //  USAR HEADERS CONFIGURABLES
               body: todosLosViajes,
               theme: 'grid',
               headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
@@ -1780,9 +1780,9 @@ export function useReportePDF() {
               margin: { left: 20, right: 20 },
             })
 
-            yPos = doc.lastAutoTable.finalY + 5 // 🔥 Cambiar de +10 a +5
+            yPos = doc.lastAutoTable.finalY + 5 //  Cambiar de +10 a +5
 
-            // 🔥 AGREGAR MÉTRICAS DEL DÍA
+            //  AGREGAR MÉTRICAS DEL DÍA
             const totalViajesDelDia = registrosDelDia.reduce(
               (sum, r) => sum + (r.totalViajes || 0),
               0,
@@ -1911,6 +1911,6 @@ export function useReportePDF() {
     generarPDFEventos,
     generarPDFSimple,
     generarPDFTrayectos,
-    generarPDFHorasTrabajo, // 🆕
+    generarPDFHorasTrabajo, //
   }
 }

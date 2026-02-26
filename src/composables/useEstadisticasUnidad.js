@@ -58,7 +58,7 @@ export function useEstadisticasUnidad() {
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) {
-      console.warn('⚠️ No hay URL de rutas')
+      console.warn(' No hay URL de rutas')
       return []
     }
 
@@ -99,13 +99,13 @@ export function useEstadisticasUnidad() {
 
       return coordenadasNormalizadas
     } catch (err) {
-      console.error('❌ Error descargando coordenadas del Storage:', err)
+      console.error(' Error descargando coordenadas del Storage:', err)
       return []
     }
   }
 
   /**
-   * 🔥 Calcula el tiempo de conducción analizando coordenadas con velocidad
+   *  Calcula el tiempo de conducción analizando coordenadas con velocidad
    */
   const calcularTiempoDesdeCoordenadasConVelocidad = (coordenadas) => {
     // Filtrar y ordenar coordenadas válidas
@@ -171,7 +171,7 @@ export function useEstadisticasUnidad() {
   }
 
   /**
-   * 🔥 Calcula el tiempo de conducción HOY
+   *  Calcula el tiempo de conducción HOY
    */
   const calcularTiempoConductionHoy = async (unidadId) => {
     try {
@@ -218,7 +218,7 @@ export function useEstadisticasUnidad() {
         tiempoDetenido: 0,
       }
     } catch (err) {
-      console.error('❌ Error calculando tiempo de conducción:', err)
+      console.error(' Error calculando tiempo de conducción:', err)
       return {
         tiempoTotal: 0,
         tiempoMovimiento: 0,
@@ -245,7 +245,7 @@ export function useEstadisticasUnidad() {
         tiempoDetenido: formatearDuracion(resultado.tiempoDetenido),
       }
     } catch (err) {
-      console.error('❌ Error obteniendo estadísticas:', err)
+      console.error(' Error obteniendo estadísticas:', err)
       error.value = err.message
 
       return {

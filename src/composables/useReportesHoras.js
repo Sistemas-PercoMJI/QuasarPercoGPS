@@ -95,7 +95,7 @@ export function useReportesHoras() {
 
       return registros
     } catch (err) {
-      console.error('❌ Error al calcular horas:', err)
+      console.error(' Error al calcular horas:', err)
       error.value = err.message
       throw err
     } finally {

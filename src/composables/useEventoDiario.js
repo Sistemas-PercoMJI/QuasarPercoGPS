@@ -84,7 +84,7 @@ export function useEventoDiario() {
       return { id: idEvento, ...nuevoEvento }
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al registrar evento diario:', err)
+      console.error(' Error al registrar evento diario:', err)
       throw err
     } finally {
       loading.value = false
@@ -120,7 +120,7 @@ export function useEventoDiario() {
       })
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al finalizar evento:', err)
+      console.error(' Error al finalizar evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -150,8 +150,8 @@ export function useEventoDiario() {
       })
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al actualizar duración:', err)
-      console.error('❌ Detalles del error:', {
+      console.error(' Error al actualizar duración:', err)
+      console.error(' Detalles del error:', {
         code: err.code,
         message: err.message,
         stack: err.stack,
@@ -190,7 +190,7 @@ export function useEventoDiario() {
       return eventos
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al obtener eventos diarios:', err)
+      console.error(' Error al obtener eventos diarios:', err)
       throw err
     } finally {
       loading.value = false
@@ -230,7 +230,7 @@ export function useEventoDiario() {
       return eventos
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al obtener eventos por tipo:', err)
+      console.error(' Error al obtener eventos por tipo:', err)
       throw err
     } finally {
       loading.value = false

@@ -10,7 +10,7 @@ export function useGeozonaUtils() {
    */
   const calcularCentroide = (puntos) => {
     if (!puntos || puntos.length === 0) {
-      console.warn('⚠️ No hay puntos para calcular centroide')
+      console.warn(' No hay puntos para calcular centroide')
       return null
     }
 
@@ -50,7 +50,7 @@ export function useGeozonaUtils() {
         direccion,
       }
     } catch (error) {
-      console.error('❌ Error geocodificando centroide:', error)
+      console.error(' Error geocodificando centroide:', error)
       return {
         ...centroide,
         direccion: `${centroide.lat.toFixed(6)}, ${centroide.lng.toFixed(6)}`,
@@ -65,7 +65,7 @@ export function useGeozonaUtils() {
    */
   const obtenerCentroGeozona = async (geozona) => {
     if (!geozona) {
-      console.warn('⚠️ Geozona inválida')
+      console.warn(' Geozona inválida')
       return null
     }
 
@@ -83,7 +83,7 @@ export function useGeozonaUtils() {
       return await calcularCentroideConDireccion(geozona.puntos)
     }
 
-    console.warn('⚠️ Tipo de geozona no reconocido')
+    console.warn(' Tipo de geozona no reconocido')
     return null
   }
 

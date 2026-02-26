@@ -82,7 +82,7 @@ export function useReportes() {
 
       return datos
     } catch (err) {
-      console.error('❌ Error al obtener datos:', err)
+      console.error(' Error al obtener datos:', err)
       error.value = err.message
       throw err
     } finally {

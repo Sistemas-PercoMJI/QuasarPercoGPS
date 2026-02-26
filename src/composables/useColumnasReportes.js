@@ -1,5 +1,5 @@
 // src/composables/useColumnasReportes.js
-// 📊 SISTEMA DE COLUMNAS DINÁMICAS PARA TODOS LOS TIPOS DE REPORTES
+//  SISTEMA DE COLUMNAS DINÁMICAS PARA TODOS LOS TIPOS DE REPORTES
 
 import { ref, computed } from 'vue'
 import { usePreferenciasReportes } from './usePreferenciasReportes'
@@ -13,7 +13,7 @@ const COLUMNAS_COMPARTIDAS = {
   Conductor: {
     key: 'conductor',
     label: 'Conductor',
-    obtenerValor: (dato) => dato.conductorNombre || dato.conductor_nombre || 'Sin conductor', // 🔥 AGREGADO conductor_nombre
+    obtenerValor: (dato) => dato.conductorNombre || dato.conductor_nombre || 'Sin conductor', //  AGREGADO conductor_nombre
     ancho: 180,
     formato: 'texto',
   },
@@ -22,7 +22,7 @@ const COLUMNAS_COMPARTIDAS = {
     key: 'vehiculo',
     label: 'Vehículo',
     obtenerValor: (dato) => {
-      // 🔥 CORREGIDO: Buscar en múltiples campos posibles
+      //  CORREGIDO: Buscar en múltiples campos posibles
       return (
         dato.unidadNombre || dato.vehiculoNombre || dato.vehiculo || dato.unidad || 'Sin vehículo'
       )
@@ -35,7 +35,7 @@ const COLUMNAS_COMPARTIDAS = {
     key: 'placa',
     label: 'Placa',
     obtenerValor: (dato) => {
-      // 🔥 BUSCAR EN MÚLTIPLES PROPIEDADES
+      //  BUSCAR EN MÚLTIPLES PROPIEDADES
       return dato.Placa || dato.placa || dato.unidadPlaca || 'Sin placa'
     },
     ancho: 100,
@@ -78,7 +78,7 @@ const COLUMNAS_EVENTOS = {
   },
 
   Tipo: {
-    // 🔥 KEY = label
+    //  KEY = label
     key: 'tipoEvento',
     label: 'Tipo',
     obtenerValor: (notificacion) => {
@@ -117,7 +117,7 @@ const COLUMNAS_EVENTOS = {
       try {
         if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
           return timestamp.toLocaleTimeString('es-MX', {
-            // ← 🔥 CAMBIADO
+            // ←  CAMBIADO
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -127,11 +127,11 @@ const COLUMNAS_EVENTOS = {
 
         return 'N/A'
       } catch (error) {
-        console.error('❌ Error al formatear hora:', error)
+        console.error(' Error al formatear hora:', error)
         return 'N/A'
       }
     },
-    ancho: 120, // ← 🔥 También reduje el ancho (era 180)
+    ancho: 120, // ←  También reduje el ancho (era 180)
     formato: 'fecha',
   },
   Fecha: {
@@ -170,7 +170,7 @@ const COLUMNAS_EVENTOS = {
     key: 'duracion',
     label: 'Duración',
     obtenerValor: (notificacion) => {
-      // 🔥 Buscar duración en segundos
+      //  Buscar duración en segundos
       const segundos = notificacion.duracionSegundos ?? notificacion.DuracionDentro ?? null
 
       if (segundos !== null && segundos !== undefined && segundos > 0) {
@@ -209,8 +209,8 @@ const COLUMNAS_EVENTOS = {
       } else if (tipo === 'Salida' || tipo === 'salida' || tipo === 'warning') {
         tipoTexto = 'Salida'
       }
-      // 🔥 DEBUG PASO A PASO
-      // 🔥 CONSTRUCCIÓN PASO A PASO (más seguro)
+      //  DEBUG PASO A PASO
+      //  CONSTRUCCIÓN PASO A PASO (más seguro)
       if (!tipoTexto) return 'N/A'
       if (!nombreUbicacion) return 'N/A'
 
@@ -238,7 +238,7 @@ const COLUMNAS_EVENTOS = {
   },
   // ============ UBICACIÓN ============
   Ubicación: {
-    // 🔥 KEY = label
+    //  KEY = label
     key: 'ubicacion',
     label: 'Ubicación',
     obtenerValor: (notificacion) => {
@@ -251,7 +251,7 @@ const COLUMNAS_EVENTOS = {
     key: 'tipoUbicacion',
     label: 'Tipo de ubicación',
     obtenerValor: (notificacion) => {
-      // 🔥 Verificar múltiples campos
+      //  Verificar múltiples campos
       return notificacion.tipoUbicacion || notificacion.tipo_ubicacion || 'N/A'
     },
     ancho: 120,
@@ -261,7 +261,7 @@ const COLUMNAS_EVENTOS = {
     key: 'geozona',
     label: 'Geozona',
     obtenerValor: (notificacion) => {
-      // 🔥 CORREGIDO: Soportar múltiples campos
+      //  CORREGIDO: Soportar múltiples campos
       return (
         notificacion.geozonaNombre ||
         notificacion.GeozonaNombre ||
@@ -291,7 +291,7 @@ const COLUMNAS_EVENTOS = {
     key: 'coordenadas',
     label: 'Coordenadas',
     obtenerValor: (notificacion) => {
-      // 🔥 CORREGIDO:
+      //  CORREGIDO:
       if (notificacion.coordenadas?.lat && notificacion.coordenadas?.lng) {
         return `${notificacion.coordenadas.lat.toFixed(6)}, ${notificacion.coordenadas.lng.toFixed(6)}`
       }
@@ -305,7 +305,7 @@ const COLUMNAS_EVENTOS = {
     key: 'direccion',
     label: 'Dirección',
     obtenerValor: (notificacion) => {
-      // 🔥 CAMBIA ESTO:
+      //  CAMBIA ESTO:
       if (notificacion.direccion && notificacion.direccion !== 'Sin dirección') {
         return notificacion.direccion
       }
@@ -326,7 +326,7 @@ const COLUMNAS_EVENTOS = {
     key: 'velocidad',
     label: 'Velocidad',
     obtenerValor: (notificacion) => {
-      // 🔥 CAMBIA ESTO:
+      //  CAMBIA ESTO:
       const velocidad = notificacion.velocidad ?? 0 // Usar ?? en lugar de ||
       return velocidad !== null && velocidad !== undefined ? `${velocidad} km/h` : 'N/A'
     },
@@ -374,10 +374,10 @@ const COLUMNAS_EVENTOS = {
       if (notificacion.ignicion === true) return 'Encendida'
       if (notificacion.ignicion === false) return 'Apagada'
 
-      // 🔥 INFERIR por velocidad
+      //  INFERIR por velocidad
       const velocidad = notificacion.velocidad ?? 0
       if (velocidad > 0) return 'Encendida'
-      return 'Apagada' // 🔥 En lugar de N/A
+      return 'Apagada' //  En lugar de N/A
     },
     ancho: 100,
     formato: 'texto',
@@ -431,7 +431,7 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeInicio',
     label: 'Kilometraje al inicio',
     obtenerValor: (trayecto) => {
-      // 🔥 PRIORIDAD 1: Usar odómetro del hardware si existe
+      //  PRIORIDAD 1: Usar odómetro del hardware si existe
       if (
         trayecto.odometroInicio !== null &&
         trayecto.odometroInicio !== undefined &&
@@ -440,7 +440,7 @@ const COLUMNAS_TRAYECTOS = {
         return `${trayecto.odometroInicio} km`
       }
 
-      // 🔥 PRIORIDAD 2: Usar odómetro virtual como fallback
+      //  PRIORIDAD 2: Usar odómetro virtual como fallback
       if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
         return `${trayecto.odometroVirtual} km`
       }
@@ -488,7 +488,7 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeFinal',
     label: 'Kilometraje al final',
     obtenerValor: (trayecto) => {
-      // 🔥 PRIORIDAD 1: Usar odómetro del hardware si existe
+      //  PRIORIDAD 1: Usar odómetro del hardware si existe
       if (
         trayecto.odometroFin !== null &&
         trayecto.odometroFin !== undefined &&
@@ -497,7 +497,7 @@ const COLUMNAS_TRAYECTOS = {
         return `${trayecto.odometroFin} km`
       }
 
-      // 🔥 PRIORIDAD 2: Calcular con odómetro virtual
+      //  PRIORIDAD 2: Calcular con odómetro virtual
       if (
         trayecto.odometroVirtual !== null &&
         trayecto.odometroVirtual !== undefined &&
@@ -519,7 +519,7 @@ const COLUMNAS_TRAYECTOS = {
     key: 'duracionTrayecto',
     label: 'Duración del trayecto',
     obtenerValor: (trayecto) => {
-      // 🔥 PRIORIDAD 1: duracion en milisegundos
+      //  PRIORIDAD 1: duracion en milisegundos
       if (trayecto.duracion && trayecto.duracion > 0) {
         const duracionMs = trayecto.duracion
         const horas = Math.floor(duracionMs / 3600000)
@@ -528,14 +528,14 @@ const COLUMNAS_TRAYECTOS = {
         return `${horas}h ${minutos}m ${segundos}s`
       }
 
-      // 🔥 PRIORIDAD 2: duracionHoras
+      //  PRIORIDAD 2: duracionHoras
       if (trayecto.duracionHoras) {
         const horas = Math.floor(parseFloat(trayecto.duracionHoras))
         const minutos = Math.floor((parseFloat(trayecto.duracionHoras) - horas) * 60)
         return `${horas}h ${minutos}m`
       }
 
-      // 🔥 PRIORIDAD 3: calcular desde timestamps
+      //  PRIORIDAD 3: calcular desde timestamps
       if (trayecto.inicioTimestamp && trayecto.finTimestamp) {
         const inicio =
           trayecto.inicioTimestamp instanceof Date
@@ -598,12 +598,12 @@ const COLUMNAS_TRAYECTOS = {
     key: 'tipoOdometro',
     label: 'Tipo de odómetro',
     obtenerValor: (trayecto) => {
-      // 🔥 Detectar si tiene datos del hardware
+      //  Detectar si tiene datos del hardware
       if (trayecto.odometroInicio > 0 && trayecto.odometroFin > 0) {
         return 'Hardware'
       }
 
-      // 🔥 Si no, es virtual
+      //  Si no, es virtual
       if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
         return 'Virtual'
       }
@@ -813,7 +813,7 @@ export function useColumnasReportes() {
   })
 
   /**
-   * 🆕 Cargar columnas guardadas o usar defaults
+   *  Cargar columnas guardadas o usar defaults
    */
   const cargarColumnasIniciales = (tipo) => {
     const columnasGuardadas = obtenerColumnasGuardadas(tipo)
@@ -835,7 +835,7 @@ export function useColumnasReportes() {
   }
 
   /**
-   * 🆕 Guardar columnas seleccionadas actuales
+   *  Guardar columnas seleccionadas actuales
    */
   const guardarColumnasActuales = () => {
     if (columnasSeleccionadas.value.length > 0) {
@@ -953,14 +953,14 @@ export function useColumnasReportes() {
   }
 
   /**
-   * 🔄 Resetear columnas a valores por defecto
+   *  Resetear columnas a valores por defecto
    */
   const resetearColumnas = () => {
     columnasSeleccionadas.value = [...COLUMNAS_DEFAULT[tipoInformeActivo.value]]
     resetearPreferencias(tipoInformeActivo.value)
   }
 
-  // 🚀 INICIALIZACIÓN (solo una vez)
+  //  INICIALIZACIÓN (solo una vez)
   columnasSeleccionadas.value = cargarColumnasIniciales(tipoInformeActivo.value)
   columnasDisponiblesFiltradas.value = nombresColumnasDisponibles.value
 
@@ -984,7 +984,7 @@ export function useColumnasReportes() {
     procesarNotificacionesParaReporte,
     generarResumen,
     resetearColumnas,
-    guardarColumnasActuales, // 👈 Para guardar al generar reporte
+    guardarColumnasActuales, //  Para guardar al generar reporte
   }
 }
 

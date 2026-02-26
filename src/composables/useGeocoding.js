@@ -49,7 +49,7 @@ export function useGeocoding() {
         }
       }
 
-      console.warn('⚠️ Sin resultado específico, intentando búsqueda amplia...')
+      console.warn(' Sin resultado específico, intentando búsqueda amplia...')
       const responseAmplia = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=es&limit=1`,
       )
@@ -64,7 +64,7 @@ export function useGeocoding() {
         }
       }
     } catch (error) {
-      console.error('❌ Error en geocoding:', error)
+      console.error(' Error en geocoding:', error)
     }
 
     return `${lat.toFixed(5)}, ${lng.toFixed(5)}`

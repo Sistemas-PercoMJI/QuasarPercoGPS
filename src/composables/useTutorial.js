@@ -32,7 +32,7 @@ export function useTutorial(router) {
 
     scrollIntoViewOptions: {
       behavior: 'auto',
-      block: 'nearest', // 👈 ESTO CENTRA EL ELEMENTO
+      block: 'nearest', //  ESTO CENTRA EL ELEMENTO
       inline: 'nearest',
     },
 
@@ -40,7 +40,7 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      // 🔥 NUEVO: SI ESTAMOS EN DASHBOARD PASO 10 Y RETROCEDEMOS, IR A REPORTES
+      //  NUEVO: SI ESTAMOS EN DASHBOARD PASO 10 Y RETROCEDEMOS, IR A REPORTES
       if (pasoActual === 10 && totalPasos === 16 && yaNavegamosAReportes) {
         // Guardar flag para que iniciarTutorialReportes sepa que viene de "Anterior"
         //  localStorage.setItem('mj_tutorial_step', 'reportes-anterior'
@@ -57,7 +57,7 @@ export function useTutorial(router) {
             document.documentElement.style.overflow = ''
           }
         } catch (e) {
-          console.warn('⚠️ Error limpiando estilos:', e)
+          console.warn(' Error limpiando estilos:', e)
         }
 
         // Eliminar elementos del DOM
@@ -71,7 +71,7 @@ export function useTutorial(router) {
                 el.parentNode.removeChild(el)
               }
             } catch (e) {
-              console.warn('⚠️ Error eliminando elemento:', e)
+              console.warn(' Error eliminando elemento:', e)
             }
           })
         } catch (e) {
@@ -87,23 +87,23 @@ export function useTutorial(router) {
           }
         }
 
-        // 🔥 NAVEGAR Y LUEGO EJECUTAR EL TUTORIAL
+        //  NAVEGAR Y LUEGO EJECUTAR EL TUTORIAL
         router
           .push('/reporte')
           .then(() => {
             // Esperar a que la página se renderice
             setTimeout(() => {
-              iniciarTutorialReportes(true) // 🔥 LLAMAR DIRECTAMENTE LA FUNCIÓN
+              iniciarTutorialReportes(true) //  LLAMAR DIRECTAMENTE LA FUNCIÓN
             }, 400)
           })
           .catch((err) => {
-            console.error('❌ Error en navegación:', err)
+            console.error(' Error en navegación:', err)
           })
 
         return
       }
 
-      // 🔥 SI ESTAMOS EN EL PASO 8 DE REPORTES (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
+      //  SI ESTAMOS EN EL PASO 8 DE REPORTES (PRIMER PASO DE HISTORIAL) Y RETROCEDEMOS
       if (totalPasos === 13 && pasoActual === 8) {
         // Resetear el flag para permitir cambios futuros
         yaCambioAHistorial = false
@@ -154,15 +154,15 @@ export function useTutorial(router) {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
-      // 🔥 NAVEGACIÓN A REPORTES CON LIMPIEZA FORZADA
+      //  NAVEGACIÓN A REPORTES CON LIMPIEZA FORZADA
       if (pasoActual === 9 && totalPasos === 16 && !yaNavegamosAReportes) {
         yaNavegamosAReportes = true
         localStorage.setItem('mj_tutorial_step', 'reportes')
 
-        // 🔥 PASO 1: LIMPIAR LISTENERS
+        //  PASO 1: LIMPIAR LISTENERS
         limpiarListeners()
 
-        // 🔥 PASO 2: LIMPIAR CLASES Y ESTILOS PRIMERO (antes de destruir)
+        //  PASO 2: LIMPIAR CLASES Y ESTILOS PRIMERO (antes de destruir)
         try {
           if (document.body) {
             document.body.classList.remove('driver-active', 'driver-fade')
@@ -176,7 +176,7 @@ export function useTutorial(router) {
           console.warn('Error limpiando estilos:', e)
         }
 
-        // 🔥 PASO 3: FORZAR ELIMINACIÓN DEL DOM (antes de destruir)
+        //  PASO 3: FORZAR ELIMINACIÓN DEL DOM (antes de destruir)
         try {
           const driverPopovers = document.querySelectorAll(
             '.driver-popover, .driver-overlay, .driver-highlighted-element, .driver-popover-item, .driver-popover-title, .driver-popover-description',
@@ -194,7 +194,7 @@ export function useTutorial(router) {
           console.warn('Error limpiando DOM:', e)
         }
 
-        // 🔥 PASO 4: AHORA SÍ DESTRUIR EL DRIVER
+        //  PASO 4: AHORA SÍ DESTRUIR EL DRIVER
         if (destroyOriginal) {
           try {
             destroyOriginal()
@@ -203,7 +203,7 @@ export function useTutorial(router) {
           }
         }
 
-        // 🔥 PASO 5: ESPERAR Y NAVEGAR
+        //  PASO 5: ESPERAR Y NAVEGAR
         setTimeout(() => {
           router.push('/reporte')
         }, 250) // Aumentado a 250ms
@@ -261,7 +261,7 @@ export function useTutorial(router) {
 
         localStorage.removeItem('mj_tutorial_step')
 
-        // 🔥 LIMPIAR LISTENERS ANTES DE DESTRUIR
+        //  LIMPIAR LISTENERS ANTES DE DESTRUIR
         limpiarListeners()
 
         driverObj.destroy()
@@ -279,7 +279,7 @@ export function useTutorial(router) {
         yaNavegamosAReportes = false
         isTransitioning = false
 
-        // 🔥 LIMPIAR LISTENERS ANTES DE DESTRUIR
+        //  LIMPIAR LISTENERS ANTES DE DESTRUIR
         limpiarListeners()
 
         driverObj.destroy()
@@ -294,7 +294,7 @@ export function useTutorial(router) {
         navegacionProgramada = () => {
           router.push('/dashboard').then(() => {
             setTimeout(() => {
-              pasoAnterior = 9 // 🔥 AQUÍ SE USA pasoAnterior
+              pasoAnterior = 9 //  AQUÍ SE USA pasoAnterior
               navegacionProgramada = null
               yaNavegamosAReportes = true
               yaCambioAHistorial = false
@@ -311,7 +311,7 @@ export function useTutorial(router) {
         }
       }
 
-      pasoAnterior = pasoActual // 🔥 Y AQUÍ TAMBIÉN
+      pasoAnterior = pasoActual //  Y AQUÍ TAMBIÉN
     },
 
     onPopoverRender: (popover) => {
@@ -472,7 +472,7 @@ export function useTutorial(router) {
   ]
 
   const pasosReportes = [
-    // 🔥 PASO 0: TABS
+    //  PASO 0: TABS
     {
       element: '#tabs-reportes',
       popover: {
@@ -483,7 +483,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
-    // 🔥 PASO 1: TIPO DE INFORME
+    //  PASO 1: TIPO DE INFORME
     {
       element: '#tipo-informe-card',
       popover: {
@@ -493,7 +493,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
-    // 🔥 PASO 2: REPORTAR POR
+    //  PASO 2: REPORTAR POR
     {
       element: '#q-select-reportar',
       popover: {
@@ -503,7 +503,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
-    // 🔥 PASO 3: RANGO DE FECHAS
+    //  PASO 3: RANGO DE FECHAS
     {
       element: '#contenedor-rango-fecha',
       popover: {
@@ -513,7 +513,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
-    // 🔥 PASO 4: COLUMNAS
+    //  PASO 4: COLUMNAS
     {
       element: '#card-columnas-personalizacion',
       popover: {
@@ -524,7 +524,7 @@ export function useTutorial(router) {
         align: 'start',
       },
     },
-    // 🔥 PASO 5: BOTONES DE GENERAR
+    //  PASO 5: BOTONES DE GENERAR
     {
       element: '.btn-pdf',
       popover: {
@@ -553,7 +553,7 @@ export function useTutorial(router) {
         align: 'center',
       },
     },
-    // 🔥 PASO 6: TABLA DE HISTORIAL
+    //  PASO 6: TABLA DE HISTORIAL
     {
       element: '#tabla-historial',
       popover: {
@@ -564,7 +564,7 @@ export function useTutorial(router) {
         align: 'center',
       },
     },
-    // 🔥 PASO 7: BOTONES DE ACCIONES
+    //  PASO 7: BOTONES DE ACCIONES
     {
       element: '#btn-accion-descargar',
       popover: {
@@ -584,7 +584,7 @@ export function useTutorial(router) {
         align: 'center',
       },
     },
-    // 🔥 PASO 8: PAGINACIÓN
+    //  PASO 8: PAGINACIÓN
     {
       element: '.q-table__bottom',
       popover: {
@@ -595,7 +595,7 @@ export function useTutorial(router) {
         align: 'center',
       },
     },
-    // 🔥 PASO 9: FINAL
+    //  PASO 9: FINAL
     {
       popover: {
         title: '¡Tutorial de Reportes Completado!',
@@ -607,7 +607,7 @@ export function useTutorial(router) {
     },
   ]
 
-  // 🔥 NUEVA FUNCIÓN: LIMPIAR LISTENERS
+  //  NUEVA FUNCIÓN: LIMPIAR LISTENERS
   function limpiarListeners() {
     if (keyPressHandler) {
       document.removeEventListener('keydown', keyPressHandler, true)
@@ -620,7 +620,7 @@ export function useTutorial(router) {
     }
   }
 
-  // 🔥 MODIFICAR LA FUNCIÓN iniciarTutorial()
+  //  MODIFICAR LA FUNCIÓN iniciarTutorial()
   function iniciarTutorial() {
     pasoAnterior = -1
     navegacionProgramada = null
@@ -637,13 +637,13 @@ export function useTutorial(router) {
       }
     }
 
-    // 🔥 VERIFICAR SI ESTAMOS EN EL DASHBOARD
+    //  VERIFICAR SI ESTAMOS EN EL DASHBOARD
     const rutaActual = router.currentRoute.value.path
 
     if (rutaActual !== '/dashboard') {
-      // 🔥 SI NO ESTAMOS EN DASHBOARD, NAVEGAR PRIMERO
+      //  SI NO ESTAMOS EN DASHBOARD, NAVEGAR PRIMERO
       router.push('/dashboard').then(() => {
-        // 🔥 ESPERAR A QUE EL DASHBOARD CARGUE COMPLETAMENTE
+        //  ESPERAR A QUE EL DASHBOARD CARGUE COMPLETAMENTE
         setTimeout(() => {
           driverObj.setSteps(pasosDashboard)
           driverObj.drive()
@@ -651,7 +651,7 @@ export function useTutorial(router) {
         }, 500) // 500ms para asegurar que todo esté renderizado
       })
     } else {
-      // 🔥 SI YA ESTAMOS EN DASHBOARD, INICIAR DIRECTAMENTE
+      //  SI YA ESTAMOS EN DASHBOARD, INICIAR DIRECTAMENTE
       setTimeout(() => {
         driverObj.setSteps(pasosDashboard)
         driverObj.drive()
@@ -685,22 +685,22 @@ export function useTutorial(router) {
               block: 'center',
             })
           } else {
-            console.warn('⚠️ Primer elemento #tabs-reportes NO encontrado')
+            console.warn(' Primer elemento #tabs-reportes NO encontrado')
           }
 
-          // 🔥 ESPERAR UN POCO MÁS ANTES DE INICIAR
+          //  ESPERAR UN POCO MÁS ANTES DE INICIAR
           setTimeout(() => {
             driverObj.setSteps(pasosReportes)
 
-            // 🔥 SI VIENE DE "ANTERIOR", INICIAR EN EL ÚLTIMO PASO (12)
+            //  SI VIENE DE "ANTERIOR", INICIAR EN EL ÚLTIMO PASO (12)
             if (vieneDeAnterior) {
-              // 🔥 ESPERAR MÁS TIEMPO PARA QUE LOS TABS SE RENDERICEN
+              //  ESPERAR MÁS TIEMPO PARA QUE LOS TABS SE RENDERICEN
               setTimeout(() => {
                 // Buscar el tab de Historial de múltiples formas
                 let tabHistorial = document.querySelector('.q-tab[aria-controls="historial"]')
 
                 if (!tabHistorial) {
-                  console.warn('⚠️ No encontrado con aria-controls, buscando por texto...')
+                  console.warn(' No encontrado con aria-controls, buscando por texto...')
                   const tabs = document.querySelectorAll('.q-tab')
                   tabs.forEach((tab) => {
                     const texto = tab.textContent.trim().toLowerCase()
@@ -714,7 +714,7 @@ export function useTutorial(router) {
                   tabHistorial.click()
 
                   setTimeout(() => {
-                    driverObj.drive(12) // 🔥 INICIAR EN EL PASO 12 (ÚLTIMO PASO)
+                    driverObj.drive(12) //  INICIAR EN EL PASO 12 (ÚLTIMO PASO)
                     yaCambioAHistorial = true // Marcar que ya estamos en historial
                     configurarListeners()
 
@@ -722,12 +722,12 @@ export function useTutorial(router) {
                       if (driverObj.isActive()) {
                         driverObj.refresh()
                       } else {
-                        console.warn('⚠️ Driver NO está activo después de drive(12)')
+                        console.warn(' Driver NO está activo después de drive(12)')
                       }
                     }, 100)
                   }, 600)
                 } else {
-                  console.error('❌ Tab historial NO encontrado después de búsqueda exhaustiva')
+                  console.error(' Tab historial NO encontrado después de búsqueda exhaustiva')
                   const allTabs = document.querySelectorAll('.q-tab')
                   allTabs.forEach((tab, idx) => {
                     console.log(`Tab ${idx} HTML:`, tab.outerHTML)
@@ -747,7 +747,7 @@ export function useTutorial(router) {
         }, 100)
       }, 300)
     } else {
-      console.warn('❌ Flag NO válido o no existe. Flag actual:', step)
+      console.warn(' Flag NO válido o no existe. Flag actual:', step)
     }
   }
 
@@ -771,13 +771,13 @@ export function useTutorial(router) {
 
         isTransitioning = true
 
-        // 🔥 SI HAY SIGUIENTE PASO, AVANZAR
+        //  SI HAY SIGUIENTE PASO, AVANZAR
         if (driverObj.hasNextStep()) {
           driverObj.moveNext()
         }
-        // 🔥 SI NO HAY SIGUIENTE PASO, VERIFICAR NAVEGACIÓN PROGRAMADA
+        //  SI NO HAY SIGUIENTE PASO, VERIFICAR NAVEGACIÓN PROGRAMADA
         else {
-          // 🔥 SI HAY NAVEGACIÓN PROGRAMADA, EJECUTARLA
+          //  SI HAY NAVEGACIÓN PROGRAMADA, EJECUTARLA
           if (navegacionProgramada) {
             const accion = navegacionProgramada
             navegacionProgramada = null
@@ -789,7 +789,7 @@ export function useTutorial(router) {
               accion()
             }, 100)
           }
-          // 🔥 SI NO HAY NAVEGACIÓN PROGRAMADA, SOLO CERRAR
+          //  SI NO HAY NAVEGACIÓN PROGRAMADA, SOLO CERRAR
           else {
             driverObj.destroy()
           }
