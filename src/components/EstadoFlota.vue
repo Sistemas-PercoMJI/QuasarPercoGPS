@@ -200,7 +200,7 @@
 
                 <q-separator class="separator" />
 
-                <!-- 🆕 Indicador de carga mientras se obtienen estadísticas -->
+                <!--  Indicador de carga mientras se obtienen estadísticas -->
                 <div v-if="loadingEstadisticas" class="detalle-row">
                   <q-spinner color="primary" size="20px" />
                   <span class="detalle-label">Cargando estadísticas...</span>
@@ -238,7 +238,7 @@
                   <span class="detalle-valor-small">{{ vehiculoSeleccionado.fechaHora }}</span>
                 </div>
 
-                <!-- ❌ ELIMINADO: Tipo de trayecto -->
+                <!--  ELIMINADO: Tipo de trayecto -->
               </div>
             </q-tab-panel>
 
@@ -324,7 +324,7 @@
                 </div>
               </div>
 
-              <!-- 🆕 Filtro por rango de horas -->
+              <!--  Filtro por rango de horas -->
               <div class="filtro-horas-card">
                 <div class="filtro-horas-header">
                   <q-icon name="schedule" size="20px" color="primary" />
@@ -424,7 +424,7 @@
 
             <!-- Tab Notificaciones -->
             <q-tab-panel name="notificaciones" class="tab-panel-padding">
-              <!-- 🆕 Selector de fecha (igual que en tab "hoy") -->
+              <!--  Selector de fecha (igual que en tab "hoy") -->
               <div class="filtro-dia-card">
                 <q-btn
                   flat
@@ -459,7 +459,7 @@
                 />
               </div>
 
-              <!-- 🆕 Filtro por tipo de evento -->
+              <!--  Filtro por tipo de evento -->
               <div class="filtro-horas-card">
                 <div class="filtro-horas-header">
                   <q-icon name="filter_list" size="20px" color="primary" />
@@ -485,7 +485,7 @@
                   />
                 </div>
 
-                <!-- 🆕 Filtro por rango de horas -->
+                <!--  Filtro por rango de horas -->
                 <div class="filtro-horas-inputs">
                   <div class="hora-input-wrapper">
                     <span class="hora-label">Desde</span>
@@ -617,10 +617,10 @@ const { unidadesActivas, iniciarTracking, contarPorEstado } = useTrackingUnidade
 const { obtenerEstadisticas, calcularDuracionEstado, formatearFechaHora } = useEstadisticasUnidad()
 const { obtenerTrayectosDia } = useTrayectosDiarios()
 
-// 🆕 Agregar composable de geocoding
+//  Agregar composable de geocoding
 const { obtenerDireccion } = useGeocoding()
 
-// 🆕 Estado para controlar visibilidad del botón de limpiar
+//  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
 
 const $q = useQuasar()
@@ -682,7 +682,7 @@ const cargarConductoresFirebase = async () => {
 
     return conductoresLista.value
   } catch (error) {
-    console.error('❌ Error cargando conductores:', error)
+    console.error(' Error cargando conductores:', error)
     return []
   } finally {
     cargandoConductores.value = false
@@ -711,7 +711,7 @@ const obtenerConductorDeUnidad = (unidadId) => {
 // Filtrar unidades por empresa
 const unidadesFiltradas = computed(() => {
   if (!idEmpresaActual.value) {
-    console.warn('⚠️ No hay IdEmpresa')
+    console.warn(' No hay IdEmpresa')
     return []
   }
 
@@ -846,7 +846,7 @@ const procesarEventosConDirecciones = async (eventos) => {
     eventos.map(async (evento) => {
       const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
 
-      // 🔥 Geocodificar dirección si tiene coordenadas
+      //  Geocodificar dirección si tiene coordenadas
       let direccionGeocoded = evento.ubicacion || 'Ubicación desconocida'
       if (evento.coordenadas) {
         try {
@@ -959,7 +959,7 @@ const cambiarDiaEventos = (dias) => {
   const nuevaFecha = new Date(fechaSeleccionadaEventos.value)
   nuevaFecha.setDate(nuevaFecha.getDate() + dias)
 
-  // 🔥 IMPORTANTE: Reset horas para evitar timezone issues
+  //  IMPORTANTE: Reset horas para evitar timezone issues
   nuevaFecha.setHours(0, 0, 0, 0)
 
   const hoy = new Date()
@@ -968,7 +968,7 @@ const cambiarDiaEventos = (dias) => {
   if (nuevaFecha <= hoy) {
     fechaSeleccionadaEventos.value = nuevaFecha
 
-    // 🔥 Recargar eventos explícitamente
+    //  Recargar eventos explícitamente
     if (vehiculoSeleccionado.value) {
       detenerEscucha()
       escucharEventosDia(vehiculoSeleccionado.value.id, nuevaFecha)
@@ -998,19 +998,19 @@ const mostrarRutaEnMapa = (trayecto) => {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
 
-  // 🆕 Activar botón de limpiar
+  //  Activar botón de limpiar
   hayElementosEnMapa.value = true
 }
 
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
-    console.warn('⚠️ Evento sin coordenadas')
+    console.warn(' Evento sin coordenadas')
     return
   }
 
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    console.warn('⚠️ Mapa no disponible')
+    console.warn(' Mapa no disponible')
     return
   }
 
@@ -1027,7 +1027,7 @@ const mostrarEventoEnMapa = async (evento) => {
   const esEntrada = evento.accion?.toLowerCase().includes('entrada')
   const color = esEntrada ? '#4CAF50' : '#FF6D00'
 
-  // 🔥 NUEVO: Usar mismo icono que en los eventos
+  //  NUEVO: Usar mismo icono que en los eventos
   const markerHTML = `
     <div style="
       width: 36px;
@@ -1058,13 +1058,13 @@ const mostrarEventoEnMapa = async (evento) => {
 
   window.marcadorEvento = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
 
-  // 🔥 Obtener dirección (ya debería estar geocodificada en evento.ubicacion)
+  //  Obtener dirección (ya debería estar geocodificada en evento.ubicacion)
   const direccionGeocoded = evento.ubicacion || (await obtenerDireccion({ lat, lng }))
 
-  // 🔥 Obtener conductor
+  //  Obtener conductor
   const conductorNombre = evento.conductorNombre || 'Sin conductor'
 
-  // 🔥 NUEVO: Popup mejorado sin coordenadas
+  //  NUEVO: Popup mejorado sin coordenadas
   const popup = new mapboxgl.Popup({
     offset: 25,
     maxWidth: '320px',
@@ -1310,7 +1310,7 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
     horaFinEventos.value = '23:59'
     filtroNotificaciones.value = 'Todo'
 
-    // 🔥 Solo pasar unidadId y fecha
+    //  Solo pasar unidadId y fecha
     escucharEventosDia(nuevoVehiculo.id, new Date())
   } else {
     estadisticasVehiculo.value = null
