@@ -1,4 +1,4 @@
-/*Este es mi IndexPage.vue*/
+<!-- Este es mi IndexPage.vue -->
 <template>
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
@@ -1153,7 +1153,7 @@ const dibujarPOIsCombinados = async (pois) => {
     }
   }
 }
-// 🚀 FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
+//  FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
 const actualizarCapaPOIs = async () => {
   if (!mapaAPI?.map) return
 
@@ -1208,7 +1208,7 @@ const actualizarCapaPOIs = async () => {
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
-    console.warn('⚠️ Mapa no disponible para dibujar items')
+    console.warn(' Mapa no disponible para dibujar items')
     return
   }
 
@@ -1446,7 +1446,7 @@ const recentrarEnUsuario = () => {
 const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    console.warn('⚠️ Mapa no inicializado')
+    console.warn(' Mapa no inicializado')
     return
   }
 
@@ -1733,7 +1733,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     })*/
   }
 }
-// 🆕 MÉTODO PARA LIMPIAR RUTA
+//  MÉTODO PARA LIMPIAR RUTA
 const marcadoresRuta = ref([]) // Para guardar referencias de marcadores A y B
 
 const limpiarRuta = () => {
@@ -2010,7 +2010,7 @@ onMounted(async () => {
       /*// Solo notificar, NO recargar
       Notify.create({
         type: 'info',
-        message: '🏢 Empresa actualizada',
+        message: ' Empresa actualizada',
         caption: 'Los datos se actualizarán automáticamente',
         icon: 'business',
         timeout: 2000,
@@ -2384,13 +2384,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
     /*$q.notify({
       type: 'info',
       message:
-        nuevoEstilo === 'streets' ? '🗺️ Vista de calles activada' : '🛰️ Vista satelital activada',
+        nuevoEstilo === 'streets' ? ' Vista de calles activada' : ' Vista satelital activada',
       position: 'top',
       timeout: 1500,
       icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
     })*/
 
-    // 🆕 ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
+    //  ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
     const mapPage = document.getElementById('map-page')
     if (mapPage?._mapaAPI?.map) {
       mapPage._mapaAPI.map.once('styledata', async () => {
@@ -2799,7 +2799,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   flex: 1;
   min-width: 0;
 }
-/* ✅ Ícono del vehículo */
+/*  Ícono del vehículo */
 .unidad-icon {
   width: 40px !important;
   height: 40px !important;
