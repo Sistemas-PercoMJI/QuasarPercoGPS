@@ -48,7 +48,7 @@ let PanTimeout = null
 let isPanning = false
 let idsUnidadesFiltradas = null
 
-// 🗺️ SISTEMA DE ESTILOS DE MAPA
+//  SISTEMA DE ESTILOS DE MAPA
 const estiloActual = ref('satellite') // 'satellite' o 'streets'
 const ESTILOS_MAPA = {
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -1338,7 +1338,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🗺️ CAMBIAR ESTILO DEL MAPA (NUEVO)
+  //  CAMBIAR ESTILO DEL MAPA (NUEVO)
   const cambiarEstiloMapa = () => {
     if (!map.value) {
       console.warn('⚠️ Mapa no disponible')
@@ -1448,7 +1448,7 @@ export function useMapboxGL() {
     }
   }
 
-  // 🗺️ INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
+  //  INICIALIZAR MAPA - MÁXIMA OPTIMIZACIÓN
   const initMap = (containerId, center, zoom) => {
     try {
       // 🔥 Limpiar listeners antiguos si el mapa ya existe

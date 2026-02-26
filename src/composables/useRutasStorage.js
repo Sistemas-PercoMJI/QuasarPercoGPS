@@ -158,7 +158,7 @@ export function useRutasStorage() {
       }
 
       if (coordenadas.length > 0) {
-        console.log('📦 Primera coordenada:', coordenadas[0])
+        console.log(' Primera coordenada:', coordenadas[0])
       }
 
       return coordenadas
