@@ -9,7 +9,7 @@
         <div class="text-subtitle2 text-weight-medium">{{ title }}</div>
         <div class="text-body2 q-mt-xs">{{ message }}</div>
 
-        <!-- 🆕 MAPA ESTÁTICO SI EXISTE -->
+        <!--  MAPA ESTÁTICO SI EXISTE -->
         <div v-if="mapImage" class="map-preview q-mt-sm" @click="abrirMapaCompleto">
           <img
             :src="mapImage"
@@ -43,8 +43,8 @@ const props = defineProps({
   message: { type: String, default: '' },
   timestamp: { type: Number, default: Date.now },
   leida: { type: Boolean, default: false },
-  mapImage: { type: String, default: null }, // 🆕 IMAGEN DEL MAPA EN BASE64
-  mapUrl: { type: String, default: null }, // 🆕 URL DEL MAPA COMPLETO
+  mapImage: { type: String, default: null }, //  IMAGEN DEL MAPA EN BASE64
+  mapUrl: { type: String, default: null }, //  URL DEL MAPA COMPLETO
 })
 
 const emit = defineEmits(['close'])
@@ -79,16 +79,16 @@ function actualizarTiempo() {
   }
 }
 
-// 🆕 FUNCIÓN PARA ABRIR MAPA EN NUEVA PESTAÑA
+//  FUNCIÓN PARA ABRIR MAPA EN NUEVA PESTAÑA
 function abrirMapaCompleto() {
   if (props.mapUrl) {
     window.open(props.mapUrl, '_blank')
   }
 }
 
-// 🆕 FUNCIÓN PARA MANEJAR ERRORES DE CARGA DE IMAGEN
+//  FUNCIÓN PARA MANEJAR ERRORES DE CARGA DE IMAGEN
 function handleImageError(event) {
-  console.warn('⚠️ Error cargando imagen del mapa, intentando URL directa')
+  console.warn(' Error cargando imagen del mapa, intentando URL directa')
   // Si falla, intentar con la URL directa con timestamp
   if (props.mapUrl && event.target.src !== props.mapUrl) {
     event.target.src = `${props.mapUrl}&t=${Date.now()}`
@@ -112,7 +112,7 @@ function handleClose() {
 </script>
 
 <style scoped>
-/* 🎨 COLORES PERSONALIZADOS SUTILES - CON !important */
+/*  COLORES PERSONALIZADOS SUTILES - CON !important */
 .notification-card.bg-positive {
   background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%) !important;
   border-left-color: #66bb6a !important;
@@ -232,7 +232,7 @@ function handleClose() {
   height: 24px !important;
 }
 
-/* 🆕 ESTILOS PARA EL MAPA ESTÁTICO */
+/*  ESTILOS PARA EL MAPA ESTÁTICO */
 .map-preview {
   position: relative;
   width: 100%;

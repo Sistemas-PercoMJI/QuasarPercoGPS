@@ -15,7 +15,7 @@ export function useRutasStorage() {
   }
 
   /**
-   * 🆕 Función auxiliar para reintentar operaciones
+   *  Función auxiliar para reintentar operaciones
    */
   const retryOperation = async (operation, maxRetries = 3, delayMs = 1000) => {
     for (let i = 0; i < maxRetries; i++) {
@@ -27,10 +27,10 @@ export function useRutasStorage() {
         // Si es 403, esperar más tiempo antes de reintentar
         if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
           if (isLastAttempt) {
-            console.error(`❌ Error 403 después de ${maxRetries} intentos`)
+            console.error(` Error 403 después de ${maxRetries} intentos`)
             throw err
           }
-          console.warn(`⚠️ Error 403, reintentando (${i + 1}/${maxRetries})...`)
+          console.warn(` Error 403, reintentando (${i + 1}/${maxRetries})...`)
           await new Promise((resolve) => setTimeout(resolve, delayMs * (i + 1))) // Delay exponencial
         } else {
           throw err // Otros errores no se reintentan
@@ -40,7 +40,7 @@ export function useRutasStorage() {
   }
 
   /**
-   * 🔥 Guarda coordenadas en formato SIMPLE
+   *  Guarda coordenadas en formato SIMPLE
    */
   const guardarCoordenadasEnStorage = async (unidadId, fecha, coordenadas) => {
     loading.value = true
@@ -52,7 +52,7 @@ export function useRutasStorage() {
 
       // Validar que sea array
       if (!Array.isArray(coordenadas)) {
-        console.error('❌ coordenadas NO es un array:', typeof coordenadas)
+        console.error(' coordenadas NO es un array:', typeof coordenadas)
         throw new Error('Las coordenadas deben ser un array')
       }
 
@@ -81,7 +81,7 @@ export function useRutasStorage() {
       return url
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error guardando en Storage:', err)
+      console.error(' Error guardando en Storage:', err)
       throw err
     } finally {
       loading.value = false
@@ -89,14 +89,14 @@ export function useRutasStorage() {
   }
 
   /**
-   * 🔥 Descarga coordenadas con REINTENTOS automáticos
+   *  Descarga coordenadas con REINTENTOS automáticos
    */
   const obtenerCoordenadasDesdeStorage = async (url) => {
     loading.value = true
     error.value = null
 
     try {
-      // 🆕 Descargar con reintentos automáticos
+      // Descargar con reintentos automáticos
       const data = await retryOperation(
         async () => {
           const response = await fetch(url)
@@ -128,7 +128,7 @@ export function useRutasStorage() {
             const coord = item.nuevaCoordenada || item.coordenada || item
 
             if (!coord.lat || !coord.lng) {
-              console.warn('⚠️ Coordenada sin lat/lng:', item)
+              console.warn(' Coordenada sin lat/lng:', item)
               return null
             }
 
@@ -152,7 +152,7 @@ export function useRutasStorage() {
       }
       // CASO 4: Formato desconocido
       else {
-        console.warn('⚠️ Formato DESCONOCIDO')
+        console.warn(' Formato DESCONOCIDO')
         console.warn('   Keys:', Object.keys(data))
         return []
       }
@@ -164,9 +164,9 @@ export function useRutasStorage() {
       return coordenadas
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error descargando coordenadas:', err)
+      console.error(' Error descargando coordenadas:', err)
 
-      // 🆕 Si falla después de todos los reintentos, devolver array vacío
+      // Si falla después de todos los reintentos, devolver array vacío
       return []
     } finally {
       loading.value = false
@@ -181,7 +181,7 @@ export function useRutasStorage() {
     const archivoRef = storageRef(storage, rutaArchivo)
 
     try {
-      // 🆕 Usar reintentos también aquí
+      //  Usar reintentos también aquí
       return await retryOperation(async () => {
         return await getDownloadURL(archivoRef)
       })

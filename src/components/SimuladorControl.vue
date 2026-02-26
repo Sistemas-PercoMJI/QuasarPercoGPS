@@ -180,7 +180,7 @@ const cargarDatos = async () => {
   }
 }
 
-// 🚀 Función para iniciar simulación automáticamente
+//  Función para iniciar simulación automáticamente
 const iniciarSimulacionAutomatica = async () => {
   if (simulacionActiva.value) {
     return
@@ -216,7 +216,7 @@ const iniciarSimulacionAutomatica = async () => {
   }
 }
 
-// 📊 Agregar log de actividad
+//  Agregar log de actividad
 const addLog = (icon, message, color) => {
   const now = new Date()
   const time = now.toLocaleTimeString('es-MX', {
@@ -236,7 +236,7 @@ const addLog = (icon, message, color) => {
   }
 }
 
-// 👀 Watch para logs de cambio de estado
+//  Watch para logs de cambio de estado
 watch(
   () => stats.value.enMovimiento,
   (newVal, oldVal) => {
@@ -246,7 +246,7 @@ watch(
   },
 )
 
-// 👀 Watch para iniciar cuando lleguen datos
+//  Watch para iniciar cuando lleguen datos
 watch(
   () => [props.poisIniciales, props.geozonasIniciales, conductoresConUnidad.value],
   async ([nuevosPois, nuevasGeozonas, conductoresCount]) => {
@@ -260,7 +260,7 @@ watch(
   { deep: true },
 )
 
-// 🎬 Al montar el componente
+//  Al montar el componente
 onMounted(async () => {
   await cargarDatos()
 
