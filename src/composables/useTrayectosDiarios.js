@@ -109,98 +109,121 @@ export function useTrayectosDiarios() {
   /**
    * Analiza coordenadas y genera trayectos (viajes separados por paradas)
    */
+  const agruparEnViajes = (coordenadas) => {
+    if (!coordenadas || coordenadas.length === 0) return []
+
+    const DELAY_FIN_MS = 2 * 60 * 1000 // 2 minutos en ms
+    const viajes = []
+    let viajeActual = null
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const punto = coordenadas[i]
+      const ignicion = punto.ignicion === true || punto.ignicion === 'true'
+
+      if (!viajeActual && ignicion) {
+        // Inicio de un nuevo viaje
+        viajeActual = {
+          puntos: [punto],
+          timestampUltimoFalse: null,
+        }
+        continue
+      }
+
+      if (viajeActual) {
+        viajeActual.puntos.push(punto)
+
+        if (!ignicion) {
+          // Registrar cuando se apago la ignicion
+          viajeActual.timestampUltimoFalse = new Date(punto.timestamp).getTime()
+        } else {
+          // Si volvio a encenderse, resetear el contador de apagado
+          viajeActual.timestampUltimoFalse = null
+        }
+
+        // Verificar si ya pasaron 2 minutos desde que se apago
+        if (viajeActual.timestampUltimoFalse !== null) {
+          const tiempoDesdeApagado = Date.now() - viajeActual.timestampUltimoFalse
+
+          // Si es un punto futuro en el historial, usar el timestamp del siguiente punto
+          const timestampSiguiente =
+            i + 1 < coordenadas.length
+              ? new Date(coordenadas[i + 1].timestamp).getTime()
+              : Date.now()
+
+          const tiempoEntreApagadoYSiguiente = timestampSiguiente - viajeActual.timestampUltimoFalse
+
+          if (tiempoEntreApagadoYSiguiente >= DELAY_FIN_MS || tiempoDesdeApagado >= DELAY_FIN_MS) {
+            // Cerrar el viaje actual
+            viajes.push(viajeActual.puntos)
+            viajeActual = null
+          }
+        }
+      }
+    }
+
+    // Si quedo un viaje abierto al final (unidad aun en uso)
+    if (viajeActual && viajeActual.puntos.length >= 3) {
+      viajes.push(viajeActual.puntos)
+    }
+
+    return viajes
+  }
+
+  /**
+   * Analiza coordenadas y genera trayectos separados por ignicion
+   */
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    //  Primero calcular velocidades
-    const coordsConVelocidad = enriquecerCoordenadasConVelocidad(coordenadas)
+    // Verificar si los puntos tienen el campo ignicion
+    const tieneIgnicion = coordenadas.some((c) => c.ignicion === true || c.ignicion === false)
 
-    const trayectos = []
-    let trayectoActual = {
-      inicio: null,
-      fin: null,
-      coordenadas: [],
-      distancia: 0,
-      velocidadMax: 0,
-      velocidadPromedio: 0,
+    let gruposDeViaje = []
+
+    if (tieneIgnicion) {
+      // Separar por ignicion (metodo preciso)
+      gruposDeViaje = agruparEnViajes(coordenadas)
+    } else {
+      // Fallback: puntos antiguos sin ignicion, usar velocidad
+      gruposDeViaje = [coordenadas]
     }
 
-    let enMovimiento = false
-    const UMBRAL_PARADA = 5 // km/h
-    const MIN_COORDS_TRAYECTO = 5
+    // Procesar cada grupo como un trayecto independiente
+    return gruposDeViaje
+      .map((puntosViaje) => {
+        if (puntosViaje.length < 2) return null
 
-    for (let i = 0; i < coordsConVelocidad.length; i++) {
-      const coord = coordsConVelocidad[i]
-      const velocidad = coord.velocidad || 0
+        const coordsConVelocidad = enriquecerCoordenadasConVelocidad(puntosViaje)
 
-      // Detectar inicio de movimiento
-      if (!enMovimiento && velocidad > UMBRAL_PARADA) {
-        enMovimiento = true
-        trayectoActual.inicio = coord
-        trayectoActual.coordenadas = [coord]
-      }
+        let distancia = 0
+        let velocidadMax = 0
+        const velocidades = []
 
-      // Si está en movimiento, agregar coordenada
-      if (enMovimiento) {
-        trayectoActual.coordenadas.push(coord)
-        trayectoActual.velocidadMax = Math.max(trayectoActual.velocidadMax, velocidad)
+        for (let i = 1; i < coordsConVelocidad.length; i++) {
+          const prev = coordsConVelocidad[i - 1]
+          const curr = coordsConVelocidad[i]
+          distancia += calcularDistancia(prev.lat, prev.lng, curr.lat, curr.lng)
 
-        // Calcular distancia
-        if (trayectoActual.coordenadas.length > 1) {
-          const prev = trayectoActual.coordenadas[trayectoActual.coordenadas.length - 2]
-          const dist = calcularDistancia(prev.lat, prev.lng, coord.lat, coord.lng)
-          trayectoActual.distancia += dist
-        }
-      }
-
-      // Detectar parada (velocidad baja por tiempo prolongado)
-      if (enMovimiento && velocidad <= UMBRAL_PARADA) {
-        // Verificar si los siguientes 3 puntos también están parados
-        const siguientesParados = coordsConVelocidad
-          .slice(i, i + 3)
-          .every((c) => (c.velocidad || 0) <= UMBRAL_PARADA)
-
-        if (siguientesParados) {
-          trayectoActual.fin = coord
-
-          // Calcular velocidad promedio
-          const velocidades = trayectoActual.coordenadas
-            .map((c) => c.velocidad || 0)
-            .filter((v) => v > 0)
-          trayectoActual.velocidadPromedio =
-            velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
-
-          // Guardar trayecto solo si tiene suficientes coordenadas
-          if (trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
-            trayectos.push({ ...trayectoActual })
-          }
-
-          // Resetear
-          enMovimiento = false
-          trayectoActual = {
-            inicio: null,
-            fin: null,
-            coordenadas: [],
-            distancia: 0,
-            velocidadMax: 0,
-            velocidadPromedio: 0,
+          const vel = curr.velocidad || 0
+          if (vel > 0) {
+            velocidades.push(vel)
+            if (vel > velocidadMax) velocidadMax = vel
           }
         }
-      }
-    }
 
-    // Si quedó un trayecto activo al final
-    if (enMovimiento && trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
-      trayectoActual.fin = coordsConVelocidad[coordsConVelocidad.length - 1]
-      const velocidades = trayectoActual.coordenadas
-        .map((c) => c.velocidad || 0)
-        .filter((v) => v > 0)
-      trayectoActual.velocidadPromedio =
-        velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
-      trayectos.push(trayectoActual)
-    }
+        const velocidadPromedio =
+          velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
 
-    return trayectos
+        return {
+          inicio: coordsConVelocidad[0],
+          fin: coordsConVelocidad[coordsConVelocidad.length - 1],
+          coordenadas: coordsConVelocidad,
+          distancia,
+          velocidadMax,
+          velocidadPromedio,
+        }
+      })
+      .filter(Boolean)
   }
 
   /**

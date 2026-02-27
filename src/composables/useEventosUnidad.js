@@ -324,9 +324,6 @@ export function useEventosUnidad() {
   //  FUNCIONES AUXILIARES NUEVAS
   // ========================================
 
-  /**
-   * Genera URL de mapa estático de Mapbox
-   */
   const generarMapaEstatico = (lat, lng, color) => {
     const accessToken =
       'pk.eyJ1IjoiY29uY2F6ZWQiLCJhIjoiY200MnE0cnNkMGduNzJrczhtZzh4c2JiNSJ9.3x7HwvZNxr4Tsr6KGLCWeg'

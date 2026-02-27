@@ -356,6 +356,7 @@ export function useSimuladorUnidades() {
             lat: ubicacionInicial.lat,
             lng: ubicacionInicial.lng,
             timestamp: new Date().toISOString(),
+            ignicion: true, // Al iniciar siempre es true (solo entra aqui si estado es MOVIMIENTO)
           },
         })
       } catch (err) {
@@ -480,7 +481,10 @@ export function useSimuladorUnidades() {
         })
 
         // (resto del código de guardar rutas y evaluar eventos sin cambios...)
-        if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
+        if (
+          nuevoMovimiento.estado === ESTADOS.MOVIMIENTO ||
+          nuevoMovimiento.estado === ESTADOS.INACTIVO
+        ) {
           try {
             await agregarCoordenadaSimple(unidad.id, {
               conductor_id: estadoActual.conductorId,
@@ -490,6 +494,7 @@ export function useSimuladorUnidades() {
                 lat: nuevoMovimiento.ubicacion.lat,
                 lng: nuevoMovimiento.ubicacion.lng,
                 timestamp: new Date().toISOString(),
+                ignicion: nuevoMovimiento.ignicion, // true o false segun estado
               },
             })
           } catch (errRuta) {

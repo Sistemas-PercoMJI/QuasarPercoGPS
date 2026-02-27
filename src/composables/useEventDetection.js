@@ -11,6 +11,7 @@ const geozonasMapeadas = ref(new Map())
 const ubicacionActual = ref(null)
 const eventosDisparados = ref(new Set())
 const estadoUbicaciones = ref(new Map())
+const notificacionesDisparadas = ref(new Map())
 
 //  Mapa de ubicaciones que tienen eventos configurados (para trackear)
 const ubicacionesTrackeadas = ref(new Map())
@@ -434,49 +435,79 @@ export function useEventDetection() {
    *  ACTUALIZADO: async + coordenadas reales de la ubicación
    */
   async function notificarEventos(unidad, ubicacion, tipo, accion, eventosIds) {
-    //  ELIMINAR DUPLICADOS de eventosIds
     const eventosUnicos = [...new Set(eventosIds)]
+    const hoy = new Date().toISOString().split('T')[0] // "2026-02-27"
 
     for (const eventoId of eventosUnicos) {
       const evento = eventosActivos.value.find((e) => e.id === eventoId)
       if (!evento) continue
 
-      // Verificar que la condición coincida
+      // Verificar que la condicion coincida con la accion
       const tieneCondicion = evento.condiciones.some(
         (c) => c.ubicacionId === ubicacion.id && c.activacion === accion,
       )
-
       if (!tieneCondicion) continue
 
-      // Evitar duplicados (debounce de 10 segundos)
-      const claveEvento = `${evento.id}-${ubicacion.id}-${accion}-${unidad.id}`
-      if (eventosDisparados.value.has(claveEvento)) {
-        continue
+      // Clave unica para este evento + ubicacion + accion + unidad + dia
+      const claveBase = `${evento.id}-${ubicacion.id}-${accion}-${unidad.id}`
+      const claveHoy = `${claveBase}-${hoy}`
+
+      const frecuencia = evento.activacionAlerta || 'Cada vez'
+
+      // ==========================================
+      // CONTROL DE FRECUENCIA
+      // ==========================================
+
+      if (frecuencia === 'Al inicio' || frecuencia === 'Una vez al día') {
+        // Solo una vez al dia: si ya se disparo hoy, ignorar
+        if (notificacionesDisparadas.value.has(claveHoy)) {
+          continue
+        }
+        notificacionesDisparadas.value.set(claveHoy, { timestamp: Date.now() })
+      } else if (frecuencia === 'Cada vez') {
+        // Una notificacion por entrada/salida individual
+        // Se puede volver a disparar solo si la unidad SALIO y VOLVIO a entrar
+        // Esto lo controla estadoUbicaciones: si el estado cambio, es un nuevo evento
+        // Solo bloqueamos si ya se notifico en los ultimos 30 segundos (evitar duplicados rapidos)
+        const registroExistente = notificacionesDisparadas.value.get(claveBase)
+        const ahora = Date.now()
+
+        if (registroExistente && ahora - registroExistente.timestamp < 30000) {
+          continue
+        }
+        notificacionesDisparadas.value.set(claveBase, { timestamp: ahora })
+      } else if (frecuencia === 'horario') {
+        // Verificar si estamos dentro del horario configurado
+        if (!verificarHorario(evento)) {
+          continue
+        }
+        // Dentro del horario, aplicar logica de "cada vez"
+        const registroExistente = notificacionesDisparadas.value.get(claveBase)
+        const ahora = Date.now()
+
+        if (registroExistente && ahora - registroExistente.timestamp < 30000) {
+          continue
+        }
+        notificacionesDisparadas.value.set(claveBase, { timestamp: ahora })
       }
 
-      eventosDisparados.value.add(claveEvento)
-      setTimeout(() => {
-        eventosDisparados.value.delete(claveEvento)
-      }, 10000)
-
-      // Crear notificación
+      // ==========================================
+      // DISPARAR NOTIFICACION
+      // ==========================================
       const accionTexto = accion === 'Entrada' ? 'entró a' : 'salió de'
       const tipoNotificacion = accion === 'Entrada' ? 'positive' : 'warning'
 
-      //  OBTENER COORDENADAS REALES DE LA UBICACIÓN
       let latUbicacion, lngUbicacion
 
       if (tipo === 'POI' && ubicacion.coordenadas) {
         latUbicacion = ubicacion.coordenadas.lat
         lngUbicacion = ubicacion.coordenadas.lng
       } else if (tipo === 'Geozona' && ubicacion.puntos && ubicacion.puntos.length > 0) {
-        // Para geozonas, usar el centro (promedio de puntos)
         const sumLat = ubicacion.puntos.reduce((sum, p) => sum + p.lat, 0)
         const sumLng = ubicacion.puntos.reduce((sum, p) => sum + p.lng, 0)
         latUbicacion = sumLat / ubicacion.puntos.length
         lngUbicacion = sumLng / ubicacion.puntos.length
       } else {
-        // Fallback: usar ubicación de la unidad
         latUbicacion = unidad.lat
         lngUbicacion = unidad.lng
       }
@@ -502,6 +533,36 @@ export function useEventDetection() {
         },
       })
     }
+  }
+
+  function verificarHorario(evento) {
+    if (evento.aplicacion !== 'horario') return true
+
+    const ahora = new Date()
+    const diaSemana = ahora.getDay() // 0=domingo, 1=lunes...
+
+    // Verificar dia de la semana
+    if (evento.diasSemana && evento.diasSemana.length > 0) {
+      if (!evento.diasSemana.includes(diaSemana)) {
+        return false
+      }
+    }
+
+    // Verificar rango de horas
+    if (evento.horaInicio && evento.horaFin) {
+      const [horaIni, minIni] = evento.horaInicio.split(':').map(Number)
+      const [horaFin, minFin] = evento.horaFin.split(':').map(Number)
+
+      const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes()
+      const minutosInicio = horaIni * 60 + minIni
+      const minutosFin = horaFin * 60 + minFin
+
+      if (minutosAhora < minutosInicio || minutosAhora > minutosFin) {
+        return false
+      }
+    }
+
+    return true
   }
 
   /**
@@ -567,6 +628,7 @@ export function useEventDetection() {
     eventosEnCurso.value.clear()
     ubicacionesTrackeadas.value.clear()
     ultimoTrackingPorUnidad.value.clear()
+    notificacionesDisparadas.value.clear()
   }
 
   return {
@@ -576,6 +638,6 @@ export function useEventDetection() {
     eventosActivos,
     ubicacionActual,
     eventosEnCurso,
-    ubicacionesTrackeadas, //  Exponer para debugging
+    ubicacionesTrackeadas,
   }
 }
