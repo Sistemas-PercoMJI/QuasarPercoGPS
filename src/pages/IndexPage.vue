@@ -915,6 +915,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         },
       })
       mapaAPI.map.on('click', sourceId, (e) => {
+        if (window._clickEnUnidad) return
+        window._clickEnGeozona = true
+        setTimeout(() => {
+          window._clickEnGeozona = false
+        }, 100)
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
@@ -1099,11 +1104,11 @@ const dibujarPOIsCombinados = async (pois) => {
         },
       })
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
+        if (window._clickEnUnidad) return
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
         }
-
         const feature = e.features[0]
         const poi = pois.find((p) => p.id === feature.properties.id)
 
@@ -2155,7 +2160,11 @@ onMounted(async () => {
       }
     })
     mapPage._mapaAPI.map.on('click', (e) => {
-      const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
+      if (window._clickEnUnidad) return
+
+      const clickEnMarcador =
+        e.originalEvent.target.closest('.mapboxgl-marker') ||
+        e.originalEvent.target.closest('.custom-marker-unidad')
 
       if (clickEnMarcador) {
         return
@@ -2179,6 +2188,7 @@ onMounted(async () => {
 
         const allPopups = document.querySelectorAll('.mapboxgl-popup')
         allPopups.forEach((popupEl) => {
+          if (popupEl.classList.contains('popup-unidad-mapbox')) return
           const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
           if (closeBtn) {
             closeBtn.click()

@@ -644,9 +644,18 @@ export function useMapboxGL() {
 
             const element = crearIconoUnidad(unidad)
 
-            //  APLICAR FILTRO AL CREAR
             if (!debeEstarVisible(unidadId)) {
               element.style.display = 'none'
+            }
+
+            if (!element._listenerRegistrado) {
+              element._listenerRegistrado = true
+              element.addEventListener('mousedown', () => {
+                window._clickEnUnidad = true
+                setTimeout(() => {
+                  window._clickEnUnidad = false
+                }, 150)
+              })
             }
 
             const marker = new mapboxgl.Marker({
@@ -658,6 +667,7 @@ export function useMapboxGL() {
               .addTo(map.value)
 
             marcadoresUnidades.value[unidadId] = marker
+
             ultimasPosiciones.set(unidadId, {
               lat,
               lng,
@@ -727,9 +737,18 @@ export function useMapboxGL() {
 
         const element = crearIconoUnidad(unidad)
 
-        //  APLICAR FILTRO AL CREAR
         if (!debeEstarVisible(unidadId)) {
           element.style.display = 'none'
+        }
+
+        if (!element._listenerRegistrado) {
+          element._listenerRegistrado = true
+          element.addEventListener('mousedown', () => {
+            window._clickEnUnidad = true
+            setTimeout(() => {
+              window._clickEnUnidad = false
+            }, 150)
+          })
         }
 
         const marker = new mapboxgl.Marker({
@@ -1752,6 +1771,7 @@ export function useMapboxGL() {
         }, 50)
       })
       map.value.on('click', (e) => {
+        if (window._clickEnUnidad) return
         if (!e.originalEvent.target.closest('.custom-marker-unidad')) {
           cerrarPopupGlobal()
         }
