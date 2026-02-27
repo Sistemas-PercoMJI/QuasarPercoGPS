@@ -94,7 +94,7 @@ function formatearTiempo(minutos) {
   }
 }
 function obtenerColorPorTiempo(unidad) {
-  const TIEMPO_INACTIVIDAD_MAX = 5 * 60 * 1000 // 5 minutos
+  const TIEMPO_INACTIVIDAD_MAX = 2 * 60 * 1000 // 2 minutos
   const ahora = Date.now()
   const ultimaActualizacion = unidad.timestamp || unidad.ultimoPuntoTiempo || 0
   const tiempoInactivo = ahora - ultimaActualizacion
@@ -427,6 +427,7 @@ export function useMapboxGL() {
 
   // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
+    console.log('🔑 Ignicion:', unidad.unidadNombre, '| ignicion:', unidad.ignicion)
     console.log(
       '🗺️ crearPopupUnidad:',
       unidad.unidadNombre,
@@ -538,8 +539,14 @@ export function useMapboxGL() {
           ${esInactivo ? 'Sin transmisión GPS' : estadoTexto[unidad.estado]}
         </span>
       </div>
+      <div class="popup-section">
+  <span class="label">Ignición:</span>
+  <span class="value" style="color: ${unidad.ignicion ? '#4CAF50' : '#F44336'}; font-weight: bold;">
+    ${unidad.ignicion ? 'Encendida' : 'Apagada'}
+  </span>
+</div>
       ${
-        !esInactivo
+        unidad.ignicion !== false
           ? `
       <div class="popup-section">
         <span class="label">Velocidad:</span>
@@ -617,13 +624,16 @@ export function useMapboxGL() {
         ultimaPos?.direccionTexto,
         '| nuevaDir:',
         unidad.direccionTexto,
+        '| nuevaIgnicion:',
+        unidad.ignicion,
       )
       const cambioSignificativo =
         !ultimaPos ||
         Math.abs(ultimaPos.lat - lat) > 0.00005 ||
         Math.abs(ultimaPos.lng - lng) > 0.00005 ||
         ultimaPos.estado !== unidad.estado ||
-        ultimaPos.direccionTexto !== unidad.direccionTexto
+        ultimaPos.direccionTexto !== unidad.direccionTexto ||
+        ultimaPos.ignicion !== unidad.ignicion
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
@@ -674,6 +684,7 @@ export function useMapboxGL() {
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
               timestamp: unidad.timestamp,
+              ignicion: unidad.ignicion,
             })
           } else {
             // Solo cambió posición - mover marcador
@@ -697,7 +708,16 @@ export function useMapboxGL() {
             const popup = marcadoresUnidades.value[unidadId].getPopup()
             if (popup) {
               const dirCambio = ultimaPos?.direccionTexto !== unidad.direccionTexto
-              if (popup.isOpen() || dirCambio) {
+              const ignicionCambio = ultimaPos?.ignicion !== unidad.ignicion
+              if (popup.isOpen() || dirCambio || ignicionCambio) {
+                console.log(
+                  '/*/*/*/*/*/*/*/*/*/*/*/Actualizando popup de unidad:',
+                  unidadId,
+                  '| dirCambio:',
+                  dirCambio,
+                  '| ignicionCambio:',
+                  ignicionCambio,
+                )
                 const popupContent = popup.getElement()
                 const oldContainer = popupContent?.querySelector(`#popup-unidad-${unidadId}`)
                 const wasExpanded = oldContainer?.classList.contains('expanded') || false
@@ -719,6 +739,7 @@ export function useMapboxGL() {
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
               timestamp: unidad.timestamp,
+              ignicion: unidad.ignicion,
             })
           }
         }
@@ -766,6 +787,7 @@ export function useMapboxGL() {
           estado: unidad.estado,
           direccionTexto: unidad.direccionTexto,
           timestamp: unidad.timestamp,
+          ignicion: unidad.ignicion,
         })
       }
     })
