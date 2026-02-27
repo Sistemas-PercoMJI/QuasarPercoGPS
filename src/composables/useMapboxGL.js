@@ -1751,6 +1751,11 @@ export function useMapboxGL() {
           }
         }, 50)
       })
+      map.value.on('click', (e) => {
+        if (!e.originalEvent.target.closest('.custom-marker-unidad')) {
+          cerrarPopupGlobal()
+        }
+      })
 
       let zoomTimeout
 
