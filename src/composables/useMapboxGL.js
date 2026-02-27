@@ -427,6 +427,12 @@ export function useMapboxGL() {
 
   // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
+    console.log(
+      '🗺️ crearPopupUnidad:',
+      unidad.unidadNombre,
+      '| direccionTexto:',
+      unidad.direccionTexto,
+    )
     //  DETECTAR INACTIVIDAD (solo las variables que usamos)
     const { esInactivo, minutosInactivo } = obtenerColorPorTiempo(unidad)
 
@@ -604,6 +610,14 @@ export function useMapboxGL() {
 
       const { lat, lng } = unidad.ubicacion
       const ultimaPos = ultimasPosiciones.get(unidadId)
+      console.log(
+        '🔍 Check:',
+        unidad.unidadNombre,
+        '| ultimaDir:',
+        ultimaPos?.direccionTexto,
+        '| nuevaDir:',
+        unidad.direccionTexto,
+      )
       const cambioSignificativo =
         !ultimaPos ||
         Math.abs(ultimaPos.lat - lat) > 0.00005 ||
@@ -671,19 +685,20 @@ export function useMapboxGL() {
 
             // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
-            if (popup && popup.isOpen()) {
-              const popupContent = popup.getElement()
-              const oldContainer = popupContent
-                ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
-                : null
-              const wasExpanded = oldContainer ? oldContainer.classList.contains('expanded') : false
+            if (popup) {
+              const dirCambio = ultimaPos?.direccionTexto !== unidad.direccionTexto
+              if (popup.isOpen() || dirCambio) {
+                const popupContent = popup.getElement()
+                const oldContainer = popupContent?.querySelector(`#popup-unidad-${unidadId}`)
+                const wasExpanded = oldContainer?.classList.contains('expanded') || false
 
-              popup.setHTML(crearPopupUnidad(unidad))
+                popup.setHTML(crearPopupUnidad(unidad))
 
-              if (wasExpanded) {
-                const newContainer = popup.getElement().querySelector(`#popup-unidad-${unidadId}`)
-                if (newContainer) {
-                  newContainer.classList.add('expanded')
+                if (wasExpanded) {
+                  const newContainer = popup
+                    .getElement()
+                    ?.querySelector(`#popup-unidad-${unidadId}`)
+                  if (newContainer) newContainer.classList.add('expanded')
                 }
               }
             }
