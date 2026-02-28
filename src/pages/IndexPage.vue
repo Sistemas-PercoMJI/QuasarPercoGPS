@@ -1157,6 +1157,14 @@ const dibujarPOIsCombinados = async (pois) => {
       mapaAPI.map.on('mouseleave', 'pois-symbols', () => {
         mapaAPI.map.getCanvas().style.cursor = ''
       })
+
+      mapaAPI.map.on('movestart', () => {
+        if (window.setMapaDragging) window.setMapaDragging(true)
+      })
+
+      mapaAPI.map.on('moveend', () => {
+        if (window.setMapaDragging) window.setMapaDragging(false)
+      })
     }
   }
 }
