@@ -220,6 +220,7 @@ export function useEventDetection() {
             lat: unidad.lat,
             lng: unidad.lng,
             timestamp: new Date().toISOString(),
+            ignicion: unidad.ignicion ?? false,
           },
         })
 
@@ -364,6 +365,7 @@ export function useEventDetection() {
               lat: unidad.lat,
               lng: unidad.lng,
               timestamp: new Date().toISOString(),
+              ignicion: unidad.ignicion ?? false,
             },
           })
 
