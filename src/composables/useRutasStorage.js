@@ -61,6 +61,7 @@ export function useRutasStorage() {
         lat: coord.lat || 0,
         lng: coord.lng || 0,
         timestamp: coord.timestamp || new Date().toISOString(),
+        ignicion: coord.ignicion ?? false,
       }))
 
       // Convertir a JSON
@@ -119,6 +120,7 @@ export function useRutasStorage() {
           lat: coord.lat || 0,
           lng: coord.lng || 0,
           timestamp: coord.timestamp || new Date().toISOString(),
+          ignicion: coord.ignicion ?? false,
         }))
       }
       // CASO 2: Formato VIEJO (batching)
