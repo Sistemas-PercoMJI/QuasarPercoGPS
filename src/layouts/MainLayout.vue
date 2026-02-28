@@ -505,6 +505,8 @@ const userId = ref(auth.currentUser?.uid || '')
 
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
+const mapaDragging = ref(false)
+
 //  LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
   console.error('Error crítico: estadoCompartido.value no está definido en MainLayout')
@@ -1098,6 +1100,10 @@ onMounted(() => {
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
   })
+
+  window.setMapaDragging = (valor) => {
+    mapaDragging.value = valor
+  }
 })
 
 onUnmounted(() => {
@@ -1223,7 +1229,8 @@ watch(
 )
 
 function onDrawerMouseEnter() {
-  // Verificar explícitamente cada dialog
+  if (mapaDragging.value) return // <- agregar esta linea
+
   if (
     !estadoFlotaDrawerOpen.value &&
     !conductoresDrawerOpen.value &&
