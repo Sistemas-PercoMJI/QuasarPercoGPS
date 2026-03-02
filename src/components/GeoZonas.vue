@@ -1192,6 +1192,278 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- Dialog rápido de nuevo evento desde ubicación -->
+    <q-dialog
+      v-model="dialogEventoRapido"
+      persistent
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card class="dialog-evento-rapido">
+        <q-card-section
+          style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%)"
+          class="text-white"
+        >
+          <div class="row items-center">
+            <div
+              class="map-action-icon map-action-icon--done q-mr-md"
+              style="
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                background: rgba(255, 255, 255, 0.2);
+              "
+            >
+              <q-icon name="notifications_active" size="22px" color="white" />
+            </div>
+            <div>
+              <div class="text-subtitle1 text-weight-bold">Nuevo Evento</div>
+              <div class="text-caption" style="opacity: 0.85">
+                {{ ubicacionParaEvento?.nombre }}
+              </div>
+            </div>
+            <q-space />
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              color="white"
+              @click="dialogEventoRapido = false"
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-section class="form-body">
+          <!-- Nombre -->
+          <div class="field-group">
+            <label class="field-label">Nombre del evento</label>
+            <q-input
+              v-model="eventoRapido.nombre"
+              outlined
+              dense
+              placeholder="Ej: Entrada a zona restringida..."
+              class="field-input"
+            >
+              <template v-slot:prepend><q-icon name="label" color="grey-5" size="18px" /></template>
+            </q-input>
+          </div>
+
+          <!-- Descripcion -->
+          <div class="field-group">
+            <label class="field-label"
+              >Descripción <span class="field-optional">(opcional)</span></label
+            >
+            <q-input
+              v-model="eventoRapido.descripcion"
+              outlined
+              dense
+              type="textarea"
+              rows="2"
+              placeholder="Detalle del evento..."
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="description" color="grey-5" size="18px"
+              /></template>
+            </q-input>
+          </div>
+
+          <!-- Activacion (Entrada/Salida) -->
+          <div class="field-group">
+            <label class="field-label">Activar cuando</label>
+            <div class="activacion-toggle">
+              <div
+                class="activacion-option"
+                :class="{ 'activacion-option--active': eventoRapido.activacion === 'Entrada' }"
+                @click="eventoRapido.activacion = 'Entrada'"
+              >
+                <q-icon name="login" size="20px" />
+                <span>Entrada</span>
+              </div>
+              <div
+                class="activacion-option"
+                :class="{
+                  'activacion-option--active activacion-option--salida':
+                    eventoRapido.activacion === 'Salida',
+                }"
+                @click="eventoRapido.activacion = 'Salida'"
+              >
+                <q-icon name="logout" size="20px" />
+                <span>Salida</span>
+              </div>
+              <div
+                class="activacion-option"
+                :class="{
+                  'activacion-option--active activacion-option--ambos':
+                    eventoRapido.activacion === 'Ambos',
+                }"
+                @click="eventoRapido.activacion = 'Ambos'"
+              >
+                <q-icon name="swap_horiz" size="20px" />
+                <span>Ambos</span>
+              </div>
+            </div>
+
+            <!-- AND/OR solo aparece cuando elige Ambos -->
+            <div v-if="eventoRapido.activacion === 'Ambos'" class="operador-row q-mt-sm">
+              <span class="text-caption text-grey-6 q-mr-sm">Condiciones con:</span>
+              <div class="operador-mini-toggle">
+                <div
+                  class="operador-mini-option"
+                  :class="{ 'operador-mini-active': eventoRapido.operador === 'AND' }"
+                  @click="eventoRapido.operador = 'AND'"
+                >
+                  <q-icon name="done_all" size="14px" />
+                  Y (Todas)
+                </div>
+                <div
+                  class="operador-mini-option"
+                  :class="{
+                    'operador-mini-active operador-mini-or': eventoRapido.operador === 'OR',
+                  }"
+                  @click="eventoRapido.operador = 'OR'"
+                >
+                  <q-icon name="done" size="14px" />
+                  O (Alguna)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Frecuencia -->
+          <div class="field-group">
+            <label class="field-label">Frecuencia de alerta</label>
+            <q-select
+              v-model="eventoRapido.activacionAlerta"
+              :options="[
+                { label: 'Cada vez que ocurra', value: 'Cada vez' },
+                { label: 'Al inicio (primera vez)', value: 'Al inicio' },
+                { label: 'Una vez al día', value: 'Una vez al día' },
+              ]"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="repeat" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Aplicación del evento</label>
+            <q-select
+              v-model="eventoRapido.aplicacion"
+              :options="[
+                { label: 'Siempre activo', value: 'siempre' },
+                { label: 'A los días y horas establecidos', value: 'horario' },
+              ]"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="schedule" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+          </div>
+
+          <!-- Horario (solo si eligio horario) -->
+          <div v-if="eventoRapido.aplicacion === 'horario'" class="field-group">
+            <label class="field-label">Días y horario</label>
+
+            <q-select
+              v-model="eventoRapido.diasSemana"
+              :options="[
+                { label: 'Lunes', value: 1 },
+                { label: 'Martes', value: 2 },
+                { label: 'Miércoles', value: 3 },
+                { label: 'Jueves', value: 4 },
+                { label: 'Viernes', value: 5 },
+                { label: 'Sábado', value: 6 },
+                { label: 'Domingo', value: 0 },
+              ]"
+              outlined
+              dense
+              multiple
+              emit-value
+              map-options
+              use-chips
+              label="Días de la semana"
+              class="field-input q-mb-sm"
+            >
+              <template v-slot:prepend
+                ><q-icon name="calendar_today" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model="eventoRapido.horaInicio"
+                  outlined
+                  dense
+                  label="Hora inicio"
+                  mask="time"
+                  :rules="['time']"
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="schedule" color="grey-5" size="18px"
+                  /></template>
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="eventoRapido.horaInicio" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model="eventoRapido.horaFin"
+                  outlined
+                  dense
+                  label="Hora fin"
+                  mask="time"
+                  :rules="['time']"
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="schedule" color="grey-5" size="18px"
+                  /></template>
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="eventoRapido.horaFin" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-lg q-pb-lg">
+          <q-btn flat label="Cancelar" color="grey-7" @click="dialogEventoRapido = false" />
+          <q-btn
+            unelevated
+            label="Guardar Evento"
+            icon-right="save"
+            color="deep-orange"
+            @click="guardarEventoRapido"
+            :disable="!eventoRapido.nombre"
+            :loading="loadingEventoRapido"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -1219,6 +1491,16 @@ const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.val
 //seleccionador de color para POI:
 const mostrarColorPickerPOI = ref(false)
 const mostrarColorPickerGrupo = ref(false)
+
+const dialogEventoRapido = ref(false)
+const loadingEventoRapido = ref(false)
+const ubicacionParaEvento = ref(null)
+const eventoRapido = ref({
+  nombre: '',
+  descripcion: '',
+  activacion: 'Entrada',
+  activacionAlerta: 'Cada vez',
+})
 
 // Agregar paleta de colores para POIs (similar a la de geozonas)
 const paletaColoresPOI = [
@@ -1322,21 +1604,92 @@ const mostrarSliderRadio = ref(false)
 //  NUEVA FUNCIÓN: Crear evento para la ubicación seleccionada
 function crearEventoParaUbicacion() {
   if (!itemMenu.value) return
-
   menuContextualVisible.value = false
 
-  // Emitir evento con los datos de la ubicación
-  emit('crear-evento-ubicacion', {
-    ubicacion: itemMenu.value,
-    tipo: itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona',
-  })
+  ubicacionParaEvento.value = itemMenu.value
 
-  $q.notify({
-    type: 'info',
-    message: `Preparando evento para ${itemMenu.value.nombre}`,
-    icon: 'notifications_active',
-    timeout: 1500,
-  })
+  eventoRapido.value = {
+    nombre: itemMenu.value.nombre || '',
+    descripcion: '',
+    activacion: 'Entrada',
+    activacionAlerta: 'Cada vez',
+    operador: 'OR',
+    aplicacion: 'siempre',
+    diasSemana: [],
+    horaInicio: '08:00',
+    horaFin: '18:00',
+  }
+
+  dialogEventoRapido.value = true
+}
+
+const guardarEventoRapido = async () => {
+  if (!eventoRapido.value.nombre || !ubicacionParaEvento.value) return
+
+  loadingEventoRapido.value = true
+
+  try {
+    const tipo = ubicacionParaEvento.value.tipo === 'poi' ? 'POI' : 'Geozona'
+
+    // Construir condiciones segun activacion seleccionada
+    const condiciones = []
+    if (eventoRapido.value.activacion === 'Entrada' || eventoRapido.value.activacion === 'Ambos') {
+      condiciones.push({
+        tipo: tipo,
+        ubicacionId: ubicacionParaEvento.value.id,
+        activacion: 'Entrada',
+      })
+    }
+    if (eventoRapido.value.activacion === 'Salida' || eventoRapido.value.activacion === 'Ambos') {
+      condiciones.push({
+        tipo: tipo,
+        ubicacionId: ubicacionParaEvento.value.id,
+        activacion: 'Salida',
+      })
+    }
+
+    const eventoData = {
+      nombre: eventoRapido.value.nombre,
+      descripcion: eventoRapido.value.descripcion || '',
+      activo: true,
+      condiciones,
+      activacionAlerta: eventoRapido.value.activacionAlerta,
+      aplicacion: eventoRapido.value.aplicacion,
+      operadoresLogicos:
+        eventoRapido.value.activacion === 'Ambos' ? [eventoRapido.value.operador] : [],
+      ...(eventoRapido.value.aplicacion === 'horario' && {
+        diasSemana: eventoRapido.value.diasSemana,
+        horaInicio: eventoRapido.value.horaInicio,
+        horaFin: eventoRapido.value.horaFin,
+      }),
+    }
+
+    // Usar el composable que ya tienes
+    const { crearEvento } = useEventos(userId.value)
+    await crearEvento(eventoData)
+
+    // Recargar eventos para actualizar los badges
+    const eventosActualizados = await obtenerEventos()
+    eventosActivos.value = eventosActualizados.filter((e) => e.activo)
+
+    $q.notify({
+      type: 'positive',
+      message: `Evento "${eventoRapido.value.nombre}" creado`,
+      icon: 'check_circle',
+      timeout: 2500,
+    })
+
+    dialogEventoRapido.value = false
+  } catch (err) {
+    console.error('Error al crear evento:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al crear el evento',
+      caption: err.message,
+    })
+  } finally {
+    loadingEventoRapido.value = false
+  }
 }
 
 //  NUEVA FUNCIÓN: Continuar al dialog después de ajustar el radio
@@ -4052,5 +4405,103 @@ defineExpose({
   border-radius: 20px;
   flex-shrink: 0;
   transition: all 0.3s ease;
+}
+
+/* ===== DIALOG EVENTO RAPIDO ===== */
+.dialog-evento-rapido {
+  width: 420px;
+  max-width: 95vw;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.activacion-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.activacion-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+}
+
+.activacion-option:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.activacion-option--active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.activacion-option--salida.activacion-option--active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.activacion-option--ambos.activacion-option--active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.operador-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.operador-mini-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.operador-mini-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.operador-mini-option:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.operador-mini-active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.operador-mini-or.operador-mini-active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
 }
 </style>
