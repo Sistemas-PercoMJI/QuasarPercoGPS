@@ -215,7 +215,28 @@ export function useReportesHorasTrabajo() {
         //  DETECTAR VIAJES POR IGNICIÓN
         const viajes = detectarViajesPorIgnicion(coordenadas)
 
-        if (viajes.length === 0) {
+        const viajesValidos = viajes.filter((viaje) => {
+          if (viaje.length < 2) return false
+          const inicio = new Date(viaje[0].timestamp)
+          const fin = new Date(viaje[viaje.length - 1].timestamp)
+          const duracionMinutos = (fin - inicio) / 1000 / 60
+          return duracionMinutos > 0 // Solo viajes con al menos 1 segundo
+        })
+
+        const viajesAUsar = viajesValidos
+        console.log(
+          `🚗 Viajes detectados para ${trayecto.unidadNombre} - ${trayecto.fecha}:`,
+          viajes.length,
+        )
+        viajes.forEach((viaje, i) => {
+          const inicio = new Date(viaje[0].timestamp)
+          const fin = new Date(viaje[viaje.length - 1].timestamp)
+          console.log(
+            `  Viaje ${i}: ${inicio.toLocaleTimeString()} → ${fin.toLocaleTimeString()} | ignicion en coords: ${viaje[0].ignicion}`,
+          )
+        })
+
+        if (viajesAUsar.length === 0) {
           console.warn(`No se detectaron viajes`)
           continue
         }
@@ -229,7 +250,7 @@ export function useReportesHorasTrabajo() {
 
         const detallesViajes = []
 
-        for (const viaje of viajes) {
+        for (const viaje of viajesAUsar) {
           const inicio = viaje[0]
           const fin = viaje[viaje.length - 1]
 
@@ -298,7 +319,7 @@ export function useReportesHorasTrabajo() {
           duracionTotal: formatearDuracion(duracionTotalDia), //  CAMBIO
           duracionDentroHorario: formatearDuracion(duracionDentroDia), //  CAMBIO
           duracionFueraHorario: formatearDuracion(duracionFueraDia),
-          totalViajes: viajes.length,
+          totalViajes: viajesAUsar.length,
           viajesDentroHorario: viajesDentroDia,
           viajesFueraHorario: viajesFueraDia,
           detallesViajes: detallesViajes,
