@@ -224,10 +224,7 @@ export function useReportesHorasTrabajo() {
         })
 
         const viajesAUsar = viajesValidos
-        console.log(
-          `🚗 Viajes detectados para ${trayecto.unidadNombre} - ${trayecto.fecha}:`,
-          viajes.length,
-        )
+
         viajes.forEach((viaje, i) => {
           const inicio = new Date(viaje[0].timestamp)
           const fin = new Date(viaje[viaje.length - 1].timestamp)

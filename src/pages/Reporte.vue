@@ -1599,7 +1599,7 @@ const cargarHistorialReportes = async () => {
     loading.value = false
   }
 }
-/**
+/**logconsole.log
  *  Abre vista previa según tipo de archivo
  */
 const abrirVistaPrevia = async (reporte) => {

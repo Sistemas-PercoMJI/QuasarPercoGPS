@@ -12,8 +12,6 @@ export function useReportesHoras() {
     loading.value = true
     error.value = null
 
-    console.log('🔥 calcularHorasTrabajo ejecutado', { unidadesIds, opciones })
-
     try {
       // Obtener trayectos (reales o simulados)
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
@@ -112,14 +110,7 @@ export function useReportesHoras() {
     if (!inicio || !fin) {
       return { esDentroHorario: false, horasLaborales: 0 }
     }
-    console.log('=== calcularDentroHorario ===', {
-      inicio: inicio?.toString(),
-      fin: fin?.toString(),
-      esDate_inicio: inicio instanceof Date,
-      esDate_fin: fin instanceof Date,
-      horarioInicio,
-      horarioFin,
-    })
+
     // Verificar si es día laboral
     const diaSemana = inicio.getDay()
     const esDiaLaboral = diasLaborables.includes(diaSemana)
@@ -149,13 +140,6 @@ export function useReportesHoras() {
 
     const duracionTotal = (fin - inicio) / (1000 * 60 * 60)
     const esDentroHorario = horasLaborales > duracionTotal * 0.5 // Más del 50% dentro
-
-    console.log('Resultado:', {
-      horasLaborales,
-      duracionTotal,
-      porcentaje: horasLaborales / duracionTotal,
-      esDentroHorario,
-    })
 
     return {
       esDentroHorario,
