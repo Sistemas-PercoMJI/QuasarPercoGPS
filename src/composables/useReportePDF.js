@@ -871,27 +871,63 @@ export function useReportePDF() {
             })
           })
 
-          // Generar tabla
+          const pageWidthSub = doc.internal.pageSize.width
+          const availableWidthSub = pageWidthSub - 28
+          const totalColumnasSub = headers.length
+          const columnStylesSub = {}
+          const importantesSub = [
+            'Nombre de evento',
+            'Hora de inicio de evento',
+            'Conductor',
+            'Vehículo',
+            'Tipo',
+            'Fecha',
+            'Hora',
+          ]
+          const menosImportantesSub = [
+            'Ubicación',
+            'Duración',
+            'Dirección',
+            'Coordenadas',
+            'Kilometraje',
+            'Batería',
+          ]
+
+          headers.forEach((nombreCol, index) => {
+            let ancho = availableWidthSub / totalColumnasSub
+            if (importantesSub.includes(nombreCol)) ancho *= 1.2
+            else if (menosImportantesSub.includes(nombreCol)) ancho *= 0.7
+            columnStylesSub[index] = {
+              cellWidth: ancho,
+              overflow: 'linebreak',
+              valign: 'middle',
+              halign: 'left',
+            }
+          })
+
           autoTable(doc, {
             startY: yPosition,
             head: [headers],
             body: tableData,
             theme: 'striped',
-            styles: {
-              fontSize: 7,
-              cellPadding: 2,
-            },
             headStyles: {
               fillColor: [145, 198, 188],
-              textColor: 255,
               fontStyle: 'bold',
+              fontSize: 5,
+              cellPadding: 1,
+              valign: 'middle',
               halign: 'center',
             },
-            alternateRowStyles: {
-              fillColor: [245, 245, 245],
+            styles: {
+              fontSize: 5,
+              cellPadding: 0.8,
+              overflow: 'linebreak',
+              minCellHeight: 5,
             },
+            columnStyles: columnStylesSub,
             margin: { left: headerSubGrupo ? 25 : 20, right: 20 },
-            didDrawPage: function (data) {
+            tableWidth: 'auto',
+            didDrawPage: (data) => {
               yPosition = data.cursor.y + 5
             },
           })
