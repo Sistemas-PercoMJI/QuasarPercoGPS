@@ -63,7 +63,6 @@
       <!-- Header de tabla -->
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
-        <div class="header-col-velocidad">Velocidad</div>
         <div class="header-col-acciones">Acciones</div>
       </div>
 
