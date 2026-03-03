@@ -112,58 +112,39 @@ export function useTrayectosDiarios() {
   const agruparEnViajes = (coordenadas) => {
     if (!coordenadas || coordenadas.length === 0) return []
 
-    const DELAY_FIN_MS = 2 * 60 * 1000 // 2 minutos en ms
+    // Si ningun punto tiene ignicion false, usar gaps de tiempo
+    const tieneAlgunFalse = coordenadas.some((c) => c.ignicion === false || c.ignicion === 'false')
+
+    // Gap minimo para considerar que son viajes diferentes
+    // Si nunca hay false (modo sleep), usar 5 minutos
+    // Si hay algun false, mantener 2 minutos
+    const GAP_MS = tieneAlgunFalse ? 2 * 60 * 1000 : 5 * 60 * 1000
+
     const viajes = []
-    let viajeActual = null
+    let viajeActual = [coordenadas[0]]
 
-    for (let i = 0; i < coordenadas.length; i++) {
-      const punto = coordenadas[i]
-      const ignicion = punto.ignicion === true || punto.ignicion === 'true'
+    for (let i = 1; i < coordenadas.length; i++) {
+      const puntoActual = coordenadas[i]
+      const puntoAnterior = coordenadas[i - 1]
 
-      if (!viajeActual && ignicion) {
-        // Inicio de un nuevo viaje
-        viajeActual = {
-          puntos: [punto],
-          timestampUltimoFalse: null,
+      const tiempoActual = new Date(puntoActual.timestamp).getTime()
+      const tiempoAnterior = new Date(puntoAnterior.timestamp).getTime()
+      const gap = tiempoActual - tiempoAnterior
+
+      if (gap >= GAP_MS) {
+        // Gap grande = fin del viaje anterior, inicio de uno nuevo
+        if (viajeActual.length >= 2) {
+          viajes.push(viajeActual)
         }
-        continue
-      }
-
-      if (viajeActual) {
-        viajeActual.puntos.push(punto)
-
-        if (!ignicion) {
-          // Registrar cuando se apago la ignicion
-          viajeActual.timestampUltimoFalse = new Date(punto.timestamp).getTime()
-        } else {
-          // Si volvio a encenderse, resetear el contador de apagado
-          viajeActual.timestampUltimoFalse = null
-        }
-
-        // Verificar si ya pasaron 2 minutos desde que se apago
-        if (viajeActual.timestampUltimoFalse !== null) {
-          const tiempoDesdeApagado = Date.now() - viajeActual.timestampUltimoFalse
-
-          // Si es un punto futuro en el historial, usar el timestamp del siguiente punto
-          const timestampSiguiente =
-            i + 1 < coordenadas.length
-              ? new Date(coordenadas[i + 1].timestamp).getTime()
-              : Date.now()
-
-          const tiempoEntreApagadoYSiguiente = timestampSiguiente - viajeActual.timestampUltimoFalse
-
-          if (tiempoEntreApagadoYSiguiente >= DELAY_FIN_MS || tiempoDesdeApagado >= DELAY_FIN_MS) {
-            // Cerrar el viaje actual
-            viajes.push(viajeActual.puntos)
-            viajeActual = null
-          }
-        }
+        viajeActual = [puntoActual]
+      } else {
+        viajeActual.push(puntoActual)
       }
     }
 
-    // Si quedo un viaje abierto al final (unidad aun en uso)
-    if (viajeActual && viajeActual.puntos.length >= 3) {
-      viajes.push(viajeActual.puntos)
+    // Cerrar el ultimo viaje
+    if (viajeActual.length >= 2) {
+      viajes.push(viajeActual)
     }
 
     return viajes
@@ -175,16 +156,19 @@ export function useTrayectosDiarios() {
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    // Verificar si los puntos tienen el campo ignicion
-    const tieneIgnicion = coordenadas.some((c) => c.ignicion === true || c.ignicion === false)
+    const tieneIgnicion = coordenadas.some(
+      (c) =>
+        c.ignicion === true ||
+        c.ignicion === false ||
+        c.ignicion === 'true' ||
+        c.ignicion === 'false',
+    )
 
     let gruposDeViaje = []
 
     if (tieneIgnicion) {
-      // Separar por ignicion (metodo preciso)
       gruposDeViaje = agruparEnViajes(coordenadas)
     } else {
-      // Fallback: puntos antiguos sin ignicion, usar velocidad
       gruposDeViaje = [coordenadas]
     }
 
