@@ -98,6 +98,9 @@ export function useEventosUnidadRealTime() {
                 fechaTexto: formatearFechaHora(data.Timestamp),
                 icono: obtenerIconoEvento(data),
                 color: obtenerColorEvento(data),
+                ignicion: data.Ignicion ?? false,
+                velocidad: data.Velocidad || 0,
+                kilometraje: data.Kilometraje || null,
                 raw: data,
               })
             }

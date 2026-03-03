@@ -77,6 +77,9 @@ export function useEventoDiario() {
         FinEvento: null, // Se actualiza cuando sale
         tipoUbicacion: eventoData.tipoUbicacion || 'POI',
         ubicacionId: eventoData.ubicacionId || '',
+        Ignicion: eventoData.Ignicion ?? false,
+        Velocidad: eventoData.Velocidad || 0,
+        Kilometraje: eventoData.Kilometraje || null,
       }
 
       await setDoc(eventoRef, nuevoEvento)

@@ -281,6 +281,9 @@ export function useEventDetection() {
           tipoUbicacion: tipo,
           ubicacionId: ubicacion.id,
           eventosRelacionados: eventosIdsString,
+          Ignicion: unidad.ignicion ?? false,
+          Velocidad: unidad.velocidad || 0,
+          Kilometraje: unidad.odometro_km || null,
         }
 
         if (tipo === 'POI') {
@@ -391,6 +394,9 @@ export function useEventDetection() {
             ubicacionId: ubicacion.id,
             eventosRelacionados: eventosIdsString,
             EventoEntradaId: eventoEntrada.idEvento,
+            Ignicion: unidad.ignicion ?? false,
+            Velocidad: unidad.velocidad || 0,
+            Kilometraje: unidad.odometro_km || null,
           }
 
           if (tipo === 'POI') {

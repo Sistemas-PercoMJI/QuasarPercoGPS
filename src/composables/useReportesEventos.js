@@ -74,6 +74,8 @@ export function useReportesEventos() {
             lat: 32.5149 + (Math.random() - 0.5) * 0.1,
             lng: -117.0382 + (Math.random() - 0.5) * 0.1,
           },
+          ignicion: true,
+          kilometraje: null,
           direccion: `Tijuana, Baja California, México`,
           velocidad: tipoEvento.includes('Exceso')
             ? Math.floor(Math.random() * 40) + 80
@@ -246,6 +248,8 @@ export function useReportesEventos() {
                   coordenadas: data.Coordenadas || data.coordenadas || { lat: 0, lng: 0 },
                   direccion: data.Direccion || data.direccion || 'Sin dirección',
                   velocidad: data.Velocidad || data.velocidad || 0,
+                  ignicion: data.Ignicion ?? null,
+                  kilometraje: data.Kilometraje || null,
                   //  CORRECCIÓN 1: Usar el campo correcto y formateado
                   duracion: duracionFormateada,
                   duracionSegundos: duracionSegundos, // Mantener el valor numérico también

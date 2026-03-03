@@ -156,13 +156,16 @@ export function useEventosUnidad() {
           ubicacion: direccion, //  Dirección geocodificada
           coordenadas: { lat, lng },
           fechaTexto,
-          conductorNombre: 'Conductor', // Puedes agregarlo si está disponible
+          conductorNombre: data.conductorNombre || 'Conductor', // también este está hardcodeado
           color,
           icono,
           mapaUrl,
           accion: data.TipoEvento, // Para filtrar
           geozonaNombre: data.GeozonaNombre,
           tipoUbicacion: data.tipoUbicacion,
+          ignicion: data.Ignicion ?? false,
+          velocidad: data.Velocidad || 0,
+          kilometraje: data.Kilometraje || null,
           _raw: data,
         }
       })
