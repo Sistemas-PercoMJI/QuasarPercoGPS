@@ -9,7 +9,8 @@ export function useReportesTrayectos() {
   const error = ref(null)
 
   /**
-   *  Descarga las coordenadas del archivo JSON en Firebase Storage
+   * Descarga las coordenadas del archivo JSON en Firebase Storage
+   * 🆕 Conserva campos ignicion y velocidad
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) {
@@ -26,24 +27,18 @@ export function useReportesTrayectos() {
 
       const data = await response.json()
 
-      // El archivo puede tener diferentes estructuras, intentar varias
       let coordenadas = []
 
       if (Array.isArray(data)) {
-        // Caso 1: Array directo de coordenadas
         coordenadas = data
       } else if (data.coordenadas && Array.isArray(data.coordenadas)) {
-        // Caso 2: Objeto con propiedad coordenadas
         coordenadas = data.coordenadas
       } else if (data.ruta && Array.isArray(data.ruta)) {
-        // Caso 3: Objeto con propiedad ruta
         coordenadas = data.ruta
       } else if (data.puntos && Array.isArray(data.puntos)) {
-        // Caso 4: Objeto con propiedad puntos
         coordenadas = data.puntos
       }
 
-      // Normalizar formato de coordenadas
       const coordenadasNormalizadas = coordenadas
         .filter((coord) => {
           const lat = coord.lat || coord.latitude
@@ -54,6 +49,8 @@ export function useReportesTrayectos() {
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
           timestamp: coord.timestamp || coord.time || null,
+          ignicion: coord.ignicion ?? null, // 🆕
+          velocidad: coord.velocidad || 0, // 🆕
         }))
 
       return coordenadasNormalizadas
@@ -77,17 +74,15 @@ export function useReportesTrayectos() {
       'Rodríguez Sánchez Carlos',
     ]
 
-    // Coordenadas base en Tijuana
     const baseLatTJ = 32.5149
     const baseLngTJ = -117.0382
 
     for (const fecha of fechas) {
-      // Generar entre 1-3 trayectos por día
       const numTrayectos = Math.floor(Math.random() * 3) + 1
 
       for (let i = 0; i < numTrayectos; i++) {
-        const horaInicio = 6 + Math.floor(Math.random() * 4) // 6-10 AM
-        const duracionHoras = 2 + Math.floor(Math.random() * 6) // 2-8 horas
+        const horaInicio = 6 + Math.floor(Math.random() * 4)
+        const duracionHoras = 2 + Math.floor(Math.random() * 6)
 
         const inicioTimestamp = new Date(fecha)
         inicioTimestamp.setHours(horaInicio, Math.floor(Math.random() * 60), 0, 0)
@@ -101,21 +96,22 @@ export function useReportesTrayectos() {
         )
 
         const duracionMs = finTimestamp - inicioTimestamp
-        const kilometraje = Math.floor(Math.random() * 150) + 50 // 50-200 km
-        const velocidadPromedio = Math.floor(kilometraje / (duracionHoras + 0.5)) // km/h
+        const kilometraje = Math.floor(Math.random() * 150) + 50
+        const velocidadPromedio = Math.floor(kilometraje / (duracionHoras + 0.5))
         const velocidadMaxima = velocidadPromedio + Math.floor(Math.random() * 30) + 10
 
-        //  GENERAR COORDENADAS SIMULADAS
-        const numCoordenadas = 20 + Math.floor(Math.random() * 30) // 20-50 puntos
+        const numCoordenadas = 20 + Math.floor(Math.random() * 30)
         const coordenadas = []
 
         for (let j = 0; j < numCoordenadas; j++) {
           coordenadas.push({
-            lat: baseLatTJ + (Math.random() - 0.5) * 0.05, // ~5km de variación
+            lat: baseLatTJ + (Math.random() - 0.5) * 0.05,
             lng: baseLngTJ + (Math.random() - 0.5) * 0.05,
             timestamp: new Date(
               inicioTimestamp.getTime() + (j * duracionMs) / numCoordenadas,
             ).toISOString(),
+            ignicion: j < numCoordenadas - 1 ? true : false,
+            velocidad: j === 0 || j === numCoordenadas - 1 ? 0 : velocidadPromedio,
           })
         }
 
@@ -135,16 +131,13 @@ export function useReportesTrayectos() {
           velocidadPromedio: velocidadPromedio,
           velocidadMaxima: velocidadMaxima,
           paradas: Math.floor(Math.random() * 5) + 1,
-          combustibleConsumido: (kilometraje / 12).toFixed(2), // Aprox 12 km/litro
+          combustibleConsumido: (kilometraje / 12).toFixed(2),
           ubicacionInicio: 'Tijuana, BC, México',
           ubicacionFin: 'Tijuana, BC, México',
-          coordenadas: coordenadas, //  COORDENADAS SIMULADAS
+          coordenadas: coordenadas,
           latitud: coordenadas[0].lat,
           longitud: coordenadas[0].lng,
-          coordenadasInicio: {
-            lat: coordenadas[0].lat,
-            lng: coordenadas[0].lng,
-          },
+          coordenadasInicio: { lat: coordenadas[0].lat, lng: coordenadas[0].lng },
           coordenadasFin: {
             lat: coordenadas[coordenadas.length - 1].lat,
             lng: coordenadas[coordenadas.length - 1].lng,
@@ -165,7 +158,6 @@ export function useReportesTrayectos() {
       const todosTrayectos = []
       const fechas = generarRangoFechas(fechaInicio, fechaFin)
 
-      //  MAPEO DE NOMBRES A IDS
       const unidadesIds = unidadesNombres.map((nombre) => {
         if (window.unidadesMap && window.unidadesMap[nombre]) {
           return window.unidadesMap[nombre]
@@ -173,14 +165,12 @@ export function useReportesTrayectos() {
         return nombre
       })
 
-      //  NUEVO: Mantener odómetro acumulado por unidad (solo para fallback)
       const odometrosPorUnidad = {}
 
       for (let i = 0; i < unidadesIds.length; i++) {
         const unidadId = unidadesIds[i]
         const unidadNombre = unidadesNombres[i]
 
-        // Inicializar odómetro para esta unidad
         if (!odometrosPorUnidad[unidadId]) {
           odometrosPorUnidad[unidadId] = 0
         }
@@ -193,99 +183,137 @@ export function useReportesTrayectos() {
             if (rutaSnap.exists()) {
               const data = rutaSnap.data()
 
-              //  DESCARGAR COORDENADAS DEL STORAGE
+              // Descargar coordenadas del Storage
               let coordenadas = []
               if (data.rutas_url) {
                 coordenadas = await descargarCoordenadasDeStorage(data.rutas_url)
               }
 
-              // Si no hay coordenadas del storage, intentar con nuevaCoordenada
               if (coordenadas.length === 0 && data.nuevaCoordenada) {
                 coordenadas = [
                   {
                     lat: data.nuevaCoordenada.lat,
                     lng: data.nuevaCoordenada.lng,
                     timestamp: data.nuevaCoordenada.timestamp,
+                    ignicion: data.nuevaCoordenada.ignicion ?? null,
+                    velocidad: 0,
                   },
                 ]
               }
 
-              //  OBTENER DATOS BASE
-              const distanciaRecorrida = parseFloat(data.distancia_recorrida_km) || 0
-              const duracionMinutos = parseFloat(data.duracion_total_minutos) || 0
-              const duracionMs = duracionMinutos * 60 * 1000 // Convertir minutos a milisegundos
+              // 🆕 Detectar si hay campos ignicion en las coordenadas
+              const tieneIgnicion = coordenadas.some(
+                (c) => c.ignicion !== null && c.ignicion !== undefined,
+              )
+              console.log(
+                `📍 ${unidadId}/${fecha}: ${coordenadas.length} coords, tieneIgnicion: ${tieneIgnicion}`,
+              )
 
-              //  OBTENER ODÓMETROS DEL HARDWARE (del forwarder)
+              // 🆕 Dividir por ignición si hay datos, sino usar todo como un viaje
+              const gruposCoords = tieneIgnicion
+                ? detectarViajesPorIgnicion(coordenadas)
+                : [coordenadas]
+
+              console.log(`🚗 Viajes detectados: ${gruposCoords.length}`)
+
               const odometroInicio = parseFloat(data.odometro_inicio) || 0
               const odometroFin = parseFloat(data.odometro_fin) || 0
 
-              //  CALCULAR KILOMETRAJES
-              // Si hay odómetros reales del hardware, usarlos
-              // Si no, usar el odómetro virtual acumulado
-              const kilometrajeInicio =
-                odometroInicio > 0 ? odometroInicio : odometrosPorUnidad[unidadId]
-              const kilometrajeFinal =
-                odometroFin > 0 ? odometroFin : kilometrajeInicio + distanciaRecorrida
+              for (const [indexViaje, coordsViaje] of gruposCoords.entries()) {
+                if (coordsViaje.length === 0) continue
 
-              //  OBTENER VELOCIDADES DEL FIRESTORE
-              const velocidadMaxima = parseFloat(data.velocidad_maxima) || 0
+                const inicioCoord = coordsViaje[0]
+                const finCoord = coordsViaje[coordsViaje.length - 1]
 
-              //  CALCULAR VELOCIDAD PROMEDIO (si no existe en Firebase)
-              let velocidadPromedio = parseFloat(data.velocidad_promedio) || 0
+                const inicioTs = inicioCoord.timestamp
+                  ? new Date(inicioCoord.timestamp)
+                  : data.fecha_hora_inicio?.toDate?.() || null
 
-              //  FALLBACK: Si no hay velocidad_promedio, calcularla
-              if (velocidadPromedio === 0 && duracionMinutos > 0 && distanciaRecorrida > 0) {
-                const duracionHoras = duracionMinutos / 60
-                velocidadPromedio = distanciaRecorrida / duracionHoras
+                const finTs = finCoord.timestamp
+                  ? new Date(finCoord.timestamp)
+                  : data.fecha_hora_fin?.toDate?.() || null
 
-                // Validar que sea un número finito y positivo
-                if (!isFinite(velocidadPromedio) || velocidadPromedio < 0) {
-                  velocidadPromedio = 0
+                const duracionMs = inicioTs && finTs ? finTs - inicioTs : 0
+                const duracionHoras = duracionMs / 3600000
+
+                // 🆕 Calcular distancia de este viaje con Haversine
+                let distanciaViaje = 0
+                if (coordsViaje.length >= 2) {
+                  for (let j = 1; j < coordsViaje.length; j++) {
+                    distanciaViaje += calcularDistanciaHaversine(coordsViaje[j - 1], coordsViaje[j])
+                  }
                 }
+
+                // Si solo hay un viaje usar distancia del firestore, si hay varios calcular con Haversine
+                const distanciaTotal = parseFloat(data.distancia_recorrida_km) || 0
+                const distanciaFinal =
+                  gruposCoords.length === 1
+                    ? distanciaTotal > 0
+                      ? distanciaTotal
+                      : distanciaViaje
+                    : parseFloat(distanciaViaje.toFixed(2))
+
+                // 🆕 Velocidad máxima del viaje
+                const velMaximaViaje = Math.max(...coordsViaje.map((c) => c.velocidad || 0))
+                const velMaximaFinal =
+                  gruposCoords.length === 1
+                    ? parseFloat(data.velocidad_maxima) || velMaximaViaje
+                    : velMaximaViaje
+
+                // 🆕 Velocidad promedio del viaje
+                let velPromedioViaje = 0
+                if (duracionHoras > 0 && distanciaFinal > 0) {
+                  velPromedioViaje = distanciaFinal / duracionHoras
+                  if (!isFinite(velPromedioViaje) || velPromedioViaje < 0) velPromedioViaje = 0
+                }
+                const velPromedioFinal =
+                  gruposCoords.length === 1
+                    ? parseFloat(data.velocidad_promedio) || velPromedioViaje
+                    : parseFloat(velPromedioViaje.toFixed(2))
+
+                // Odómetros
+                const kmInicio = odometroInicio > 0 ? odometroInicio : odometrosPorUnidad[unidadId]
+                const kmFinal = odometroFin > 0 ? odometroFin : kmInicio + distanciaFinal
+
+                todosTrayectos.push({
+                  id: gruposCoords.length > 1 ? `${fecha}_viaje_${indexViaje + 1}` : fecha,
+                  idUnidad: unidadId,
+                  fecha: fecha,
+                  conductorId: data.conductor_id || null,
+                  conductorNombre: data.conductor_nombre || 'N/A',
+                  unidadNombre: unidadNombre,
+                  Placa: 'N/A',
+                  inicioTimestamp: inicioTs,
+                  finTimestamp: finTs,
+                  duracion: duracionMs,
+                  duracionHoras: duracionHoras.toFixed(2),
+                  kilometrajeRecorrido: distanciaFinal,
+                  kilometrajeInicio: kmInicio,
+                  kilometrajeFinal: kmFinal,
+                  odometroInicio: odometroInicio,
+                  odometroFin: odometroFin,
+                  odometroVirtual: odometrosPorUnidad[unidadId],
+                  velocidadPromedio: parseFloat(
+                    velPromedioFinal.toFixed ? velPromedioFinal.toFixed(2) : velPromedioFinal,
+                  ),
+                  velocidadMaxima: velMaximaFinal,
+                  paradas: data.paradas?.length || 0,
+                  ubicacionInicio: data.ubicacion_inicio || 'N/A',
+                  ubicacionFin: data.ubicacion_fin || 'N/A',
+                  coordenadas: coordsViaje,
+                  latitud: inicioCoord.lat,
+                  longitud: inicioCoord.lng,
+                  _raw: data,
+                  _simulado: false,
+                })
               }
 
-              //  OBTENER TIMESTAMPS
-              const inicioTimestamp = data.fecha_hora_inicio?.toDate?.() || null
-              const finTimestamp = data.fecha_hora_fin?.toDate?.() || null
-
-              const trayecto = {
-                id: fecha,
-                idUnidad: unidadId,
-                fecha: fecha,
-                conductorId: data.conductor_id || null,
-                conductorNombre: data.conductor_nombre || 'N/A',
-                unidadNombre: unidadNombre,
-                Placa: 'N/A', // Se enriquecerá después
-                inicioTimestamp: inicioTimestamp,
-                finTimestamp: finTimestamp,
-                duracion: duracionMs,
-                duracionHoras: (duracionMinutos / 60).toFixed(2),
-                kilometrajeRecorrido: distanciaRecorrida,
-                kilometrajeInicio: kilometrajeInicio,
-                kilometrajeFinal: kilometrajeFinal,
-                odometroInicio: odometroInicio, // ←  Del hardware
-                odometroFin: odometroFin, // ←  Del hardware
-                odometroVirtual: odometrosPorUnidad[unidadId], // ← Mantener para referencia
-                velocidadPromedio: parseFloat(velocidadPromedio.toFixed(2)), // ←  Con fallback
-                velocidadMaxima: velocidadMaxima, // ←  Del forwarder
-                paradas: data.paradas?.length || 0,
-                ubicacionInicio: data.ubicacion_inicio || 'N/A',
-                ubicacionFin: data.ubicacion_fin || 'N/A',
-                coordenadas: coordenadas,
-                latitud: coordenadas[0]?.lat,
-                longitud: coordenadas[0]?.lng,
-                _raw: data,
-                _simulado: false,
-              }
-
-              //  ACTUALIZAR ODÓMETRO VIRTUAL (solo para próximos días si no hay hardware)
+              // Actualizar odómetro virtual
               if (odometroFin > 0) {
                 odometrosPorUnidad[unidadId] = odometroFin
               } else {
-                odometrosPorUnidad[unidadId] = kilometrajeFinal
+                odometrosPorUnidad[unidadId] += parseFloat(data.distancia_recorrida_km) || 0
               }
-
-              todosTrayectos.push(trayecto)
             } else {
               console.warn(`${fecha}: No hay datos en Firebase`)
             }
@@ -295,7 +323,7 @@ export function useReportesTrayectos() {
         }
       }
 
-      //  SI NO HAY TRAYECTOS REALES, GENERAR SIMULADOS
+      // Si no hay trayectos reales, generar simulados
       if (todosTrayectos.length === 0) {
         for (let i = 0; i < unidadesNombres.length; i++) {
           const trayectosSimulados = generarTrayectosSimulados(
@@ -308,7 +336,6 @@ export function useReportesTrayectos() {
         }
       }
 
-      //  PROCESAR TRAYECTOS (ya sea reales o simulados)
       const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
       const trayectosProcesados = await procesarTrayectosParaPDF(todosTrayectos)
 
@@ -317,7 +344,6 @@ export function useReportesTrayectos() {
       console.error('Error al obtener trayectos:', err)
       error.value = err.message
 
-      // En caso de error, generar datos simulados como fallback
       const trayectosFallback = []
       const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
 
@@ -342,7 +368,6 @@ export function useReportesTrayectos() {
 
   const enriquecerConDatosUnidades = async (trayectos) => {
     try {
-      // Si ya tienen nombre de unidad (simulados), no hace falta enriquecer
       if (trayectos.length > 0 && trayectos[0]._simulado) {
         return trayectos
       }
@@ -353,7 +378,6 @@ export function useReportesTrayectos() {
       const unidadesMap = {}
       unidadesSnapshot.docs.forEach((doc) => {
         const data = doc.data()
-
         unidadesMap[doc.id] = {
           nombre: data.Unidad || doc.id,
           placa: data.Placa || 'Sin placa',
@@ -362,7 +386,6 @@ export function useReportesTrayectos() {
 
       const trayectosEnriquecidos = trayectos.map((trayecto) => {
         const unidadInfo = unidadesMap[trayecto.idUnidad]
-
         return {
           ...trayecto,
           unidadNombre: unidadInfo?.nombre || trayecto.unidadNombre || trayecto.idUnidad,
@@ -372,7 +395,7 @@ export function useReportesTrayectos() {
 
       return trayectosEnriquecidos
     } catch (err) {
-      console.error(' Error al enriquecer unidades:', err)
+      console.error('Error al enriquecer unidades:', err)
       return trayectos
     }
   }
@@ -383,9 +406,13 @@ export function useReportesTrayectos() {
     obtenerTrayectos,
     enriquecerConDatosUnidades,
     generarTrayectosSimulados,
-    descargarCoordenadasDeStorage, //  Exportar por si se necesita
+    descargarCoordenadasDeStorage,
   }
 }
+
+// ============================================
+// FUNCIONES AUXILIARES
+// ============================================
 
 function generarRangoFechas(fechaInicio, fechaFin) {
   const fechas = []
@@ -404,4 +431,58 @@ function formatearFecha(fecha) {
   const mes = String(fecha.getMonth() + 1).padStart(2, '0')
   const dia = String(fecha.getDate()).padStart(2, '0')
   return `${año}-${mes}-${dia}`
+}
+
+/**
+ * 🆕 Divide un array de coordenadas en viajes separados usando el campo ignicion.
+ * Un viaje empieza con ignicion: true y termina con ignicion: false.
+ */
+function detectarViajesPorIgnicion(coordenadas) {
+  const viajes = []
+  let viajeActual = []
+  let enViaje = false // 🆕 solo empezar cuando hay ignicion: true
+
+  for (const coord of coordenadas) {
+    if (coord.ignicion === true) {
+      enViaje = true
+      viajeActual.push(coord)
+    } else if (coord.ignicion === false && enViaje) {
+      // Solo cerrar si estábamos en un viaje real
+      viajeActual.push(coord)
+      if (viajeActual.length > 1) {
+        viajes.push([...viajeActual])
+      }
+      viajeActual = []
+      enViaje = false
+    }
+    // Si ignicion: false y !enViaje → ignorar (dispositivo parado)
+  }
+
+  // Viaje sin cerrar (ignición aún ON)
+  if (viajeActual.length > 1) {
+    viajes.push(viajeActual)
+  }
+
+  if (viajes.length === 0 && coordenadas.length > 0) {
+    return [coordenadas]
+  }
+
+  return viajes
+}
+
+/**
+ * 🆕 Calcula distancia en km entre dos coordenadas usando Haversine
+ */
+function calcularDistanciaHaversine(coord1, coord2) {
+  const R = 6371
+  const dLat = ((coord2.lat - coord1.lat) * Math.PI) / 180
+  const dLng = ((coord2.lng - coord1.lng) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((coord1.lat * Math.PI) / 180) *
+      Math.cos((coord2.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
 }
