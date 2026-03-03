@@ -349,6 +349,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
+
 //import { Notify } from 'quasar'
 
 const geozonasCacheCompleto = ref([])
@@ -368,7 +369,8 @@ const poisDibujados = ref(new Set())
 const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
-const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
+const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear, recargarConfiguracion } =
+  useEventDetection()
 
 const marcadoresPOIs = ref([])
 //const marcadoresGeozonas = ref([])
@@ -2267,23 +2269,26 @@ onMounted(async () => {
 
   window.addEventListener('redibujarMapa', async () => {
     await nextTick()
-
-    // Limpiar todo (incluyendo cache)
     limpiarCapasDelMapa()
-
     await nextTick()
-
-    // Redibujar todo desde cero
     await dibujarTodosEnMapa()
 
-    resetear()
-    await inicializarSistemaDeteccion()
+    const [eventos, pois, geozonas] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas(),
+    ])
+    recargarConfiguracion(
+      eventos.filter((e) => e.activo),
+      pois,
+      geozonas,
+    )
+
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
-    // Actualizar marcadores de unidades ola
     await nextTick()
-    if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+    if (unidadesActivas.value?.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   })

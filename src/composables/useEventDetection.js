@@ -633,8 +633,41 @@ export function useEventDetection() {
     notificacionesDisparadas.value.clear()
   }
 
+  function recargarConfiguracion(eventos, pois, geozonas) {
+    eventosActivos.value = eventos.filter((e) => e.activo)
+
+    poisMapeados.value.clear()
+    pois.forEach((poi) => poisMapeados.value.set(poi.id, poi))
+
+    geozonasMapeadas.value.clear()
+    geozonas.forEach((geozona) => geozonasMapeadas.value.set(geozona.id, geozona))
+
+    ubicacionesTrackeadas.value.clear()
+    eventosActivos.value.forEach((evento) => {
+      if (!evento.condiciones) return
+      evento.condiciones.forEach((condicion) => {
+        const key = `${condicion.tipo}-${condicion.ubicacionId}`
+        if (!ubicacionesTrackeadas.value.has(key)) {
+          ubicacionesTrackeadas.value.set(key, {
+            tipo: condicion.tipo,
+            ubicacionId: condicion.ubicacionId,
+            tieneEventoEntrada: false,
+            tieneEventoSalida: false,
+            eventos: [],
+          })
+        }
+        const tracking = ubicacionesTrackeadas.value.get(key)
+        if (condicion.activacion === 'Entrada') tracking.tieneEventoEntrada = true
+        if (condicion.activacion === 'Salida') tracking.tieneEventoSalida = true
+        if (!tracking.eventos.includes(evento.id)) tracking.eventos.push(evento.id)
+      })
+    })
+    // NO toca: estadoUbicaciones, eventosEnCurso, salidasEnCurso, notificacionesDisparadas
+  }
+
   return {
     inicializar,
+    recargarConfiguracion,
     evaluarEventosParaUnidadesSimulacion,
     resetear,
     eventosActivos,
