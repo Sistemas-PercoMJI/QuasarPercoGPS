@@ -440,7 +440,7 @@ watch(
     const nuevoHash = nuevasUnidades
       .map(
         (u) =>
-          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}`,
+          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}-${u.ignicion}`,
       )
       .join('|')
     if (nuevoHash !== ultimoHashUnidades) {

@@ -709,15 +709,35 @@ export function useMapboxGL() {
             if (popup) {
               const dirCambio = ultimaPos?.direccionTexto !== unidad.direccionTexto
               const ignicionCambio = ultimaPos?.ignicion !== unidad.ignicion
-              if (popup.isOpen() || dirCambio || ignicionCambio) {
-                console.log(
-                  '/*/*/*/*/*/*/*/*/*/*/*/Actualizando popup de unidad:',
-                  unidadId,
-                  '| dirCambio:',
-                  dirCambio,
-                  '| ignicionCambio:',
-                  ignicionCambio,
-                )
+              // DESPUÉS (sin cerrar el popup)
+              if (dirCambio || ignicionCambio) {
+                // Actualizar DOM directamente sin tocar el popup
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  // Actualizar dirección
+                  if (dirCambio) {
+                    const dirEl = popupEl.querySelector('.unidad-direccion')
+                    if (dirEl) dirEl.textContent = unidad.direccionTexto || 'Obteniendo...'
+                  }
+                  // Actualizar ignición
+                  if (ignicionCambio) {
+                    //const ignEl = popupEl.querySelector('.popup-section .value[style*="color"]')
+                    // Buscar la sección de ignición específicamente
+                    const sections = popupEl.querySelectorAll('.popup-section')
+                    sections.forEach((section) => {
+                      const label = section.querySelector('.label')
+                      if (label?.textContent?.includes('Ignición')) {
+                        const val = section.querySelector('.value')
+                        if (val) {
+                          val.textContent = unidad.ignicion ? 'Encendida' : 'Apagada'
+                          val.style.color = unidad.ignicion ? '#4CAF50' : '#F44336'
+                        }
+                      }
+                    })
+                  }
+                }
+              } else if (popup.isOpen()) {
+                // Solo si está abierto y hubo otro cambio menor, actualizar completo pero preservar estado
                 const popupContent = popup.getElement()
                 const oldContainer = popupContent?.querySelector(`#popup-unidad-${unidadId}`)
                 const wasExpanded = oldContainer?.classList.contains('expanded') || false
