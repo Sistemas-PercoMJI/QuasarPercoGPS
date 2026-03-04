@@ -221,6 +221,7 @@ export function useEventDetection() {
             lng: unidad.lng,
             timestamp: new Date().toISOString(),
             ignicion: unidad.ignicion ?? false,
+            velocidad: unidad.velocidad || 0,
           },
         })
 
@@ -369,6 +370,7 @@ export function useEventDetection() {
               lng: unidad.lng,
               timestamp: new Date().toISOString(),
               ignicion: unidad.ignicion ?? false,
+              velocidad: unidad.velocidad || 0,
             },
           })
 
