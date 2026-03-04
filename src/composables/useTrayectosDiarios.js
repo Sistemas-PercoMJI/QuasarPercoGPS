@@ -78,6 +78,8 @@ export function useTrayectosDiarios() {
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
           timestamp: coord.timestamp || coord.time,
+          ignicion: coord.ignicion,
+          velocidad: coord.velocidad,
         }))
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
@@ -168,7 +170,7 @@ export function useTrayectosDiarios() {
 
     if (viajeActual.length >= 2) viajes.push(viajeActual)
 
-    return viajes
+    return viajes.filter((viaje) => viaje.some((p) => p.ignicion === true || p.ignicion === 'true'))
   }
 
   /**
@@ -394,10 +396,7 @@ export function useTrayectosDiarios() {
   }
 
   const formatearFechaParaFirestore = (fecha) => {
-    const año = fecha.getFullYear()
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
-    const dia = String(fecha.getDate()).padStart(2, '0')
-    return `${año}-${mes}-${dia}`
+    return fecha.toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
   }
 
   const formatearHora = (timestamp) => {
@@ -407,6 +406,7 @@ export function useTrayectosDiarios() {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZone: 'America/Tijuana',
     })
   }
 
