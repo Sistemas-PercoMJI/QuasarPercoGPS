@@ -35,7 +35,13 @@ export function useTrayectosDiarios() {
       (new Date(coord2.timestamp).getTime() - new Date(coord1.timestamp).getTime()) / 3600000
 
     if (tiempoHoras <= 0) return 0
-    return distanciaKm / tiempoHoras // km/h
+
+    const velocidad = distanciaKm / tiempoHoras
+
+    // Filtrar velocidades imposibles para vehiculos terrestres
+    if (velocidad > 200) return 0
+
+    return velocidad
   }
 
   /**
@@ -112,40 +118,55 @@ export function useTrayectosDiarios() {
   const agruparEnViajes = (coordenadas) => {
     if (!coordenadas || coordenadas.length === 0) return []
 
-    // Si ningun punto tiene ignicion false, usar gaps de tiempo
     const tieneAlgunFalse = coordenadas.some((c) => c.ignicion === false || c.ignicion === 'false')
 
-    // Gap minimo para considerar que son viajes diferentes
-    // Si nunca hay false (modo sleep), usar 5 minutos
-    // Si hay algun false, mantener 2 minutos
-    const GAP_MS = tieneAlgunFalse ? 2 * 60 * 1000 : 5 * 60 * 1000
-
     const viajes = []
-    let viajeActual = [coordenadas[0]]
+    let viajeActual = []
 
-    for (let i = 1; i < coordenadas.length; i++) {
-      const puntoActual = coordenadas[i]
-      const puntoAnterior = coordenadas[i - 1]
+    for (let i = 0; i < coordenadas.length; i++) {
+      const punto = coordenadas[i]
+      const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
-      const tiempoActual = new Date(puntoActual.timestamp).getTime()
-      const tiempoAnterior = new Date(puntoAnterior.timestamp).getTime()
-      const gap = tiempoActual - tiempoAnterior
-
-      if (gap >= GAP_MS) {
-        // Gap grande = fin del viaje anterior, inicio de uno nuevo
-        if (viajeActual.length >= 2) {
-          viajes.push(viajeActual)
+      if (tieneAlgunFalse) {
+        // Metodo preciso: separar por ignicion
+        if (ignicion) {
+          // Ver si hay un gap grande con el punto anterior (aunque ignicion sea true)
+          if (viajeActual.length > 0) {
+            const ultimo = viajeActual[viajeActual.length - 1]
+            const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
+            if (gap >= 5 * 60 * 1000) {
+              // 5 min de gap = nuevo viaje
+              if (viajeActual.length >= 2) viajes.push(viajeActual)
+              viajeActual = []
+            }
+          }
+          viajeActual.push(punto)
+        } else {
+          // ignicion false: agregar el punto y cerrar viaje
+          viajeActual.push(punto)
+          // Solo cerrar si el siguiente punto tiene ignicion true o no existe
+          const siguiente = coordenadas[i + 1]
+          const siguienteIgnicion = siguiente?.ignicion === true || siguiente?.ignicion === 'true'
+          if (!siguiente || siguienteIgnicion) {
+            if (viajeActual.length >= 2) viajes.push(viajeActual)
+            viajeActual = []
+          }
         }
-        viajeActual = [puntoActual]
       } else {
-        viajeActual.push(puntoActual)
+        // Fallback: solo gaps de tiempo
+        if (viajeActual.length > 0) {
+          const ultimo = viajeActual[viajeActual.length - 1]
+          const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
+          if (gap >= 2 * 60 * 1000) {
+            if (viajeActual.length >= 2) viajes.push(viajeActual)
+            viajeActual = []
+          }
+        }
+        viajeActual.push(punto)
       }
     }
 
-    // Cerrar el ultimo viaje
-    if (viajeActual.length >= 2) {
-      viajes.push(viajeActual)
-    }
+    if (viajeActual.length >= 2) viajes.push(viajeActual)
 
     return viajes
   }
