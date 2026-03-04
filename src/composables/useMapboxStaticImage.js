@@ -20,14 +20,14 @@ const MAP_RETINA = '@2x' // Alta resolución
  * ============================================
  */
 const COLORES_TRAYECTOS = [
-  'f43', // Rojo (era f44336)
-  '21f', // Azul (era 2196F3)
-  '4c5', // Verde (era 4CAF50)
-  'f90', // Naranja (era FF9800)
-  '92b', // Púrpura (era 9C27B0)
-  'fe3', // Amarillo (era FFEB3B)
-  '0bd', // Cyan (era 00BCD4)
-  'f57', // Naranja profundo (era FF5722)
+  'e74c3c', // Rojo vivo
+  '2980b9', // Azul fuerte
+  '27ae60', // Verde fuerte
+  'f39c12', // Amarillo oscuro
+  '8e44ad', // Púrpura
+  '16a085', // Verde azulado
+  'd35400', // Naranja quemado
+  '2c3e50', // Azul oscuro
 ]
 /**
  * ============================================
@@ -162,66 +162,33 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
  * Prepara los datos de trayectos para el mapa
  */
 function prepararDatosTrayectos(registros) {
-  const trayectosPorVehiculo = {}
-
-  registros.forEach((registro) => {
-    const vehiculoId = registro.vehiculoId || registro.unidadId || registro.idUnidad
-    const vehiculoNombre =
-      registro.vehiculo || registro.unidad || registro.unidadNombre || 'Sin nombre'
-
-    if (!trayectosPorVehiculo[vehiculoId]) {
-      trayectosPorVehiculo[vehiculoId] = {
-        vehiculoId,
-        vehiculoNombre,
-        placa: registro.placa || '',
-        coordenadas: [],
-      }
-    }
-
-    // Si el registro tiene array de coordenadas, usarlo
-    if (
-      registro.coordenadas &&
-      Array.isArray(registro.coordenadas) &&
-      registro.coordenadas.length > 0
-    ) {
-      trayectosPorVehiculo[vehiculoId].coordenadas.push(...registro.coordenadas)
-    }
-    // Fallback: si solo tiene lat/lng individuales
-    else if (registro.latitud && registro.longitud) {
-      trayectosPorVehiculo[vehiculoId].coordenadas.push({
-        lat: parseFloat(registro.latitud),
-        lng: parseFloat(registro.longitud),
-        timestamp: registro.fecha || registro.timestamp,
-      })
-    }
-  })
-
-  // Convertir a array y ordenar coordenadas
-  const trayectos = Object.values(trayectosPorVehiculo)
-    .filter((t) => t.coordenadas.length > 0)
-    .map((trayecto) => {
-      // Ordenar por timestamp
-      const coordenadasOrdenadas = trayecto.coordenadas.sort((a, b) => {
+  const trayectos = registros
+    .filter((registro) => registro.coordenadas && registro.coordenadas.length > 0)
+    .map((registro, index) => {
+      const coordenadasOrdenadas = [...registro.coordenadas].sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
         return timeA - timeB
       })
 
-      //  SIMPLIFICAR con Douglas-Peucker (máximo 80 puntos por trayecto)
-      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 50)
+      const maxPuntosPorViaje = registros.length > 4 ? 20 : 35
+
+      const coordenadasSimplificadas = simplificarCoordenadasInteligente(
+        coordenadasOrdenadas,
+        maxPuntosPorViaje,
+      )
 
       return {
-        ...trayecto,
+        vehiculoId: registro.idUnidad || registro.vehiculoId,
+        vehiculoNombre: `${registro.unidadNombre || 'Sin nombre'} - Viaje ${index + 1}`,
+        placa: registro.Placa || registro.placa || '',
         coordenadas: coordenadasSimplificadas,
       }
     })
 
-  /*trayectos.forEach((t, i) => {
-    console.log(`   ${i + 1}. ${t.vehiculoNombre}: ${t.coordenadas.length} puntos`)
-  })*/
-
   return trayectos
 }
+
 function calcularBoundingBox(trayectos) {
   let minLat = Infinity
   let maxLat = -Infinity
@@ -241,6 +208,7 @@ function calcularBoundingBox(trayectos) {
 
   return { minLat, maxLat, minLng, maxLng }
 }
+
 /**
  * Calcula el bounding box de todos los trayectos
  */
@@ -287,7 +255,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
       type: 'Feature',
       properties: {
         stroke: `#${color}`,
-        'stroke-width': 2,
+        'stroke-width': 3,
         'stroke-opacity': 1,
       },
       geometry: {
@@ -303,10 +271,13 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
       const inicio = coordenadas[0]
-      overlays.push(`pin-s-circle+4CAF50(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`)
+      const tamano = index === 0 ? 'pin-l' : 'pin-s'
+      overlays.push(
+        `${tamano}-${index + 1}+${color}(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`,
+      )
     }
 
-    // 3. Pin de fin (color del trayecto)
+    // Pin de fin (cuadrado del mismo color)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
       overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
