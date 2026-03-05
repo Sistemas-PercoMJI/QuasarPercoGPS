@@ -122,6 +122,7 @@ export function useRutasStorage() {
           lng: coord.lng || 0,
           timestamp: coord.timestamp || new Date().toISOString(),
           ignicion: coord.ignicion ?? false,
+          velocidad: coord.velocidad ?? 0, // ← agregar esto
         }))
       }
       // CASO 2: Formato VIEJO (batching)
