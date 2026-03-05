@@ -633,8 +633,7 @@ export function useMapboxGL() {
         Math.abs(ultimaPos.lng - lng) > 0.00005 ||
         ultimaPos.estado !== unidad.estado ||
         ultimaPos.direccionTexto !== unidad.direccionTexto ||
-        ultimaPos.ignicion !== unidad.ignicion ||
-        ultimaPos.velocidad !== unidad.velocidad
+        ultimaPos.ignicion !== unidad.ignicion
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
@@ -710,9 +709,8 @@ export function useMapboxGL() {
             if (popup) {
               const dirCambio = ultimaPos?.direccionTexto !== unidad.direccionTexto
               const ignicionCambio = ultimaPos?.ignicion !== unidad.ignicion
-              const velocidadCambio = ultimaPos?.velocidad !== unidad.velocidad
               // DESPUÉS (sin cerrar el popup)
-              if (dirCambio || ignicionCambio || velocidadCambio) {
+              if (dirCambio || ignicionCambio) {
                 // Actualizar DOM directamente sin tocar el popup
                 const popupEl = popup.getElement()
                 if (popupEl) {
@@ -734,16 +732,6 @@ export function useMapboxGL() {
                           val.textContent = unidad.ignicion ? 'Encendida' : 'Apagada'
                           val.style.color = unidad.ignicion ? '#4CAF50' : '#F44336'
                         }
-                      }
-                    })
-                  }
-                  if (velocidadCambio) {
-                    const sections = popupEl.querySelectorAll('.popup-section')
-                    sections.forEach((section) => {
-                      const label = section.querySelector('.label')
-                      if (label?.textContent?.includes('Velocidad')) {
-                        const val = section.querySelector('.value')
-                        if (val) val.textContent = `${unidad.velocidad || 0} km/h`
                       }
                     })
                   }
@@ -772,7 +760,6 @@ export function useMapboxGL() {
               direccionTexto: unidad.direccionTexto,
               timestamp: unidad.timestamp,
               ignicion: unidad.ignicion,
-              velocidad: unidad.velocidad,
             })
           }
         }
@@ -821,7 +808,6 @@ export function useMapboxGL() {
           direccionTexto: unidad.direccionTexto,
           timestamp: unidad.timestamp,
           ignicion: unidad.ignicion,
-          velocidad: unidad.velocidad,
         })
       }
     })
