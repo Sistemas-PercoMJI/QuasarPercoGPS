@@ -1877,12 +1877,14 @@ export function useReportePDF() {
 
           // Sumar duraciones (aquí necesitarías una función helper para sumar tiempos HH:MM:SS)
           // Por simplicidad, mostrar el del primer registro
-          if (registrosDelDia[0]) {
-            duracionTotalDia = registrosDelDia[0].duracionTotal || '00:00:00'
-            duracionDentroDia = registrosDelDia[0].duracionDentroHorario || '00:00:00'
-            duracionFueraDia = registrosDelDia[0].duracionFueraHorario || '00:00:00'
-          }
-
+          registrosDelDia.forEach((r) => {
+            duracionTotalDia = sumarTiempos(duracionTotalDia, r.duracionTotal || '00:00:00')
+            duracionDentroDia = sumarTiempos(
+              duracionDentroDia,
+              r.duracionDentroHorario || '00:00:00',
+            )
+            duracionFueraDia = sumarTiempos(duracionFueraDia, r.duracionFueraHorario || '00:00:00')
+          })
           const tieneFuera = duracionFueraDia !== '00:00:00'
 
           resumenPorDia.push([
@@ -1928,6 +1930,114 @@ export function useReportePDF() {
           })
 
           yPos = doc.lastAutoTable.finalY + 10
+        }
+      } else if (config.tipoDetalle === 'viajes_detallados') {
+        // Todos los viajes de todos los días en una sola tabla
+        const todosLosViajes = []
+
+        registros.forEach((registro) => {
+          if (registro.detallesViajes && registro.detallesViajes.length > 0) {
+            registro.detallesViajes.forEach((viaje) => {
+              const duracionDentro = viaje.duracionDentro || '00:00:00'
+              const duracionFuera = viaje.duracionFuera || '00:00:00'
+
+              const [hF, mF, sF] = duracionFuera.split(':').map(Number)
+              const tieneFuera = hF > 0 || mF > 0 || sF > 0
+
+              const fila = columnasVisiblesViajes.map((prop) => {
+                let valor = 'N/A'
+
+                if (prop === 'fecha' || prop === 'conductorNombre') {
+                  valor = registro[prop] || 'N/A'
+                } else if (prop === 'horaInicioTrabajo') {
+                  valor = viaje.horaInicio || 'N/A'
+                } else if (prop === 'horaFinTrabajo') {
+                  valor = viaje.horaFin || 'N/A'
+                } else if (prop === 'duracionDentroHorario') {
+                  valor = duracionDentro
+                } else if (prop === 'duracionFueraHorario') {
+                  valor = duracionFuera
+                } else if (prop === 'duracionTotal') {
+                  valor = viaje.duracionTotal || 'N/A'
+                } else {
+                  valor = viaje[prop] || registro[prop] || 'N/A'
+                }
+
+                if (prop === 'duracionFueraHorario' && config.remarcarHorasExtra && tieneFuera) {
+                  return {
+                    content: valor,
+                    styles: {
+                      fillColor: [255, 235, 238],
+                      textColor: [211, 47, 47],
+                      fontStyle: 'bold',
+                    },
+                  }
+                }
+
+                return { content: valor, styles: {} }
+              })
+
+              todosLosViajes.push(fila)
+            })
+          }
+        })
+
+        if (todosLosViajes.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [headersViajes],
+            body: todosLosViajes,
+            theme: 'grid',
+            headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
+            styles: { fontSize: 7, cellPadding: 2 },
+            margin: { left: 20, right: 20 },
+          })
+          yPos = doc.lastAutoTable.finalY + 10
+
+          const totalViajesEntidad = registros.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
+          const viajesDentro = registros.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0)
+          const viajesFuera = registros.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0)
+
+          doc.setFontSize(9)
+          doc.setFont(undefined, 'bold')
+          doc.setTextColor(80, 80, 80)
+          doc.text(
+            `Total de viajes: ${totalViajesEntidad} | Viajes dentro del horario: ${viajesDentro} | Viajes fuera del horario: ${viajesFuera}`,
+            20,
+            yPos,
+          )
+          yPos += 10
+        }
+
+        // Mapa (si está activo)
+        if (config.mostrarMapaZona) {
+          try {
+            const trayectosParaMapa = prepararDatosTrayectos(registros)
+            if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+              doc.addPage()
+              yPos = 20
+              doc.setFontSize(12)
+              doc.setFont(undefined, 'bold')
+              doc.setTextColor(0, 0, 0)
+              doc.text(`Mapa - ${nombreEntidad}`, 20, yPos)
+              yPos += 10
+
+              const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                width: 1200,
+                height: 800,
+                padding: 50,
+                mostrarPins: true,
+              })
+              const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+              const pageWidth = doc.internal.pageSize.getWidth()
+              const availableWidth = pageWidth - 28
+              const mapHeight = availableWidth / 1.5
+              doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
+              yPos += mapHeight + 10
+            }
+          } catch (error) {
+            console.error('Error generando mapa:', error)
+          }
         }
       }
     }
