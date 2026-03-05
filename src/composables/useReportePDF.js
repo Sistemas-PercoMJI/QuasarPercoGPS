@@ -1857,7 +1857,49 @@ export function useReportePDF() {
           registrosPorFecha[fecha].push(registro)
         })
 
-        // Preparar resumen por día
+        const columnasDiasResumidos = {
+          Fecha: (d) => ({ content: d.fechaFormateada, styles: {} }),
+          Viajes: (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+          'Total de viajes': (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+          'Viajes dentro del horario': (d) => ({ content: d.viajesDentro.toString(), styles: {} }),
+          'Viajes fuera del horario': (d) => ({ content: d.viajesFuera.toString(), styles: {} }),
+          Conductor: (d) => ({ content: d.conductor, styles: {} }),
+          'Hora de inicio de trabajo': (d) => ({ content: d.horaInicio, styles: {} }),
+          'Hora de fin de trabajo': (d) => ({ content: d.horaFin, styles: {} }),
+          'Ubicación de inicio de trabajo': (d) => ({ content: d.ubicacionInicio, styles: {} }),
+          'Ubicación de fin de trabajo': (d) => ({ content: d.ubicacionFin, styles: {} }),
+          'Duración total de trabajo': (d) => ({ content: d.duracionTotalDia, styles: {} }),
+          'Duración dentro del horario comercial': (d) => ({
+            content: d.duracionDentroDia,
+            styles: {},
+          }),
+          'Duración fuera del horario comercial': (d) => {
+            const tieneFuera = d.duracionFueraDia !== '00:00:00'
+            return {
+              content: d.duracionFueraDia,
+              styles:
+                d.remarcar && tieneFuera
+                  ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
+                  : {},
+            }
+          },
+        }
+
+        // Filtrar solo las columnas seleccionadas que existen en dias_resumidos
+        const columnasFiltradas = config.columnasSeleccionadas.filter(
+          (col) => columnasDiasResumidos[col],
+        )
+        const headersDiasResumidos =
+          columnasFiltradas.length > 0
+            ? columnasFiltradas
+            : [
+                'Fecha',
+                'Viajes',
+                'Duración total de trabajo',
+                'Duración dentro del horario comercial',
+                'Duración fuera del horario comercial',
+              ]
+
         const resumenPorDia = []
 
         Object.entries(registrosPorFecha).forEach(([fecha, registrosDelDia]) => {
@@ -1870,13 +1912,10 @@ export function useReportePDF() {
 
           const viajesDelDia = registrosDelDia.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
 
-          // Calcular duraciones totales del día
           let duracionTotalDia = '00:00:00'
           let duracionDentroDia = '00:00:00'
           let duracionFueraDia = '00:00:00'
 
-          // Sumar duraciones (aquí necesitarías una función helper para sumar tiempos HH:MM:SS)
-          // Por simplicidad, mostrar el del primer registro
           registrosDelDia.forEach((r) => {
             duracionTotalDia = sumarTiempos(duracionTotalDia, r.duracionTotal || '00:00:00')
             duracionDentroDia = sumarTiempos(
@@ -1885,25 +1924,29 @@ export function useReportePDF() {
             )
             duracionFueraDia = sumarTiempos(duracionFueraDia, r.duracionFueraHorario || '00:00:00')
           })
-          const tieneFuera = duracionFueraDia !== '00:00:00'
 
-          resumenPorDia.push([
-            { content: fechaFormateada, styles: {} },
-            { content: viajesDelDia.toString(), styles: {} },
-            { content: duracionTotalDia, styles: {} },
-            { content: duracionDentroDia, styles: {} },
-            {
-              content: duracionFueraDia,
-              styles:
-                config.remarcarHorasExtra && tieneFuera
-                  ? {
-                      fillColor: [255, 235, 238],
-                      textColor: [211, 47, 47],
-                      fontStyle: 'bold',
-                    }
-                  : {},
-            },
-          ])
+          const datos = {
+            fechaFormateada,
+            viajesDelDia,
+            viajesDentro: registrosDelDia.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0),
+            viajesFuera: registrosDelDia.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0),
+            conductor:
+              [...new Set(registrosDelDia.map((r) => r.conductorNombre).filter(Boolean))].join(
+                ', ',
+              ) || 'N/A',
+            horaInicio: registrosDelDia[0]?.horaInicioTrabajo || 'N/A',
+            horaFin: registrosDelDia[registrosDelDia.length - 1]?.horaFinTrabajo || 'N/A',
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || 'N/A',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || 'N/A',
+            duracionTotalDia,
+            duracionDentroDia,
+            duracionFueraDia,
+            remarcar: config.remarcarHorasExtra,
+          }
+
+          const fila = headersDiasResumidos.map((col) => columnasDiasResumidos[col](datos))
+
+          resumenPorDia.push(fila)
         })
 
         if (resumenPorDia.length > 0) {
@@ -1914,22 +1957,50 @@ export function useReportePDF() {
 
           autoTable(doc, {
             startY: yPos,
-            head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
+            head: [headersDiasResumidos],
             body: resumenPorDia,
             theme: 'grid',
             headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
             styles: { fontSize: 8, cellPadding: 3 },
-            columnStyles: {
-              0: { cellWidth: 80 },
-              1: { cellWidth: 30 }, // Viajes
-              2: { cellWidth: 40 }, // Duración Total
-              3: { cellWidth: 40 }, // Dentro
-              4: { cellWidth: 40 }, // Fuera
-            },
             margin: { left: 20, right: 20 },
           })
 
           yPos = doc.lastAutoTable.finalY + 10
+        }
+        // Mapa del día (si está activo)
+        if (config.mostrarMapaZona) {
+          // eslint-disable-next-line no-unused-vars
+          for (const [fechaDia, registrosDelDia] of Object.entries(registrosPorFecha)) {
+            console.log('🗺️ registrosDelDia:', registrosDelDia, Array.isArray(registrosDelDia))
+            try {
+              console.log('🗺️ registrosPorFecha:', JSON.stringify(Object.keys(registrosPorFecha)))
+              const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
+              if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+                doc.addPage()
+                yPos = 20
+                doc.setFontSize(12)
+                doc.setFont(undefined, 'bold')
+                doc.setTextColor(0, 0, 0)
+                doc.text(`Mapa - ${nombreEntidad}`, 20, yPos)
+                yPos += 10
+
+                const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                  width: 1200,
+                  height: 800,
+                  padding: 50,
+                  mostrarPins: true,
+                })
+                const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+                const pageWidth = doc.internal.pageSize.getWidth()
+                const availableWidth = pageWidth - 28
+                const mapHeight = availableWidth / 1.5
+                doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
+                yPos += mapHeight + 10
+              }
+            } catch (error) {
+              console.error('Error generando mapa:', error)
+            }
+          }
         }
       } else if (config.tipoDetalle === 'viajes_detallados') {
         // Todos los viajes de todos los días en una sola tabla
