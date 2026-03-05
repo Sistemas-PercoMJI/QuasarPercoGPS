@@ -1688,6 +1688,52 @@ export function useReportePDF() {
           doc.text(`  Viajes del día: ${viajesDelDia}`, 25, yPos)
           yPos += 8
 
+          // Mini resumen del día
+          const resumenMiniDia = []
+          let durTotalDia = '00:00:00'
+          let durDentroDia = '00:00:00'
+          let durFueraDia = '00:00:00'
+
+          registrosDelDia.forEach((r) => {
+            durTotalDia = sumarTiempos(durTotalDia, r.duracionTotal || '00:00:00')
+            durDentroDia = sumarTiempos(durDentroDia, r.duracionDentroHorario || '00:00:00')
+            durFueraDia = sumarTiempos(durFueraDia, r.duracionFueraHorario || '00:00:00')
+          })
+
+          const tieneFueraDia = durFueraDia !== '00:00:00'
+
+          resumenMiniDia.push([
+            { content: fechaTitulo, styles: {} },
+            { content: viajesDelDia.toString(), styles: {} },
+            { content: durTotalDia, styles: {} },
+            { content: durDentroDia, styles: {} },
+            {
+              content: durFueraDia,
+              styles:
+                config.remarcarHorasExtra && tieneFueraDia
+                  ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
+                  : {},
+            },
+          ])
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
+            body: resumenMiniDia,
+            theme: 'grid',
+            headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
+            styles: { fontSize: 7, cellPadding: 2 },
+            columnStyles: {
+              0: { cellWidth: 80 },
+              1: { cellWidth: 20 },
+              2: { cellWidth: 35 },
+              3: { cellWidth: 35 },
+              4: { cellWidth: 35 },
+            },
+            margin: { left: 25, right: 20 },
+          })
+
+          yPos = doc.lastAutoTable.finalY + 8
           // Mapa del día (si está activo)
           if (config.mostrarMapaZona && registrosDelDia.length > 0) {
             try {
