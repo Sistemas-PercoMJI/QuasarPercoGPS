@@ -2763,8 +2763,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .address-text {
   font-size: 13px;
-  color: #4b5563;
+  color: #374151;
+  font-weight: 500;
   flex: 1;
+  line-height: 1.4;
 }
 
 .mapboxgl-popup-content {
@@ -3171,10 +3173,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Estilos para el header subtitle con icono */
 .header-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: #374151;
+  font-weight: 500;
   margin-top: 2px;
   display: flex;
-  align-items: flex-start; /* cambia de center a flex-start para que el icono no jale */
   align-items: center;
   line-height: 1.4;
   white-space: normal;
