@@ -1640,6 +1640,48 @@ export function useReportePDF() {
       doc.line(20, yPos, doc.internal.pageSize.getWidth() - 20, yPos)
       yPos += 8
 
+      const columnasDiasResumidos = {
+        Fecha: (d) => ({ content: d.fechaFormateada, styles: {} }),
+        Viajes: (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+        'Total de viajes': (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+        'Viajes dentro del horario': (d) => ({ content: d.viajesDentro.toString(), styles: {} }),
+        'Viajes fuera del horario': (d) => ({ content: d.viajesFuera.toString(), styles: {} }),
+        Conductor: (d) => ({ content: d.conductor, styles: {} }),
+        'Hora de inicio de trabajo': (d) => ({ content: d.horaInicio, styles: {} }),
+        'Hora de fin de trabajo': (d) => ({ content: d.horaFin, styles: {} }),
+        'Ubicación de inicio de trabajo': (d) => ({ content: d.ubicacionInicio, styles: {} }),
+        'Ubicación de fin de trabajo': (d) => ({ content: d.ubicacionFin, styles: {} }),
+        'Duración total de trabajo': (d) => ({ content: d.duracionTotalDia, styles: {} }),
+        'Duración dentro del horario comercial': (d) => ({
+          content: d.duracionDentroDia,
+          styles: {},
+        }),
+        'Duración fuera del horario comercial': (d) => {
+          const tieneFuera = d.duracionFueraDia !== '00:00:00'
+          return {
+            content: d.duracionFueraDia,
+            styles:
+              d.remarcar && tieneFuera
+                ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
+                : {},
+          }
+        },
+      }
+
+      // Filtrar solo las columnas seleccionadas que existen en dias_resumidos
+      const columnasFiltradas = config.columnasSeleccionadas.filter(
+        (col) => columnasDiasResumidos[col],
+      )
+      const headersDiasResumidos =
+        columnasFiltradas.length > 0
+          ? columnasFiltradas
+          : [
+              'Fecha',
+              'Viajes',
+              'Duración total de trabajo',
+              'Duración dentro del horario comercial',
+              'Duración fuera del horario comercial',
+            ]
       // ========================================
       // DECIDIR QUÉ MOSTRAR SEGÚN tipoDetalle
       // ========================================
@@ -1700,37 +1742,83 @@ export function useReportePDF() {
             durFueraDia = sumarTiempos(durFueraDia, r.duracionFueraHorario || '00:00:00')
           })
 
-          const tieneFueraDia = durFueraDia !== '00:00:00'
+          // const tieneFueraDia = durFueraDia !== '00:00:00'
 
-          resumenMiniDia.push([
-            { content: fechaTitulo, styles: {} },
-            { content: viajesDelDia.toString(), styles: {} },
-            { content: durTotalDia, styles: {} },
-            { content: durDentroDia, styles: {} },
-            {
-              content: durFueraDia,
-              styles:
-                config.remarcarHorasExtra && tieneFueraDia
-                  ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
-                  : {},
-            },
-          ])
+          const datos = {
+            fechaFormateada: fecha,
+            viajesDelDia,
+            viajesDentro: registrosDelDia.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0),
+            viajesFuera: registrosDelDia.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0),
+            conductor:
+              [...new Set(registrosDelDia.map((r) => r.conductorNombre).filter(Boolean))].join(
+                ', ',
+              ) || 'N/A',
+            horaInicio: registrosDelDia[0]?.horaInicioTrabajo || 'N/A',
+            horaFin: registrosDelDia[registrosDelDia.length - 1]?.horaFinTrabajo || 'N/A',
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || 'N/A',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || 'N/A',
+            duracionTotalDia: durTotalDia,
+            duracionDentroDia: durDentroDia,
+            duracionFueraDia: durFueraDia,
+            remarcar: config.remarcarHorasExtra,
+          }
+
+          resumenMiniDia.push(headersDiasResumidos.map((col) => columnasDiasResumidos[col](datos)))
+
+          const pageWMini = doc.internal.pageSize.getWidth()
+          const availableWMini = pageWMini - 34
+          const totalColsMini = headersDiasResumidos.length
+          const colStylesMini = {}
+
+          const anchosMini = {
+            Fecha: 1.2,
+            'Hora de inicio de trabajo': 1.2,
+            'Hora de fin de trabajo': 1.2,
+            'Total de viajes': 0.6,
+            'Viajes dentro del horario': 0.6,
+            'Viajes fuera del horario': 0.6,
+            Conductor: 1.2,
+            'Ubicación de inicio de trabajo': 1.5,
+            'Ubicación de fin de trabajo': 1.5,
+            'Duración total de trabajo': 1.0,
+            'Duración dentro del horario comercial': 1.0,
+            'Duración fuera del horario comercial': 1.0,
+          }
+
+          const totalPesosMini = headersDiasResumidos.reduce(
+            (sum, col) => sum + (anchosMini[col] || 1),
+            0,
+          )
+          headersDiasResumidos.forEach((col, i) => {
+            colStylesMini[i] = {
+              cellWidth: ((anchosMini[col] || 1) / totalPesosMini) * availableWMini,
+              overflow: 'linebreak',
+              valign: 'middle',
+            }
+          })
 
           autoTable(doc, {
             startY: yPos,
-            head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
+            head: [headersDiasResumidos],
             body: resumenMiniDia,
             theme: 'grid',
-            headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
-            styles: { fontSize: 7, cellPadding: 2 },
-            columnStyles: {
-              0: { cellWidth: 80 },
-              1: { cellWidth: 20 },
-              2: { cellWidth: 35 },
-              3: { cellWidth: 35 },
-              4: { cellWidth: 35 },
+            headStyles: {
+              fillColor: [145, 198, 188],
+              fontStyle: 'bold',
+              fontSize: 7, // ← subir de 6 a 7
+              cellPadding: 1,
+              valign: 'middle',
+              halign: 'center',
+              minCellHeight: totalColsMini > 8 ? 10 : 8,
             },
-            margin: { left: 25, right: 20 },
+            styles: {
+              fontSize: 7,
+              cellPadding: 2,
+              overflow: 'linebreak',
+            },
+            columnStyles: colStylesMini,
+            margin: { left: 20, right: 14 },
+            tableWidth: 'auto',
           })
 
           yPos = doc.lastAutoTable.finalY + 8
@@ -1740,6 +1828,8 @@ export function useReportePDF() {
               const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
 
               if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+                doc.addPage() // ← AGREGAR ESTO
+                yPos = 20 // ← Y ESTO
                 const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
                   width: 1200,
                   height: 800,
@@ -1903,49 +1993,6 @@ export function useReportePDF() {
           registrosPorFecha[fecha].push(registro)
         })
 
-        const columnasDiasResumidos = {
-          Fecha: (d) => ({ content: d.fechaFormateada, styles: {} }),
-          Viajes: (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
-          'Total de viajes': (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
-          'Viajes dentro del horario': (d) => ({ content: d.viajesDentro.toString(), styles: {} }),
-          'Viajes fuera del horario': (d) => ({ content: d.viajesFuera.toString(), styles: {} }),
-          Conductor: (d) => ({ content: d.conductor, styles: {} }),
-          'Hora de inicio de trabajo': (d) => ({ content: d.horaInicio, styles: {} }),
-          'Hora de fin de trabajo': (d) => ({ content: d.horaFin, styles: {} }),
-          'Ubicación de inicio de trabajo': (d) => ({ content: d.ubicacionInicio, styles: {} }),
-          'Ubicación de fin de trabajo': (d) => ({ content: d.ubicacionFin, styles: {} }),
-          'Duración total de trabajo': (d) => ({ content: d.duracionTotalDia, styles: {} }),
-          'Duración dentro del horario comercial': (d) => ({
-            content: d.duracionDentroDia,
-            styles: {},
-          }),
-          'Duración fuera del horario comercial': (d) => {
-            const tieneFuera = d.duracionFueraDia !== '00:00:00'
-            return {
-              content: d.duracionFueraDia,
-              styles:
-                d.remarcar && tieneFuera
-                  ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
-                  : {},
-            }
-          },
-        }
-
-        // Filtrar solo las columnas seleccionadas que existen en dias_resumidos
-        const columnasFiltradas = config.columnasSeleccionadas.filter(
-          (col) => columnasDiasResumidos[col],
-        )
-        const headersDiasResumidos =
-          columnasFiltradas.length > 0
-            ? columnasFiltradas
-            : [
-                'Fecha',
-                'Viajes',
-                'Duración total de trabajo',
-                'Duración dentro del horario comercial',
-                'Duración fuera del horario comercial',
-              ]
-
         const resumenPorDia = []
 
         Object.entries(registrosPorFecha).forEach(([fecha, registrosDelDia]) => {
@@ -2107,7 +2154,7 @@ export function useReportePDF() {
             theme: 'grid',
             headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
             styles: { fontSize: 7, cellPadding: 2 },
-            margin: { left: 20, right: 20 },
+            margin: { left: 20, right: 30 },
           })
           yPos = doc.lastAutoTable.finalY + 10
 
