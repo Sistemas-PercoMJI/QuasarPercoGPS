@@ -939,6 +939,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           const b = parseInt(colorHex.substring(4, 6), 16)
           const luminancia = (r * 299 + g * 587 + b * 114) / 1000
           const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+          const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -951,7 +952,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
 
           const popupContent = `
     <div class="geozona-popup-container">
-      <div class="geozona-color-band" style="background: ${color};">
+      <div class="geozona-color-band" style="background: ${bandColor};">
         <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
@@ -1127,26 +1128,36 @@ const dibujarPOIsCombinados = async (pois) => {
         const feature = e.features[0]
         const poi = pois.find((p) => p.id === feature.properties.id)
 
+        const color = poi.color || '#FF5252'
+        const colorHex = color.replace('#', '')
+        const r = parseInt(colorHex.substring(0, 2), 16)
+        const g = parseInt(colorHex.substring(2, 4), 16)
+        const b = parseInt(colorHex.substring(4, 6), 16)
+        const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+        const textoColor = luminancia < 200 ? '#ffffff' : '#1f2937'
+        const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
+
         if (poi) {
           const popupContent = `
-            <div class="poi-popup-container">
-              <div class="poi-popup-header">
-                <div class="header-info">
-                  <div class="header-title">${poi.nombre}</div>
-
-                </div>
-              </div>
-              <div class="poi-popup-body">
-                <div class="address-info">
-                  <div class="address-icon"></div>
-                  <div class="address-text">${poi.direccion}</div>
-                </div>
-                <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
-                  Ver más detalles
-                </button>
-              </div>
+          <div class="poi-popup-container">
+            <div class="poi-color-band" style="background: ${bandColor};">
+              <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <span class="poi-band-nombre" style="color: ${textoColor};">${poi.nombre}</span>
             </div>
-          `
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+              <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
+                Ver más detalles
+              </button>
+            </div>
+          </div>
+                  `
 
           if (popupGlobalActivo) {
             popupGlobalActivo.remove()
@@ -1850,6 +1861,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
   const b = parseInt(colorHex.substring(4, 6), 16)
   const luminancia = (r * 299 + g * 587 + b * 114) / 1000
   const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+  const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
   // Obtener direcciones de los puntos individuales (solo para polígonos)
   let direccionesPuntos = []
   if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
@@ -1876,7 +1888,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
 
   const popupContent = `
     <div class="geozona-popup-container">
-      <div class="geozona-color-band" style="background: ${color};">
+      <div class="geozona-color-band" style="background: ${bandColor};">
         <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
       <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
@@ -3245,6 +3257,49 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 .mapboxgl-popup:has(.geozona-popup-container) .mapboxgl-popup-close-button {
   display: none !important;
+}
+
+.mapboxgl-popup:has(.poi-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.poi-color-band {
+  height: 56px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.poi-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poi-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.poi-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 </style>
 
