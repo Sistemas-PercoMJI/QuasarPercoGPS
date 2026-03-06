@@ -554,9 +554,17 @@ export function useMapboxGL() {
 
       <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
       <div class="unidad-info-row">
-        <div class="unidad-info">
+        <div class="unidad-info" style="flex: 1; min-width: 0; overflow: visible;">
           <div class="unidad-placa">${unidad.unidadNombre}</div>
-          <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
+          <div class="unidad-direccion" style="
+          white-space: normal;
+          word-break: break-word;
+          overflow: visible;
+          max-width: 200px;
+          font-size: 12px;
+          color: #6B7280;
+          line-height: 1.3;
+        ">${unidad.direccionTexto || 'Obteniendo...'}</div>
         </div>
         <div class="unidad-icon" style="background-color: ${esInactivo ? '#9E9E9E' : estadoColor[unidad.estado]};">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">

@@ -2513,7 +2513,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* ← row en vez de column */
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   padding: 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -2548,19 +2551,20 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .toggle-geozona-btn {
+  /* quitar el margin-top: -32px */
   background-color: #f3f4f6 !important;
   border: 1px solid #6b7280;
-
   border-radius: 50%;
   cursor: pointer;
   width: 30px;
   height: 30px;
+  min-width: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease !important;
-  align-self: flex-end;
-  margin-top: -32px;
+  flex-shrink: 0;
+  margin-top: 0; /* ← quitar el negativo */
 }
 
 .toggle-geozona-btn:hover {
@@ -2784,9 +2788,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-size: 12px;
   color: #6b7280;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: break-word;
+  line-height: 1.3;
 }
 .unidad-popup-header {
   display: flex;
@@ -3131,8 +3136,12 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #6b7280;
   margin-top: 2px;
   display: flex;
+  align-items: flex-start; /* cambia de center a flex-start para que el icono no jale */
   align-items: center;
   line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .header-subtitle svg {
