@@ -225,21 +225,9 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const { mostrarPins = true } = config
 
   const bbox = calcularBoundingBox(trayectos) //  AQUÍ SE LLAMA
-  const centroLat = (bbox.minLat + bbox.maxLat) / 2
-  const centroLng = (bbox.minLng + bbox.maxLng) / 2
+  const padding = config.padding ?? 40 // px de margen alrededor de las rutas
 
-  // Calcular zoom apropiado
-  const rangoLat = bbox.maxLat - bbox.minLat
-  const rangoLng = bbox.maxLng - bbox.minLng
-  const rangoMax = Math.max(rangoLat, rangoLng)
-
-  let zoom = 12
-  if (rangoMax > 1) zoom = 8
-  else if (rangoMax > 0.5) zoom = 9
-  else if (rangoMax > 0.2) zoom = 10
-  else if (rangoMax > 0.1) zoom = 11
-  else if (rangoMax > 0.05) zoom = 12
-  else zoom = 13
+  const bboxStr = `[${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}]`
 
   // Construir overlays (paths + pins)
   const overlays = []
@@ -293,7 +281,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/${centroLng},${centroLat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
+  const url = `${baseURL}/${overlaysStr}/${bboxStr}/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
 
   if (url.length > 8000) {
     console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
