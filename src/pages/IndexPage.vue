@@ -2513,7 +2513,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: row; /* ← row en vez de column */
+  grid-template-columns: 36px 1fr 36px;
+  flex-direction: row;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
@@ -2525,15 +2526,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .header-divider {
   width: 100%;
   height: 1px;
-  margin-bottom: 10px;
-  background-color: #6b7280;
-  margin: 15px 0;
+  background-color: #e5e7eb; /* más sutil */
+  margin: 8px 0;
 }
 
 .header-info {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0; /* quitar el margin-bottom: 8px */
 }
 
 .header-title {
@@ -2541,30 +2543,35 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 700;
   color: #1f2937;
   line-height: 1.2;
-  margin-left: 15%;
+  margin-left: 0; /* ← quitar el 15% */
+  padding-left: 36px;
 }
 
 .header-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
-  margin-top: 2px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .toggle-geozona-btn {
-  /* quitar el margin-top: -32px */
   background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280;
+  border: 1px solid #d1d5db;
   border-radius: 50%;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease !important;
   flex-shrink: 0;
-  margin-top: 0; /* ← quitar el negativo */
+  margin-top: 2px;
 }
 
 .toggle-geozona-btn:hover {
