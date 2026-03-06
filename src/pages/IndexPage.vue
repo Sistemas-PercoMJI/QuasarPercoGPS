@@ -2557,7 +2557,9 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 700;
   color: #1f2937;
   line-height: 1.2;
-  margin-left: 0; /* ← quitar el 15% */
+  padding-left: 48px;
+}
+.geozona-popup-container .header-title {
   display: none;
 }
 
@@ -3191,7 +3193,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
 }
 .geozona-color-band {
-  height: 40px;
+  height: 56px;
   width: 100%;
   border-radius: 12px 12px 0 0;
   display: flex;
@@ -3205,14 +3207,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.geozona-popup-container .mapboxgl-popup-close-button {
-  top: 8px !important;
-}
-.popup-animated .mapboxgl-popup-close-button {
-  top: 6px !important;
-  left: 8px !important;
 }
 </style>
 
