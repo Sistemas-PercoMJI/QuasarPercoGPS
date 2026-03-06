@@ -2162,8 +2162,8 @@ async function cargarDatos() {
 
 /* Sección de Horario */
 .horario-section {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  border-color: #90caf9;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: #dee2e6;
 }
 
 /* Footer */
