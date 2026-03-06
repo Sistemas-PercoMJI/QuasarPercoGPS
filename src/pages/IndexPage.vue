@@ -952,6 +952,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           const popupContent = `
     <div class="geozona-popup-container">
       <div class="geozona-color-band" style="background: ${color};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
         <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
       </div>
       <div class="geozona-popup-header">
@@ -1872,6 +1877,11 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
   const popupContent = `
     <div class="geozona-popup-container">
       <div class="geozona-color-band" style="background: ${color};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
         <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
       </div>
       <div class="geozona-popup-header">
@@ -3198,7 +3208,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-radius: 12px 12px 0 0;
   display: flex;
   align-items: center;
-  padding: 0 14px 0 48px;
+  gap: 10px;
+  padding: 0 14px;
 }
 .geozona-band-nombre {
   font-weight: 700;
@@ -3207,6 +3218,33 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.geozona-popup-container .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.geozona-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.geozona-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+.mapboxgl-popup:has(.geozona-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
 }
 </style>
 
