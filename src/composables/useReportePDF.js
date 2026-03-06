@@ -1997,9 +1997,8 @@ export function useReportePDF() {
 
         Object.entries(registrosPorFecha).forEach(([fecha, registrosDelDia]) => {
           const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
+            day: '2-digit',
+            month: '2-digit',
             year: 'numeric',
           })
 
