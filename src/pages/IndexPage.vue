@@ -980,10 +980,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Latitud:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Longitud:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -1925,10 +1922,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Lat:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Lng:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -2642,15 +2636,15 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .points-list-container {
   max-height: 220px;
   overflow-y: auto;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .point-card {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
 }
 
 .point-card:last-child {
@@ -2658,14 +2652,14 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .point-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .point-address {
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 
 .address-name {
@@ -2673,12 +2667,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   color: #1f2937;
   background-color: #f3f4f6;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   border-left: 3px solid #3b82f6;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
-
 .point-coords {
   display: flex;
   flex-direction: column;
@@ -2700,7 +2693,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .details-btn {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -2708,13 +2701,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   font-size: 14px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 6px rgba(107, 114, 128, 0.3);
   margin-top: 8px;
 }
 .details-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
-  background: linear-gradient(135deg, #91c6bc 0%, #047857 100%);
+  box-shadow: 0 6px 12px rgba(107, 114, 128, 0.4);
+  background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
 }
 
 .points-list-container::-webkit-scrollbar {
