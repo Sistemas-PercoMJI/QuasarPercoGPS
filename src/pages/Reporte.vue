@@ -257,8 +257,9 @@
                           <q-icon name="access_time" class="cursor-pointer">
                             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                               <q-time v-model="horarioInicio" format24h>
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                <div class="row items-center justify-end q-gutter-sm">
+                                  <q-btn v-close-popup label="Cancelar" color="grey-7" flat />
+                                  <q-btn v-close-popup label="Aceptar" color="primary" flat />
                                 </div>
                               </q-time>
                             </q-popup-proxy>
@@ -279,8 +280,9 @@
                           <q-icon name="access_time" class="cursor-pointer">
                             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                               <q-time v-model="horarioFin" format24h>
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                <div class="row items-center justify-end q-gutter-sm">
+                                  <q-btn v-close-popup label="Cancelar" color="grey-7" flat />
+                                  <q-btn v-close-popup label="Aceptar" color="primary" flat />
                                 </div>
                               </q-time>
                             </q-popup-proxy>
