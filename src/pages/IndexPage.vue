@@ -932,6 +932,13 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
 
         if (geozona) {
           mostrarPopupGeozonaConDireccion(geozona, e.lngLat)
+          const color = geozona.color || '#4ECDC4'
+          const colorHex = color.replace('#', '')
+          const r = parseInt(colorHex.substring(0, 2), 16)
+          const g = parseInt(colorHex.substring(2, 4), 16)
+          const b = parseInt(colorHex.substring(4, 6), 16)
+          const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+          const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -943,20 +950,21 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           }
 
           const popupContent = `
-      <div class="geozona-popup-container">
-        <div class="geozona-popup-header">
-          <div class="header-info">
-            <div class="header-title">${geozona.nombre}</div>
-            <div class="header-divider"></div>
-            <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
-          </div>
-          <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-            <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+    <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${color};">
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
+      <div class="geozona-popup-header">
+        <div class="header-info">
+          <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
         </div>
-        <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+        <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
           <div class="points-list-container">
             ${direccionesPuntos
               .map(
@@ -1830,7 +1838,13 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
     console.error('No se pudo calcular centroide')
     return
   }
-
+  const color = geozona.color || '#4ECDC4'
+  const colorHex = color.replace('#', '')
+  const r = parseInt(colorHex.substring(0, 2), 16)
+  const g = parseInt(colorHex.substring(2, 4), 16)
+  const b = parseInt(colorHex.substring(4, 6), 16)
+  const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+  const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
   // Obtener direcciones de los puntos individuales (solo para polígonos)
   let direccionesPuntos = []
   if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
@@ -1857,11 +1871,11 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
 
   const popupContent = `
     <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${color};">
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
       <div class="geozona-popup-header">
         <div class="header-info">
-          <div class="header-title">${geozona.nombre}</div>
-          <div class="header-divider"></div>
-          <!-- CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
           <div class="header-subtitle">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
@@ -1871,7 +1885,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
           </div>
         </div>
         <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -2544,7 +2558,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
   line-height: 1.2;
   margin-left: 0; /* ← quitar el 15% */
-  padding-left: 36px;
+  display: none;
 }
 
 .header-subtitle {
@@ -3175,6 +3189,30 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
   font-family: 'Courier New', monospace;
   font-weight: 600;
+}
+.geozona-color-band {
+  height: 40px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 48px;
+}
+.geozona-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geozona-popup-container .mapboxgl-popup-close-button {
+  top: 8px !important;
+}
+.popup-animated .mapboxgl-popup-close-button {
+  top: 6px !important;
+  left: 8px !important;
 }
 </style>
 
