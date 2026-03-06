@@ -711,6 +711,16 @@ export function useMapboxGL() {
               .setPopup(popup)
               .addTo(map.value)
 
+            if (!unidad.direccionTexto) {
+              obtenerDireccion(lat, lng).then((direccion) => {
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  const dirEl = popupEl.querySelector('.unidad-direccion')
+                  if (dirEl) dirEl.textContent = direccion
+                }
+              })
+            }
+
             marcadoresUnidades.value[unidadId] = marker
 
             ultimasPosiciones.set(unidadId, {
@@ -834,6 +844,17 @@ export function useMapboxGL() {
           .setLngLat([lng, lat])
           .setPopup(popup)
           .addTo(map.value)
+        if (!unidad.direccionTexto) {
+          obtenerDireccion(lat, lng).then((direccion) => {
+            const popupEl = popup.getElement()
+            if (popupEl) {
+              const dirEl = popupEl.querySelector('.unidad-direccion')
+              if (dirEl) dirEl.textContent = direccion
+            }
+          })
+        }
+
+        marcadoresUnidades.value[unidadId] = marker
 
         marcadoresUnidades.value[unidadId] = marker
         ultimasPosiciones.set(unidadId, {
