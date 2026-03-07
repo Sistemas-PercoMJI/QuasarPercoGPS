@@ -252,6 +252,7 @@
                         label="Hora inicio"
                         mask="time"
                         :rules="['time']"
+                        hint="Formato 24h · ej: 08:00 = 8am, 13:00 = 1pm"
                       >
                         <template v-slot:append>
                           <q-icon name="access_time" class="cursor-pointer">
@@ -275,6 +276,7 @@
                         label="Hora fin"
                         mask="time"
                         :rules="['time']"
+                        hint="Formato 24h · ej: 17:00 = 5pm, 20:00 = 8pm"
                       >
                         <template v-slot:append>
                           <q-icon name="access_time" class="cursor-pointer">
