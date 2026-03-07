@@ -127,6 +127,7 @@
                     <q-icon name="history" class="q-mr-xs" />
                     Búsquedas recientes
                   </q-item-label>
+                  <q-separator></q-separator>
                   <q-item
                     class="text-grey"
                     v-for="(reciente, index) in busquedasRecientes"
