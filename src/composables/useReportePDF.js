@@ -1335,8 +1335,8 @@ export function useReportePDF() {
                   })
                 }
 
-                const horaInicio = formatearHora(trayectoRaw?.inicioTimestamp)
-                const horaFin = formatearHora(trayectoRaw?.finTimestamp)
+                const horaInicio = formatearHora(trayectoRaw?.horaInicioTrabajo)
+                const horaFin = formatearHora(trayectoRaw?.horaFinTrabajo)
                 const ubicacionInicio = trayectoRaw?.ubicacionInicio || 'N/A'
                 const ubicacionFin = trayectoRaw?.ubicacionFin || 'N/A'
 
@@ -1897,6 +1897,69 @@ export function useReportePDF() {
 
                 doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
                 yPos += mapHeight + 10
+
+                const COLORES_LEYENDA = [
+                  [231, 76, 60],
+                  [41, 128, 185],
+                  [39, 174, 96],
+                  [243, 156, 18],
+                  [142, 68, 173],
+                  [22, 160, 133],
+                  [211, 84, 0],
+                  [44, 62, 80],
+                ]
+
+                const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+                doc.setFontSize(9)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(0, 0, 0)
+
+                trayectosParaMapa.forEach((trayecto, idx) => {
+                  const registroRaw = registrosDelDia?.[idx] || registros?.[idx]
+                  const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                  const horaInicio =
+                    registroRaw?.horaInicioTrabajo ||
+                    registroRaw?.horaInicio ||
+                    (registroRaw?.inicioTimestamp
+                      ? new Date(registroRaw.inicioTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const horaFin =
+                    registroRaw?.horaFinTrabajo ||
+                    registroRaw?.horaFin ||
+                    (registroRaw?.finTimestamp
+                      ? new Date(registroRaw.finTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                  const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.circle(22, yPos - 1.5, 2, 'F')
+                  doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                  yPos += 6
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.rect(20, yPos - 3, 4, 4, 'F')
+                  doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                  yPos += 8
+                })
               }
             } catch (error) {
               console.error('Error generando mapa del día:', error)
@@ -2137,6 +2200,70 @@ export function useReportePDF() {
                 const mapHeight = availableWidth / 1.5
                 doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
                 yPos += mapHeight + 10
+
+                const COLORES_LEYENDA = [
+                  [231, 76, 60],
+                  [41, 128, 185],
+                  [39, 174, 96],
+                  [243, 156, 18],
+                  [142, 68, 173],
+                  [22, 160, 133],
+                  [211, 84, 0],
+                  [44, 62, 80],
+                ]
+
+                const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+                doc.setFontSize(9)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(0, 0, 0)
+
+                trayectosParaMapa.forEach((trayecto, idx) => {
+                  const registroRaw = registrosDelDia?.[idx] || registros?.[idx]
+                  const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                  const horaInicio =
+                    registroRaw?.horaInicioTrabajo ||
+                    registroRaw?.horaInicio ||
+                    (registroRaw?.inicioTimestamp
+                      ? new Date(registroRaw.inicioTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+
+                  const horaFin =
+                    registroRaw?.horaFinTrabajo ||
+                    registroRaw?.horaFin ||
+                    (registroRaw?.finTimestamp
+                      ? new Date(registroRaw.finTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                  const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.circle(22, yPos - 1.5, 2, 'F')
+                  doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                  yPos += 6
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.rect(20, yPos - 3, 4, 4, 'F')
+                  doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                  yPos += 8
+                })
               }
             } catch (error) {
               console.error('Error generando mapa:', error)
@@ -2246,6 +2373,61 @@ export function useReportePDF() {
               const mapHeight = availableWidth / 1.5
               doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
               yPos += mapHeight + 10
+
+              const COLORES_LEYENDA = [
+                [231, 76, 60],
+                [41, 128, 185],
+                [39, 174, 96],
+                [243, 156, 18],
+                [142, 68, 173],
+                [22, 160, 133],
+                [211, 84, 0],
+                [44, 62, 80],
+              ]
+
+              const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+              doc.setFontSize(9)
+              doc.setFont(undefined, 'normal')
+              doc.setTextColor(0, 0, 0)
+
+              trayectosParaMapa.forEach((trayecto, idx) => {
+                const registroRaw = registros?.[idx] || registros?.[idx]
+                const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                const formatearHora = (timestamp) => {
+                  if (!timestamp) return 'N/A'
+                  const fecha = timestamp instanceof Date ? timestamp : new Date(timestamp)
+                  return fecha.toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  })
+                }
+
+                const horaInicio = formatearHora(registroRaw?.horaInicioTrabajo)
+                const horaFin = formatearHora(registroRaw?.horaFinTrabajo)
+                const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.circle(22, yPos - 1.5, 2, 'F')
+                doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                yPos += 6
+
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.rect(20, yPos - 3, 4, 4, 'F')
+                doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                yPos += 8
+              })
             }
           } catch (error) {
             console.error('Error generando mapa:', error)
