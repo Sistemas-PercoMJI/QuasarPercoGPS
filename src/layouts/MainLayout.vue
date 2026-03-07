@@ -529,7 +529,9 @@ const mostrarSugerencias = ref(false)
 const mostrarFiltros = ref(false)
 const buscando = ref(false)
 const resultadosBusqueda = ref([])
-const busquedasRecientes = ref([])
+const busquedasRecientes = ref(
+  JSON.parse(localStorage.getItem('mjgps_busquedas_recientes') || '[]'),
+)
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
 const searchInput = ref(null)
 
@@ -1034,6 +1036,7 @@ function seleccionarResultado(resultado) {
     if (busquedasRecientes.value.length > 5) {
       busquedasRecientes.value.pop()
     }
+    localStorage.setItem('mjgps_busquedas_recientes', JSON.stringify(busquedasRecientes.value))
   }
 
   // Cerrar sugerencias y limpiar
@@ -1048,6 +1051,7 @@ function seleccionarResultado(resultado) {
 
 function eliminarReciente(index) {
   busquedasRecientes.value.splice(index, 1)
+  localStorage.setItem('mjgps_busquedas_recientes', JSON.stringify(busquedasRecientes.value))
 }
 
 function buscar() {
