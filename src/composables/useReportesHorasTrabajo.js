@@ -144,28 +144,61 @@ export function useReportesHorasTrabajo() {
       const coord = viaje[i]
       const siguienteCoord = viaje[i + 1]
 
-      const timestampInicio = new Date(coord.timestamp)
-      const timestampFin = new Date(siguienteCoord.timestamp)
-      const duracionSegmento = (timestampFin - timestampInicio) / 1000 / 60 // minutos
+      const tsInicio = new Date(coord.timestamp)
+      const tsFin = new Date(siguienteCoord.timestamp)
+      const duracionSegmentoMs = tsFin - tsInicio
 
-      // Determinar si este segmento está dentro o fuera
-      const dentroHorario = estaDentroHorarioComercial(
+      const inicioDentro = estaDentroHorarioComercial(
         coord.timestamp,
         horarioInicio,
         horarioFin,
         diasLaborables,
       )
+      const finDentro = estaDentroHorarioComercial(
+        siguienteCoord.timestamp,
+        horarioInicio,
+        horarioFin,
+        diasLaborables,
+      )
 
-      if (dentroHorario) {
-        duracionDentro += duracionSegmento
+      if (inicioDentro === finDentro) {
+        // Todo el segmento está del mismo lado
+        const duracionHoras = duracionSegmentoMs / 1000 / 60 / 60
+        if (inicioDentro) {
+          duracionDentro += duracionHoras
+        } else {
+          duracionFuera += duracionHoras
+        }
       } else {
-        duracionFuera += duracionSegmento
+        // El segmento cruza el límite del horario — interpolamos el punto exacto de cruce
+        const [horaLimiteH, horaLimiteM] = (inicioDentro ? horarioFin : horarioInicio)
+          .split(':')
+          .map(Number)
+
+        const fechaBase = new Date(tsInicio)
+        fechaBase.setHours(horaLimiteH, horaLimiteM, 0, 0)
+
+        // Si el límite cayó antes del inicio por diferencia de día, ajustar
+        let tsCruce = fechaBase.getTime()
+        if (tsCruce < tsInicio.getTime()) tsCruce += 24 * 60 * 60 * 1000
+        if (tsCruce > tsFin.getTime()) tsCruce = tsFin.getTime()
+
+        const antesHoras = (tsCruce - tsInicio.getTime()) / 1000 / 60 / 60
+        const despuesHoras = (tsFin.getTime() - tsCruce) / 1000 / 60 / 60
+
+        if (inicioDentro) {
+          duracionDentro += antesHoras
+          duracionFuera += despuesHoras
+        } else {
+          duracionFuera += antesHoras
+          duracionDentro += despuesHoras
+        }
       }
     }
 
     return {
-      duracionDentro: duracionDentro / 60, // convertir a horas
-      duracionFuera: duracionFuera / 60,
+      duracionDentro: duracionDentro,
+      duracionFuera: duracionFuera,
     }
   }
 
@@ -268,10 +301,10 @@ export function useReportesHorasTrabajo() {
           duracionFueraDia += duracionFuera
 
           // Clasificar viaje
-          if (duracionDentro > duracionFuera) {
-            viajesDentroDia++
-          } else {
+          if (duracionFuera > 0) {
             viajesFueraDia++
+          } else {
+            viajesDentroDia++
           }
           const direccionInicio = await obtenerDireccion(inicio)
           const direccionFin = await obtenerDireccion(fin)
