@@ -88,9 +88,13 @@
                 class="q-mr-xs"
               />
               {{
-                grupo.esGrupoEspecial
-                  ? `${grupo.cantidadUnidades} unidades`
-                  : `${contarConductoresPorGrupo(grupo.id)} conductores`
+                grupo.id === '__todos__'
+                  ? `${conductores.length} conductores`
+                  : grupo.esGrupoEspecial && grupo.cantidadUnidades
+                    ? `${grupo.cantidadUnidades} unidades`
+                    : !grupo.esGrupoEspecial
+                      ? `${contarConductoresPorGrupo(grupo.id)} conductores`
+                      : ''
               }}
             </q-item-label>
           </q-item-section>
