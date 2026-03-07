@@ -1251,8 +1251,6 @@ export function useReportePDF() {
 
             // Preparar trayectos para el mapa
             const trayectosParaMapa = prepararDatosTrayectos(trayectos)
-            console.log('🔍 trayecto[0] raw:', trayectos[0])
-            console.log('🔍 trayectosParaMapa[0]:', trayectosParaMapa[0])
 
             if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
               const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
@@ -2175,9 +2173,7 @@ export function useReportePDF() {
         if (config.mostrarMapaZona) {
           // eslint-disable-next-line no-unused-vars
           for (const [fechaDia, registrosDelDia] of Object.entries(registrosPorFecha)) {
-            console.log('🗺️ registrosDelDia:', registrosDelDia, Array.isArray(registrosDelDia))
             try {
-              console.log('🗺️ registrosPorFecha:', JSON.stringify(Object.keys(registrosPorFecha)))
               const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
               if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
                 doc.addPage()

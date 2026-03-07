@@ -660,16 +660,7 @@ export function useMapboxGL() {
 
       const { lat, lng } = unidad.ubicacion
       const ultimaPos = ultimasPosiciones.get(unidadId)
-      console.log(
-        '🔍 Check:',
-        unidad.unidadNombre,
-        '| ultimaDir:',
-        ultimaPos?.direccionTexto,
-        '| nuevaDir:',
-        unidad.direccionTexto,
-        '| nuevaIgnicion:',
-        unidad.ignicion,
-      )
+
       const cambioSignificativo =
         !ultimaPos ||
         Math.abs(ultimaPos.lat - lat) > 0.00005 ||
