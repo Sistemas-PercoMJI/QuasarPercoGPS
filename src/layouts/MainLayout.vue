@@ -177,12 +177,18 @@
 
               <q-card-section>
                 <div class="q-mb-sm">
-                  <q-icon name="info" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Versión:</strong> 1.0.0
-                </div>
-                <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Empresa:</strong> MJ Industrial
+                  <strong>Empresa:</strong>
+                  <span v-if="Array.isArray(idEmpresaActual) && idEmpresaActual.length > 1">
+                    {{ idEmpresaActual.join(' / ') }}
+                  </span>
+                  <span v-else>
+                    {{
+                      Array.isArray(idEmpresaActual)
+                        ? idEmpresaActual[0]
+                        : idEmpresaActual || 'MJ Industrial'
+                    }}
+                  </span>
                 </div>
               </q-card-section>
 
