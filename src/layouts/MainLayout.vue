@@ -37,23 +37,22 @@
           </q-input>
 
           <!-- Panel de Filtros -->
-          <q-slide-transition>
-            <div v-show="mostrarFiltros" class="filtros-panel">
-              <q-chip
-                v-for="filtro in filtrosDisponibles"
-                :key="filtro.value"
-                :outline="!filtrosActivos.includes(filtro.value)"
-                :color="filtro.color"
-                text-color="white"
-                clickable
-                @click="toggleFiltro(filtro.value)"
-                size="sm"
-              >
-                <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
-                {{ filtro.label }}
-              </q-chip>
-            </div>
-          </q-slide-transition>
+
+          <div class="filtros-panel" :class="{ 'filtros-panel-visible': mostrarFiltros }">
+            <q-chip
+              v-for="filtro in filtrosDisponibles"
+              :key="filtro.value"
+              :outline="!filtrosActivos.includes(filtro.value)"
+              :color="filtro.color"
+              text-color="white"
+              clickable
+              @click="toggleFiltro(filtro.value)"
+              size="sm"
+            >
+              <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
+              {{ filtro.label }}
+            </q-chip>
+          </div>
 
           <!-- Sugerencias de búsqueda - SIN PARPADEO -->
           <div
@@ -1965,13 +1964,27 @@ function procesarResultado(resultado) {
   left: 0;
   right: 0;
   background: white;
-  padding: 8px;
+  padding: 0 8px;
   border-radius: 0 0 12px 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   z-index: 1000;
+
+  /* Animación CSS pura */
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.2s ease,
+    opacity 0.15s ease,
+    padding 0.2s ease;
+}
+.filtros-panel-visible {
+  max-height: 120px;
+  opacity: 1;
+  padding: 8px;
 }
 
 .sugerencias-menu {
