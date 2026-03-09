@@ -1830,7 +1830,9 @@ function procesarResultado(resultado) {
   border-radius: 500px;
   transition: all 0.3s ease;
 }
-
+.search-input :deep(.q-field__control) {
+  border-radius: 500px !important;
+}
 .search-input:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   transform: translateY(-1px);
@@ -1911,6 +1913,7 @@ function procesarResultado(resultado) {
   max-width: 60vw;
   margin-left: 24px;
   border-radius: 500px;
+  overflow: visible !important;
 }
 
 .q-page-container {
@@ -1965,33 +1968,32 @@ function procesarResultado(resultado) {
 /* Nuevos estilos para el buscador */
 .filtros-panel {
   position: absolute;
-  top: 48px;
+  top: 52px; /* un poco más abajo para que la sombra de arriba sea visible */
   left: 0;
   right: 0;
   background: white;
   padding: 0 8px;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   z-index: 1000;
-
-  /* Animación CSS pura */
-  max-height: 0;
-  overflow: hidden;
+  /* Animación por visibility + opacity en lugar de max-height */
   opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
   transition:
-    max-height 0.2s ease,
-    opacity 0.15s ease,
-    padding 0.2s ease;
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    transform 0.2s ease;
 }
 .filtros-panel-visible {
-  max-height: 120px;
   opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
   padding: 8px;
 }
-
 .sugerencias-menu {
   z-index: 9999 !important;
 }
