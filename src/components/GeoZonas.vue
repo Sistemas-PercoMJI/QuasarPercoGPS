@@ -1234,7 +1234,7 @@
           </div>
         </q-card-section>
 
-        <q-card-section class="form-body">
+        <q-card-section class="form-body" style="max-height: 60vh; overflow-y: auto">
           <!-- Nombre -->
           <div class="field-group">
             <label class="field-label">Nombre del evento</label>
@@ -1498,8 +1498,13 @@ const ubicacionParaEvento = ref(null)
 const eventoRapido = ref({
   nombre: '',
   descripcion: '',
-  activacion: 'Entrada',
+  activacion: 'Ambos',
   activacionAlerta: 'Cada vez',
+  operador: 'OR',
+  aplicacion: 'siempre',
+  diasSemana: [],
+  horaInicio: '08:00',
+  horaFin: '18:00',
 })
 
 // Agregar paleta de colores para POIs (similar a la de geozonas)
@@ -1606,18 +1611,22 @@ function crearEventoParaUbicacion() {
   if (!itemMenu.value) return
   menuContextualVisible.value = false
 
-  ubicacionParaEvento.value = itemMenu.value
-
-  eventoRapido.value = {
-    nombre: itemMenu.value.nombre || '',
-    descripcion: '',
-    activacion: 'Entrada',
-    activacionAlerta: 'Cada vez',
-    operador: 'OR',
-    aplicacion: 'siempre',
-    diasSemana: [],
-    horaInicio: '08:00',
-    horaFin: '18:00',
+  // Solo resetear si es una ubicación diferente
+  if (ubicacionParaEvento.value?.id !== itemMenu.value.id) {
+    ubicacionParaEvento.value = itemMenu.value
+    eventoRapido.value = {
+      nombre: itemMenu.value.nombre || '',
+      descripcion: '',
+      activacion: 'Ambos',
+      activacionAlerta: 'Cada vez',
+      operador: 'OR',
+      aplicacion: 'siempre',
+      diasSemana: [],
+      horaInicio: '08:00',
+      horaFin: '18:00',
+    }
+  } else {
+    ubicacionParaEvento.value = itemMenu.value
   }
 
   dialogEventoRapido.value = true
