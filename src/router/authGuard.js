@@ -7,7 +7,7 @@ export const authGuard = (to, from, next) => {
   console.log(' AuthGuard - Ruta:', to.path, 'Usuario:', user?.email || 'No logueado')
 
   // Rutas públicas (no requieren autenticación)
-  const publicRoutes = ['/login']
+  const publicRoutes = ['/login', '/recuperar-password']
 
   if (publicRoutes.includes(to.path)) {
     // Si ya está logueado y va al login, redirigir al dashboard

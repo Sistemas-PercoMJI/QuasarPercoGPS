@@ -127,7 +127,9 @@ const login = async () => {
 
           <!-- Footer -->
           <q-card-section class="text-center q-pt-none q-pb-lg">
-            <a href="#" class="forgot-password">¿Olvidaste tu contraseña?</a>
+            <a @click.prevent="$router.push('/recuperar-password')" class="forgot-password" href="#"
+              >¿Olvidaste tu contraseña?</a
+            >
           </q-card-section>
         </q-card>
       </q-page>
