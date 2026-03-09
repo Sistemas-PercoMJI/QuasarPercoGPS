@@ -47,7 +47,7 @@
               text-color="white"
               clickable
               @click="toggleFiltro(filtro.value)"
-              size="sm"
+              size="12px"
             >
               <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
               {{ filtro.label }}
@@ -1907,7 +1907,7 @@ function procesarResultado(resultado) {
 }
 
 .search-container {
-  width: 500px;
+  width: 550px;
   max-width: 60vw;
   margin-left: 24px;
   border-radius: 500px;
@@ -2017,5 +2017,39 @@ function procesarResultado(resultado) {
 
 :deep(.q-menu .q-card) {
   overflow: hidden !important;
+}
+
+.filtros-panel :deep(.q-chip) {
+  background-color: #f1f1f1 !important;
+  color: #555 !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+  border: none !important;
+}
+
+/* Hover */
+.filtros-panel :deep(.q-chip:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: #e0e0e0 !important;
+  cursor: pointer;
+}
+
+/* Click */
+.filtros-panel :deep(.q-chip:active) {
+  transform: translateY(0px);
+}
+
+/* Activo - rojo corporativo */
+.filtros-panel :deep(.q-chip--selected),
+.filtros-panel :deep(.q-chip.bg-red),
+.filtros-panel :deep(.q-chip.bg-blue),
+.filtros-panel :deep(.q-chip.bg-green),
+.filtros-panel :deep(.q-chip.bg-orange),
+.filtros-panel :deep(.q-chip.bg-purple) {
+  background-color: #bb0000 !important;
+  color: white !important;
 }
 </style>
