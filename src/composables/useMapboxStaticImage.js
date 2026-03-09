@@ -225,6 +225,16 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const { mostrarPins = true } = config
 
   const bbox = calcularBoundingBox(trayectos) //  AQUÍ SE LLAMA
+
+  const MIN_DELTA = 0.005
+  if (bbox.maxLat - bbox.minLat < MIN_DELTA) {
+    bbox.minLat -= MIN_DELTA
+    bbox.maxLat += MIN_DELTA
+  }
+  if (bbox.maxLng - bbox.minLng < MIN_DELTA) {
+    bbox.minLng -= MIN_DELTA
+    bbox.maxLng += MIN_DELTA
+  }
   const padding = config.padding ?? 40 // px de margen alrededor de las rutas
 
   const bboxStr = `[${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}]`
@@ -237,6 +247,20 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     const coordenadas = trayecto.coordenadas
 
     if (coordenadas.length === 0) return
+
+    const todasIguales = coordenadas.every(
+      (c) => c.lat === coordenadas[0].lat && c.lng === coordenadas[0].lng,
+    )
+
+    if (coordenadas.length < 2 || todasIguales) {
+      if (mostrarPins) {
+        const tamano = index === 0 ? 'pin-l' : 'pin-s'
+        overlays.push(
+          `${tamano}-${index + 1}+${color}(${coordenadas[0].lng.toFixed(6)},${coordenadas[0].lat.toFixed(6)})`,
+        )
+      }
+      return
+    }
 
     // 1. GeoJSON LineString (en lugar de path)
     const geojson = {

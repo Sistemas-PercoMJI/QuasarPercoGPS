@@ -1333,8 +1333,12 @@ export function useReportePDF() {
                   })
                 }
 
-                const horaInicio = formatearHora(trayectoRaw?.horaInicioTrabajo)
-                const horaFin = formatearHora(trayectoRaw?.horaFinTrabajo)
+                const horaInicio = formatearHora(
+                  trayectoRaw?.horaInicioTrabajo || trayectoRaw?.inicioTimestamp,
+                )
+                const horaFin = formatearHora(
+                  trayectoRaw?.horaFinTrabajo || trayectoRaw?.finTimestamp,
+                )
                 const ubicacionInicio = trayectoRaw?.ubicacionInicio || 'N/A'
                 const ubicacionFin = trayectoRaw?.ubicacionFin || 'N/A'
 
