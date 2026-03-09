@@ -187,7 +187,7 @@ const errores = reactive({
   correoContacto: '',
 })
 
-// TODO: Validar contra Firebase Auth si el correo existe
+// Validar contra Firebase Auth si el correo existe
 async function validarCorreoFirebase() {
   if (!form.correocuenta || !form.correocuenta.includes('@')) return
 
@@ -195,7 +195,7 @@ async function validarCorreoFirebase() {
   errores.correocuenta = ''
 
   try {
-    // TODO: implementar verificación real contra Firebase
+    //implementar verificación real contra Firebase
     // Por ahora simula delay
     await new Promise((resolve) => setTimeout(resolve, 800))
 
