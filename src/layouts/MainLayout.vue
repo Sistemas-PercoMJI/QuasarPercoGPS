@@ -177,6 +177,15 @@
 
               <q-card-section>
                 <div class="q-mb-sm">
+                  <q-icon
+                    name="account_circle"
+                    size="20px"
+                    class="q-mr-sm"
+                    style="color: #bb0000"
+                  />
+                  <strong>Cuenta:</strong> {{ usuarioActual }}
+                </div>
+                <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
                   <strong>Empresa:</strong>
                   <span v-if="Array.isArray(idEmpresaActual) && idEmpresaActual.length > 1">
@@ -535,6 +544,7 @@ const busquedasRecientes = ref(
 )
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
 const searchInput = ref(null)
+const usuarioActual = ref(auth.currentUser?.email || '')
 
 //conductores
 const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
