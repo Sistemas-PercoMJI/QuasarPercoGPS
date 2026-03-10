@@ -1087,6 +1087,122 @@ export function useReporteExcel() {
           detalleSheet.addRow([])
           currentRow++
         })
+      } else if (config.tipoDetalle === 'dias_resumidos') {
+        const registrosPorFecha = {}
+        registros.forEach((registro) => {
+          if (!registrosPorFecha[registro.fecha]) {
+            registrosPorFecha[registro.fecha] = []
+          }
+          registrosPorFecha[registro.fecha].push(registro)
+        })
+
+        const parsearDur = (dur) => {
+          if (!dur || dur === 'N/A') return 0
+          const [h, m, s] = (dur || '00:00:00').split(':').map(Number)
+          return h * 3600 + m * 60 + s
+        }
+        const formatSeg = (seg) => {
+          const h = Math.floor(seg / 3600)
+          const m = Math.floor((seg % 3600) / 60)
+          const s = seg % 60
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        }
+
+        // Header de columnas UNA SOLA VEZ
+        const headerRow = detalleSheet.addRow(columnasParaTabla)
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF607D8B' } }
+        headerRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+        currentRow++
+
+        Object.entries(registrosPorFecha).forEach(([, registrosDelDia]) => {
+          let totalViajesDelDia = 0
+          let viajesDentroDelDia = 0
+          let viajesFueraDelDia = 0
+          let totalSegDentroDelDia = 0
+          let totalSegFueraDelDia = 0
+          let totalSegTotalDelDia = 0
+
+          registrosDelDia.forEach((registro) => {
+            totalViajesDelDia += registro.totalViajes || 0
+            viajesDentroDelDia += registro.viajesDentroHorario || 0
+            viajesFueraDelDia += registro.viajesFueraHorario || 0
+            ;(registro.detallesViajes || []).forEach((viaje) => {
+              totalSegDentroDelDia += parsearDur(viaje.duracionDentro)
+              totalSegFueraDelDia += parsearDur(viaje.duracionFuera)
+              totalSegTotalDelDia += parsearDur(viaje.duracionTotal)
+            })
+          })
+
+          const resumenDelDia = {
+            fecha: registrosDelDia[0]?.fecha,
+            conductorNombre: [
+              ...new Set(registrosDelDia.map((r) => r.conductorNombre).filter(Boolean)),
+            ].join(', '),
+            unidadNombre: registrosDelDia[0]?.unidadNombre,
+            Placa: registrosDelDia[0]?.Placa,
+            totalViajes: totalViajesDelDia,
+            viajesDentroHorario: viajesDentroDelDia,
+            viajesFueraHorario: viajesFueraDelDia,
+            duracionDentroHorario: formatSeg(totalSegDentroDelDia),
+            duracionFueraHorario: formatSeg(totalSegFueraDelDia),
+            duracionTotal: formatSeg(totalSegTotalDelDia),
+            horaInicio:
+              registrosDelDia[0]?.horaInicioTrabajo ||
+              registrosDelDia[0]?.detallesViajes?.[0]?.horaInicio ||
+              '—',
+            horaFin: (() => {
+              const ultimo = registrosDelDia[registrosDelDia.length - 1]
+              const viajes = ultimo?.detallesViajes
+              return ultimo?.horaFinTrabajo || viajes?.[viajes.length - 1]?.horaFin || '—'
+            })(),
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || '—',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || '—',
+          }
+
+          const rowData = columnasParaTabla.map((nombreCol) => {
+            const columnaConfig = COLUMNAS_POR_TIPO.horas_trabajo[nombreCol]
+            if (columnaConfig && columnaConfig.obtenerValor)
+              return columnaConfig.obtenerValor(resumenDelDia)
+            return 'N/A'
+          })
+
+          const dataRow = detalleSheet.addRow(rowData)
+          dataRow.font = { size: 9 }
+          dataRow.eachCell((cell, colNum) => {
+            cell.border = {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: colNum === 1 ? 'medium' : 'thin' },
+              right: { style: colNum === columnasParaTabla.length ? 'medium' : 'thin' },
+            }
+          })
+
+          if (config.remarcarHorasExtra && totalSegFueraDelDia > 0) {
+            const colIdx = columnasParaTabla.indexOf('Duración fuera del horario comercial')
+            if (colIdx !== -1) {
+              dataRow.getCell(colIdx + 1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFE6E6' },
+              }
+              dataRow.getCell(colIdx + 1).font = {
+                size: 9,
+                bold: true,
+                color: { argb: 'FFD32F2F' },
+              }
+            }
+          }
+
+          currentRow++
+        })
       }
     })
 
