@@ -1002,8 +1002,19 @@ export function useReporteExcel() {
             duracionDentroHorario: formatSeg(totalSegDentroDelDia),
             duracionFueraHorario: formatSeg(totalSegFueraDelDia),
             duracionTotal: formatSeg(totalSegTotalDelDia),
-            horaInicio: '—',
-            horaFin: '—',
+            horaInicio:
+              registrosDelDia[0]?.horaInicioTrabajo ||
+              registrosDelDia[0]?.detallesViajes?.[0]?.horaInicio ||
+              '—',
+            horaFin:
+              registrosDelDia[registrosDelDia.length - 1]?.horaFinTrabajo ||
+              (() => {
+                const ultimoReg = registrosDelDia[registrosDelDia.length - 1]
+                const viajes = ultimoReg?.detallesViajes
+                return viajes?.[viajes.length - 1]?.horaFin || '—'
+              })(),
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || '—',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || '—',
           }
 
           detalleSheet.addRow([])
