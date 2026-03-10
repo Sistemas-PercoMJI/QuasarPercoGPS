@@ -60,96 +60,6 @@ export function useReportesTrayectos() {
     }
   }
 
-  /**
-   * Genera trayectos simulados para pruebas
-   */
-  const generarTrayectosSimulados = (unidadNombre, unidadId, fechaInicio, fechaFin) => {
-    const trayectos = []
-    const fechas = generarRangoFechas(fechaInicio, fechaFin)
-
-    const conductores = [
-      'Perez Lopez Pedro',
-      'García Martínez Juan',
-      'López Hernández María',
-      'Rodríguez Sánchez Carlos',
-    ]
-
-    const baseLatTJ = 32.5149
-    const baseLngTJ = -117.0382
-
-    for (const fecha of fechas) {
-      const numTrayectos = Math.floor(Math.random() * 3) + 1
-
-      for (let i = 0; i < numTrayectos; i++) {
-        const horaInicio = 6 + Math.floor(Math.random() * 4)
-        const duracionHoras = 2 + Math.floor(Math.random() * 6)
-
-        const inicioTimestamp = new Date(fecha)
-        inicioTimestamp.setHours(horaInicio, Math.floor(Math.random() * 60), 0, 0)
-
-        const finTimestamp = new Date(inicioTimestamp)
-        finTimestamp.setHours(
-          inicioTimestamp.getHours() + duracionHoras,
-          Math.floor(Math.random() * 60),
-          0,
-          0,
-        )
-
-        const duracionMs = finTimestamp - inicioTimestamp
-        const kilometraje = Math.floor(Math.random() * 150) + 50
-        const velocidadPromedio = Math.floor(kilometraje / (duracionHoras + 0.5))
-        const velocidadMaxima = velocidadPromedio + Math.floor(Math.random() * 30) + 10
-
-        const numCoordenadas = 20 + Math.floor(Math.random() * 30)
-        const coordenadas = []
-
-        for (let j = 0; j < numCoordenadas; j++) {
-          coordenadas.push({
-            lat: baseLatTJ + (Math.random() - 0.5) * 0.05,
-            lng: baseLngTJ + (Math.random() - 0.5) * 0.05,
-            timestamp: new Date(
-              inicioTimestamp.getTime() + (j * duracionMs) / numCoordenadas,
-            ).toISOString(),
-            ignicion: j < numCoordenadas - 1 ? true : false,
-            velocidad: j === 0 || j === numCoordenadas - 1 ? 0 : velocidadPromedio,
-          })
-        }
-
-        trayectos.push({
-          id: `${fecha}_${i}`,
-          idUnidad: unidadId,
-          fecha: fecha,
-          conductorId: `conductor_${Math.floor(Math.random() * 4)}`,
-          conductorNombre: conductores[Math.floor(Math.random() * conductores.length)],
-          unidadNombre: unidadNombre,
-          Placa: `ABC-${Math.floor(Math.random() * 900) + 100}`,
-          inicioTimestamp: inicioTimestamp,
-          finTimestamp: finTimestamp,
-          duracion: duracionMs,
-          duracionHoras: (duracionMs / (1000 * 60 * 60)).toFixed(2),
-          kilometrajeRecorrido: kilometraje,
-          velocidadPromedio: velocidadPromedio,
-          velocidadMaxima: velocidadMaxima,
-          paradas: Math.floor(Math.random() * 5) + 1,
-          combustibleConsumido: (kilometraje / 12).toFixed(2),
-          ubicacionInicio: 'Tijuana, BC, México',
-          ubicacionFin: 'Tijuana, BC, México',
-          coordenadas: coordenadas,
-          latitud: coordenadas[0].lat,
-          longitud: coordenadas[0].lng,
-          coordenadasInicio: { lat: coordenadas[0].lat, lng: coordenadas[0].lng },
-          coordenadasFin: {
-            lat: coordenadas[coordenadas.length - 1].lat,
-            lng: coordenadas[coordenadas.length - 1].lng,
-          },
-          _simulado: true,
-        })
-      }
-    }
-
-    return trayectos
-  }
-
   const obtenerTrayectos = async (unidadesNombres, fechaInicio, fechaFin) => {
     loading.value = true
     error.value = null
@@ -324,16 +234,9 @@ export function useReportesTrayectos() {
       }
 
       // Si no hay trayectos reales, generar simulados
+
       if (todosTrayectos.length === 0) {
-        for (let i = 0; i < unidadesNombres.length; i++) {
-          const trayectosSimulados = generarTrayectosSimulados(
-            unidadesNombres[i],
-            unidadesIds[i],
-            fechaInicio,
-            fechaFin,
-          )
-          todosTrayectos.push(...trayectosSimulados)
-        }
+        return { trayectos: [], elementosSinDatos: unidadesNombres }
       }
 
       const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
@@ -343,24 +246,7 @@ export function useReportesTrayectos() {
     } catch (err) {
       console.error('Error al obtener trayectos:', err)
       error.value = err.message
-
-      const trayectosFallback = []
-      const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
-
-      for (let i = 0; i < unidadesNombres.length; i++) {
-        const trayectosSimulados = generarTrayectosSimulados(
-          unidadesNombres[i],
-          unidadesIds[i],
-          fechaInicio,
-          fechaFin,
-        )
-        trayectosFallback.push(...trayectosSimulados)
-      }
-
-      const { procesarTrayectosParaPDF } = useProcesamientoTrayectos()
-      const trayectosFallbackProcesados = await procesarTrayectosParaPDF(trayectosFallback)
-
-      return trayectosFallbackProcesados
+      return []
     } finally {
       loading.value = false
     }
@@ -405,7 +291,7 @@ export function useReportesTrayectos() {
     error,
     obtenerTrayectos,
     enriquecerConDatosUnidades,
-    generarTrayectosSimulados,
+    //generarTrayectosSimulados,
     descargarCoordenadasDeStorage,
   }
 }
