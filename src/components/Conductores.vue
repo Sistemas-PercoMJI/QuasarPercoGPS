@@ -99,7 +99,7 @@
             </q-item-label>
           </q-item-section>
 
-          <!-- Menú contextual para grupos -->
+          <!-- Menú contextual para grupos nooooooooooooooooooooooooooooooo-->
           <q-item-section side>
             <q-btn
               flat
@@ -113,6 +113,7 @@
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
 
+              <!-- EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
               <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
                 <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
                   <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
@@ -210,7 +211,7 @@
       <q-spinner-gears size="50px" color="primary" />
     </q-inner-loading>
 
-    <!-- Dialog: Detalles del Conductor -->
+    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada COMPLETA) -->
     <q-dialog
       v-model="dialogDetallesConductor"
       position="right"
@@ -219,7 +220,7 @@
       :persistent="false"
     >
       <q-card class="detalle-card-fixed">
-        <!-- Header -->
+        <!-- Header del card con avatar MEJORADO -->
         <q-card-section class="detalle-header">
           <div class="header-left">
             <q-avatar color="white" text-color="primary" size="64px" class="header-avatar">
@@ -246,9 +247,12 @@
 
         <q-separator />
 
+        <!-- Contenido con Expansion Items CON SCROLL FIJO -->
         <q-scroll-area class="detalle-scroll-area">
           <div class="detalle-content-wrapper">
+            <!-- ========================================= -->
             <!-- Información Personal -->
+            <!-- ========================================= -->
             <q-expansion-item
               icon="person"
               label="Información Personal"
@@ -268,7 +272,7 @@
                         v-model="conductorEditando.Nombre"
                         outlined
                         dense
-                        disable
+                        @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
                         class="field-input"
                       />
                     </div>
@@ -283,7 +287,7 @@
                         outlined
                         dense
                         mask="##########"
-                        disable
+                        @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
                         class="field-input"
                       />
                     </div>
@@ -322,7 +326,10 @@
                         outlined
                         dense
                         placeholder="Ej: A1234567"
-                        disable
+                        :disable="licenciaDeshabilitada"
+                        @blur="
+                          actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
+                        "
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -345,11 +352,22 @@
                         outlined
                         dense
                         readonly
-                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" />
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="fechaVencimientoFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaVencimiento"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -376,10 +394,17 @@
                       icon="add_photo_alternate"
                       size="sm"
                       color="primary"
-                      disable
+                      @click="abrirSelectorFotoLicencia"
                     >
                       <q-tooltip>Subir nueva foto</q-tooltip>
                     </q-btn>
+                    <input
+                      ref="inputFotoLicencia"
+                      type="file"
+                      accept="image/*"
+                      style="display: none"
+                      @change="subirNuevaFotoLicencia"
+                    />
                   </div>
 
                   <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
@@ -415,6 +440,19 @@
                         >
                           <q-tooltip>Descargar</q-tooltip>
                         </q-btn>
+                        <q-btn
+                          flat
+                          dense
+                          icon="delete"
+                          size="sm"
+                          :color="esLicenciaVigente ? 'grey-5' : 'negative'"
+                          :disable="esLicenciaVigente"
+                          @click="eliminarFotoLicenciaHandler(foto.url)"
+                        >
+                          <q-tooltip>{{
+                            esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                          }}</q-tooltip>
+                        </q-btn>
                       </div>
                     </div>
                   </div>
@@ -426,8 +464,8 @@
                 </q-card-section>
               </q-card>
             </q-expansion-item>
-
             <!-- Unidad Asignada -->
+
             <q-expansion-item
               icon="directions_car"
               label="Unidad Asignada"
@@ -537,7 +575,8 @@
                         outlined
                         dense
                         placeholder="Ingrese código de seguro"
-                        disable
+                        :disable="seguroDeshabilitado"
+                        @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -560,11 +599,22 @@
                         outlined
                         dense
                         readonly
-                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" />
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="seguroUnidadFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaSeguro"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -589,10 +639,17 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          disable
+                          @click="abrirSelectorFotoSeguro"
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
+                        <input
+                          ref="inputFotoSeguro"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoSeguro"
+                        />
                       </div>
 
                       <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
@@ -628,6 +685,21 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
+                              :disable="esSeguroUnidadVigente"
+                              @click="eliminarFotoSeguroHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esSeguroUnidadVigente
+                                  ? 'No se puede eliminar (vigente)'
+                                  : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -651,7 +723,13 @@
                         outlined
                         dense
                         placeholder="Ingrese código de tarjeta"
-                        disable
+                        :disable="tarjetaDeshabilitada"
+                        @blur="
+                          actualizarCampoUnidad(
+                            'TargetaCirculacion',
+                            unidadAsociada.TargetaCirculacion,
+                          )
+                        "
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -674,11 +752,22 @@
                         outlined
                         dense
                         readonly
-                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" />
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="tarjetaCirculacionFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaTarjeta"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -703,10 +792,17 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          disable
+                          @click="abrirSelectorFotoTargeta"
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
+                        <input
+                          ref="inputFotoTargeta"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoTargeta"
+                        />
                       </div>
 
                       <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
@@ -742,6 +838,21 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
+                              :disable="esTarjetaCirculacionVigente"
+                              @click="eliminarFotoTargetaHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esTarjetaCirculacionVigente
+                                  ? 'No se puede eliminar (vigente)'
+                                  : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -767,7 +878,8 @@
                         outlined
                         dense
                         placeholder="Ingrese número de placas"
-                        disable
+                        :disable="placasDeshabilitada"
+                        @blur="actualizarCampoUnidad('Placa', unidadAsociada.Placa)"
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -790,11 +902,22 @@
                         outlined
                         dense
                         readonly
-                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" />
+                          <q-icon name="event" class="cursor-pointer">
+                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                              <q-date
+                                :model-value="placasFechaFormato"
+                                mask="DD/MM/YYYY"
+                                @update:model-value="actualizarFechaPlacas"
+                              >
+                                <div class="row items-center justify-end">
+                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                </div>
+                              </q-date>
+                            </q-popup-proxy>
+                          </q-icon>
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -819,10 +942,17 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          disable
+                          @click="abrirSelectorFotoPlacas"
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
+                        <input
+                          ref="inputFotoPlacas"
+                          type="file"
+                          accept="image/*"
+                          style="display: none"
+                          @change="subirNuevaFotoPlacas"
+                        />
                       </div>
 
                       <div v-if="cargandoFotosPlacas" class="text-center q-pa-md">
@@ -858,6 +988,19 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
+                            <q-btn
+                              flat
+                              dense
+                              icon="delete"
+                              size="sm"
+                              :color="esPlacasVigente ? 'grey-5' : 'negative'"
+                              :disable="esPlacasVigente"
+                              @click="eliminarFotoPlacasHandler(foto.url)"
+                            >
+                              <q-tooltip>{{
+                                esPlacasVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
+                              }}</q-tooltip>
+                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -874,6 +1017,7 @@
               </q-card>
             </q-expansion-item>
           </div>
+          <!-- CIERRE detalle-content-wrapper -->
         </q-scroll-area>
       </q-card>
     </q-dialog>
@@ -898,6 +1042,7 @@
           <div class="q-mt-md">
             <div class="text-subtitle2 q-mb-sm">Seleccionar conductores</div>
 
+            <!-- Búsqueda de conductores -->
             <q-input
               v-model="busquedaConductoresGrupo"
               outlined
@@ -910,6 +1055,7 @@
               </template>
             </q-input>
 
+            <!-- Lista de conductores para seleccionar -->
             <q-scroll-area style="height: 300px" class="bordered">
               <q-list>
                 <q-item
@@ -1121,14 +1267,19 @@ const {
   escucharGrupos,
   actualizarGrupo,
   eliminarGrupo,
-
+  actualizarConductor,
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-
+  //asignarUnidad,
   obtenerUnidadDeConductor,
-
+  puedeEditarLicenciaConducir,
+  puedeEditarSeguroUnidad,
+  puedeEditarTargetaCirculacion,
   obtenerFotosPlacas,
+  subirFotoPlacas,
+  eliminarFotoPlacas,
+  puedeEditarPlacas,
 } = composable
 
 // Funciones de fotos
@@ -1136,6 +1287,12 @@ const obtenerFotosLicencia = composable.obtenerFotosLicencia
 const obtenerFotosSeguroUnidad = composable.obtenerFotosSeguroUnidad
 const obtenerFotosTargetaCirculacion = composable.obtenerFotosTargetaCirculacion
 const descargarFoto = composable.descargarFoto
+const subirFotoLicencia = composable.subirFotoLicencia
+const subirFotoSeguroUnidad = composable.subirFotoSeguroUnidad
+const subirFotoTargetaCirculacion = composable.subirFotoTargetaCirculacion
+const eliminarFotoLicencia = composable.eliminarFotoLicencia
+const eliminarFotoSeguroUnidad = composable.eliminarFotoSeguroUnidad
+const eliminarFotoTargetaCirculacion = composable.eliminarFotoTargetaCirculacion
 
 // Estado local
 const tab = ref('grupos') // Cambiado a 'grupos' por defecto
@@ -1168,7 +1325,10 @@ const cargandoFotosTargeta = ref(false)
 const cargandoFotosPlacas = ref(false)
 
 // Referencias para inputs de archivo
-
+const inputFotoLicencia = ref(null)
+const inputFotoSeguro = ref(null)
+const inputFotoTargeta = ref(null)
+const inputFotoPlacas = ref(null)
 const opcionesUnidadesFiltradas = ref([])
 
 const filtroMapaActivo = ref(false)
@@ -1180,6 +1340,11 @@ let unsubscribeGrupos = null
 const nuevoGrupo = ref({
   Nombre: '',
   ConductoresIds: [],
+})
+
+const placasDeshabilitada = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarPlacas(unidadAsociada.value)
 })
 
 const conductoresFiltrados = computed(() => {
@@ -1283,6 +1448,21 @@ const fechaVencimientoFormato = computed(() => {
 const unidadAsociada = computed(() => {
   if (!conductorEditando.value?.UnidadAsignada) return null
   return obtenerUnidadDeConductor(conductorEditando.value.id)
+})
+// Computed para deshabilitar campos
+const licenciaDeshabilitada = computed(() => {
+  if (!conductorEditando.value) return true
+  return !puedeEditarLicenciaConducir(conductorEditando.value)
+})
+
+const seguroDeshabilitado = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarSeguroUnidad(unidadAsociada.value)
+})
+
+const tarjetaDeshabilitada = computed(() => {
+  if (!unidadAsociada.value) return true
+  return !puedeEditarTargetaCirculacion(unidadAsociada.value)
 })
 
 const esLicenciaVigente = computed(() => {
@@ -1532,6 +1712,262 @@ async function sincronizarDatos() {
   await recargarDatos()
 }
 
+async function actualizarCampo(campo, valor) {
+  if (!conductorEditando.value?.id) return
+
+  try {
+    if (campo === 'IdEmpresaConductor') {
+      const empresaAnterior = conductorEditando.value.IdEmpresaConductor
+      const empresaNueva = valor
+
+      // Solo procesar si realmente cambió de empresa
+      if (empresaAnterior !== empresaNueva) {
+        // Si tiene unidad asignada, actualizar su IdEmpresaUnidad
+        if (conductorEditando.value.UnidadAsignada) {
+          const unidadId = conductorEditando.value.UnidadAsignada
+
+          try {
+            // Actualizar IdEmpresaUnidad en Realtime Database
+            const { realtimeDb } = await import('src/firebase/firebaseConfig')
+            const { ref: dbRef, update } = await import('firebase/database')
+
+            const unidadKey = `unidad_${unidadId}`
+            const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
+
+            await update(unidadRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
+
+            // También actualizar en Firestore
+            const { doc, updateDoc } = await import('firebase/firestore')
+            const { db } = await import('src/firebase/firebaseConfig')
+
+            const unidadFirestoreRef = doc(db, 'Unidades', unidadId)
+            await updateDoc(unidadFirestoreRef, {
+              IdEmpresaUnidad: empresaNueva,
+            })
+          } catch (unidadError) {
+            console.error('Error al actualizar unidad:', unidadError)
+            // Continuar de todos modos para actualizar el conductor
+          }
+        } else {
+          console.log('ℹNo tiene unidad asignada')
+        }
+      } else {
+        console.log('ℹNo hubo cambio de empresa')
+      }
+    }
+
+    // Actualizar el campo en Firestore
+
+    await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
+
+    Notify.create({
+      type: 'positive',
+      message: 'Campo actualizado correctamente',
+      icon: 'check_circle',
+    })
+
+    // Si cambió de empresa, cerrar el diálogo y recargar
+    if (campo === 'IdEmpresaConductor') {
+      await recargarDatos()
+
+      dialogDetallesConductor.value = false
+
+      Notify.create({
+        type: 'info',
+        message: ' Conductor movido a otra empresa',
+        caption: 'La unidad ahora pertenece a la nueva empresa',
+        icon: 'business',
+        timeout: 3000,
+      })
+    }
+  } catch (error) {
+    console.error('Error completo:', error)
+    console.error('Stack:', error.stack)
+
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+// AGREGAR ESTA NUEVA FUNCIÓN
+async function actualizarCampoUnidad(campo, valor) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    // Importar updateDoc y doc si no están importados
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      [campo]: valor,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar el estado local
+    unidadAsociada.value[campo] = valor
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Código actualizado correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaSeguro(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      SeguroUnidadFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.SeguroUnidadFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de seguro actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaTarjeta(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      TargetaCirculacionFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.TargetaCirculacionFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de tarjeta actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaPlacas(fecha) {
+  if (!unidadAsociada.value?.id) return
+
+  try {
+    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('src/firebase/firebaseConfig')
+
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
+
+    await updateDoc(unidadRef, {
+      PlacasFecha: fechaDate,
+      updatedAt: Timestamp.now(),
+    })
+
+    // Actualizar estado local
+    unidadAsociada.value.PlacasFecha = fechaDate
+
+    // Recargar unidades
+    await obtenerUnidades()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha de placas actualizada',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function actualizarFechaVencimiento(fecha) {
+  if (!conductorEditando.value?.id) return
+
+  try {
+    const [dia, mes, año] = fecha.split('/')
+    const fechaDate = new Date(año, mes - 1, dia)
+
+    await actualizarConductor(conductorEditando.value.id, {
+      LicenciaConducirFecha: fechaDate,
+    })
+
+    conductorEditando.value.LicenciaConducirFecha = fechaDate
+
+    Notify.create({
+      type: 'positive',
+      message: 'Fecha actualizada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al actualizar fecha: ' + error.message,
+      icon: 'error',
+    })
+  }
+}
+
 async function asignarUnidadAConductor(unidadId) {
   if (!conductorEditando.value?.id) return
 
@@ -1725,6 +2161,266 @@ async function descargarFotoHandler(url, nombreArchivo) {
     })
   }
 }
+
+// FUNCIONES PARA SUBIR FOTOS
+
+function abrirSelectorFotoLicencia() {
+  inputFotoLicencia.value?.click()
+}
+
+function abrirSelectorFotoSeguro() {
+  inputFotoSeguro.value?.click()
+}
+
+function abrirSelectorFotoTargeta() {
+  inputFotoTargeta.value?.click()
+}
+
+function abrirSelectorFotoPlacas() {
+  inputFotoPlacas.value?.click()
+}
+
+async function subirNuevaFotoLicencia(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    cargandoFotosLicencia.value = true
+    await subirFotoLicencia(conductorEditando.value.id, file)
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de licencia subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosLicencia.value = false
+    if (inputFotoLicencia.value) {
+      inputFotoLicencia.value.value = ''
+    }
+  }
+}
+
+async function subirNuevaFotoSeguro(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosSeguro.value = true
+    await subirFotoSeguroUnidad(unidadAsignadaData.value.id, file)
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de seguro subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosSeguro.value = false
+    if (inputFotoSeguro.value) {
+      inputFotoSeguro.value.value = ''
+    }
+  }
+}
+
+async function subirNuevaFotoTargeta(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosTargeta.value = true
+    await subirFotoTargetaCirculacion(unidadAsignadaData.value.id, file)
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de tarjeta subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosTargeta.value = false
+    if (inputFotoTargeta.value) {
+      inputFotoTargeta.value.value = ''
+    }
+  }
+}
+
+async function subirNuevaFotoPlacas(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!unidadAsignadaData.value?.id) {
+    Notify.create({
+      type: 'warning',
+      message: 'Debe asignar una unidad primero',
+      icon: 'warning',
+    })
+    return
+  }
+
+  try {
+    cargandoFotosPlacas.value = true
+    await subirFotoPlacas(unidadAsignadaData.value.id, file)
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de placas subida correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: 'Error al subir foto: ' + error.message,
+      icon: 'error',
+    })
+  } finally {
+    cargandoFotosPlacas.value = false
+    if (inputFotoPlacas.value) {
+      inputFotoPlacas.value.value = ''
+    }
+  }
+}
+
+// FUNCIONES PARA ELIMINAR FOTOS
+
+async function eliminarFotoLicenciaHandler(fotoUrl) {
+  try {
+    await eliminarFotoLicencia(
+      conductorEditando.value.id,
+      fotoUrl,
+      conductorEditando.value.LicenciaConducirFecha,
+    )
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de licencia eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoSeguroHandler(fotoUrl) {
+  try {
+    await eliminarFotoSeguroUnidad(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.SeguroUnidadFecha,
+    )
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de seguro eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoTargetaHandler(fotoUrl) {
+  try {
+    await eliminarFotoTargetaCirculacion(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.TargetaCirculacionFecha,
+    )
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de tarjeta eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
+async function eliminarFotoPlacasHandler(fotoUrl) {
+  try {
+    await eliminarFotoPlacas(
+      unidadAsignadaData.value.id,
+      fotoUrl,
+      unidadAsignadaData.value.PlacasFecha,
+    )
+
+    await cargarFotosConductor()
+
+    Notify.create({
+      type: 'positive',
+      message: 'Foto de placas eliminada correctamente',
+      icon: 'check_circle',
+    })
+  } catch (error) {
+    Notify.create({
+      type: 'negative',
+      message: error.message,
+      icon: 'error',
+    })
+  }
+}
+
 function abrirDialogNuevoGrupo() {
   modoEdicion.value = false
   nuevoGrupo.value = { Nombre: '', ConductoresIds: [] }
@@ -2358,14 +3054,16 @@ function navegarAUnidad() {
 /* ============================================ */
 .conductor-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 0;
+  margin-bottom: 0; /*  Quitamos margin porque ya hay gap */
   border-radius: 12px;
   overflow: hidden;
   position: relative;
   border: 2px solid transparent;
+  /*  IMPORTANTE: esto permite que la sombra se vea completa */
   will-change: transform;
 }
 
+/* Efecto de brillo deslizante */
 .conductor-card::before {
   content: '';
   position: absolute;
@@ -2392,12 +3090,13 @@ function navegarAUnidad() {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
   border-color: #42a5f5;
-  z-index: 10;
+  z-index: 10; /*  Eleva la tarjeta por encima de las demás */
 }
 .conductor-card:hover::before {
   transform: translateX(100%);
 }
 
+/* Avatar que crece y rota */
 .conductor-card:hover .card-avatar {
   animation: avatar-bounce-rotate 0.6s ease;
 }
@@ -2424,9 +3123,10 @@ function navegarAUnidad() {
   box-shadow: 0 16px 32px rgba(25, 118, 210, 0.5) !important;
   border-color: #0d47a1 !important;
   background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%) !important;
-  z-index: 10;
+  z-index: 10; /*  Eleva la tarjeta */
 }
 
+/* Flash highlight para notificaciones */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -2611,6 +3311,7 @@ function navegarAUnidad() {
   overflow: visible;
 }
 
+/* Borde lateral animado */
 .group-item::before {
   content: '';
   position: absolute;
@@ -2628,7 +3329,7 @@ function navegarAUnidad() {
 }
 .group-item .q-avatar {
   transition: all 0.3s ease;
-  flex-shrink: 0;
+  flex-shrink: 0; /*  No se encoge */
 }
 
 .group-item:hover::before {
@@ -2645,18 +3346,30 @@ function navegarAUnidad() {
   width: 4px;
 }
 
+/* Avatar del grupo animado */
 .group-item:hover .q-avatar {
   transform: scale(1.08);
 }
 .group-item .q-avatar .q-icon {
-  font-size: 18px !important;
+  font-size: 18px !important; /*  Tamaño fijo del icono */
+}
+@keyframes avatar-grow-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 /* ============================================ */
 /* === LISTA DE CONDUCTORES (TARJETAS) === */
 /* ============================================ */
 .conductores-list {
-  padding: 20px;
+  padding: 20px; /*  Más padding */
   overflow: visible;
   flex: 1;
 }
@@ -2665,7 +3378,7 @@ function navegarAUnidad() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
-  padding: 10px 10px 40px 5px;
+  padding: 10px 10px 40px 5px; /*  24px arriba, 20px a los lados, 40px abajo */
 }
 .card-header {
   display: flex;
@@ -2740,6 +3453,7 @@ function navegarAUnidad() {
   position: relative;
 }
 
+/* Efecto de elevación 3D */
 .foto-card::after {
   content: '';
   position: absolute;
@@ -2897,14 +3611,14 @@ function navegarAUnidad() {
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 .detalle-card-fixed {
-  width: 480px !important;
+  width: 480px !important; /*  ANCHO FIJO */
   max-width: 480px !important;
   min-width: 480px !important;
   height: 100vh;
   display: flex;
   flex-direction: column;
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  overflow: hidden;
+  overflow: hidden; /*  IMPORTANTE */
 }
 .detalle-header {
   display: flex;
@@ -2990,6 +3704,7 @@ function navegarAUnidad() {
   overflow: hidden;
 }
 
+/* Efecto de slide */
 .menu-item::before {
   content: '';
   position: absolute;
@@ -3076,6 +3791,7 @@ function navegarAUnidad() {
   transform: translateY(0);
 }
 
+/* Botón flotante crear grupo */
 .q-btn[icon='create_new_folder']:hover {
   transform: scale(1.15) rotate(10deg);
 }
@@ -3146,18 +3862,20 @@ function navegarAUnidad() {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Scroll area CON ALTURA FIJA */
 .detalle-scroll-area {
   flex: 1;
-  height: 100%;
+  height: 100%; /*  IMPORTANTE */
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: hidden; /*  Evita scroll horizontal */
 }
 
 .detalle-content-wrapper {
   padding: 0 0 24px 0;
-  width: 100%;
+  width: 100%; /*  IMPORTANTE */
 }
 
+/* Expansion items mejorados */
 .expansion-item-enhanced {
   border-bottom: 1px solid #e0e0e0;
   transition: all 0.3s ease;
@@ -3202,6 +3920,7 @@ function navegarAUnidad() {
   }
 }
 
+/* Info fields mejorados */
 .info-row {
   display: flex;
   flex-direction: column;
@@ -3215,7 +3934,7 @@ function navegarAUnidad() {
 }
 
 .info-field.full-width {
-  grid-column: 1 / -1;
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
 }
 
 .field-label {
@@ -3240,6 +3959,7 @@ function navegarAUnidad() {
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 
+/* Responsive para pantallas pequeñas */
 @media (max-width: 600px) {
   .detalle-card-fixed {
     width: 100vw !important;
@@ -3249,6 +3969,10 @@ function navegarAUnidad() {
 
   .header-name {
     font-size: 18px;
+  }
+
+  .header-avatar {
+    size: 56px;
   }
 
   .expansion-header {
