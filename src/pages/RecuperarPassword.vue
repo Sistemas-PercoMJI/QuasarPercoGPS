@@ -165,6 +165,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useQuasar } from 'quasar'
+//import { getAuth, fetchSignInMethodsForEmail } from 'firebase/auth'
 
 const $q = useQuasar()
 
@@ -195,18 +196,29 @@ async function validarCorreoFirebase() {
   errores.correocuenta = ''
 
   try {
-    //implementar verificación real contra Firebase
-    // Por ahora simula delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    const { getAuth, signInWithEmailAndPassword } = await import('firebase/auth')
+    const auth = getAuth()
 
-    // Simulación - reemplazar con lógica real
-    // const methods = await fetchSignInMethodsForEmail(auth, form.correocuenta)
-    // correoValido.value = methods.length > 0
+    await signInWithEmailAndPassword(auth, form.correocuenta, 'dummy_password_check_123')
 
-    correoValido.value = true // placeholder
-  } catch {
-    correoValido.value = false
-    errores.correocuenta = 'No se encontró una cuenta con ese correo'
+    // Si no lanza error (raro), el correo existe
+    correoValido.value = true
+  } catch (error) {
+    if (
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/invalid-login-credentials'
+    ) {
+      // Correo existe pero contraseña incorrecta — eso es lo que queremos
+      correoValido.value = true
+    } else if (error.code === 'auth/user-not-found') {
+      correoValido.value = false
+      errores.correocuenta = 'No se encontró una cuenta con ese correo'
+    } else {
+      // Cualquier otro error, asumimos que el correo no existe
+      correoValido.value = false
+      errores.correocuenta = 'No se encontró una cuenta con ese correo'
+    }
   } finally {
     validandoCorreo.value = false
   }
@@ -255,8 +267,22 @@ async function enviarSolicitud() {
   enviando.value = true
 
   try {
-    // TODO: llamar Firebase Function para mandar el email a Sistemas
-    await new Promise((resolve) => setTimeout(resolve, 1500)) // placeholder
+    const response = await fetch(
+      'https://us-central1-gpsmjindust.cloudfunctions.net/enviarSolicitudPassword',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          correoCuenta: form.correocuenta,
+          empresa: form.empresa,
+          nombre: form.nombre,
+          correoContacto: form.correoContacto,
+        }),
+      },
+    )
+
+    const data = await response.json()
+    if (!data.success) throw new Error(data.error)
 
     enviado.value = true
   } catch {
