@@ -531,7 +531,77 @@ export function useMapboxGL() {
       ">×</button>
     </div>
     `
-          : ''
+          : unidad.estado === 'movimiento'
+            ? `
+    <div style="
+      background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    ">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+          <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
+        </svg>
+        <span>En movimiento</span>
+      </div>
+      <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+        background: rgba(255,255,255,0.25);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    </div>
+    `
+            : unidad.estado === 'detenido'
+              ? `
+    <div style="
+      background: linear-gradient(135deg, #F57F17 0%, #FFC107 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    ">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+        </svg>
+        <span>Detenido</span>
+      </div>
+      <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+        background: rgba(255,255,255,0.25);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    </div>
+    `
+              : ''
     }
 
         <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
