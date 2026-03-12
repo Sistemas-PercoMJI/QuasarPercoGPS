@@ -2103,4 +2103,12 @@ function limpiarMarcadorBusqueda() {
   background-color: #bb0000 !important;
   color: white !important;
 }
+
+.sugerencias-card :deep(.q-item) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.sugerencias-card :deep(.q-item:last-child) {
+  border-bottom: none;
+}
 </style>
