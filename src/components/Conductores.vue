@@ -172,7 +172,11 @@
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">
-                {{ conductor.esPseudoConductor ? 'Sin conductor' : conductor.IdEmpresaConductor }}
+                {{
+                  conductor.esPseudoConductor
+                    ? conductor.IdEmpresaConductor
+                    : conductor.IdEmpresaConductor
+                }}
               </div>
             </div>
           </q-card-section>
