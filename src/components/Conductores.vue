@@ -1199,10 +1199,11 @@ const conductoresFiltrados = computed(() => {
     resultado = unidades.value
       .filter((u) => {
         const sinConductor = !u.ConductorAsignado
+        const tieneImei = u.imei && u.imei.toString().trim().length === 15
         const mismaEmpresa = Array.isArray(idEmpresaActual.value)
           ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
           : u.IdEmpresaUnidad === idEmpresaActual.value
-        return sinConductor && mismaEmpresa
+        return sinConductor && tieneImei && mismaEmpresa
       })
       .map((u) => ({
         id: u.id,
@@ -1226,6 +1227,7 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
+
 function filtrarUnidades(val, update) {
   update(() => {
     if (val === '') {
