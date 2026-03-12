@@ -1183,22 +1183,34 @@ const nuevoGrupo = ref({
 })
 
 const conductoresFiltrados = computed(() => {
-  if (!grupoSeleccionado.value) {
-    return []
-  }
+  if (!grupoSeleccionado.value) return []
 
   let resultado = []
 
-  // GRUPO ESPECIAL: TODOS (sin filtro de empresa)
   if (grupoSeleccionado.value === '__todos__') {
     resultado = conductores.value
   }
-  // Grupos normales
-  else {
+  // Agregar este caso
+  else if (grupoSeleccionado.value === '__sin_conductor__') {
+    resultado = unidades.value
+      .filter((u) => {
+        const sinConductor = !u.ConductorAsignado
+        const mismaEmpresa = Array.isArray(idEmpresaActual.value)
+          ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
+          : u.IdEmpresaUnidad === idEmpresaActual.value
+        return sinConductor && mismaEmpresa
+      })
+      .map((u) => ({
+        id: u.id,
+        Nombre: u.Unidad,
+        IdEmpresaConductor: u.IdEmpresaUnidad,
+        UnidadAsignada: u.id,
+        esPseudoConductor: true,
+      }))
+  } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
-  // Aplicar búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1210,7 +1222,6 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
-
 function filtrarUnidades(val, update) {
   update(() => {
     if (val === '') {
@@ -1541,37 +1552,29 @@ async function asignarUnidadAConductor(unidadId) {
   try {
     const { doc, updateDoc } = await import('firebase/firestore')
     const { db } = await import('src/firebase/firebaseConfig')
+    const { realtimeDb } = await import('src/firebase/firebaseConfig')
+    const { ref: dbRef, update } = await import('firebase/database')
 
-    // CASO 1: Si unidadId es null, está QUITANDO la unidad
+    // CASO 1: Quitando la unidad (unidadId === null)
     if (!unidadId) {
-      // 1. Quitar del conductor
       const conductorRef = doc(db, 'Conductores', conductorId)
-      await updateDoc(conductorRef, {
-        UnidadAsignada: null,
-      })
+      await updateDoc(conductorRef, { UnidadAsignada: null })
 
-      // 2. Quitar conductor de la unidad anterior
       if (unidadAnteriorId) {
         const unidadRef = doc(db, 'Unidades', unidadAnteriorId)
-        await updateDoc(unidadRef, {
-          ConductorAsignado: null,
+        await updateDoc(unidadRef, { ConductorAsignado: null })
+
+        // Limpiar conductor en Realtime DB sin borrar el nodo
+        const unidadRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadAnteriorId}`)
+        await update(unidadRTRef, {
+          conductorId: null,
+          conductorNombre: null,
+          IdEmpresaConductor: null,
         })
       }
 
-      // 3. Eliminar del mapa
-      if (unidadAnteriorId) {
-        const { realtimeDb } = await import('src/firebase/firebaseConfig')
-        const { ref: dbRef, update } = await import('firebase/database')
-
-        const unidadIdKey = `unidad_${unidadAnteriorId}`
-        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
-        await update(unidadRef)
-      }
-
       conductorEditando.value.UnidadAsignada = null
-      if (conductorSeleccionado.value) {
-        conductorSeleccionado.value.UnidadAsignada = null
-      }
+      if (conductorSeleccionado.value) conductorSeleccionado.value.UnidadAsignada = null
 
       Notify.create({
         type: 'positive',
@@ -1582,11 +1585,10 @@ async function asignarUnidadAConductor(unidadId) {
 
       await obtenerConductores()
       await obtenerUnidades()
-
       return
     }
 
-    // CASO 2: Está ASIGNANDO una nueva unidad
+    // CASO 2: Asignando nueva unidad
     const otroConductorConEstaUnidad = conductores.value.find(
       (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
     )
@@ -1598,57 +1600,53 @@ async function asignarUnidadAConductor(unidadId) {
         icon: 'error',
         timeout: 3000,
       })
-
       conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
       return
     }
 
-    // Si había una unidad anterior diferente, liberarla
+    // Liberar unidad anterior si existe y es diferente
     if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
-      // Quitar conductor de unidad anterior
       const unidadAnteriorRef = doc(db, 'Unidades', unidadAnteriorId)
-      await updateDoc(unidadAnteriorRef, {
-        ConductorAsignado: null,
+      await updateDoc(unidadAnteriorRef, { ConductorAsignado: null })
+
+      // Limpiar conductor en Realtime DB de la unidad anterior
+      const unidadAnteriorRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadAnteriorId}`)
+      await update(unidadAnteriorRTRef, {
+        conductorId: null,
+        conductorNombre: null,
+        IdEmpresaConductor: null,
       })
-
-      // Eliminar del mapa
-      const { realtimeDb } = await import('src/firebase/firebaseConfig')
-      const { ref: dbRef, remove } = await import('firebase/database')
-
-      const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
-      const unidadAnteriorRef2 = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
-      await remove(unidadAnteriorRef2)
     }
 
-    // 1. Asignar unidad al conductor
+    // Asignar en Firestore
     const conductorRef = doc(db, 'Conductores', conductorId)
-    await updateDoc(conductorRef, {
-      UnidadAsignada: unidadId,
-    })
+    await updateDoc(conductorRef, { UnidadAsignada: unidadId })
 
-    // 2.  Asignar conductor a la unidad
     const unidadRef = doc(db, 'Unidades', unidadId)
-    await updateDoc(unidadRef, {
-      ConductorAsignado: conductorId,
+    await updateDoc(unidadRef, { ConductorAsignado: conductorId })
+
+    // Actualizar conductor en Realtime DB de la nueva unidad
+    const nuevaConductorData = conductores.value.find((c) => c.id === conductorId)
+    const unidadNuevaRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadId}`)
+    await update(unidadNuevaRTRef, {
+      conductorId: conductorId,
+      conductorNombre: nuevaConductorData?.Nombre || '',
+      IdEmpresaConductor: nuevaConductorData?.IdEmpresaConductor || null,
     })
 
     conductorEditando.value.UnidadAsignada = unidadId
-    if (conductorSeleccionado.value) {
-      conductorSeleccionado.value.UnidadAsignada = unidadId
-    }
+    if (conductorSeleccionado.value) conductorSeleccionado.value.UnidadAsignada = unidadId
 
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
     console.error('Error al gestionar unidad:', error)
-
     Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error',
       timeout: 3000,
     })
-
     conductorEditando.value.UnidadAsignada = unidadAnteriorId
   }
 }

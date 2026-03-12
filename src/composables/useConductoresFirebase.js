@@ -987,11 +987,12 @@ export function useConductoresFirebase() {
         const { realtimeDb } = await import('src/firebase/firebaseConfig')
         const { ref: dbRef, update } = await import('firebase/database')
 
-        const unidadId = `unidad_${unidadAsignada}`
-        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
-
-        // Eliminar de unidades_activas
-        await update(unidadRef)
+        const unidadIdKey = `unidad_${unidadAsignada}`
+        const unidadRTRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
+        await update(unidadRTRef, {
+          conductorNombre: null,
+          conductorId: null,
+        })
       }
 
       // 4. Actualizar el estado local
