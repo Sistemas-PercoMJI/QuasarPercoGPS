@@ -1192,7 +1192,7 @@ const conductoresFiltrados = computed(() => {
   let resultado = []
 
   if (grupoSeleccionado.value === '__todos__') {
-    resultado = conductores.value
+    resultado = conductores.value.filter((c) => c.UnidadAsignada)
   }
   // Agregar este caso
   else if (grupoSeleccionado.value === '__sin_conductor__') {
@@ -1407,17 +1407,10 @@ const esPlacasVigente = computed(() => {
 
 // Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
     return []
   }
 
-  // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
-  if (grupoSeleccionado.value === '__todos__') {
-    return null
-  }
-
-  // Para cualquier otro grupo = filtrado estricto
   const conductoresDelGrupo = conductoresFiltrados.value
   const idsUnidades = conductoresDelGrupo
     .filter((c) => c.UnidadAsignada)
