@@ -189,26 +189,6 @@ function prepararDatosTrayectos(registros) {
   return trayectos
 }
 
-function calcularBoundingBox(trayectos) {
-  let minLat = Infinity
-  let maxLat = -Infinity
-  let minLng = Infinity
-  let maxLng = -Infinity
-
-  trayectos.forEach((trayecto) => {
-    trayecto.coordenadas.forEach((coord) => {
-      minLat = Math.min(minLat, coord.lat)
-      maxLat = Math.max(maxLat, coord.lat)
-      minLng = Math.min(minLng, coord.lng)
-      maxLng = Math.max(maxLng, coord.lng)
-    })
-  })
-
-  //  AGREGAR ESTOS LOGS:
-
-  return { minLat, maxLat, minLng, maxLng }
-}
-
 /**
  * Calcula el bounding box de todos los trayectos
  */
@@ -224,20 +204,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
   const { mostrarPins = true } = config
 
-  const bbox = calcularBoundingBox(trayectos) //  AQUÍ SE LLAMA
-
-  const MIN_DELTA = 0.005
-  if (bbox.maxLat - bbox.minLat < MIN_DELTA) {
-    bbox.minLat -= MIN_DELTA
-    bbox.maxLat += MIN_DELTA
-  }
-  if (bbox.maxLng - bbox.minLng < MIN_DELTA) {
-    bbox.minLng -= MIN_DELTA
-    bbox.maxLng += MIN_DELTA
-  }
-  const padding = config.padding ?? 40 // px de margen alrededor de las rutas
-
-  const bboxStr = `[${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}]`
+  const padding = config.padding ?? 60
 
   // Construir overlays (paths + pins)
   const overlays = []
@@ -305,7 +272,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/${bboxStr}/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
+  const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
 
   if (url.length > 8000) {
     console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
