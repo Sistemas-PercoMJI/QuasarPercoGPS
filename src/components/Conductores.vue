@@ -1561,11 +1561,11 @@ async function asignarUnidadAConductor(unidadId) {
       // 3. Eliminar del mapa
       if (unidadAnteriorId) {
         const { realtimeDb } = await import('src/firebase/firebaseConfig')
-        const { ref: dbRef, remove } = await import('firebase/database')
+        const { ref: dbRef, update } = await import('firebase/database')
 
         const unidadIdKey = `unidad_${unidadAnteriorId}`
         const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
-        await remove(unidadRef)
+        await update(unidadRef)
       }
 
       conductorEditando.value.UnidadAsignada = null

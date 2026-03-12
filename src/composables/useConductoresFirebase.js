@@ -985,13 +985,13 @@ export function useConductoresFirebase() {
       // 3. Si había una unidad asignada, eliminarla del Realtime Database
       if (unidadAsignada) {
         const { realtimeDb } = await import('src/firebase/firebaseConfig')
-        const { ref: dbRef, remove } = await import('firebase/database')
+        const { ref: dbRef, update } = await import('firebase/database')
 
         const unidadId = `unidad_${unidadAsignada}`
         const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadId}`)
 
         // Eliminar de unidades_activas
-        await remove(unidadRef)
+        await update(unidadRef)
       }
 
       // 4. Actualizar el estado local
