@@ -509,6 +509,7 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 import { useTutorial } from 'src/composables/useTutorial'
+import mapboxgl from 'mapbox-gl'
 
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
@@ -1000,7 +1001,6 @@ function actualizarMarcadorBusqueda(lat, lng) {
   const map = mapPage._mapaAPI.map
 
   // Importar mapboxgl desde el scope global que ya usa IndexPage
-  const mapboxgl = window.mapboxgl
 
   if (!mapboxgl) {
     console.warn('mapboxgl no disponible en window')
@@ -1024,9 +1024,28 @@ function actualizarMarcadorBusqueda(lat, lng) {
       window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
         .setLngLat([lng, lat])
         .setPopup(
-          new mapboxgl.Popup({ offset: 25, closeButton: true, closeOnClick: false }).setHTML(
-            '<b>📍 Ubicación buscada</b>',
-          ),
+          new mapboxgl.Popup({
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false,
+            className: 'popup-animated',
+          }).setHTML(`
+      <div class="poi-popup-container">
+        <div class="poi-color-band" style="background: #4285F4;">
+          <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <span class="poi-band-nombre" style="color: white;">Ubicación buscada</span>
+        </div>
+        <div class="poi-popup-body">
+          <div class="address-info">
+            <div class="address-text">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+          </div>
+        </div>
+      </div>
+    `),
         )
         .addTo(map)
     } else {
