@@ -925,36 +925,33 @@ function toggleFiltro(filtro) {
     realizarBusqueda(busqueda.value)
   }
 }
-function centrarMapaEn(lat, lng, zoom = 18) {
-  // Función para verificar y esperar por el mapa
-  const esperarMapa = (intentos = 0) => {
-    // Verificar si window.mapaGlobal existe y tiene el mapa
-    if (window.mapaGlobal && window.mapaGlobal.map && window.L) {
-      ejecutarCentrado(lat, lng, zoom)
-      return true
-    } else if (intentos < 10) {
-      // Máximo 10 intentos (5 segundos)
+function centrarMapaEn(lat, lng, zoom = 15) {
+  const mapPage = document.getElementById('map-page')
 
-      setTimeout(() => esperarMapa(intentos + 1), 500)
-    } else {
-      console.error('Timeout: Mapa no disponible después de 5 segundos')
-      $q.notify({
-        message: 'El mapa no está disponible. Recarga la página e intenta nuevamente.',
-        color: 'negative',
-        icon: 'error',
-        position: 'top',
-        timeout: 5000,
-      })
-      return false
-    }
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
+    $q.notify({
+      message: 'El mapa no está disponible. Recarga la página.',
+      color: 'negative',
+      icon: 'error',
+      position: 'top',
+      timeout: 3000,
+    })
+    return
   }
 
-  return esperarMapa()
+  mapPage._mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: zoom,
+    duration: 1500,
+    essential: true,
+  })
+
+  actualizarMarcadorBusqueda(lat, lng)
 }
 
-let busquedaEnProgreso = ref(false)
+//let busquedaEnProgreso = ref(false)
 
-function ejecutarCentrado(lat, lng, zoom) {
+/*function ejecutarCentrado(lat, lng, zoom) {
   try {
     const map = window.mapaGlobal.map
     if (!map) {
@@ -991,54 +988,56 @@ function ejecutarCentrado(lat, lng, zoom) {
     })
     busquedaEnProgreso.value = false
   }
-}
+}*/
 
 function actualizarMarcadorBusqueda(lat, lng) {
-  if (!window.mapaGlobal || !window.mapaGlobal.map || !window.L) {
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
     console.warn('Mapa no disponible para actualizar marcador')
     return
   }
 
-  const map = window.mapaGlobal.map
-  const L = window.L
+  const map = mapPage._mapaAPI.map
+
+  // Importar mapboxgl desde el scope global que ya usa IndexPage
+  const mapboxgl = window.mapboxgl
+
+  if (!mapboxgl) {
+    console.warn('mapboxgl no disponible en window')
+    return
+  }
 
   try {
-    // Si el marcador no existe, créalo
     if (!window.marcadorBusqueda) {
-      window.marcadorBusqueda = L.marker([lat, lng], {
-        icon: L.icon({
-          iconUrl:
-            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          shadowUrl:
-            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41],
-        }),
-        riseOnHover: true,
-      }).addTo(map)
+      // Crear elemento del marcador
+      const el = document.createElement('div')
+      el.style.cssText = `
+        width: 20px;
+        height: 20px;
+        background: #4285F4;
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+      `
 
-      // Vincular el popup solo una vez
-      window.marcadorBusqueda.bindPopup(`<b> Ubicación buscada</b>`, {
-        closeButton: true,
-        autoClose: false,
-        closeOnClick: false,
-        closeOnEscapeKey: true,
-        autoPan: true, // Permitir que el mapa se mueva para mostrar el popup
-      })
+      window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lng, lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25, closeButton: true, closeOnClick: false }).setHTML(
+            '<b>📍 Ubicación buscada</b>',
+          ),
+        )
+        .addTo(map)
     } else {
-      // Si ya existe, solo actualiza su posición
-      window.marcadorBusqueda.setLatLng([lat, lng])
+      window.marcadorBusqueda.setLngLat([lng, lat])
     }
 
-    // Abrir popup
-    window.marcadorBusqueda.openPopup()
+    window.marcadorBusqueda.getPopup().addTo(map)
   } catch (error) {
     console.error('Error al actualizar marcador:', error)
   }
 }
-
 // Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
   // Guardar en búsquedas recientes
