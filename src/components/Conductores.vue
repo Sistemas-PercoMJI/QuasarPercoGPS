@@ -1183,22 +1183,34 @@ const nuevoGrupo = ref({
 })
 
 const conductoresFiltrados = computed(() => {
-  if (!grupoSeleccionado.value) {
-    return []
-  }
+  if (!grupoSeleccionado.value) return []
 
   let resultado = []
 
-  // GRUPO ESPECIAL: TODOS (sin filtro de empresa)
   if (grupoSeleccionado.value === '__todos__') {
     resultado = conductores.value
   }
-  // Grupos normales
-  else {
+  // Agregar este caso
+  else if (grupoSeleccionado.value === '__sin_conductor__') {
+    resultado = unidades.value
+      .filter((u) => {
+        const sinConductor = !u.ConductorAsignado
+        const mismaEmpresa = Array.isArray(idEmpresaActual.value)
+          ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
+          : u.IdEmpresaUnidad === idEmpresaActual.value
+        return sinConductor && mismaEmpresa
+      })
+      .map((u) => ({
+        id: u.id,
+        Nombre: u.Unidad,
+        IdEmpresaConductor: u.IdEmpresaUnidad,
+        UnidadAsignada: u.id,
+        esPseudoConductor: true,
+      }))
+  } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
-  // Aplicar búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1210,7 +1222,6 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
-
 function filtrarUnidades(val, update) {
   update(() => {
     if (val === '') {
