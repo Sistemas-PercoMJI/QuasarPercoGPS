@@ -851,6 +851,7 @@ function limpiarBusqueda() {
   resultadosBusqueda.value = []
   mostrarSugerencias.value = false
   buscando.value = false
+  limpiarMarcadorBusqueda()
 }
 
 function seleccionarBusquedaReciente(reciente) {
@@ -1345,6 +1346,7 @@ function cerrarTodosLosDialogs() {
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
   eventosDrawerOpen.value = false
+  limpiarMarcadorBusqueda()
 }
 
 function cerrarEstadoFlota() {
@@ -1642,6 +1644,12 @@ function procesarResultado(resultado) {
       position: 'top',
       timeout: 3000,
     })
+  }
+}
+function limpiarMarcadorBusqueda() {
+  if (window.marcadorBusqueda) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
   }
 }
 </script>
