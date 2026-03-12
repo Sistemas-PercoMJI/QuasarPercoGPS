@@ -7,14 +7,14 @@ service firebase.storage {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // 🔥 RUTAS: Lectura pública, escritura solo autenticados
+    //  RUTAS: Lectura pública, escritura solo autenticados
     match /rutas/{unidadId}/{allPaths=**} {
-      allow read: if true;  // ✅ Cualquiera puede leer
-      allow write: if request.auth != null;  // ✅ Solo usuarios autenticados escriben
+      allow read: if true;  //  Cualquiera puede leer
+      allow write: if request.auth != null;  //  Solo usuarios autenticados escriben
     }
     
     match /coordenadas/{unidadId}/{allPaths=**} {
-      allow read: if true;  // ✅ Cualquiera puede leer
+      allow read: if true;  //  Cualquiera puede leer
       allow write: if request.auth != null;
     }
     

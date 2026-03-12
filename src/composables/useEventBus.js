@@ -1,5 +1,5 @@
 // src/composables/useEventBus.js
-// Estado compartido para comunicación entre componentes
+// Estado compartido para comunicacion entre componentes
 
 import { ref } from 'vue'
 
@@ -8,18 +8,18 @@ const estadoCompartido = ref({
   abrirGeozonasConPOI: null,
   abrirEstadoFlotaConVehiculo: null,
   abrirConductoresConConductor: null,
+  filtroUnidadesActivo: false,
+  idsUnidadesFiltradas: null, // null = sin filtro (mostrar todas), [] = filtro activo vacio
 })
 
 export function useEventBus() {
-  // Función para abrir GeoZonas con un POI/Geozona específico
   const abrirGeozonasConPOI = (item) => {
     estadoCompartido.value.abrirGeozonasConPOI = {
-      item, // Renombrado de 'poi' a 'item' para mayor claridad
+      item,
       timestamp: Date.now(),
     }
   }
 
-  // Función para abrir Estado Flota con un vehículo específico
   const abrirEstadoFlotaConVehiculo = (vehiculo) => {
     estadoCompartido.value.abrirEstadoFlotaConVehiculo = {
       vehiculo,
@@ -27,7 +27,6 @@ export function useEventBus() {
     }
   }
 
-  // Función para abrir Conductores con un conductor específico
   const abrirConductoresConConductor = (conductor) => {
     estadoCompartido.value.abrirConductoresConConductor = {
       conductor,
@@ -35,7 +34,12 @@ export function useEventBus() {
     }
   }
 
-  // Funciones para resetear el estado
+  // Actualizar el filtro de unidades desde el modulo de conductores
+  const actualizarFiltroUnidades = (activo, ids) => {
+    estadoCompartido.value.filtroUnidadesActivo = activo
+    estadoCompartido.value.idsUnidadesFiltradas = activo ? ids : null
+  }
+
   const resetAbrirGeozonas = () => {
     estadoCompartido.value.abrirGeozonasConPOI = null
   }
@@ -49,10 +53,11 @@ export function useEventBus() {
   }
 
   return {
-    estadoCompartido, // Exponemos el estado directamente
+    estadoCompartido,
     abrirGeozonasConPOI,
     abrirEstadoFlotaConVehiculo,
     abrirConductoresConConductor,
+    actualizarFiltroUnidades,
     resetAbrirGeozonas,
     resetAbrirEstadoFlota,
     resetAbrirConductores,

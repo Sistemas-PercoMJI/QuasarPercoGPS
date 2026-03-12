@@ -24,7 +24,7 @@ if (process.env.MODE !== 'ssr' || process.env.PROD) {
   )
 }
 
-// 🚫 TRÁFICO: NUNCA cachear - agregar timestamp para burlar caché
+//  TRÁFICO: NUNCA cachear - agregar timestamp para burlar caché
 registerRoute(
   ({ url }) => {
     return (
@@ -57,7 +57,7 @@ registerRoute(
   }),
 )
 
-// ✅ TILES SATELITALES Y CALLES: Cachear 30 días
+// TILES SATELITALES Y CALLES: Cachear 30 días
 registerRoute(
   ({ url }) => {
     return url.hostname === 'api.mapbox.com' && url.pathname.includes('/tiles/')

@@ -1,5 +1,5 @@
 <!-- eslint-disable vue/multi-word-component-names -->
-/*COnductores.vue */
+<!-- Conductores.vue -->
 <template>
   <div class="conductores-drawer">
     <!-- Header con gradiente y estadísticas -->
@@ -88,9 +88,13 @@
                 class="q-mr-xs"
               />
               {{
-                grupo.esGrupoEspecial
-                  ? `${grupo.cantidadUnidades} unidades`
-                  : `${contarConductoresPorGrupo(grupo.id)} conductores`
+                grupo.id === '__todos__'
+                  ? `${conductores.length} conductores`
+                  : grupo.esGrupoEspecial && grupo.cantidadUnidades
+                    ? `${grupo.cantidadUnidades} unidades`
+                    : !grupo.esGrupoEspecial
+                      ? `${contarConductoresPorGrupo(grupo.id)} conductores`
+                      : ''
               }}
             </q-item-label>
           </q-item-section>
@@ -109,7 +113,6 @@
             >
               <q-tooltip>Opciones del grupo</q-tooltip>
 
-              <!-- ✅ EL MENÚ DEBE ESTAR DENTRO DEL BOTÓN -->
               <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
                 <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
                   <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
@@ -169,7 +172,7 @@
             <div class="card-info">
               <div class="text-weight-medium">{{ conductor.Nombre }}</div>
               <div class="text-caption text-grey-7">
-                {{ conductor.esPseudoConductor ? '🚗 Sin conductor' : conductor.Telefono }}
+                {{ conductor.esPseudoConductor ? 'Sin conductor' : conductor.IdEmpresaConductor }}
               </div>
             </div>
           </q-card-section>
@@ -207,9 +210,7 @@
       <q-spinner-gears size="50px" color="primary" />
     </q-inner-loading>
 
-    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada) -->
-
-    <!-- Dialog: Detalles del Conductor (Interfaz Mejorada COMPLETA) -->
+    <!-- Dialog: Detalles del Conductor -->
     <q-dialog
       v-model="dialogDetallesConductor"
       position="right"
@@ -218,7 +219,7 @@
       :persistent="false"
     >
       <q-card class="detalle-card-fixed">
-        <!-- Header del card con avatar MEJORADO -->
+        <!-- Header -->
         <q-card-section class="detalle-header">
           <div class="header-left">
             <q-avatar color="white" text-color="primary" size="64px" class="header-avatar">
@@ -245,12 +246,9 @@
 
         <q-separator />
 
-        <!-- Contenido con Expansion Items CON SCROLL FIJO -->
         <q-scroll-area class="detalle-scroll-area">
           <div class="detalle-content-wrapper">
-            <!-- ========================================= -->
             <!-- Información Personal -->
-            <!-- ========================================= -->
             <q-expansion-item
               icon="person"
               label="Información Personal"
@@ -270,7 +268,7 @@
                         v-model="conductorEditando.Nombre"
                         outlined
                         dense
-                        @blur="actualizarCampo('Nombre', conductorEditando.Nombre)"
+                        disable
                         class="field-input"
                       />
                     </div>
@@ -285,18 +283,26 @@
                         outlined
                         dense
                         mask="##########"
-                        @blur="actualizarCampo('Telefono', conductorEditando.Telefono)"
+                        disable
                         class="field-input"
                       />
+                    </div>
+
+                    <div class="info-field">
+                      <div class="field-label">
+                        <q-icon name="business" size="20px" />
+                        Empresa
+                      </div>
+                      <div class="field-value-readonly">
+                        {{ conductorEditando.IdEmpresaConductor || 'Sin asignar' }}
+                      </div>
                     </div>
                   </div>
                 </q-card-section>
               </q-card>
             </q-expansion-item>
 
-            <!-- ========================================= -->
             <!-- Licencia de Conducir -->
-            <!-- ========================================= -->
             <q-expansion-item
               icon="badge"
               label="Licencia de Conducir"
@@ -316,10 +322,7 @@
                         outlined
                         dense
                         placeholder="Ej: A1234567"
-                        :disable="licenciaDeshabilitada"
-                        @blur="
-                          actualizarCampo('LicenciaConducir', conductorEditando.LicenciaConducir)
-                        "
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -342,22 +345,11 @@
                         outlined
                         dense
                         readonly
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" class="cursor-pointer">
-                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                              <q-date
-                                :model-value="fechaVencimientoFormato"
-                                mask="DD/MM/YYYY"
-                                @update:model-value="actualizarFechaVencimiento"
-                              >
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                </div>
-                              </q-date>
-                            </q-popup-proxy>
-                          </q-icon>
+                          <q-icon name="event" />
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -384,17 +376,10 @@
                       icon="add_photo_alternate"
                       size="sm"
                       color="primary"
-                      @click="abrirSelectorFotoLicencia"
+                      disable
                     >
                       <q-tooltip>Subir nueva foto</q-tooltip>
                     </q-btn>
-                    <input
-                      ref="inputFotoLicencia"
-                      type="file"
-                      accept="image/*"
-                      style="display: none"
-                      @change="subirNuevaFotoLicencia"
-                    />
                   </div>
 
                   <div v-if="cargandoFotosLicencia" class="text-center q-pa-md">
@@ -430,19 +415,6 @@
                         >
                           <q-tooltip>Descargar</q-tooltip>
                         </q-btn>
-                        <q-btn
-                          flat
-                          dense
-                          icon="delete"
-                          size="sm"
-                          :color="esLicenciaVigente ? 'grey-5' : 'negative'"
-                          :disable="esLicenciaVigente"
-                          @click="eliminarFotoLicenciaHandler(foto.url)"
-                        >
-                          <q-tooltip>{{
-                            esLicenciaVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
-                          }}</q-tooltip>
-                        </q-btn>
                       </div>
                     </div>
                   </div>
@@ -455,9 +427,7 @@
               </q-card>
             </q-expansion-item>
 
-            <!-- ========================================= -->
             <!-- Unidad Asignada -->
-            <!-- ========================================= -->
             <q-expansion-item
               icon="directions_car"
               label="Unidad Asignada"
@@ -567,8 +537,7 @@
                         outlined
                         dense
                         placeholder="Ingrese código de seguro"
-                        :disable="seguroDeshabilitado"
-                        @blur="actualizarCampoUnidad('SeguroUnidad', unidadAsociada.SeguroUnidad)"
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -591,22 +560,11 @@
                         outlined
                         dense
                         readonly
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" class="cursor-pointer">
-                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                              <q-date
-                                :model-value="seguroUnidadFechaFormato"
-                                mask="DD/MM/YYYY"
-                                @update:model-value="actualizarFechaSeguro"
-                              >
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                </div>
-                              </q-date>
-                            </q-popup-proxy>
-                          </q-icon>
+                          <q-icon name="event" />
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -631,17 +589,10 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          @click="abrirSelectorFotoSeguro"
+                          disable
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
-                        <input
-                          ref="inputFotoSeguro"
-                          type="file"
-                          accept="image/*"
-                          style="display: none"
-                          @change="subirNuevaFotoSeguro"
-                        />
                       </div>
 
                       <div v-if="cargandoFotosSeguro" class="text-center q-pa-md">
@@ -677,21 +628,6 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
-                            <q-btn
-                              flat
-                              dense
-                              icon="delete"
-                              size="sm"
-                              :color="esSeguroUnidadVigente ? 'grey-5' : 'negative'"
-                              :disable="esSeguroUnidadVigente"
-                              @click="eliminarFotoSeguroHandler(foto.url)"
-                            >
-                              <q-tooltip>{{
-                                esSeguroUnidadVigente
-                                  ? 'No se puede eliminar (vigente)'
-                                  : 'Eliminar'
-                              }}</q-tooltip>
-                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -715,13 +651,7 @@
                         outlined
                         dense
                         placeholder="Ingrese código de tarjeta"
-                        :disable="tarjetaDeshabilitada"
-                        @blur="
-                          actualizarCampoUnidad(
-                            'TargetaCirculacion',
-                            unidadAsociada.TargetaCirculacion,
-                          )
-                        "
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -744,22 +674,11 @@
                         outlined
                         dense
                         readonly
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" class="cursor-pointer">
-                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                              <q-date
-                                :model-value="tarjetaCirculacionFechaFormato"
-                                mask="DD/MM/YYYY"
-                                @update:model-value="actualizarFechaTarjeta"
-                              >
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                </div>
-                              </q-date>
-                            </q-popup-proxy>
-                          </q-icon>
+                          <q-icon name="event" />
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -784,17 +703,10 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          @click="abrirSelectorFotoTargeta"
+                          disable
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
-                        <input
-                          ref="inputFotoTargeta"
-                          type="file"
-                          accept="image/*"
-                          style="display: none"
-                          @change="subirNuevaFotoTargeta"
-                        />
                       </div>
 
                       <div v-if="cargandoFotosTargeta" class="text-center q-pa-md">
@@ -830,21 +742,6 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
-                            <q-btn
-                              flat
-                              dense
-                              icon="delete"
-                              size="sm"
-                              :color="esTarjetaCirculacionVigente ? 'grey-5' : 'negative'"
-                              :disable="esTarjetaCirculacionVigente"
-                              @click="eliminarFotoTargetaHandler(foto.url)"
-                            >
-                              <q-tooltip>{{
-                                esTarjetaCirculacionVigente
-                                  ? 'No se puede eliminar (vigente)'
-                                  : 'Eliminar'
-                              }}</q-tooltip>
-                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -870,8 +767,7 @@
                         outlined
                         dense
                         placeholder="Ingrese número de placas"
-                        :disable="placasDeshabilitada"
-                        @blur="actualizarCampoUnidad('Placa', unidadAsociada.Placa)"
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
@@ -894,22 +790,11 @@
                         outlined
                         dense
                         readonly
+                        disable
                         class="field-input"
                       >
                         <template v-slot:append>
-                          <q-icon name="event" class="cursor-pointer">
-                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                              <q-date
-                                :model-value="placasFechaFormato"
-                                mask="DD/MM/YYYY"
-                                @update:model-value="actualizarFechaPlacas"
-                              >
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                </div>
-                              </q-date>
-                            </q-popup-proxy>
-                          </q-icon>
+                          <q-icon name="event" />
                         </template>
                         <template v-slot:after>
                           <q-badge
@@ -934,17 +819,10 @@
                           icon="add_photo_alternate"
                           size="sm"
                           color="primary"
-                          @click="abrirSelectorFotoPlacas"
+                          disable
                         >
                           <q-tooltip>Subir nueva foto</q-tooltip>
                         </q-btn>
-                        <input
-                          ref="inputFotoPlacas"
-                          type="file"
-                          accept="image/*"
-                          style="display: none"
-                          @change="subirNuevaFotoPlacas"
-                        />
                       </div>
 
                       <div v-if="cargandoFotosPlacas" class="text-center q-pa-md">
@@ -980,19 +858,6 @@
                             >
                               <q-tooltip>Descargar</q-tooltip>
                             </q-btn>
-                            <q-btn
-                              flat
-                              dense
-                              icon="delete"
-                              size="sm"
-                              :color="esPlacasVigente ? 'grey-5' : 'negative'"
-                              :disable="esPlacasVigente"
-                              @click="eliminarFotoPlacasHandler(foto.url)"
-                            >
-                              <q-tooltip>{{
-                                esPlacasVigente ? 'No se puede eliminar (vigente)' : 'Eliminar'
-                              }}</q-tooltip>
-                            </q-btn>
                           </div>
                         </div>
                       </div>
@@ -1009,7 +874,6 @@
               </q-card>
             </q-expansion-item>
           </div>
-          <!-- 🔥 CIERRE detalle-content-wrapper -->
         </q-scroll-area>
       </q-card>
     </q-dialog>
@@ -1034,7 +898,6 @@
           <div class="q-mt-md">
             <div class="text-subtitle2 q-mb-sm">Seleccionar conductores</div>
 
-            <!-- Búsqueda de conductores -->
             <q-input
               v-model="busquedaConductoresGrupo"
               outlined
@@ -1047,7 +910,6 @@
               </template>
             </q-input>
 
-            <!-- Lista de conductores para seleccionar -->
             <q-scroll-area style="height: 300px" class="bordered">
               <q-list>
                 <q-item
@@ -1116,8 +978,6 @@
       </q-card>
     </q-dialog>
 
-    <!-- Menú contextual para grupos -->
-
     <!-- Menú contextual para conductores -->
     <q-menu
       v-model="menuConductorVisible"
@@ -1164,11 +1024,11 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { auth } from 'src/firebase/firebaseConfig'
 
-const { estadoCompartido, resetAbrirConductores } = useEventBus()
+const { estadoCompartido, resetAbrirConductores, actualizarFiltroUnidades } = useEventBus()
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 if (!estadoCompartido.value) {
-  console.error('❌ Error crítico: estadoCompartido.value no está definido en Conductores')
+  console.error('Error crítico: estadoCompartido.value no está definido en Conductores')
 }
 
 const opcionesUnidades = computed(() => {
@@ -1191,7 +1051,7 @@ const opcionesUnidades = computed(() => {
     return {
       label: `${unidad.Unidad}${asignaciones[unidad.id] ? ` (Ocupada por: ${asignaciones[unidad.id]})` : ''}${esMiUnidadActual ? ' (Mi unidad actual)' : ''}`,
       value: unidad.id,
-      disabled: estaOcupada && !esMiUnidadActual, // Deshabilitar si está ocupada por otro
+      disabled: estaOcupada && !esMiUnidadActual,
       conductorActual: asignaciones[unidad.id],
       esMiUnidadActual: esMiUnidadActual,
     }
@@ -1224,7 +1084,7 @@ watch(
 
         Notify.create({
           type: 'positive',
-          message: `👤 Conductor seleccionado: ${conductorEncontrado.Nombre}`,
+          message: ` Conductor seleccionado: ${conductorEncontrado.Nombre}`,
           caption: `Grupo: ${newValue.conductor.grupoNombre || 'Sin grupo'}`,
           icon: 'person',
           timeout: 2500,
@@ -1261,19 +1121,14 @@ const {
   escucharGrupos,
   actualizarGrupo,
   eliminarGrupo,
-  actualizarConductor,
+
   removerConductorDeGrupo,
   contarConductoresPorGrupo,
   conductoresPorGrupo,
-  //asignarUnidad,
+
   obtenerUnidadDeConductor,
-  puedeEditarLicenciaConducir,
-  puedeEditarSeguroUnidad,
-  puedeEditarTargetaCirculacion,
+
   obtenerFotosPlacas,
-  subirFotoPlacas,
-  eliminarFotoPlacas,
-  puedeEditarPlacas,
 } = composable
 
 // Funciones de fotos
@@ -1281,12 +1136,6 @@ const obtenerFotosLicencia = composable.obtenerFotosLicencia
 const obtenerFotosSeguroUnidad = composable.obtenerFotosSeguroUnidad
 const obtenerFotosTargetaCirculacion = composable.obtenerFotosTargetaCirculacion
 const descargarFoto = composable.descargarFoto
-const subirFotoLicencia = composable.subirFotoLicencia
-const subirFotoSeguroUnidad = composable.subirFotoSeguroUnidad
-const subirFotoTargetaCirculacion = composable.subirFotoTargetaCirculacion
-const eliminarFotoLicencia = composable.eliminarFotoLicencia
-const eliminarFotoSeguroUnidad = composable.eliminarFotoSeguroUnidad
-const eliminarFotoTargetaCirculacion = composable.eliminarFotoTargetaCirculacion
 
 // Estado local
 const tab = ref('grupos') // Cambiado a 'grupos' por defecto
@@ -1319,10 +1168,7 @@ const cargandoFotosTargeta = ref(false)
 const cargandoFotosPlacas = ref(false)
 
 // Referencias para inputs de archivo
-const inputFotoLicencia = ref(null)
-const inputFotoSeguro = ref(null)
-const inputFotoTargeta = ref(null)
-const inputFotoPlacas = ref(null)
+
 const opcionesUnidadesFiltradas = ref([])
 
 const filtroMapaActivo = ref(false)
@@ -1336,28 +1182,35 @@ const nuevoGrupo = ref({
   ConductoresIds: [],
 })
 
-const placasDeshabilitada = computed(() => {
-  if (!unidadAsociada.value) return true
-  return !puedeEditarPlacas(unidadAsociada.value)
-})
-
 const conductoresFiltrados = computed(() => {
-  if (!grupoSeleccionado.value) {
-    return []
-  }
+  if (!grupoSeleccionado.value) return []
 
   let resultado = []
 
-  // GRUPO ESPECIAL: TODOS (sin filtro de empresa)
   if (grupoSeleccionado.value === '__todos__') {
     resultado = conductores.value
   }
-  // Grupos normales
-  else {
+  // Agregar este caso
+  else if (grupoSeleccionado.value === '__sin_conductor__') {
+    resultado = unidades.value
+      .filter((u) => {
+        const sinConductor = !u.ConductorAsignado
+        const mismaEmpresa = Array.isArray(idEmpresaActual.value)
+          ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
+          : u.IdEmpresaUnidad === idEmpresaActual.value
+        return sinConductor && mismaEmpresa
+      })
+      .map((u) => ({
+        id: u.id,
+        Nombre: u.Unidad,
+        IdEmpresaConductor: u.IdEmpresaUnidad,
+        UnidadAsignada: u.id,
+        esPseudoConductor: true,
+      }))
+  } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
   }
 
-  // Aplicar búsqueda
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1369,7 +1222,6 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
-
 function filtrarUnidades(val, update) {
   update(() => {
     if (val === '') {
@@ -1442,21 +1294,6 @@ const fechaVencimientoFormato = computed(() => {
 const unidadAsociada = computed(() => {
   if (!conductorEditando.value?.UnidadAsignada) return null
   return obtenerUnidadDeConductor(conductorEditando.value.id)
-})
-// Computed para deshabilitar campos
-const licenciaDeshabilitada = computed(() => {
-  if (!conductorEditando.value) return true
-  return !puedeEditarLicenciaConducir(conductorEditando.value)
-})
-
-const seguroDeshabilitado = computed(() => {
-  if (!unidadAsociada.value) return true
-  return !puedeEditarSeguroUnidad(unidadAsociada.value)
-})
-
-const tarjetaDeshabilitada = computed(() => {
-  if (!unidadAsociada.value) return true
-  return !puedeEditarTargetaCirculacion(unidadAsociada.value)
 })
 
 const esLicenciaVigente = computed(() => {
@@ -1562,43 +1399,35 @@ const esPlacasVigente = computed(() => {
   return fechaVencimiento > new Date()
 })
 
-// 🆕 Computed: IDs de unidades que deben mostrarse en el mapa
+// Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  // 🔥 Si el filtro NO está activo, retornar null para mostrar TODAS
+  // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
-    console.log('🗺️ Filtro desactivado → mostrando TODAS las unidades')
-    return null
+    return []
   }
 
-  // Si no hay grupo seleccionado, mostrar todas
-  if (!grupoSeleccionado.value) {
-    return null
-  }
-
-  // Grupo "TODOS" = desactivar filtro (mostrar todas)
+  // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
   if (grupoSeleccionado.value === '__todos__') {
-    console.log('🗺️ Grupo "TODOS" → mostrando TODAS las unidades')
     return null
   }
 
-  // Grupo normal = mostrar unidades de conductores del grupo
+  // Para cualquier otro grupo = filtrado estricto
   const conductoresDelGrupo = conductoresFiltrados.value
   const idsUnidades = conductoresDelGrupo
     .filter((c) => c.UnidadAsignada)
     .map((c) => c.UnidadAsignada)
 
-  console.log(`🗺️ Grupo "${grupoSeleccionado.value}" → ${idsUnidades.length} unidades`)
   return idsUnidades
 })
 
-// 🆕 Grupos con el especial "Sin Conductor" y "TODOS"
+// Grupos con el especial "Sin Conductor" y "TODOS"
 const gruposConEspeciales = computed(() => {
   const grupos = []
 
-  // 🆕 BOTÓN ESPECIAL: Ver TODOS los conductores
+  // BOTÓN ESPECIAL: Ver TODOS los conductores
   grupos.push({
     id: '__todos__',
-    Nombre: '👥 Todos los Conductores',
+    Nombre: 'Todos los Conductores',
     ConductoresIds: [],
     esGrupoEspecial: true,
     icono: 'groups',
@@ -1621,7 +1450,7 @@ const gruposConEspeciales = computed(() => {
   if (unidadesSinConductor.length > 0) {
     grupos.push({
       id: '__sin_conductor__',
-      Nombre: '🚗 Unidades Sin Conductor',
+      Nombre: 'Unidades Sin Conductor',
       ConductoresIds: [],
       esGrupoEspecial: true,
       icono: 'directions_car',
@@ -1644,32 +1473,32 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
 
-  // 🔥 Si es "TODOS", desactivar filtro
+  // Si es "TODOS", desactivar filtro para mostrar TODAS
   if (grupo.id === '__todos__') {
-    filtroMapaActivo.value = false
+    filtroMapaActivo.value = true // ← Cambiar a true
 
-    Notify.create({
+    /*Notify.create({
       type: 'info',
       message: `👥 ${grupo.Nombre}`,
       caption: 'Mostrando todas las unidades del mapa',
       icon: grupo.icono || 'groups',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   } else {
     // Para grupos específicos, activar filtro
     filtroMapaActivo.value = true
 
-    const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
+    /*const cantidadUnidades = conductoresFiltrados.value.filter((c) => c.UnidadAsignada).length
 
     Notify.create({
       type: 'info',
-      message: `📁 ${grupo.Nombre}`,
+      message: `${grupo.Nombre}`,
       caption: `Filtrando ${cantidadUnidades} unidades en el mapa`,
       icon: grupo.icono || 'folder',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
 
@@ -1714,277 +1543,6 @@ async function sincronizarDatos() {
   await recargarDatos()
 }
 
-async function actualizarCampo(campo, valor) {
-  if (!conductorEditando.value?.id) return
-
-  try {
-    console.log(`📝 Actualizando campo: ${campo} = ${valor}`)
-
-    // 🔥 CASO ESPECIAL: Si está cambiando la empresa del conductor
-    if (campo === 'IdEmpresaConductor') {
-      const empresaAnterior = conductorEditando.value.IdEmpresaConductor
-      const empresaNueva = valor
-
-      console.log(`🏢 Empresa anterior: ${empresaAnterior}`)
-      console.log(`🏢 Empresa nueva: ${empresaNueva}`)
-
-      // Solo procesar si realmente cambió de empresa
-      if (empresaAnterior !== empresaNueva) {
-        console.log('✅ Cambio de empresa detectado')
-
-        // Si tiene unidad asignada, actualizar su IdEmpresaUnidad
-        if (conductorEditando.value.UnidadAsignada) {
-          const unidadId = conductorEditando.value.UnidadAsignada
-          console.log(`🚗 Actualizando empresa de unidad: ${unidadId}`)
-
-          try {
-            // 🔥 Actualizar IdEmpresaUnidad en Realtime Database
-            const { realtimeDb } = await import('src/firebase/firebaseConfig')
-            const { ref: dbRef, update } = await import('firebase/database')
-
-            const unidadKey = `unidad_${unidadId}`
-            const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadKey}`)
-
-            await update(unidadRef, {
-              IdEmpresaUnidad: empresaNueva,
-            })
-
-            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Realtime Database`)
-
-            // 🔥 También actualizar en Firestore
-            const { doc, updateDoc } = await import('firebase/firestore')
-            const { db } = await import('src/firebase/firebaseConfig')
-
-            const unidadFirestoreRef = doc(db, 'Unidades', unidadId)
-            await updateDoc(unidadFirestoreRef, {
-              IdEmpresaUnidad: empresaNueva,
-            })
-
-            console.log(`✅ IdEmpresaUnidad actualizado a "${empresaNueva}" en Firestore`)
-          } catch (unidadError) {
-            console.error('❌ Error al actualizar unidad:', unidadError)
-            // Continuar de todos modos para actualizar el conductor
-          }
-        } else {
-          console.log('ℹ️ No tiene unidad asignada')
-        }
-      } else {
-        console.log('ℹ️ No hubo cambio de empresa')
-      }
-    }
-
-    // Actualizar el campo en Firestore
-    console.log('💾 Actualizando campo en Firestore...')
-    await actualizarConductor(conductorEditando.value.id, { [campo]: valor })
-    console.log('✅ Campo actualizado en Firestore')
-
-    Notify.create({
-      type: 'positive',
-      message: 'Campo actualizado correctamente',
-      icon: 'check_circle',
-    })
-
-    // 🔥 Si cambió de empresa, cerrar el diálogo y recargar
-    if (campo === 'IdEmpresaConductor') {
-      console.log('🔄 Recargando datos...')
-      await recargarDatos()
-
-      dialogDetallesConductor.value = false
-
-      Notify.create({
-        type: 'info',
-        message: '🏢 Conductor movido a otra empresa',
-        caption: 'La unidad ahora pertenece a la nueva empresa',
-        icon: 'business',
-        timeout: 3000,
-      })
-    }
-  } catch (error) {
-    console.error('❌ Error completo:', error)
-    console.error('❌ Stack:', error.stack)
-
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
-// ✅ AGREGAR ESTA NUEVA FUNCIÓN
-async function actualizarCampoUnidad(campo, valor) {
-  if (!unidadAsociada.value?.id) return
-
-  try {
-    // Importar updateDoc y doc si no están importados
-    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
-    const { db } = await import('src/firebase/firebaseConfig')
-
-    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
-
-    await updateDoc(unidadRef, {
-      [campo]: valor,
-      updatedAt: Timestamp.now(),
-    })
-
-    // Actualizar el estado local
-    unidadAsociada.value[campo] = valor
-
-    // Recargar unidades
-    await obtenerUnidades()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Código actualizado correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function actualizarFechaSeguro(fecha) {
-  if (!unidadAsociada.value?.id) return
-
-  try {
-    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
-    const { db } = await import('src/firebase/firebaseConfig')
-
-    const [dia, mes, año] = fecha.split('/')
-    const fechaDate = new Date(año, mes - 1, dia)
-
-    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
-
-    await updateDoc(unidadRef, {
-      SeguroUnidadFecha: fechaDate,
-      updatedAt: Timestamp.now(),
-    })
-
-    // Actualizar estado local
-    unidadAsociada.value.SeguroUnidadFecha = fechaDate
-
-    // Recargar unidades
-    await obtenerUnidades()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Fecha de seguro actualizada',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar fecha: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function actualizarFechaTarjeta(fecha) {
-  if (!unidadAsociada.value?.id) return
-
-  try {
-    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
-    const { db } = await import('src/firebase/firebaseConfig')
-
-    const [dia, mes, año] = fecha.split('/')
-    const fechaDate = new Date(año, mes - 1, dia)
-
-    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
-
-    await updateDoc(unidadRef, {
-      TargetaCirculacionFecha: fechaDate,
-      updatedAt: Timestamp.now(),
-    })
-
-    // Actualizar estado local
-    unidadAsociada.value.TargetaCirculacionFecha = fechaDate
-
-    // Recargar unidades
-    await obtenerUnidades()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Fecha de tarjeta actualizada',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar fecha: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function actualizarFechaPlacas(fecha) {
-  if (!unidadAsociada.value?.id) return
-
-  try {
-    const { doc, updateDoc, Timestamp } = await import('firebase/firestore')
-    const { db } = await import('src/firebase/firebaseConfig')
-
-    const [dia, mes, año] = fecha.split('/')
-    const fechaDate = new Date(año, mes - 1, dia)
-
-    const unidadRef = doc(db, 'Unidades', unidadAsociada.value.id)
-
-    await updateDoc(unidadRef, {
-      PlacasFecha: fechaDate,
-      updatedAt: Timestamp.now(),
-    })
-
-    // Actualizar estado local
-    unidadAsociada.value.PlacasFecha = fechaDate
-
-    // Recargar unidades
-    await obtenerUnidades()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Fecha de placas actualizada',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar fecha: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function actualizarFechaVencimiento(fecha) {
-  if (!conductorEditando.value?.id) return
-
-  try {
-    const [dia, mes, año] = fecha.split('/')
-    const fechaDate = new Date(año, mes - 1, dia)
-
-    await actualizarConductor(conductorEditando.value.id, {
-      LicenciaConducirFecha: fechaDate,
-    })
-
-    conductorEditando.value.LicenciaConducirFecha = fechaDate
-
-    Notify.create({
-      type: 'positive',
-      message: 'Fecha actualizada correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al actualizar fecha: ' + error.message,
-      icon: 'error',
-    })
-  }
-}
-
 async function asignarUnidadAConductor(unidadId) {
   if (!conductorEditando.value?.id) return
 
@@ -1994,39 +1552,29 @@ async function asignarUnidadAConductor(unidadId) {
   try {
     const { doc, updateDoc } = await import('firebase/firestore')
     const { db } = await import('src/firebase/firebaseConfig')
+    const { realtimeDb } = await import('src/firebase/firebaseConfig')
+    const { ref: dbRef, update } = await import('firebase/database')
 
-    // CASO 1: Si unidadId es null, está QUITANDO la unidad
+    // CASO 1: Quitando la unidad (unidadId === null)
     if (!unidadId) {
-      console.log('🗑️ Removiendo unidad del conductor...')
-
-      // 1. Quitar del conductor
       const conductorRef = doc(db, 'Conductores', conductorId)
-      await updateDoc(conductorRef, {
-        UnidadAsignada: null,
-      })
+      await updateDoc(conductorRef, { UnidadAsignada: null })
 
-      // 2. 🆕 Quitar conductor de la unidad anterior
       if (unidadAnteriorId) {
         const unidadRef = doc(db, 'Unidades', unidadAnteriorId)
-        await updateDoc(unidadRef, {
-          ConductorAsignado: null, // 🔥 NUEVO CAMPO
+        await updateDoc(unidadRef, { ConductorAsignado: null })
+
+        // Limpiar conductor en Realtime DB sin borrar el nodo
+        const unidadRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadAnteriorId}`)
+        await update(unidadRTRef, {
+          conductorId: null,
+          conductorNombre: null,
+          IdEmpresaConductor: null,
         })
       }
 
-      // 3. Eliminar del mapa
-      if (unidadAnteriorId) {
-        const { realtimeDb } = await import('src/firebase/firebaseConfig')
-        const { ref: dbRef, remove } = await import('firebase/database')
-
-        const unidadIdKey = `unidad_${unidadAnteriorId}`
-        const unidadRef = dbRef(realtimeDb, `unidades_activas/${unidadIdKey}`)
-        await remove(unidadRef)
-      }
-
       conductorEditando.value.UnidadAsignada = null
-      if (conductorSeleccionado.value) {
-        conductorSeleccionado.value.UnidadAsignada = null
-      }
+      if (conductorSeleccionado.value) conductorSeleccionado.value.UnidadAsignada = null
 
       Notify.create({
         type: 'positive',
@@ -2037,11 +1585,10 @@ async function asignarUnidadAConductor(unidadId) {
 
       await obtenerConductores()
       await obtenerUnidades()
-
       return
     }
 
-    // CASO 2: Está ASIGNANDO una nueva unidad
+    // CASO 2: Asignando nueva unidad
     const otroConductorConEstaUnidad = conductores.value.find(
       (c) => c.UnidadAsignada === unidadId && c.id !== conductorId,
     )
@@ -2053,62 +1600,58 @@ async function asignarUnidadAConductor(unidadId) {
         icon: 'error',
         timeout: 3000,
       })
-
       conductorEditando.value.UnidadAsignada = conductorSeleccionado.value?.UnidadAsignada || null
       return
     }
 
-    // Si había una unidad anterior diferente, liberarla
+    // Liberar unidad anterior si existe y es diferente
     if (unidadAnteriorId && unidadAnteriorId !== unidadId) {
-      // 🆕 Quitar conductor de unidad anterior
       const unidadAnteriorRef = doc(db, 'Unidades', unidadAnteriorId)
-      await updateDoc(unidadAnteriorRef, {
-        ConductorAsignado: null,
+      await updateDoc(unidadAnteriorRef, { ConductorAsignado: null })
+
+      // Limpiar conductor en Realtime DB de la unidad anterior
+      const unidadAnteriorRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadAnteriorId}`)
+      await update(unidadAnteriorRTRef, {
+        conductorId: null,
+        conductorNombre: null,
+        IdEmpresaConductor: null,
       })
-
-      // Eliminar del mapa
-      const { realtimeDb } = await import('src/firebase/firebaseConfig')
-      const { ref: dbRef, remove } = await import('firebase/database')
-
-      const unidadAnteriorKey = `unidad_${unidadAnteriorId}`
-      const unidadAnteriorRef2 = dbRef(realtimeDb, `unidades_activas/${unidadAnteriorKey}`)
-      await remove(unidadAnteriorRef2)
     }
 
-    // 1. Asignar unidad al conductor
+    // Asignar en Firestore
     const conductorRef = doc(db, 'Conductores', conductorId)
-    await updateDoc(conductorRef, {
-      UnidadAsignada: unidadId,
-    })
+    await updateDoc(conductorRef, { UnidadAsignada: unidadId })
 
-    // 2. 🆕 Asignar conductor a la unidad
     const unidadRef = doc(db, 'Unidades', unidadId)
-    await updateDoc(unidadRef, {
-      ConductorAsignado: conductorId, // 🔥 NUEVO CAMPO
+    await updateDoc(unidadRef, { ConductorAsignado: conductorId })
+
+    // Actualizar conductor en Realtime DB de la nueva unidad
+    const nuevaConductorData = conductores.value.find((c) => c.id === conductorId)
+    const unidadNuevaRTRef = dbRef(realtimeDb, `unidades_activas/unidad_${unidadId}`)
+    await update(unidadNuevaRTRef, {
+      conductorId: conductorId,
+      conductorNombre: nuevaConductorData?.Nombre || '',
+      IdEmpresaConductor: nuevaConductorData?.IdEmpresaConductor || null,
     })
 
     conductorEditando.value.UnidadAsignada = unidadId
-    if (conductorSeleccionado.value) {
-      conductorSeleccionado.value.UnidadAsignada = unidadId
-    }
+    if (conductorSeleccionado.value) conductorSeleccionado.value.UnidadAsignada = unidadId
 
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
-    console.error('❌ Error al gestionar unidad:', error)
-
+    console.error('Error al gestionar unidad:', error)
     Notify.create({
       type: 'negative',
       message: 'Error: ' + error.message,
       icon: 'error',
       timeout: 3000,
     })
-
     conductorEditando.value.UnidadAsignada = unidadAnteriorId
   }
 }
 
-// 📸 Cargar todas las fotos del conductor y su unidad
+// Cargar todas las fotos del conductor y su unidad
 async function cargarFotosConductor() {
   if (!conductorEditando.value?.id) return
 
@@ -2180,266 +1723,6 @@ async function descargarFotoHandler(url, nombreArchivo) {
     })
   }
 }
-
-// === FUNCIONES PARA SUBIR FOTOS ===
-
-function abrirSelectorFotoLicencia() {
-  inputFotoLicencia.value?.click()
-}
-
-function abrirSelectorFotoSeguro() {
-  inputFotoSeguro.value?.click()
-}
-
-function abrirSelectorFotoTargeta() {
-  inputFotoTargeta.value?.click()
-}
-
-function abrirSelectorFotoPlacas() {
-  inputFotoPlacas.value?.click()
-}
-
-async function subirNuevaFotoLicencia(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  try {
-    cargandoFotosLicencia.value = true
-    await subirFotoLicencia(conductorEditando.value.id, file)
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de licencia subida correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al subir foto: ' + error.message,
-      icon: 'error',
-    })
-  } finally {
-    cargandoFotosLicencia.value = false
-    if (inputFotoLicencia.value) {
-      inputFotoLicencia.value.value = ''
-    }
-  }
-}
-
-async function subirNuevaFotoSeguro(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  if (!unidadAsignadaData.value?.id) {
-    Notify.create({
-      type: 'warning',
-      message: 'Debe asignar una unidad primero',
-      icon: 'warning',
-    })
-    return
-  }
-
-  try {
-    cargandoFotosSeguro.value = true
-    await subirFotoSeguroUnidad(unidadAsignadaData.value.id, file)
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de seguro subida correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al subir foto: ' + error.message,
-      icon: 'error',
-    })
-  } finally {
-    cargandoFotosSeguro.value = false
-    if (inputFotoSeguro.value) {
-      inputFotoSeguro.value.value = ''
-    }
-  }
-}
-
-async function subirNuevaFotoTargeta(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  if (!unidadAsignadaData.value?.id) {
-    Notify.create({
-      type: 'warning',
-      message: 'Debe asignar una unidad primero',
-      icon: 'warning',
-    })
-    return
-  }
-
-  try {
-    cargandoFotosTargeta.value = true
-    await subirFotoTargetaCirculacion(unidadAsignadaData.value.id, file)
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de tarjeta subida correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al subir foto: ' + error.message,
-      icon: 'error',
-    })
-  } finally {
-    cargandoFotosTargeta.value = false
-    if (inputFotoTargeta.value) {
-      inputFotoTargeta.value.value = ''
-    }
-  }
-}
-
-async function subirNuevaFotoPlacas(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-
-  if (!unidadAsignadaData.value?.id) {
-    Notify.create({
-      type: 'warning',
-      message: 'Debe asignar una unidad primero',
-      icon: 'warning',
-    })
-    return
-  }
-
-  try {
-    cargandoFotosPlacas.value = true
-    await subirFotoPlacas(unidadAsignadaData.value.id, file)
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de placas subida correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: 'Error al subir foto: ' + error.message,
-      icon: 'error',
-    })
-  } finally {
-    cargandoFotosPlacas.value = false
-    if (inputFotoPlacas.value) {
-      inputFotoPlacas.value.value = ''
-    }
-  }
-}
-
-// === FUNCIONES PARA ELIMINAR FOTOS ===
-
-async function eliminarFotoLicenciaHandler(fotoUrl) {
-  try {
-    await eliminarFotoLicencia(
-      conductorEditando.value.id,
-      fotoUrl,
-      conductorEditando.value.LicenciaConducirFecha,
-    )
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de licencia eliminada correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function eliminarFotoSeguroHandler(fotoUrl) {
-  try {
-    await eliminarFotoSeguroUnidad(
-      unidadAsignadaData.value.id,
-      fotoUrl,
-      unidadAsignadaData.value.SeguroUnidadFecha,
-    )
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de seguro eliminada correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function eliminarFotoTargetaHandler(fotoUrl) {
-  try {
-    await eliminarFotoTargetaCirculacion(
-      unidadAsignadaData.value.id,
-      fotoUrl,
-      unidadAsignadaData.value.TargetaCirculacionFecha,
-    )
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de tarjeta eliminada correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: error.message,
-      icon: 'error',
-    })
-  }
-}
-
-async function eliminarFotoPlacasHandler(fotoUrl) {
-  try {
-    await eliminarFotoPlacas(
-      unidadAsignadaData.value.id,
-      fotoUrl,
-      unidadAsignadaData.value.PlacasFecha,
-    )
-
-    await cargarFotosConductor()
-
-    Notify.create({
-      type: 'positive',
-      message: 'Foto de placas eliminada correctamente',
-      icon: 'check_circle',
-    })
-  } catch (error) {
-    Notify.create({
-      type: 'negative',
-      message: error.message,
-      icon: 'error',
-    })
-  }
-}
-
 function abrirDialogNuevoGrupo() {
   modoEdicion.value = false
   nuevoGrupo.value = { Nombre: '', ConductoresIds: [] }
@@ -2488,7 +1771,7 @@ async function guardarGrupo() {
       return
     }
 
-    // ✅ MODO EDICIÓN
+    // MODO EDICIÓN
     if (modoEdicion.value && grupoMenu.value) {
       await actualizarGrupo(grupoMenu.value.id, {
         Nombre: nuevoGrupo.value.Nombre,
@@ -2501,12 +1784,12 @@ async function guardarGrupo() {
         icon: 'check_circle',
       })
     }
-    // ✅ MODO CREACIÓN
+    // MODO CREACIÓN
     else {
       const { collection, addDoc, Timestamp } = await import('firebase/firestore')
       const { db, auth } = await import('src/firebase/firebaseConfig')
 
-      // ✅ IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
+      // IMPORTANTE: Guardar en la SUBCOLECCIÓN del usuario
       const userId = auth.currentUser.uid
 
       const grupoData = {
@@ -2516,7 +1799,7 @@ async function guardarGrupo() {
         updatedAt: Timestamp.now(),
       }
 
-      // 🔥 Ruta correcta: /Usuarios/{userId}/GruposConductores
+      // Ruta correcta: /Usuarios/{userId}/GruposConductores
       await addDoc(collection(db, `Usuarios/${userId}/GruposConductores`), grupoData)
 
       Notify.create({
@@ -2717,7 +2000,7 @@ async function navegarAUnidadSinConductor(unidad) {
   // Notificación de éxito
   Notify.create({
     type: 'positive',
-    message: `📍 ${unidadData.Unidad}`,
+    message: `${unidadData.Unidad}`,
     caption: 'Sin conductor asignado',
     icon: 'my_location',
     position: 'top',
@@ -2733,7 +2016,7 @@ watch(
       const grupoExiste = gruposConductores.value.find((g) => g.id === grupoId)
 
       if (!grupoExiste) {
-        console.warn('⚠️ Grupo no encontrado, esperando a que se cargue...')
+        console.warn('Grupo no encontrado, esperando a que se cargue...')
         setTimeout(() => {
           procesarSeleccionConductor(id, grupoId, grupoNombre)
         }, 500)
@@ -2747,42 +2030,43 @@ watch(
   { deep: true, immediate: true },
 )
 
-// 🆕 Watch: Actualizar filtro del mapa cuando cambie la selección
+// Actualizar filtro del mapa cuando cambie la selección
+// Sincronizar el filtro de unidades con EstadoFlota y el mapa
 watch(
   idsUnidadesVisibles,
   (nuevosIds) => {
-    console.log(
-      '🗺️ idsUnidadesVisibles cambió:',
-      nuevosIds ? `${nuevosIds.length} IDs` : 'NULL (todas)',
-    )
-
-    // Emitir evento para que el mapa se actualice
+    // Actualizar el mapa (comportamiento existente)
     window.dispatchEvent(
       new CustomEvent('filtrar-unidades-mapa', {
         detail: { idsUnidades: nuevosIds },
       }),
     )
+
+    // Sincronizar con EstadoFlota a traves del event bus
+    actualizarFiltroUnidades(filtroMapaActivo.value, nuevosIds)
   },
   { immediate: true },
-) // 🔥 immediate: true para ejecutar al cargar
+)
 
-// 🆕 Watch: Guardar grupo seleccionado en localStorage
+// Guardar grupo seleccionado en localStorage
 watch(grupoSeleccionado, (nuevoGrupo) => {
   if (nuevoGrupo) {
     const userId = auth.currentUser?.uid
     if (userId) {
       localStorage.setItem(`grupoSeleccionado_${userId}`, nuevoGrupo)
-      console.log(`💾 Grupo guardado: ${nuevoGrupo}`)
     }
   }
 })
 
-// 🆕 Watch: Guardar estado de filtro de mapa
+// Guardar estado de filtro de mapa
 watch(filtroMapaActivo, (nuevoEstado) => {
   const userId = auth.currentUser?.uid
   if (userId) {
     localStorage.setItem(`filtroMapaActivo_${userId}`, String(nuevoEstado))
-    console.log(`💾 Filtro de mapa guardado: ${nuevoEstado}`)
+  }
+
+  if (!nuevoEstado) {
+    actualizarFiltroUnidades(false, null)
   }
 })
 
@@ -2804,20 +2088,20 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
           elemento.classList.add('flash-highlight')
           setTimeout(() => elemento.classList.remove('flash-highlight'), 2000)
         } else {
-          console.warn('⚠️ Elemento DOM no encontrado para scroll')
+          console.warn(' Elemento DOM no encontrado para scroll')
         }
       }, 400)
 
       Notify.create({
         type: 'positive',
-        message: `👤 ${conductorEncontrado.Nombre}`,
+        message: ` ${conductorEncontrado.Nombre}`,
         caption: `Grupo: ${grupoNombre || 'Sin grupo'}`,
         icon: 'person',
         timeout: 2500,
         position: 'top',
       })
     } else {
-      console.warn('⚠️ Conductor no encontrado en lista filtrada')
+      console.warn(' Conductor no encontrado en lista filtrada')
 
       const conductorEnTodos = conductores.value.find((c) => c.id === conductorId)
 
@@ -2833,7 +2117,7 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
           seleccionarConductor(conductorEnTodos)
         }
       } else {
-        console.error('❌ Conductor no existe en la base de datos')
+        console.error(' Conductor no existe en la base de datos')
 
         Notify.create({
           type: 'negative',
@@ -2852,8 +2136,6 @@ onMounted(async () => {
     await cargarUsuarioActual()
   }
 
-  console.log('🏢 Empresa:', idEmpresaActual.value)
-
   await obtenerConductores()
 
   try {
@@ -2862,7 +2144,7 @@ onMounted(async () => {
     unsubscribeConductores = escucharConductores()
     unsubscribeGrupos = escucharGrupos()
 
-    // 🆕 RESTAURAR SELECCIÓN GUARDADA
+    //  RESTAURAR SELECCIÓN GUARDADA
     const userId = auth.currentUser?.uid
     if (userId) {
       const grupoGuardado = localStorage.getItem(`grupoSeleccionado_${userId}`)
@@ -2877,11 +2159,9 @@ onMounted(async () => {
 
         if (grupoExiste) {
           grupoSeleccionado.value = grupoGuardado
-          console.log(`✅ Grupo restaurado: ${grupoGuardado}`)
         } else {
           // Si el grupo no existe, seleccionar "TODOS" por defecto
           grupoSeleccionado.value = '__todos__'
-          console.log('⚠️ Grupo guardado no existe, usando TODOS')
         }
       } else {
         // Primera vez: seleccionar "TODOS"
@@ -2891,11 +2171,10 @@ onMounted(async () => {
       // Restaurar estado de filtro
       if (filtroGuardado !== null) {
         filtroMapaActivo.value = filtroGuardado === 'true'
-        console.log(`✅ Filtro restaurado: ${filtroMapaActivo.value}`)
       }
     }
   } catch (error) {
-    console.error('❌ Error al conectar con Firebase:', error)
+    console.error(' Error al conectar con Firebase:', error)
 
     Notify.create({
       type: 'negative',
@@ -2911,12 +2190,12 @@ onMounted(async () => {
     try {
       await Promise.all([obtenerConductores(), obtenerUnidades(), obtenerGruposConductores()])
 
-      Notify.create({
+      /*Notify.create({
         type: 'positive',
-        message: '✅ Conductores actualizados',
+        message: ' Conductores actualizados',
         icon: 'sync',
         timeout: 2000,
-      })
+      })*/
     } catch (o) {
       console.log('', o)
     }
@@ -2949,7 +2228,7 @@ function navegarAUnidad() {
     return
   }
 
-  // 🎯 NUEVA ESTRATEGIA: Obtener marcadores directamente del mapa
+  //   Obtener marcadores directamente del mapa
   const mapaAPI = mapPage._mapaAPI
 
   // Los marcadores están en mapaAPI (revisa useMapboxGL.js)
@@ -2977,7 +2256,7 @@ function navegarAUnidad() {
   }
 
   if (unidadesDisponibles.length === 0) {
-    console.error('❌ No hay unidades en el sistema')
+    console.error(' No hay unidades en el sistema')
 
     Notify.create({
       type: 'warning',
@@ -3015,7 +2294,7 @@ function navegarAUnidad() {
   })
 
   if (!unidadActiva) {
-    console.error('❌ Unidad no encontrada')
+    console.error(' Unidad no encontrada')
 
     Notify.create({
       type: 'negative',
@@ -3062,7 +2341,7 @@ function navegarAUnidad() {
   // Notificación de éxito
   Notify.create({
     type: 'positive',
-    message: `📍 ${unidadAsignadaData.value.Unidad}`,
+    message: ` ${unidadAsignadaData.value.Unidad}`,
     caption: `Conductor: ${conductorEditando.value.Nombre}`,
     icon: 'my_location',
     position: 'top',
@@ -3077,16 +2356,14 @@ function navegarAUnidad() {
 /* ============================================ */
 .conductor-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 0; /* 🔥 Quitamos margin porque ya hay gap */
+  margin-bottom: 0;
   border-radius: 12px;
   overflow: hidden;
   position: relative;
   border: 2px solid transparent;
-  /* 🔥 IMPORTANTE: esto permite que la sombra se vea completa */
   will-change: transform;
 }
 
-/* Efecto de brillo deslizante */
 .conductor-card::before {
   content: '';
   position: absolute;
@@ -3113,13 +2390,12 @@ function navegarAUnidad() {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
   border-color: #42a5f5;
-  z-index: 10; /* 🔥 Eleva la tarjeta por encima de las demás */
+  z-index: 10;
 }
 .conductor-card:hover::before {
   transform: translateX(100%);
 }
 
-/* Avatar que crece y rota */
 .conductor-card:hover .card-avatar {
   animation: avatar-bounce-rotate 0.6s ease;
 }
@@ -3146,10 +2422,9 @@ function navegarAUnidad() {
   box-shadow: 0 16px 32px rgba(25, 118, 210, 0.5) !important;
   border-color: #0d47a1 !important;
   background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%) !important;
-  z-index: 10; /* 🔥 Eleva la tarjeta */
+  z-index: 10;
 }
 
-/* Flash highlight para notificaciones */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -3266,6 +2541,19 @@ function navegarAUnidad() {
   background: linear-gradient(135deg, #bb0000 0%, #bb5e00 100%);
 }
 
+.field-value-readonly {
+  padding: 10px 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #212121;
+  font-weight: 500;
+}
+
 /* ============================================ */
 /* === BÚSQUEDA MEJORADA === */
 /* ============================================ */
@@ -3321,7 +2609,6 @@ function navegarAUnidad() {
   overflow: visible;
 }
 
-/* Borde lateral animado */
 .group-item::before {
   content: '';
   position: absolute;
@@ -3339,7 +2626,7 @@ function navegarAUnidad() {
 }
 .group-item .q-avatar {
   transition: all 0.3s ease;
-  flex-shrink: 0; /* 🔥 No se encoge */
+  flex-shrink: 0;
 }
 
 .group-item:hover::before {
@@ -3356,30 +2643,18 @@ function navegarAUnidad() {
   width: 4px;
 }
 
-/* Avatar del grupo animado */
 .group-item:hover .q-avatar {
   transform: scale(1.08);
 }
 .group-item .q-avatar .q-icon {
-  font-size: 18px !important; /* 🔥 Tamaño fijo del icono */
-}
-@keyframes avatar-grow-rotate {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.15) rotate(5deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
+  font-size: 18px !important;
 }
 
 /* ============================================ */
 /* === LISTA DE CONDUCTORES (TARJETAS) === */
 /* ============================================ */
 .conductores-list {
-  padding: 20px; /* 🔥 Más padding */
+  padding: 20px;
   overflow: visible;
   flex: 1;
 }
@@ -3388,7 +2663,7 @@ function navegarAUnidad() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
-  padding: 10px 10px 40px 5px; /* 🔥 24px arriba, 20px a los lados, 40px abajo */
+  padding: 10px 10px 40px 5px;
 }
 .card-header {
   display: flex;
@@ -3463,7 +2738,6 @@ function navegarAUnidad() {
   position: relative;
 }
 
-/* Efecto de elevación 3D */
 .foto-card::after {
   content: '';
   position: absolute;
@@ -3621,14 +2895,14 @@ function navegarAUnidad() {
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 .detalle-card-fixed {
-  width: 480px !important; /* 🔥 ANCHO FIJO */
+  width: 480px !important;
   max-width: 480px !important;
   min-width: 480px !important;
   height: 100vh;
   display: flex;
   flex-direction: column;
   animation: dialog-entrance 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  overflow: hidden; /* 🔥 IMPORTANTE */
+  overflow: hidden;
 }
 .detalle-header {
   display: flex;
@@ -3714,7 +2988,6 @@ function navegarAUnidad() {
   overflow: hidden;
 }
 
-/* Efecto de slide */
 .menu-item::before {
   content: '';
   position: absolute;
@@ -3801,7 +3074,6 @@ function navegarAUnidad() {
   transform: translateY(0);
 }
 
-/* Botón flotante crear grupo */
 .q-btn[icon='create_new_folder']:hover {
   transform: scale(1.15) rotate(10deg);
 }
@@ -3872,20 +3144,18 @@ function navegarAUnidad() {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Scroll area CON ALTURA FIJA */
 .detalle-scroll-area {
   flex: 1;
-  height: 100%; /* 🔥 IMPORTANTE */
+  height: 100%;
   overflow-y: auto;
-  overflow-x: hidden; /* 🔥 Evita scroll horizontal */
+  overflow-x: hidden;
 }
 
 .detalle-content-wrapper {
   padding: 0 0 24px 0;
-  width: 100%; /* 🔥 IMPORTANTE */
+  width: 100%;
 }
 
-/* Expansion items mejorados */
 .expansion-item-enhanced {
   border-bottom: 1px solid #e0e0e0;
   transition: all 0.3s ease;
@@ -3930,7 +3200,6 @@ function navegarAUnidad() {
   }
 }
 
-/* Info fields mejorados */
 .info-row {
   display: flex;
   flex-direction: column;
@@ -3944,7 +3213,7 @@ function navegarAUnidad() {
 }
 
 .info-field.full-width {
-  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  grid-column: 1 / -1;
 }
 
 .field-label {
@@ -3969,7 +3238,6 @@ function navegarAUnidad() {
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
 }
 
-/* Responsive para pantallas pequeñas */
 @media (max-width: 600px) {
   .detalle-card-fixed {
     width: 100vw !important;
@@ -3979,10 +3247,6 @@ function navegarAUnidad() {
 
   .header-name {
     font-size: 18px;
-  }
-
-  .header-avatar {
-    size: 56px;
   }
 
   .expansion-header {

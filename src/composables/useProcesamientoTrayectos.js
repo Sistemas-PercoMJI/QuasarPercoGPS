@@ -36,10 +36,10 @@ export function useProcesamientoTrayectos() {
       }
 
       // Si no tiene coordenadas, retornar array vacío
-      console.warn(`⚠️ Trayecto ${trayecto.id} no tiene coordenadas disponibles`)
+      console.warn(` Trayecto ${trayecto.id} no tiene coordenadas disponibles`)
       return []
     } catch (err) {
-      console.error(`❌ Error obteniendo coordenadas del trayecto ${trayecto.id}:`, err)
+      console.error(` Error obteniendo coordenadas del trayecto ${trayecto.id}:`, err)
       return []
     }
   }
@@ -130,7 +130,7 @@ export function useProcesamientoTrayectos() {
 
       return rutas
     } catch (err) {
-      console.error('❌ Error procesando trayectos para mapa:', err)
+      console.error(' Error procesando trayectos para mapa:', err)
       error.value = err.message
       throw err
     } finally {
@@ -172,7 +172,7 @@ export function useProcesamientoTrayectos() {
         totalPuntos: rutas.reduce((acc, r) => acc + r.totalPuntos, 0),
       }
     } catch (err) {
-      console.error('❌ Error generando mapa de trayectos:', err)
+      console.error(' Error generando mapa de trayectos:', err)
       error.value = err.message
       throw err
     } finally {
@@ -278,7 +278,7 @@ export function useProcesamientoTrayectos() {
         try {
           // 1. Validar que tenga coordenadas
           if (!trayecto.coordenadas || trayecto.coordenadas.length === 0) {
-            console.warn(`⚠️ Trayecto ${trayecto.id} no tiene coordenadas`)
+            console.warn(` Trayecto ${trayecto.id} no tiene coordenadas`)
             return {
               ...trayecto,
               kilometrajeRecorrido: 0,
@@ -319,7 +319,7 @@ export function useProcesamientoTrayectos() {
             ubicacionFin: ubicacionFin || 'Dirección no disponible',
           }
         } catch (error) {
-          console.error(`❌ Error procesando trayecto ${trayecto.id}:`, error)
+          console.error(` Error procesando trayecto ${trayecto.id}:`, error)
           return {
             ...trayecto,
             kilometrajeRecorrido: 0,

@@ -9,7 +9,6 @@ export function useReportesHoras() {
   const { obtenerTrayectos, enriquecerConDatosUnidades } = useReportesTrayectos()
 
   const calcularHorasTrabajo = async (unidadesIds, fechaInicio, fechaFin, opciones = {}) => {
-    console.log('🚨🚨🚨 HORAS - INICIO DE FUNCIÓN', { unidadesIds, fechaInicio, fechaFin }) // 🔥 AGREGAR ESTO
     loading.value = true
     error.value = null
 
@@ -17,11 +16,9 @@ export function useReportesHoras() {
       // Obtener trayectos (reales o simulados)
       let trayectos = await obtenerTrayectos(unidadesIds, fechaInicio, fechaFin)
       trayectos = await enriquecerConDatosUnidades(trayectos)
-      console.log('🔍 HORAS - Trayectos después de enriquecer:')
+
       trayectos.forEach((t, index) => {
         console.log(`  ${index}. ${t.unidadNombre}:`, {
-          Placa: t.Placa,
-          placa: t.placa,
           unidadPlaca: t.unidadPlaca,
           todasLasPropiedades: Object.keys(t),
         })
@@ -55,12 +52,7 @@ export function useReportesHoras() {
         // Calcular horas laborales vs no laborales
         const horasLaborales = dentroHorario.horasLaborales
         const horasNoLaborales = parseFloat(duracionHoras) - horasLaborales
-        console.log('🔍 HORAS - Procesando trayecto:', {
-          unidad: trayecto.unidadNombre,
-          'trayecto.Placa': trayecto.Placa,
-          'trayecto.placa': trayecto.placa,
-          'trayecto.unidadPlaca': trayecto.unidadPlaca,
-        })
+
         return {
           fecha: trayecto.fecha,
           idUnidad: trayecto.idUnidad,
@@ -94,7 +86,7 @@ export function useReportesHoras() {
           _simulado: trayecto._simulado || false,
         }
       })
-      console.log('🔍 HORAS - Registros finales:')
+
       registros.forEach((r, index) => {
         console.log(`  ${index}. ${r.unidadNombre}:`, {
           Placa: r.Placa,
@@ -103,7 +95,7 @@ export function useReportesHoras() {
 
       return registros
     } catch (err) {
-      console.error('❌ Error al calcular horas:', err)
+      console.error(' Error al calcular horas:', err)
       error.value = err.message
       throw err
     } finally {

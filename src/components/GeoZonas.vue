@@ -1,5 +1,4 @@
 <template>
-  <!-- Todo tu código de template permanece igual -->
   <div class="geozonas-drawer">
     <!-- Header con tabs modernos -->
     <div class="drawer-header">
@@ -66,7 +65,7 @@
           </template>
         </q-input>
 
-        <!-- 🆕 BOTÓN CREAR GRUPO -->
+        <!--  BOTÓN CREAR GRUPO -->
         <q-btn
           outline
           dense
@@ -101,7 +100,7 @@
         <!-- Chips colapsables -->
         <q-slide-transition>
           <div v-show="filtrosExpandidosPOI" class="chips-container q-mt-sm">
-            <!-- ✅ CHIP "TODOS" -->
+            <!--  CHIP "TODOS" -->
             <q-chip
               :outline="grupoSeleccionado !== null"
               color="primary"
@@ -118,7 +117,7 @@
               Todos ({{ totalPOIs }})
             </q-chip>
 
-            <!-- ✅ CHIPS DE GRUPOS -->
+            <!--  CHIPS DE GRUPOS -->
             <q-chip
               v-for="grupo in grupos"
               :key="grupo.id"
@@ -167,7 +166,7 @@
                 text-color="white"
               >
                 <q-icon name="place" size="28px" />
-                <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
+                <!--  BADGE MEJORADO Y MÁS VISIBLE -->
                 <q-badge
                   v-if="tieneEventosAsignados(poi.id, 'poi')"
                   floating
@@ -242,7 +241,7 @@
           </template>
         </q-input>
 
-        <!-- 🆕 BOTÓN CREAR GRUPO -->
+        <!--  BOTÓN CREAR GRUPO -->
         <q-btn
           outline
           dense
@@ -276,7 +275,7 @@
         <!-- Chips colapsables -->
         <q-slide-transition>
           <div v-show="filtrosExpandidosGZ" class="chips-container q-mt-sm">
-            <!-- ✅ CHIP "TODOS" -->
+            <!--  CHIP "TODOS" -->
             <q-chip
               :outline="grupoSeleccionadoGZ !== null"
               color="secondary"
@@ -293,7 +292,7 @@
               Todos ({{ totalGeozonas }})
             </q-chip>
 
-            <!-- ✅ CHIPS DE GRUPOS -->
+            <!--  CHIPS DE GRUPOS -->
             <q-chip
               v-for="grupo in grupos"
               :key="grupo.id"
@@ -341,7 +340,7 @@
                 text-color="white"
               >
                 <q-icon name="layers" size="28px" />
-                <!-- 🆕 BADGE MEJORADO Y MÁS VISIBLE -->
+                <!--  BADGE MEJORADO Y MÁS VISIBLE -->
                 <q-badge
                   v-if="tieneEventosAsignados(geozona.id, 'geozona')"
                   floating
@@ -410,119 +409,133 @@
           </div>
         </q-card-section>
 
-        <q-card-section class="q-pt-lg">
-          <!-- Input de Nombre -->
-          <q-input
-            v-model="nuevoPOI.nombre"
-            label="Nombre del punto *"
-            outlined
-            class="q-mb-md"
-            placeholder="Ej: Oficina Central"
-          >
-            <template v-slot:prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
+        <q-card-section class="form-body">
+          <!-- 1. NOMBRE -->
+          <div class="field-group">
+            <label class="field-label">Nombre del punto</label>
+            <q-input
+              v-model="nuevoPOI.nombre"
+              outlined
+              dense
+              placeholder="Ej: Oficina Central, Almacén..."
+              maxlength="100"
+              class="field-input"
+            >
+              <template v-slot:prepend><q-icon name="label" color="grey-5" size="18px" /></template>
+            </q-input>
+          </div>
 
-          <!-- Input de Dirección -->
-          <q-input
-            v-model="nuevoPOI.direccion"
-            label="Dirección *"
-            outlined
-            class="q-mb-md"
-            readonly
-            placeholder="Haz clic para seleccionar en el mapa"
-            @click="activarSeleccionMapa"
-          >
-            <template v-slot:prepend>
-              <q-icon name="location_on" />
-            </template>
-            <template v-slot:append>
-              <q-icon name="edit_location" class="cursor-pointer" @click="activarSeleccionMapa" />
-            </template>
-          </q-input>
+          <!-- 2. GRUPO -->
+          <div class="field-group">
+            <label class="field-label">Grupo <span class="field-optional">(opcional)</span></label>
+            <q-select
+              v-model="nuevoPOI.grupoId"
+              :options="opcionesGruposSelect"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="folder" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+          </div>
 
-          <q-select
-            v-model="nuevoPOI.grupoId"
-            :options="opcionesGruposSelect"
-            label="Grupo (opcional)"
-            outlined
-            emit-value
-            map-options
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="folder" />
-            </template>
-          </q-select>
-          <!-- 🎨 Selector de Color para POI -->
-          <!-- 🎨 Selector de Color CONDICIONAL -->
-
-          <div v-if="!nuevoPOI.grupoId" class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
-              <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR DEL POI
-            </div>
-
-            <!-- Paleta de colores predefinida -->
-            <div class="color-palette q-mb-sm">
+          <!-- 3. COLOR -->
+          <div class="field-group" v-if="!nuevoPOI.grupoId">
+            <label class="field-label"
+              ><q-icon name="palette" size="14px" class="q-mr-xs" />Color del POI</label
+            >
+            <div class="color-palette-compact">
               <div
                 v-for="color in paletaColoresPOI"
                 :key="color.valor"
-                class="color-chip"
-                :class="{ 'color-chip-selected': nuevoPOI.color === color.valor }"
+                class="color-dot"
+                :class="{ 'color-dot-active': nuevoPOI.color === color.valor }"
                 :style="{ background: color.valor }"
                 @click="nuevoPOI.color = color.valor"
               >
                 <q-icon
                   v-if="nuevoPOI.color === color.valor"
                   name="check"
-                  size="18px"
+                  size="14px"
                   color="white"
-                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
                 />
                 <q-tooltip>{{ color.nombre }}</q-tooltip>
               </div>
+              <div class="color-dot color-dot-custom" @click="mostrarColorPickerPOI = true">
+                <q-icon name="colorize" size="14px" color="grey-6" />
+                <q-tooltip>Color personalizado</q-tooltip>
+              </div>
             </div>
+            <div class="color-preview-inline">
+              <div class="color-swatch-small" :style="{ background: nuevoPOI.color }"></div>
+              <span class="color-hex-small">{{ nuevoPOI.color.toUpperCase() }}</span>
+            </div>
+          </div>
 
-            <!-- Botón para abrir color picker personalizado -->
-            <q-btn
-              outline
+          <div class="field-group" v-else>
+            <label class="field-label"
+              ><q-icon name="palette" size="14px" class="q-mr-xs" />Color</label
+            >
+            <div class="color-inherited">
+              <div class="color-swatch-small" :style="{ background: nuevoPOI.color }"></div>
+              <span class="text-caption text-grey-6"
+                >Heredado del grupo · {{ nuevoPOI.color.toUpperCase() }}</span
+              >
+            </div>
+          </div>
+
+          <!-- 4. UBICACIÓN EN EL MAPA -->
+          <div class="field-group">
+            <label class="field-label">Ubicación en el mapa</label>
+            <div v-if="!nuevoPOI.direccion" class="map-action-btn" @click="activarSeleccionMapa">
+              <div class="map-action-icon">
+                <q-icon name="add_location_alt" size="26px" color="white" />
+              </div>
+              <div class="map-action-content">
+                <div class="map-action-title">Marcar en el mapa</div>
+                <div class="map-action-subtitle">Haz clic para seleccionar la ubicación</div>
+              </div>
+              <q-icon name="chevron_right" size="20px" color="grey-4" />
+            </div>
+            <div v-else class="map-action-btn map-action-btn--done" @click="activarSeleccionMapa">
+              <div class="map-action-icon map-action-icon--done">
+                <q-icon name="location_on" size="26px" color="white" />
+              </div>
+              <div class="map-action-content">
+                <div
+                  class="map-action-title"
+                  style="font-size: 12px; line-height: 1.4; white-space: normal"
+                >
+                  {{ nuevoPOI.direccion }}
+                </div>
+                <div class="map-action-subtitle">Toca para cambiar ubicación</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. NOTAS -->
+          <div class="field-group">
+            <label class="field-label">Notas <span class="field-optional">(opcional)</span></label>
+            <q-input
+              v-model="nuevoPOI.notas"
+              outlined
               dense
-              icon="colorize"
-              label="Color personalizado"
-              color="grey-7"
-              size="sm"
-              @click="mostrarColorPicker = true"
-              class="full-width"
-            />
-
-            <!-- Vista previa del color seleccionado -->
-            <div class="color-preview q-mt-sm">
-              <div class="preview-box" :style="{ background: nuevoPOI.color }"></div>
-              <span class="text-caption text-grey-7">{{ nuevoPOI.color.toUpperCase() }}</span>
-            </div>
+              type="textarea"
+              rows="2"
+              placeholder="Instrucciones, referencias..."
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="sticky_note_2" color="grey-5" size="18px"
+              /></template>
+            </q-input>
           </div>
 
-          <!-- 🆕 NUEVO: Preview cuando hay grupo seleccionado -->
-          <div v-else class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
-              <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR HEREDADO DEL GRUPO
-            </div>
-
-            <div class="color-preview-readonly">
-              <div class="preview-box-readonly" :style="{ background: nuevoPOI.color }">
-                <q-icon name="folder" size="24px" color="white" />
-              </div>
-              <div class="preview-info">
-                <div class="preview-label">Color del grupo</div>
-                <div class="preview-value">{{ nuevoPOI.color.toUpperCase() }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dialog del Color Picker para POI -->
+          <!-- Color picker dialog POI -->
           <q-dialog v-model="mostrarColorPickerPOI">
             <q-card style="min-width: 300px">
               <q-card-section class="row items-center q-pb-none">
@@ -530,28 +543,15 @@
                 <q-space />
                 <q-btn icon="close" flat round dense v-close-popup />
               </q-card-section>
-
               <q-card-section>
                 <q-color v-model="nuevoPOI.color" format-model="hex" default-view="palette" />
               </q-card-section>
-
               <q-card-actions align="right">
-                <q-btn flat label="Cancelar" colors="grey-7" v-close-popup />
+                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
                 <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
               </q-card-actions>
             </q-card>
           </q-dialog>
-          <q-input
-            v-model="nuevoPOI.notas"
-            label="Notas adicionales"
-            type="textarea"
-            outlined
-            rows="3"
-          >
-            <template v-slot:prepend>
-              <q-icon name="note" />
-            </template>
-          </q-input>
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
@@ -566,12 +566,15 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <!-- 🆕 Dialog: Crear Nuevo Grupo -->
+    <!--  Dialog: Crear Nuevo Grupo -->
     <q-dialog v-model="dialogNuevoGrupo" persistent>
       <q-card style="min-width: 400px; max-width: 500px">
-        <q-card-section class="bg-primary text-white">
+        <q-card-section
+          style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%)"
+          class="text-white"
+        >
           <div class="row items-center">
-            <q-icon name="folder" size="32px" class="q-mr-md" />
+            <q-icon name="create_new_folder" size="32px" class="q-mr-md" />
             <div>
               <div class="text-h6">Nuevo Grupo</div>
               <div class="text-caption">Organiza tus ubicaciones</div>
@@ -581,66 +584,95 @@
           </div>
         </q-card-section>
 
-        <q-card-section class="q-pt-lg">
-          <!-- Input de Nombre -->
-          <q-input
-            v-model="nuevoGrupo.nombre"
-            label="Nombre del grupo *"
-            outlined
-            class="q-mb-md"
-            placeholder="Ej: Clientes, Almacenes, Oficinas..."
-          >
-            <template v-slot:prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
+        <q-card-section class="form-body">
+          <!-- 1. NOMBRE -->
+          <div class="field-group">
+            <label class="field-label">Nombre del grupo</label>
+            <q-input
+              v-model="nuevoGrupo.nombre"
+              outlined
+              dense
+              placeholder="Ej: Clientes, Almacenes, Oficinas..."
+              class="field-input"
+            >
+              <template v-slot:prepend>
+                <q-icon name="label" color="grey-5" size="18px" />
+              </template>
+            </q-input>
+          </div>
 
-          <!-- Selector de Color -->
-          <div class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
-              <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR DEL GRUPO
-            </div>
-
-            <!-- Paleta de colores predefinida -->
-            <div class="color-palette q-mb-sm">
+          <!-- 2. COLOR -->
+          <div class="field-group">
+            <label class="field-label"
+              ><q-icon name="palette" size="14px" class="q-mr-xs" />Color del grupo</label
+            >
+            <div class="color-palette-compact">
               <div
                 v-for="color in paletaColores"
                 :key="color.valor"
-                class="color-chip"
-                :class="{ 'color-chip-selected': nuevoGrupo.color === color.valor }"
+                class="color-dot"
+                :class="{ 'color-dot-active': nuevoGrupo.color === color.valor }"
                 :style="{ background: color.valor }"
                 @click="nuevoGrupo.color = color.valor"
               >
                 <q-icon
                   v-if="nuevoGrupo.color === color.valor"
                   name="check"
-                  size="18px"
+                  size="14px"
                   color="white"
-                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
                 />
                 <q-tooltip>{{ color.nombre }}</q-tooltip>
               </div>
+              <div class="color-dot color-dot-custom" @click="mostrarColorPickerGrupo = true">
+                <q-icon name="colorize" size="14px" color="grey-6" />
+                <q-tooltip>Color personalizado</q-tooltip>
+              </div>
             </div>
-
-            <!-- 🆕 Botón para abrir color picker personalizado -->
-            <q-btn
-              outline
-              dense
-              icon="colorize"
-              label="Color personalizado"
-              color="grey-7"
-              size="sm"
-              @click="mostrarColorPickerGrupo = true"
-              class="full-width"
-            />
-
-            <!-- Vista previa del color seleccionado -->
-            <div class="color-preview q-mt-sm">
-              <div class="preview-box" :style="{ background: nuevoGrupo.color }"></div>
-              <span class="text-caption text-grey-7">{{ nuevoGrupo.color.toUpperCase() }}</span>
+            <div class="color-preview-inline">
+              <div class="color-swatch-small" :style="{ background: nuevoGrupo.color }"></div>
+              <span class="color-hex-small">{{ nuevoGrupo.color.toUpperCase() }}</span>
             </div>
           </div>
+
+          <!-- Preview del grupo -->
+          <div class="field-group">
+            <label class="field-label">Vista previa</label>
+            <div class="grupo-preview">
+              <div class="grupo-preview-icon" :style="{ background: nuevoGrupo.color }">
+                <q-icon name="folder" size="24px" color="white" />
+              </div>
+              <div class="grupo-preview-info">
+                <div class="grupo-preview-nombre">
+                  {{ nuevoGrupo.nombre || 'Nombre del grupo' }}
+                </div>
+                <div class="grupo-preview-sub">0 ubicaciones</div>
+              </div>
+              <div
+                class="grupo-preview-badge"
+                :style="{ background: nuevoGrupo.color + '22', color: nuevoGrupo.color }"
+              >
+                Nuevo
+              </div>
+            </div>
+          </div>
+
+          <!-- Color picker -->
+          <q-dialog v-model="mostrarColorPickerGrupo">
+            <q-card style="min-width: 300px">
+              <q-card-section class="row items-center q-pb-none">
+                <div class="text-h6">Elige un color</div>
+                <q-space />
+                <q-btn icon="close" flat round dense v-close-popup />
+              </q-card-section>
+              <q-card-section>
+                <q-color v-model="nuevoGrupo.color" format-model="hex" default-view="palette" />
+              </q-card-section>
+              <q-card-actions align="right">
+                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
@@ -648,7 +680,7 @@
           <q-btn
             unelevated
             label="Crear Grupo"
-            color="primary"
+            style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white"
             @click="guardarNuevoGrupo"
             :disable="!nuevoGrupo.nombre.trim()"
           />
@@ -656,7 +688,7 @@
       </q-card>
     </q-dialog>
 
-    <!-- 🆕 Dialog del Color Picker para Grupos -->
+    <!--  Dialog del Color Picker para Grupos -->
     <q-dialog v-model="mostrarColorPickerGrupo">
       <q-card style="min-width: 300px">
         <q-card-section class="row items-center q-pb-none">
@@ -798,163 +830,219 @@
             <q-btn flat dense round icon="close" v-close-popup color="white" />
           </div>
         </q-card-section>
-        <q-card-section class="q-pt-lg">
-          <div></div>
-          <q-input v-model="nuevaGeozona.nombre" label="Nombre de la zona" outlined class="q-mb-md">
-            <template v-slot:prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
-
-          <!-- Solo campos para geozona poligonal -->
-          <q-input
-            v-model="nuevaGeozona.direccion"
-            label="Puntos del polígono"
-            outlined
-            class="q-mb-md"
-            readonly
-            placeholder="Haz clic para seleccionar puntos en el mapa"
-            @click="activarSeleccionGeozonaPoligonal"
-          >
-            <template v-slot:prepend>
-              <q-icon name="change_history" />
-            </template>
-            <template v-slot:append>
-              <q-icon
-                name="edit_location"
-                class="cursor-pointer"
-                @click="activarSeleccionGeozonaPoligonal"
-              />
-            </template>
-          </q-input>
-
-          <div v-if="nuevaGeozona.puntos && nuevaGeozona.puntos.length > 0" class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm">Puntos seleccionados:</div>
-            <div class="row q-gutter-sm">
-              <q-chip
-                v-for="(punto, index) in nuevaGeozona.puntos"
-                :key="index"
-                removable
-                @remove="eliminarPuntoPoligono(index)"
-                color="secondary"
-                text-color="white"
-              >
-                Punto {{ index + 1 }}
-              </q-chip>
-            </div>
-          </div>
-
-          <q-select
-            v-model="nuevaGeozona.grupoId"
-            :options="opcionesGruposSelect"
-            label="Grupo (opcional)"
-            outlined
-            emit-value
-            map-options
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="folder" />
-            </template>
-          </q-select>
-
-          <!-- 🎨 Selector de Color CONDICIONAL -->
-          <div v-if="!nuevaGeozona.grupoId" class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
-              <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR DE LA GEOZONA
-            </div>
-
-            <!-- Paleta de colores predefinida -->
-            <div class="color-palette q-mb-sm">
-              <div
-                v-for="color in paletaColores"
-                :key="color.valor"
-                class="color-chip"
-                :class="{ 'color-chip-selected': nuevaGeozona.color === color.valor }"
-                :style="{ background: color.valor }"
-                @click="nuevaGeozona.color = color.valor"
-              >
-                <q-icon
-                  v-if="nuevaGeozona.color === color.valor"
-                  name="check"
-                  size="18px"
-                  color="white"
-                  style="filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))"
-                />
-                <q-tooltip>{{ color.nombre }}</q-tooltip>
-              </div>
-            </div>
-
-            <!-- Botón para abrir color picker personalizado -->
-            <q-btn
-              outline
-              dense
-              icon="colorize"
-              label="Color personalizado"
-              color="grey-7"
-              size="sm"
-              @click="mostrarColorPicker = true"
-              class="full-width"
-            />
-
-            <!-- Vista previa del color seleccionado -->
-            <div class="color-preview q-mt-sm">
-              <div class="preview-box" :style="{ background: nuevaGeozona.color }"></div>
-              <span class="text-caption text-grey-7">{{ nuevaGeozona.color.toUpperCase() }}</span>
-            </div>
-          </div>
-
-          <!-- 🆕 NUEVO: Preview cuando hay grupo seleccionado -->
-          <div v-else class="q-mb-md">
-            <div class="text-caption text-grey-7 q-mb-sm text-weight-medium">
-              <q-icon name="palette" size="16px" class="q-mr-xs" />
-              COLOR HEREDADO DEL GRUPO
-            </div>
-
-            <div class="color-preview-readonly">
-              <div class="preview-box-readonly" :style="{ background: nuevaGeozona.color }">
-                <q-icon name="folder" size="24px" color="white" />
-              </div>
-              <div class="preview-info">
-                <div class="preview-label">Color del grupo</div>
-                <div class="preview-value">{{ nuevaGeozona.color.toUpperCase() }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dialog del Color Picker -->
-          <q-dialog v-model="mostrarColorPicker">
-            <q-card style="min-width: 300px">
-              <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6">Elige un color</div>
+        <q-dialog v-model="dialogNuevaGeozona" persistent>
+          <q-card style="min-width: 400px; max-width: 500px">
+            <q-card-section class="bg-secondary text-white">
+              <div class="row items-center">
+                <q-icon name="layers" size="32px" class="q-mr-md" />
+                <div>
+                  <div class="text-h6">Nueva Geozona</div>
+                  <div class="text-caption">Define un área con múltiples puntos</div>
+                </div>
                 <q-space />
-                <q-btn icon="close" flat round dense v-close-popup />
-              </q-card-section>
+                <q-btn flat dense round icon="close" v-close-popup color="white" />
+              </div>
+            </q-card-section>
 
-              <q-card-section>
-                <q-color v-model="nuevaGeozona.color" format-model="hex" default-view="palette" />
-              </q-card-section>
+            <q-card-section class="form-body">
+              <!-- 1. NOMBRE -->
+              <div class="field-group">
+                <label class="field-label">Nombre de la zona</label>
+                <q-input
+                  v-model="nuevaGeozona.nombre"
+                  outlined
+                  dense
+                  placeholder="Ej: Zona Norte, Almacén Central..."
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="label" color="grey-5" size="18px"
+                  /></template>
+                </q-input>
+              </div>
 
-              <q-card-actions align="right">
-                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-                <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
-              </q-card-actions>
-            </q-card>
-          </q-dialog>
+              <!-- 2. GRUPO -->
+              <div class="field-group">
+                <label class="field-label"
+                  >Grupo <span class="field-optional">(opcional)</span></label
+                >
+                <q-select
+                  v-model="nuevaGeozona.grupoId"
+                  :options="opcionesGruposSelect"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="folder" color="grey-5" size="18px"
+                  /></template>
+                </q-select>
+              </div>
 
-          <q-input
-            v-model="nuevaGeozona.notas"
-            label="Notas adicionales"
-            type="textarea"
-            outlined
-            rows="3"
-          >
-            <template v-slot:prepend>
-              <q-icon name="note" />
-            </template>
-          </q-input>
-        </q-card-section>
+              <!-- 3. COLOR -->
+              <div class="field-group" v-if="!nuevaGeozona.grupoId">
+                <label class="field-label"
+                  ><q-icon name="palette" size="14px" class="q-mr-xs" />Color de la geozona</label
+                >
+                <div class="color-palette-compact">
+                  <div
+                    v-for="color in paletaColores"
+                    :key="color.valor"
+                    class="color-dot"
+                    :class="{ 'color-dot-active': nuevaGeozona.color === color.valor }"
+                    :style="{ background: color.valor }"
+                    @click="nuevaGeozona.color = color.valor"
+                  >
+                    <q-icon
+                      v-if="nuevaGeozona.color === color.valor"
+                      name="check"
+                      size="14px"
+                      color="white"
+                    />
+                    <q-tooltip>{{ color.nombre }}</q-tooltip>
+                  </div>
+                  <div class="color-dot color-dot-custom" @click="mostrarColorPicker = true">
+                    <q-icon name="colorize" size="14px" color="grey-6" />
+                    <q-tooltip>Color personalizado</q-tooltip>
+                  </div>
+                </div>
+                <div class="color-preview-inline">
+                  <div class="color-swatch-small" :style="{ background: nuevaGeozona.color }"></div>
+                  <span class="color-hex-small">{{ nuevaGeozona.color.toUpperCase() }}</span>
+                </div>
+              </div>
+
+              <div class="field-group" v-else>
+                <label class="field-label"
+                  ><q-icon name="palette" size="14px" class="q-mr-xs" />Color</label
+                >
+                <div class="color-inherited">
+                  <div class="color-swatch-small" :style="{ background: nuevaGeozona.color }"></div>
+                  <span class="text-caption text-grey-6"
+                    >Heredado del grupo · {{ nuevaGeozona.color.toUpperCase() }}</span
+                  >
+                </div>
+              </div>
+
+              <!-- 4. PUNTOS DEL POLÍGONO -->
+              <div class="field-group">
+                <label class="field-label">Puntos del polígono</label>
+                <div
+                  v-if="!nuevaGeozona.puntos || nuevaGeozona.puntos.length === 0"
+                  class="map-action-btn"
+                  @click="activarSeleccionGeozonaPoligonal"
+                >
+                  <div class="map-action-icon">
+                    <q-icon name="edit_location_alt" size="26px" color="white" />
+                  </div>
+                  <div class="map-action-content">
+                    <div class="map-action-title">Seleccionar en el mapa</div>
+                    <div class="map-action-subtitle">Haz clic para definir los vértices</div>
+                  </div>
+                  <q-icon name="chevron_right" size="20px" color="grey-4" />
+                </div>
+                <div
+                  v-else
+                  class="map-action-btn map-action-btn--done"
+                  @click="activarSeleccionGeozonaPoligonal"
+                >
+                  <div class="map-action-icon map-action-icon--done">
+                    <q-icon name="check_circle" size="26px" color="white" />
+                  </div>
+                  <div class="map-action-content">
+                    <div class="map-action-title">
+                      {{ nuevaGeozona.puntos.length }} puntos definidos
+                    </div>
+                    <div class="map-action-subtitle">Toca para editar el polígono</div>
+                  </div>
+                  <div class="puntos-chips-inline">
+                    <q-chip
+                      v-for="(_, index) in nuevaGeozona.puntos.slice(0, 3)"
+                      :key="index"
+                      dense
+                      removable
+                      color="teal-1"
+                      text-color="teal-8"
+                      size="sm"
+                      @remove="eliminarPuntoPoligono(index)"
+                      @click.stop
+                      >P{{ index + 1 }}</q-chip
+                    >
+                    <q-chip
+                      v-if="nuevaGeozona.puntos.length > 3"
+                      dense
+                      color="grey-2"
+                      text-color="grey-7"
+                      size="sm"
+                      >+{{ nuevaGeozona.puntos.length - 3 }}</q-chip
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. NOTAS -->
+              <div class="field-group">
+                <label class="field-label"
+                  >Notas <span class="field-optional">(opcional)</span></label
+                >
+                <q-input
+                  v-model="nuevaGeozona.notas"
+                  outlined
+                  dense
+                  type="textarea"
+                  rows="2"
+                  placeholder="Instrucciones, referencias..."
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="sticky_note_2" color="grey-5" size="18px"
+                  /></template>
+                </q-input>
+              </div>
+
+              <!-- Color picker dialog -->
+              <q-dialog v-model="mostrarColorPicker">
+                <q-card style="min-width: 300px">
+                  <q-card-section class="row items-center q-pb-none">
+                    <div class="text-h6">Elige un color</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
+                  </q-card-section>
+                  <q-card-section>
+                    <q-color
+                      v-model="nuevaGeozona.color"
+                      format-model="hex"
+                      default-view="palette"
+                    />
+                  </q-card-section>
+                  <q-card-actions align="right">
+                    <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                    <q-btn unelevated label="Aplicar" color="primary" v-close-popup />
+                  </q-card-actions>
+                </q-card>
+              </q-dialog>
+            </q-card-section>
+
+            <q-card-actions align="right" class="q-px-lg q-pb-lg">
+              <q-btn
+                flat
+                label="Cancelar"
+                color="grey-7"
+                v-close-popup
+                @click="cancelarNuevaGeozona"
+              />
+              <q-btn
+                unelevated
+                label="Guardar"
+                color="secondary"
+                @click="guardarGeozona"
+                :disable="!nuevaGeozona.nombre || !esGeozonaValida"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
 
         <q-card-actions align="right" class="q-px-lg q-pb-lg">
           <q-btn flat label="Cancelar" color="grey-7" v-close-popup @click="cancelarNuevaGeozona" />
@@ -1104,6 +1192,278 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- Dialog rápido de nuevo evento desde ubicación -->
+    <q-dialog
+      v-model="dialogEventoRapido"
+      persistent
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card class="dialog-evento-rapido">
+        <q-card-section
+          style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%)"
+          class="text-white"
+        >
+          <div class="row items-center">
+            <div
+              class="map-action-icon map-action-icon--done q-mr-md"
+              style="
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                background: rgba(255, 255, 255, 0.2);
+              "
+            >
+              <q-icon name="notifications_active" size="22px" color="white" />
+            </div>
+            <div>
+              <div class="text-subtitle1 text-weight-bold">Nuevo Evento</div>
+              <div class="text-caption" style="opacity: 0.85">
+                {{ ubicacionParaEvento?.nombre }}
+              </div>
+            </div>
+            <q-space />
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              color="white"
+              @click="dialogEventoRapido = false"
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-section class="form-body" style="max-height: 60vh; overflow-y: auto">
+          <!-- Nombre -->
+          <div class="field-group">
+            <label class="field-label">Nombre del evento</label>
+            <q-input
+              v-model="eventoRapido.nombre"
+              outlined
+              dense
+              placeholder="Ej: Entrada a zona restringida..."
+              class="field-input"
+            >
+              <template v-slot:prepend><q-icon name="label" color="grey-5" size="18px" /></template>
+            </q-input>
+          </div>
+
+          <!-- Descripcion -->
+          <div class="field-group">
+            <label class="field-label"
+              >Descripción <span class="field-optional">(opcional)</span></label
+            >
+            <q-input
+              v-model="eventoRapido.descripcion"
+              outlined
+              dense
+              type="textarea"
+              rows="2"
+              placeholder="Detalle del evento..."
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="description" color="grey-5" size="18px"
+              /></template>
+            </q-input>
+          </div>
+
+          <!-- Activacion (Entrada/Salida) -->
+          <div class="field-group">
+            <label class="field-label">Activar cuando</label>
+            <div class="activacion-toggle">
+              <div
+                class="activacion-option"
+                :class="{ 'activacion-option--active': eventoRapido.activacion === 'Entrada' }"
+                @click="eventoRapido.activacion = 'Entrada'"
+              >
+                <q-icon name="login" size="20px" />
+                <span>Entrada</span>
+              </div>
+              <div
+                class="activacion-option"
+                :class="{
+                  'activacion-option--active activacion-option--salida':
+                    eventoRapido.activacion === 'Salida',
+                }"
+                @click="eventoRapido.activacion = 'Salida'"
+              >
+                <q-icon name="logout" size="20px" />
+                <span>Salida</span>
+              </div>
+              <div
+                class="activacion-option"
+                :class="{
+                  'activacion-option--active activacion-option--ambos':
+                    eventoRapido.activacion === 'Ambos',
+                }"
+                @click="eventoRapido.activacion = 'Ambos'"
+              >
+                <q-icon name="swap_horiz" size="20px" />
+                <span>Ambos</span>
+              </div>
+            </div>
+
+            <!-- AND/OR solo aparece cuando elige Ambos -->
+            <div v-if="eventoRapido.activacion === 'Ambos'" class="operador-row q-mt-sm">
+              <span class="text-caption text-grey-6 q-mr-sm">Condiciones con:</span>
+              <div class="operador-mini-toggle">
+                <div
+                  class="operador-mini-option"
+                  :class="{ 'operador-mini-active': eventoRapido.operador === 'AND' }"
+                  @click="eventoRapido.operador = 'AND'"
+                >
+                  <q-icon name="done_all" size="14px" />
+                  Y (Todas)
+                </div>
+                <div
+                  class="operador-mini-option"
+                  :class="{
+                    'operador-mini-active operador-mini-or': eventoRapido.operador === 'OR',
+                  }"
+                  @click="eventoRapido.operador = 'OR'"
+                >
+                  <q-icon name="done" size="14px" />
+                  O (Alguna)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Frecuencia -->
+          <div class="field-group">
+            <label class="field-label">Frecuencia de alerta</label>
+            <q-select
+              v-model="eventoRapido.activacionAlerta"
+              :options="[
+                { label: 'Cada vez que ocurra', value: 'Cada vez' },
+                { label: 'Al inicio (primera vez)', value: 'Al inicio' },
+                { label: 'Una vez al día', value: 'Una vez al día' },
+              ]"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="repeat" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Aplicación del evento</label>
+            <q-select
+              v-model="eventoRapido.aplicacion"
+              :options="[
+                { label: 'Siempre activo', value: 'siempre' },
+                { label: 'A los días y horas establecidos', value: 'horario' },
+              ]"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="field-input"
+            >
+              <template v-slot:prepend
+                ><q-icon name="schedule" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+          </div>
+
+          <!-- Horario (solo si eligio horario) -->
+          <div v-if="eventoRapido.aplicacion === 'horario'" class="field-group">
+            <label class="field-label">Días y horario</label>
+
+            <q-select
+              v-model="eventoRapido.diasSemana"
+              :options="[
+                { label: 'Lunes', value: 1 },
+                { label: 'Martes', value: 2 },
+                { label: 'Miércoles', value: 3 },
+                { label: 'Jueves', value: 4 },
+                { label: 'Viernes', value: 5 },
+                { label: 'Sábado', value: 6 },
+                { label: 'Domingo', value: 0 },
+              ]"
+              outlined
+              dense
+              multiple
+              emit-value
+              map-options
+              use-chips
+              label="Días de la semana"
+              class="field-input q-mb-sm"
+            >
+              <template v-slot:prepend
+                ><q-icon name="calendar_today" color="grey-5" size="18px"
+              /></template>
+            </q-select>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model="eventoRapido.horaInicio"
+                  outlined
+                  dense
+                  label="Hora inicio"
+                  mask="time"
+                  :rules="['time']"
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="schedule" color="grey-5" size="18px"
+                  /></template>
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="eventoRapido.horaInicio" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model="eventoRapido.horaFin"
+                  outlined
+                  dense
+                  label="Hora fin"
+                  mask="time"
+                  :rules="['time']"
+                  class="field-input"
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="schedule" color="grey-5" size="18px"
+                  /></template>
+                  <template v-slot:append>
+                    <q-icon name="access_time" class="cursor-pointer">
+                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                        <q-time v-model="eventoRapido.horaFin" />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-lg q-pb-lg">
+          <q-btn flat label="Cancelar" color="grey-7" @click="dialogEventoRapido = false" />
+          <q-btn
+            unelevated
+            label="Guardar Evento"
+            icon-right="save"
+            color="deep-orange"
+            @click="guardarEventoRapido"
+            :disable="!eventoRapido.nombre"
+            :loading="loadingEventoRapido"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -1113,7 +1473,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { usePOIs } from 'src/composables/usePOIs'
 import { useGeozonas } from 'src/composables/useGeozonas'
 //import mapboxgl from 'mapbox-gl'
-// 🆕 NUEVO: Importar composable de eventos
+//  NUEVO: Importar composable de eventos
 import { useEventos } from 'src/composables/useEventos'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -1123,7 +1483,7 @@ import { useGruposGeozonas } from 'src/composables/useGruposGeozonas'
 const userId = ref(auth.currentUser?.uid || '')
 const emit = defineEmits(['close', 'item-seleccionado', 'crear-evento-ubicacion'])
 const $q = useQuasar()
-// 🆕 AGREGAR esta línea
+//  AGREGAR esta línea
 const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
 
 // Usar el composable de POIs
@@ -1131,6 +1491,21 @@ const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.val
 //seleccionador de color para POI:
 const mostrarColorPickerPOI = ref(false)
 const mostrarColorPickerGrupo = ref(false)
+
+const dialogEventoRapido = ref(false)
+const loadingEventoRapido = ref(false)
+const ubicacionParaEvento = ref(null)
+const eventoRapido = ref({
+  nombre: '',
+  descripcion: '',
+  activacion: 'Ambos',
+  activacionAlerta: 'Al inicio',
+  operador: 'OR',
+  aplicacion: 'siempre',
+  diasSemana: [],
+  horaInicio: '08:00',
+  horaFin: '18:00',
+})
 
 // Agregar paleta de colores para POIs (similar a la de geozonas)
 const paletaColoresPOI = [
@@ -1152,12 +1527,12 @@ const {
   migrarGeozonasExistentes,
 } = useGeozonas(userId.value)
 
-// 🆕 NUEVO: Cargar eventos para mostrar badges
+//  NUEVO: Cargar eventos para mostrar badges
 const { obtenerEventos, eliminarEventosPorUbicacion } = useEventos(userId.value)
 const { obtenerGrupos, crearGrupo } = useGruposGeozonas(userId.value)
 const eventosActivos = ref([])
 
-// 🆕 NUEVO: Variable para controlar la selección desde el mapa
+//  NUEVO: Variable para controlar la selección desde el mapa
 const ubicacionSeleccionadaDesdeMapa = ref(null)
 
 // Estados reactivos
@@ -1177,7 +1552,7 @@ const poligonoActivo = ref(null)
 const modoSeleccionGeozonaCircular = ref(false)
 const modoSeleccionGeozonaPoligonal = ref(false)
 
-// 🆕 NUEVAS VARIABLES PARA VISTA PREVIA
+//  NUEVAS VARIABLES PARA VISTA PREVIA
 const posicionMouseActual = ref(null)
 const lineaPreview = ref(null)
 const poligonoPreview = ref(null)
@@ -1190,7 +1565,7 @@ const nuevoPOI = ref({
   grupoId: null,
   notas: '',
   coordenadas: null,
-  radio: 100, // ✅ NUEVO: Radio por defecto 100m
+  radio: 100, //  NUEVO: Radio por defecto 100m
   color: '#FF5252',
 })
 
@@ -1203,7 +1578,7 @@ const nuevaGeozona = ref({
   notas: '',
   puntos: [],
   centro: null,
-  color: '#4ECDC4', // ✅ Color por defecto
+  color: '#4ECDC4', //  Color por defecto
 })
 
 const paletaColores = [
@@ -1217,7 +1592,7 @@ const paletaColores = [
   { nombre: 'Rosa', valor: '#FF6B9D' },
 ]
 
-// 🎨 Estado para el selector de color personalizado
+//  Estado para el selector de color personalizado
 const mostrarColorPicker = ref(false)
 
 const grupos = ref([])
@@ -1231,27 +1606,102 @@ const items = ref([])
 
 const mostrarSliderRadio = ref(false)
 
-// 🆕 NUEVA FUNCIÓN: Crear evento para la ubicación seleccionada
+//  NUEVA FUNCIÓN: Crear evento para la ubicación seleccionada
 function crearEventoParaUbicacion() {
   if (!itemMenu.value) return
-
   menuContextualVisible.value = false
 
-  // Emitir evento con los datos de la ubicación
-  emit('crear-evento-ubicacion', {
-    ubicacion: itemMenu.value,
-    tipo: itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona',
-  })
+  // Solo resetear si es una ubicación diferente
+  if (ubicacionParaEvento.value?.id !== itemMenu.value.id) {
+    ubicacionParaEvento.value = itemMenu.value
+    eventoRapido.value = {
+      nombre: itemMenu.value.nombre || '',
+      descripcion: '',
+      activacion: 'Ambos',
+      activacionAlerta: 'Al inicio',
+      operador: 'OR',
+      aplicacion: 'siempre',
+      diasSemana: [],
+      horaInicio: '08:00',
+      horaFin: '18:00',
+    }
+  } else {
+    ubicacionParaEvento.value = itemMenu.value
+  }
 
-  $q.notify({
-    type: 'info',
-    message: `Preparando evento para ${itemMenu.value.nombre}`,
-    icon: 'notifications_active',
-    timeout: 1500,
-  })
+  dialogEventoRapido.value = true
 }
 
-// ✅ NUEVA FUNCIÓN: Continuar al dialog después de ajustar el radio
+const guardarEventoRapido = async () => {
+  if (!eventoRapido.value.nombre || !ubicacionParaEvento.value) return
+
+  loadingEventoRapido.value = true
+
+  try {
+    const tipo = ubicacionParaEvento.value.tipo === 'poi' ? 'POI' : 'Geozona'
+
+    // Construir condiciones segun activacion seleccionada
+    const condiciones = []
+    if (eventoRapido.value.activacion === 'Entrada' || eventoRapido.value.activacion === 'Ambos') {
+      condiciones.push({
+        tipo: tipo,
+        ubicacionId: ubicacionParaEvento.value.id,
+        activacion: 'Entrada',
+      })
+    }
+    if (eventoRapido.value.activacion === 'Salida' || eventoRapido.value.activacion === 'Ambos') {
+      condiciones.push({
+        tipo: tipo,
+        ubicacionId: ubicacionParaEvento.value.id,
+        activacion: 'Salida',
+      })
+    }
+
+    const eventoData = {
+      nombre: eventoRapido.value.nombre,
+      descripcion: eventoRapido.value.descripcion || '',
+      activo: true,
+      condiciones,
+      activacionAlerta: eventoRapido.value.activacionAlerta,
+      aplicacion: eventoRapido.value.aplicacion,
+      operadoresLogicos:
+        eventoRapido.value.activacion === 'Ambos' ? [eventoRapido.value.operador] : [],
+      ...(eventoRapido.value.aplicacion === 'horario' && {
+        diasSemana: eventoRapido.value.diasSemana,
+        horaInicio: eventoRapido.value.horaInicio,
+        horaFin: eventoRapido.value.horaFin,
+      }),
+    }
+
+    // Usar el composable que ya tienes
+    const { crearEvento } = useEventos(userId.value)
+    await crearEvento(eventoData)
+
+    // Recargar eventos para actualizar los badges
+    const eventosActualizados = await obtenerEventos()
+    eventosActivos.value = eventosActualizados.filter((e) => e.activo)
+
+    $q.notify({
+      type: 'positive',
+      message: `Evento "${eventoRapido.value.nombre}" creado`,
+      icon: 'check_circle',
+      timeout: 2500,
+    })
+
+    dialogEventoRapido.value = false
+  } catch (err) {
+    console.error('Error al crear evento:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al crear el evento',
+      caption: err.message,
+    })
+  } finally {
+    loadingEventoRapido.value = false
+  }
+}
+
+//  NUEVA FUNCIÓN: Continuar al dialog después de ajustar el radio
 function continuarAlDialog() {
   // Ocultar slider
   mostrarSliderRadio.value = false
@@ -1267,13 +1717,13 @@ function continuarAlDialog() {
   dialogNuevoPOI.value = true
 }
 
-// ✅ NUEVA FUNCIÓN: Establecer radio con atajos
+//  NUEVA FUNCIÓN: Establecer radio con atajos
 function establecerRadio(valor) {
   nuevoPOI.value.radio = valor
   actualizarRadioPOI(valor)
 }
 
-// 🆕 Computed para saber qué ubicaciones tienen eventos
+//  Computed para saber qué ubicaciones tienen eventos
 const ubicacionesConEventos = computed(() => {
   const set = new Set()
 
@@ -1291,12 +1741,12 @@ const ubicacionesConEventos = computed(() => {
   return set
 })
 
-// 🆕 Función para verificar si una ubicación tiene eventos
+//  Función para verificar si una ubicación tiene eventos
 function tieneEventosAsignados(ubicacionId, tipo) {
   return ubicacionesConEventos.value.has(`${tipo}-${ubicacionId}`)
 }
 
-// 🆕 FUNCIÓN CENTRALIZADA PARA MANEJAR LA SELECCIÓN
+//  FUNCIÓN CENTRALIZADA PARA MANEJAR LA SELECCIÓN
 function handleSeleccionDesdeMapa(item) {
   // Determinar si es POI o Geozona
   if (item.coordenadas && !item.tipoGeozona) {
@@ -1327,7 +1777,7 @@ function handleSeleccionDesdeMapa(item) {
     // Mostrar notificación
     $q.notify({
       type: 'positive',
-      message: `📍 ${itemEncontrado.nombre}`,
+      message: ` ${itemEncontrado.nombre}`,
       caption:
         itemEncontrado.tipo === 'poi'
           ? itemEncontrado.direccion
@@ -1342,7 +1792,7 @@ function handleSeleccionDesdeMapa(item) {
       ubicacionSeleccionadaDesdeMapa.value = null
     }, 4000)
   } else {
-    console.error('❌ No se encontró el item con ID:', item.id)
+    console.error(' No se encontró el item con ID:', item.id)
     $q.notify({
       type: 'warning',
       message: 'No se encontró la ubicación seleccionada',
@@ -1351,7 +1801,7 @@ function handleSeleccionDesdeMapa(item) {
   }
 }
 
-// 🆕 Función para contar eventos de una ubicación
+//  Función para contar eventos de una ubicación
 function contarEventos(ubicacionId, tipo) {
   let count = 0
   eventosActivos.value.forEach((evento) => {
@@ -1381,25 +1831,25 @@ const manejarMovimientoMouse = (e) => {
 
   if (!puntosActuales || puntosActuales.length === 0) return
 
-  // ✅ Guardar posición sin actualizar reactive (más rápido)
+  //  Guardar posición sin actualizar reactive (más rápido)
   ultimaPosicionMouse = {
     lat: e.lngLat.lat,
     lng: e.lngLat.lng,
   }
 
-  // ✅ Cancelar frame anterior si existe
+  //  Cancelar frame anterior si existe
   if (frameId) {
     cancelAnimationFrame(frameId)
   }
 
-  // ✅ Usar requestAnimationFrame (automático 60fps)
+  //  Usar requestAnimationFrame (automático 60fps)
   frameId = requestAnimationFrame(() => {
     posicionMouseActual.value = ultimaPosicionMouse
     actualizarVistaPrevia()
     frameId = null
   })
 }
-// 🆕 ACTUALIZAR VISTA PREVIA DEL POLÍGONO
+//  ACTUALIZAR VISTA PREVIA DEL POLÍGONO
 const actualizarVistaPrevia = () => {
   if (!posicionMouseActual.value) return
 
@@ -1421,19 +1871,19 @@ const actualizarVistaPrevia = () => {
       const mapPage = document.querySelector('#map-page')
       if (!mapPage || !mapPage._mapaAPI) return
 
-      // ✅ Usar la nueva función que agregamos
+      //  Usar la nueva función que agregamos
       if (mapPage._mapaAPI.actualizarColorPoligonoTemporal) {
         mapPage._mapaAPI.actualizarColorPoligonoTemporal(nuevoColor)
       }
 
-      // ✅ Actualizar preview también
+      //  Actualizar preview también
       if (posicionMouseActual.value) {
         actualizarVistaPrevia()
       }
     },
   )
 
-  // 🎨 Función para oscurecer color (inline para performance)
+  //  Función para oscurecer color (inline para performance)
   const oscurecerColor = (hex, porcentaje = 30) => {
     hex = hex.replace('#', '')
     let r = parseInt(hex.substring(0, 2), 16)
@@ -1449,7 +1899,7 @@ const actualizarVistaPrevia = () => {
   const ultimoPunto = puntosActuales[puntosActuales.length - 1]
   const mouseCoords = [posicionMouseActual.value.lng, posicionMouseActual.value.lat]
 
-  // ✅ LÍNEA DE PREVIEW - Solo actualizar data
+  //  LÍNEA DE PREVIEW - Solo actualizar data
   const lineData = {
     type: 'Feature',
     geometry: {
@@ -1459,7 +1909,7 @@ const actualizarVistaPrevia = () => {
   }
 
   if (map.getSource('preview-line')) {
-    // ✅ SOLO actualizar datos - RÁPIDO
+    //  SOLO actualizar datos - RÁPIDO
     map.getSource('preview-line').setData(lineData)
   } else {
     // Primera vez - crear source y layer
@@ -1481,7 +1931,7 @@ const actualizarVistaPrevia = () => {
     })
   }
 
-  // ✅ POLÍGONO DE PREVIEW
+  //  POLÍGONO DE PREVIEW
   if (puntosActuales.length >= 2) {
     const puntosPreview = [
       ...puntosActuales.map((p) => [p.lng, p.lat]),
@@ -1498,7 +1948,7 @@ const actualizarVistaPrevia = () => {
     }
 
     if (map.getSource('preview-polygon')) {
-      // ✅ SOLO actualizar datos - RÁPIDO
+      //  SOLO actualizar datos - RÁPIDO
       map.getSource('preview-polygon').setData(polygonData)
     } else {
       // Primera vez - crear source y layers
@@ -1553,7 +2003,7 @@ const gruposGeozona = computed(() => grupos.value.length)
 const poisFiltrados = computed(() => {
   let resultado = pois.value
 
-  // ✅ CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
+  //  CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
   if (grupoSeleccionado.value !== null) {
     resultado = resultado.filter((p) => p.grupoId === grupoSeleccionado.value)
   }
@@ -1571,7 +2021,7 @@ const poisFiltrados = computed(() => {
 const geozonasFiltradas = computed(() => {
   let resultado = geozonas.value
 
-  // ✅ CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
+  //  CAMBIO: Solo filtrar si hay un grupo seleccionado Y NO es null
   if (grupoSeleccionadoGZ.value !== null) {
     resultado = resultado.filter((g) => g.grupoId === grupoSeleccionadoGZ.value)
   }
@@ -1607,7 +2057,7 @@ const esGeozonaValida = computed(() => {
   )
 })
 
-// 🆕 Watch para heredar color en Geozonas
+//  Watch para heredar color en Geozonas
 watch(
   () => nuevaGeozona.value.grupoId,
   (nuevoGrupoId) => {
@@ -1626,7 +2076,7 @@ watch(
   },
 )
 
-// 🆕 Watch para heredar color en POIs
+//  Watch para heredar color en POIs
 watch(
   () => nuevoPOI.value.grupoId,
   (nuevoGrupoId) => {
@@ -1684,7 +2134,7 @@ function verEnMapa() {
 
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
-    console.error('❌ No se encontró la API del mapa.')
+    console.error(' No se encontró la API del mapa.')
     $q.notify({
       type: 'negative',
       message: 'No se pudo acceder al mapa',
@@ -1695,10 +2145,10 @@ function verEnMapa() {
 
   const mapaAPI = mapPage._mapaAPI
 
-  // ✅ VERIFICAR: Comprobar si es POI
+  //  VERIFICAR: Comprobar si es POI
   if (itemMenu.value.tipo === 'poi') {
     if (!itemMenu.value.coordenadas) {
-      console.error('❌ El POI no tiene coordenadas:', itemMenu.value)
+      console.error(' El POI no tiene coordenadas:', itemMenu.value)
       $q.notify({
         type: 'negative',
         message: 'Este punto no tiene coordenadas válidas.',
@@ -1717,17 +2167,17 @@ function verEnMapa() {
       return
     }
 
-    // ✅ SOLO CENTRAR LA VISTA - El marcador ya existe en el mapa
+    //  SOLO CENTRAR LA VISTA - El marcador ya existe en el mapa
     mapaAPI.map.flyTo({
       center: [lng, lat],
       zoom: 18,
       duration: 1000,
     })
 
-    // ✅ NOTIFICAR AL USUARIO
+    //  NOTIFICAR AL USUARIO
     $q.notify({
       type: 'info',
-      message: `📍 Centrado en: ${itemMenu.value.nombre}`,
+      message: ` Centrado en: ${itemMenu.value.nombre}`,
       caption: 'Haz clic en el marcador para ver detalles',
       position: 'top',
       timeout: 2500,
@@ -1745,7 +2195,7 @@ function verEnMapa() {
       const { lat, lng } = itemMenu.value.centro
 
       if (typeof lat !== 'number' || typeof lng !== 'number') {
-        console.error('❌ Coordenadas inválidas:', itemMenu.value.centro)
+        console.error(' Coordenadas inválidas:', itemMenu.value.centro)
         $q.notify({
           type: 'negative',
           message: 'Esta geozona no tiene coordenadas válidas.',
@@ -1753,7 +2203,7 @@ function verEnMapa() {
         return
       }
 
-      // ✅ Las geozonas circulares ya están dibujadas en el mapa desde IndexPage
+      //  Las geozonas circulares ya están dibujadas en el mapa desde IndexPage
       // Solo centramos la vista en ellas
       mapaAPI.map.flyTo({
         center: [lng, lat],
@@ -1767,7 +2217,7 @@ function verEnMapa() {
     ) {
       // Geozona poligonal
 
-      // ✅ Calcular centro del polígono
+      //  Calcular centro del polígono
       const lats = itemMenu.value.puntos.map((p) => p.lat)
       const lngs = itemMenu.value.puntos.map((p) => p.lng)
       const centroLat = lats.reduce((a, b) => a + b) / lats.length
@@ -1780,7 +2230,7 @@ function verEnMapa() {
         duration: 1000,
       })
     } else {
-      console.warn('⚠️ La geozona seleccionada no tiene datos válidos.')
+      console.warn(' La geozona seleccionada no tiene datos válidos.')
       $q.notify({
         type: 'warning',
         message: 'No se puede mostrar esta geozona en el mapa.',
@@ -1788,7 +2238,7 @@ function verEnMapa() {
       return
     }
   } else {
-    console.error('❌ Tipo de item desconocido:', itemMenu.value.tipo)
+    console.error(' Tipo de item desconocido:', itemMenu.value.tipo)
     $q.notify({
       type: 'warning',
       message: 'No se reconoce el tipo de ubicación.',
@@ -1827,29 +2277,29 @@ function editarItem() {
     }
     dialogNuevoPOI.value = true
   } else if (itemMenu.value.tipo === 'geozona') {
-    // ✅ CAMBIAR: usar tipoGeozona
+    //  CAMBIAR: usar tipoGeozona
     if (itemMenu.value.tipoGeozona === 'circular') {
       nuevaGeozona.value = {
         id: itemMenu.value.id,
         nombre: itemMenu.value.nombre,
-        tipo: 'circular', // ✅ MANTENER: esto es para el formulario
+        tipo: 'circular', //  MANTENER: esto es para el formulario
         direccion: itemMenu.value.direccion,
         centro: itemMenu.value.centro,
         radio: itemMenu.value.radio,
         grupoId: itemMenu.value.grupoId,
         notas: itemMenu.value.notas || '',
-        color: itemMenu.value.color || '#4ECDC4', // ✅ NUEVO
+        color: itemMenu.value.color || '#4ECDC4', //  NUEVO
       }
     } else if (itemMenu.value.tipoGeozona === 'poligono') {
       nuevaGeozona.value = {
         id: itemMenu.value.id,
         nombre: itemMenu.value.nombre,
-        tipo: 'poligono', // ✅ MANTENER: esto es para el formulario
+        tipo: 'poligono', //  MANTENER: esto es para el formulario
         direccion: itemMenu.value.direccion,
         puntos: itemMenu.value.puntos,
         grupoId: itemMenu.value.grupoId,
         notas: itemMenu.value.notas || '',
-        color: itemMenu.value.color || '#4ECDC4', // ✅ NUEVO
+        color: itemMenu.value.color || '#4ECDC4', //  NUEVO
       }
     }
     dialogNuevaGeozona.value = true
@@ -1867,11 +2317,11 @@ const eliminarItem = async () => {
     // 🔍 Buscar eventos asociados
     const { cantidad: eventosEncontrados } = await eliminarEventosPorUbicacion(ubicacionId, tipo)
 
-    // 💬 Crear mensaje para window.confirm
+    //  Crear mensaje para window.confirm
     let mensaje = `¿Estás seguro de eliminar "${ubicacionNombre}"?`
 
     if (eventosEncontrados > 0) {
-      mensaje = `⚠️ ATENCIÓN ⚠️
+      mensaje = ` ATENCIÓN
 
 Esta ubicación tiene ${eventosEncontrados} evento(s) asociado(s).
 
@@ -1880,14 +2330,14 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 ¿Deseas continuar?`
     }
 
-    // 💬 Mostrar confirmación
+    //  Mostrar confirmación
     const confirmacion = window.confirm(mensaje)
 
     if (!confirmacion) {
       return
     }
 
-    // 🗑️ Eliminar de Firebase
+    //  Eliminar de Firebase
     if (itemMenu.value.tipo === 'poi') {
       await eliminarPOI(itemMenu.value.id)
     } else if (itemMenu.value.tipo === 'geozona') {
@@ -1900,17 +2350,17 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
       items.value.splice(index, 1)
     }
 
-    // 📢 Alerta de éxito
+    //  Alerta de éxito
     const mensajeExito =
       eventosEncontrados > 0
-        ? `✅ ${tipo} y ${eventosEncontrados} evento(s) eliminados correctamente`
-        : `✅ ${tipo} eliminado correctamente`
+        ? ` ${tipo} y ${eventosEncontrados} evento(s) eliminados correctamente`
+        : ` ${tipo} eliminado correctamente`
 
     window.alert(mensajeExito)
 
     menuContextualVisible.value = false
 
-    // ✅ IMPORTANTE: Actualizar eventos y redibujar
+    //  IMPORTANTE: Actualizar eventos y redibujar
     await nextTick()
 
     // Recargar eventos desde Firebase
@@ -1920,11 +2370,11 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
     // Redibujar mapa completo
     redibujarMapa()
   } catch (err) {
-    console.error('❌ Error al eliminar:', err)
-    window.alert(`❌ Error al eliminar: ${err.message}`)
+    console.error(' Error al eliminar:', err)
+    window.alert(` Error al eliminar: ${err.message}`)
   }
 }
-// 🔥 FUNCIÓN MODIFICADA PARA FIREBASE
+//  FUNCIÓN MODIFICADA PARA FIREBASE
 const guardarPOI = async () => {
   try {
     mostrarSliderRadio.value = false
@@ -1940,7 +2390,7 @@ const guardarPOI = async () => {
       color: nuevoPOI.value.color || '#FF5252',
     }
 
-    // 🆕 LIMPIAR ELEMENTOS TEMPORALES PRIMERO
+    //  LIMPIAR ELEMENTOS TEMPORALES PRIMERO
     if (mapPage && mapPage._mapaAPI) {
       const mapaAPI = mapPage._mapaAPI
       mapaAPI.limpiarCirculoTemporalPOI()
@@ -1985,7 +2435,7 @@ const guardarPOI = async () => {
       })
     }
 
-    // ✅ CERRAR DIALOG Y RESETEAR
+    //  CERRAR DIALOG Y RESETEAR
     dialogNuevoPOI.value = false
     nuevoPOI.value = {
       nombre: '',
@@ -1997,7 +2447,7 @@ const guardarPOI = async () => {
       color: '#FF5252',
     }
 
-    // 🚀 OPTIMIZACIÓN CRÍTICA: Solo actualizar capa de POIs
+    //  OPTIMIZACIÓN CRÍTICA: Solo actualizar capa de POIs
     await nextTick()
 
     // Actualizar el array en IndexPage
@@ -2021,19 +2471,19 @@ function abrirDialogGeozonaPoligonal() {
   dialogNuevaGeozona.value = true
 }
 
-// 🆕 FUNCIÓN PARA LIMPIAR COMPLETAMENTE LAS CAPAS DE PREVIEW
+//  FUNCIÓN PARA LIMPIAR COMPLETAMENTE LAS CAPAS DE PREVIEW
 const limpiarPreviewCompleto = () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) return
 
   const map = mapPage._mapaAPI.map
 
-  // 🆕 CANCELAR CUALQUIER FRAME PENDIENTE
+  //  CANCELAR CUALQUIER FRAME PENDIENTE
   if (frameId) {
     cancelAnimationFrame(frameId)
     frameId = null
   }
-  // ✅ Limpiar capas de preview de Mapbox GL
+  //  Limpiar capas de preview de Mapbox GL
   if (map.getSource('preview-line')) {
     if (map.getLayer('preview-line')) {
       try {
@@ -2064,7 +2514,7 @@ const limpiarPreviewCompleto = () => {
         console.warn('Error al remover preview-polygon-outline layer:', e)
       }
     }
-    // ✅ Limpiar también el polígono temporal del mapa
+    //  Limpiar también el polígono temporal del mapa
     const mapaAPI = mapPage._mapaAPI
     if (mapaAPI && mapaAPI.limpiarPoligonoTemporal) {
       mapaAPI.limpiarPoligonoTemporal()
@@ -2095,10 +2545,10 @@ function cancelarNuevaGeozona() {
     // Solo limpiar polígonos (ya no hay círculos)
     mapPage._mapaAPI.limpiarPoligonoTemporal()
 
-    // 🆕 USAR LA FUNCIÓN DE LIMPIEZA MEJORADA
+    //  USAR LA FUNCIÓN DE LIMPIEZA MEJORADA
     limpiarPreviewCompleto()
   } else {
-    console.warn('⚠️ No se encontró mapPage o mapaAPI para limpiar')
+    console.warn(' No se encontró mapPage o mapaAPI para limpiar')
   }
 
   const componentDialog = document.querySelector('.component-dialog')
@@ -2123,7 +2573,7 @@ function cancelarNuevaGeozona() {
     grupoId: null,
     notas: '',
     puntos: [],
-    color: '#4ECDC4', // ✅ NUEVO
+    color: '#4ECDC4', //  NUEVO
   }
 }
 
@@ -2158,12 +2608,12 @@ const activarSeleccionGeozonaPoligonal = async () => {
     const mapaAPI = await esperarMapa()
 
     if (mapaAPI) {
-      const colorSeleccionado = nuevaGeozona.value.color || '#4ECDC4' // ✅ Obtener color
+      const colorSeleccionado = nuevaGeozona.value.color || '#4ECDC4' //  Obtener color
 
       if (nuevaGeozona.value.puntos && nuevaGeozona.value.puntos.length > 0) {
-        mapaAPI.activarModoSeleccionGeozonaPoligonal(nuevaGeozona.value.puntos, colorSeleccionado) // ✅ Pasar color
+        mapaAPI.activarModoSeleccionGeozonaPoligonal(nuevaGeozona.value.puntos, colorSeleccionado) //  Pasar color
       } else {
-        mapaAPI.activarModoSeleccionGeozonaPoligonal([], colorSeleccionado) // ✅ Pasar color
+        mapaAPI.activarModoSeleccionGeozonaPoligonal([], colorSeleccionado) //  Pasar color
       }
 
       if (mapaAPI.map) {
@@ -2194,7 +2644,7 @@ const activarSeleccionGeozonaPoligonal = async () => {
       dialogNuevaGeozona.value = true
     }
   } catch (error) {
-    console.error('❌ Error en activarSeleccionGeozonaPoligonal:', error)
+    console.error(' Error en activarSeleccionGeozonaPoligonal:', error)
 
     if (componentDialog) {
       componentDialog.style.opacity = '1'
@@ -2259,7 +2709,7 @@ const guardarGeozona = async () => {
         mapPage._mapaAPI.limpiarPoligonoTemporal()
       }
 
-      // 🆕 AGREGAR ESTAS LÍNEAS AQUÍ:
+      //  AGREGAR ESTAS LÍNEAS AQUÍ:
       // Remover listener de mouse
       if (mapPage._mapaAPI.map) {
         mapPage._mapaAPI.map.off('mousemove', manejarMovimientoMouse)
@@ -2297,14 +2747,14 @@ const guardarGeozona = async () => {
             nuevaGeozona.value.centro,
             nuevaGeozona.value.radio,
             nuevaGeozona.value.nombre,
-            nuevaGeozona.value.color, // ✅ AGREGAR COLOR
+            nuevaGeozona.value.color, //  AGREGAR COLOR
           )
         } else if (nuevaGeozona.value.tipo === 'poligono') {
           mapPage._mapaAPI.actualizarPoligono(
             nuevaGeozona.value.id,
             nuevaGeozona.value.puntos,
             nuevaGeozona.value.nombre,
-            nuevaGeozona.value.color, // ✅ AGREGAR COLOR
+            nuevaGeozona.value.color, //  AGREGAR COLOR
           )
         }
       }
@@ -2359,21 +2809,21 @@ const guardarGeozona = async () => {
       limpiarPreviewCompleto()
     }
 
-    // ✅ NUEVO: Restaurar el drawer completamente
+    //  NUEVO: Restaurar el drawer completamente
     const componentDialog = document.querySelector('.component-dialog')
     if (componentDialog) {
       componentDialog.style.opacity = '1'
       componentDialog.style.pointerEvents = 'auto'
     }
 
-    // ✅ NUEVO: Ocultar botón flotante
+    //  NUEVO: Ocultar botón flotante
     window.dispatchEvent(
       new CustomEvent('mostrarBotonConfirmarGeozona', {
         detail: { mostrar: false },
       }),
     )
 
-    // ✅ NUEVO: Resetear modos locales
+    //  NUEVO: Resetear modos locales
     modoSeleccionGeozonaCircular.value = false
     modoSeleccionGeozonaPoligonal.value = false
 
@@ -2394,7 +2844,7 @@ const guardarGeozona = async () => {
     await nextTick()
     redibujarMapa()
   } catch (err) {
-    console.error('❌ Error al guardar geozona:', err)
+    console.error(' Error al guardar geozona:', err)
     $q.notify({
       type: 'negative',
       message: 'Error al guardar la geozona',
@@ -2552,16 +3002,16 @@ const guardarNuevoGrupo = async () => {
   }
 
   try {
-    // ❌ ELIMINAR ESTA LÍNEA:
+    //  ELIMINAR ESTA LÍNEA:
     // const grupoCreado = await crearGrupo(nuevoGrupo.value.nombre, nuevoGrupo.value.color)
 
-    // ✅ CAMBIAR POR ESTO (sin guardar en variable):
+    //  CAMBIAR POR ESTO (sin guardar en variable):
     await crearGrupo(nuevoGrupo.value.nombre, nuevoGrupo.value.color)
 
-    // ❌ ELIMINAR ESTAS LÍNEAS:
+    //  ELIMINAR ESTAS LÍNEAS:
     // grupos.value.push(grupoCreado)
 
-    // ✅ AGREGAR: Recargar grupos desde Firebase
+    //  AGREGAR: Recargar grupos desde Firebase
     const gruposActualizados = await obtenerGrupos()
     grupos.value = gruposActualizados
 
@@ -2586,7 +3036,7 @@ const guardarNuevoGrupo = async () => {
   }
 }
 
-// 🆕 Función para cancelar creación de grupo
+//  Función para cancelar creación de grupo
 const cancelarNuevoGrupo = () => {
   dialogNuevoGrupo.value = false
   nuevoGrupo.value = {
@@ -2644,7 +3094,7 @@ const handleCancelarGeozona = (e) => {
   // Aquí puedes agregar lógica adicional si la necesitas
   limpiarPreviewCompleto()
 
-  // 🆕 TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
+  //  TAMBIÉN LLAMAR A LA FUNCIÓN DE CANCELAR COMPLETA
   cancelarNuevaGeozona()
 }
 
@@ -2654,7 +3104,7 @@ onMounted(async () => {
     marcadorActivo.value = null
   }
 
-  // ✅ Limpiar polígono activo (si existe en Leaflet)
+  //  Limpiar polígono activo (si existe en Leaflet)
   if (poligonoActivo.value) {
     try {
       const mapPage = document.querySelector('#map-page')
@@ -2670,21 +3120,21 @@ onMounted(async () => {
   try {
     window.addEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
 
-    // 🔥 CARGAR TODO EN PARALELO (POIs, Geozonas, Eventos Y Grupos)
+    //  CARGAR TODO EN PARALELO (POIs, Geozonas, Eventos Y Grupos)
     const [poisCargados, geozonasCargadas, eventosCargados, gruposCargados] = await Promise.all([
       obtenerPOIs(),
       obtenerGeozonas(),
       obtenerEventos(),
-      obtenerGrupos(), // ✅ Cargar grupos
+      obtenerGrupos(), //  Cargar grupos
     ])
 
-    // ✅ ASIGNAR GRUPOS
+    //  ASIGNAR GRUPOS
     grupos.value = gruposCargados
 
     items.value = [...poisCargados, ...geozonasCargadas]
     eventosActivos.value = eventosCargados.filter((e) => e.activo)
 
-    // 🆕 LÓGICA CLAVE: Verificar si se debe mostrar un item específico
+    //  LÓGICA CLAVE: Verificar si se debe mostrar un item específico
     if (estadoCompartido.value.abrirGeozonasConPOI) {
       const { item } = estadoCompartido.value.abrirGeozonasConPOI
       handleSeleccionDesdeMapa(item)
@@ -2699,14 +3149,14 @@ onMounted(async () => {
     })
   }
 
-  // ✅ Listeners de ventana
+  //  Listeners de ventana
   window.addEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
 onUnmounted(() => {
   // ... (código para limpiar marcadores y polígonos activos)
   window.removeEventListener('cancelarGeozonaDesdeBoton', handleCancelarGeozona)
-  // 🆕 LIMPIAR EVENTOS DE VENTANA
+  //  LIMPIAR EVENTOS DE VENTANA
   window.removeEventListener('confirmarGeozonaDesdeBoton', handleConfirmarGeozonaDesdeBoton)
 })
 
@@ -2794,7 +3244,7 @@ defineExpose({
   gap: 12px;
 }
 
-/* 🎨 ANIMACIONES PARA LOS TABS MODERNOS */
+/*  ANIMACIONES PARA LOS TABS MODERNOS */
 .tab-item {
   position: relative;
   overflow: hidden;
@@ -2838,7 +3288,7 @@ defineExpose({
   }
 }
 
-/* 🎨 ANIMACIONES PARA STAT CARDS */
+/*  ANIMACIONES PARA STAT CARDS */
 .stat-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -2871,7 +3321,7 @@ defineExpose({
     transform: rotate(360deg) scale(1);
   }
 }
-/* 🎨 ANIMACIONES MEJORADAS PARA CARDS */
+/*  ANIMACIONES MEJORADAS PARA CARDS */
 .poi-card,
 .geozona-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2927,7 +3377,7 @@ defineExpose({
   transition: transform 0.3s ease;
 }
 
-/* 🎨 BOTÓN FLOTANTE MEJORADO */
+/*  BOTÓN FLOTANTE MEJORADO */
 .floating-btn {
   animation: float 3s ease-in-out infinite;
   transition: all 0.3s ease;
@@ -2966,7 +3416,7 @@ defineExpose({
   }
 }
 
-/* 🎨 CHIPS DE FILTROS CON ANIMACIONES */
+/*  CHIPS DE FILTROS CON ANIMACIONES */
 .chips-container .q-chip {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -2995,7 +3445,7 @@ defineExpose({
     opacity: 1;
   }
 }
-/* 🎨 BÚSQUEDA MEJORADA */
+/*  BÚSQUEDA MEJORADA */
 .modern-search {
   transition: all 0.3s ease;
 }
@@ -3024,7 +3474,7 @@ defineExpose({
     transform: scale(1.2);
   }
 }
-/* 🎨 SLIDER FLOTANTE CON ENTRADA DRAMÁTICA */
+/*  SLIDER FLOTANTE CON ENTRADA DRAMÁTICA */
 .slider-flotante-card {
   animation: slide-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
@@ -3048,7 +3498,7 @@ defineExpose({
   transform: scale(1.15);
   box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
 }
-/* 🎨 COLOR CHIPS MEJORADOS */
+/*  COLOR CHIPS MEJORADOS */
 .color-chip {
   position: relative;
 }
@@ -3102,8 +3552,8 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px; /* 🔥 Agregar padding horizontal */
-  min-height: 64px; /* 🔥 Altura mínima */
+  padding: 16px 20px; /*  Agregar padding horizontal */
+  min-height: 64px; /*  Altura mínima */
 }
 .header-info {
   flex: 1;
@@ -3356,7 +3806,7 @@ defineExpose({
   }
 }
 
-/* 🆕 ESTILOS PARA BADGES DE EVENTOS MÁS VISIBLES */
+/*  ESTILOS PARA BADGES DE EVENTOS MÁS VISIBLES */
 .evento-badge {
   font-size: 11px;
   font-weight: 700;
@@ -3387,7 +3837,7 @@ defineExpose({
   }
 }
 
-/* 🆕 EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
+/*  EFECTO FLASH CUANDO SE SELECCIONA DESDE EL MAPA */
 .flash-highlight {
   animation: flash 0.6s ease-out 3;
   position: relative;
@@ -3410,7 +3860,7 @@ defineExpose({
   }
 }
 
-/* 🆕 ESTILOS PARA ELEMENTO SELECCIONADO DESDE MAPA */
+/*  ESTILOS PARA ELEMENTO SELECCIONADO DESDE MAPA */
 .poi-card.seleccionado-desde-mapa,
 .geozona-card.seleccionado-desde-mapa {
   border: 2px solid #ff6b35;
@@ -3663,7 +4113,7 @@ defineExpose({
   font-family: 'Courier New', monospace;
 }
 
-/* 🎨 BOTÓN CREAR GRUPO */
+/*  BOTÓN CREAR GRUPO */
 .crear-grupo-btn {
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -3698,7 +4148,7 @@ defineExpose({
     transform: scale(1) rotate(0deg);
   }
 }
-/* 🎨 HEADER DE FILTROS COLAPSABLE */
+/*  HEADER DE FILTROS COLAPSABLE */
 .filtro-header {
   display: flex;
   justify-content: space-between;
@@ -3730,5 +4180,337 @@ defineExpose({
 
 .filtro-header:hover .q-icon {
   transform: scale(1.2);
+}
+
+/* ===== NUEVO DISEÑO DIALOGS ===== */
+.form-body {
+  padding: 20px 20px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-group {
+  margin-bottom: 16px;
+}
+
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+.field-optional {
+  font-weight: 400;
+  text-transform: none;
+  font-size: 10px;
+  color: #c4c9d4;
+  letter-spacing: 0;
+}
+
+.color-palette-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.color-dot:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-dot-active {
+  border: 2px solid white;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.25),
+    0 3px 8px rgba(0, 0, 0, 0.15);
+  transform: scale(1.1);
+}
+
+.color-dot-custom {
+  background: #f3f4f6;
+  border: 2px dashed #d1d5db;
+}
+
+.color-dot-custom:hover {
+  background: #e5e7eb;
+  border-style: solid;
+}
+
+.color-preview-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.color-swatch-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.color-hex-small {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.color-inherited {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+}
+
+.map-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+  border: 2px dashed #c7d2fe;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.map-action-btn:hover {
+  border-color: #818cf8;
+  border-style: solid;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+}
+
+.map-action-btn:active {
+  transform: translateY(0);
+}
+
+.map-action-btn--done {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #86efac;
+}
+
+.map-action-btn--done:hover {
+  border-color: #4ade80;
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.2);
+}
+
+.map-action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+  transition: all 0.25s ease;
+}
+
+.map-action-btn:hover .map-action-icon {
+  transform: scale(1.08) rotate(5deg);
+}
+
+.map-action-icon--done {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+}
+
+.map-action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-action-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.map-action-subtitle {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.puntos-chips-inline {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ===== GRUPO PREVIEW ===== */
+.grupo-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.grupo-preview-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: background 0.3s ease;
+}
+
+.grupo-preview-info {
+  flex: 1;
+}
+
+.grupo-preview-nombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  transition: all 0.2s ease;
+}
+
+.grupo-preview-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.grupo-preview-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+/* ===== DIALOG EVENTO RAPIDO ===== */
+.dialog-evento-rapido {
+  width: 420px;
+  max-width: 95vw;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.activacion-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.activacion-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+}
+
+.activacion-option:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.activacion-option--active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.activacion-option--salida.activacion-option--active {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.activacion-option--ambos.activacion-option--active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.operador-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.operador-mini-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.operador-mini-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.operador-mini-option:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
+.operador-mini-active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.operador-mini-or.operador-mini-active {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
 }
 </style>

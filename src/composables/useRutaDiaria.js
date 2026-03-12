@@ -10,7 +10,7 @@ export function useRutaDiaria() {
   const verificarAutenticacion = () => {
     const user = auth.currentUser
     if (!user) {
-      console.error('❌ Usuario no autenticado')
+      console.error(' Usuario no autenticado')
       throw new Error('Usuario no autenticado')
     }
     return user
@@ -39,7 +39,7 @@ export function useRutaDiaria() {
   }
 
   /**
-   * 🔥 FUNCIÓN PRINCIPAL: Agrega coordenada en formato SIMPLE
+   *  FUNCIÓN PRINCIPAL: Agrega coordenada en formato SIMPLE
    */
   const agregarCoordenadaSimple = async (unidadId, datosCoordenada) => {
     loading.value = true
@@ -48,7 +48,7 @@ export function useRutaDiaria() {
       verificarAutenticacion()
       const fecha = obtenerIdRutaDiaria()
 
-      // 🔥 FILTRO: Solo agregar si pasaron al menos 8 segundos
+      //  FILTRO: Solo agregar si pasaron al menos 8 segundos
       const MIN_INTERVALO_MS = 8000
 
       // 1. Obtener la ruta actual de Firestore
@@ -75,14 +75,12 @@ export function useRutaDiaria() {
 
               if (ahora - ultimoTimestamp < MIN_INTERVALO_MS) {
                 const segundosTranscurridos = Math.round((ahora - ultimoTimestamp) / 1000)
-                console.log(
-                  `⏰ Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`,
-                )
+                console.log(` Omitiendo coordenada: Solo ${segundosTranscurridos}s desde la última`)
                 debeAgregar = false
               }
             }
           } catch (err) {
-            console.warn('⚠️ Error verificando intervalo, continuando...', err)
+            console.warn(' Error verificando intervalo, continuando...', err)
           }
         }
       }
@@ -99,6 +97,8 @@ export function useRutaDiaria() {
           datosCoordenada.nuevaCoordenada?.timestamp ||
           datosCoordenada.timestamp ||
           new Date().toISOString(),
+        ignicion: datosCoordenada.nuevaCoordenada?.ignicion ?? datosCoordenada.ignicion ?? false,
+        velocidad: datosCoordenada.nuevaCoordenada?.velocidad ?? datosCoordenada.velocidad ?? 0, // ← agregar esto
       }
 
       // 4. Agregar al array existente
@@ -108,7 +108,7 @@ export function useRutaDiaria() {
       const { guardarCoordenadasEnStorage } = useRutasStorage()
       const nuevaUrl = await guardarCoordenadasEnStorage(unidadId, fecha, todasLasCoordenadas)
 
-      // 🆕 6. Calcular duración y velocidad promedio
+      //  6. Calcular duración y velocidad promedio
       let duracionMinutos = 0
       let velocidadPromedio = '0'
       let distanciaRecorridaReal = 0
@@ -122,7 +122,7 @@ export function useRutaDiaria() {
           const duracionMs = fechaFin - fechaInicio
           duracionMinutos = Math.floor(duracionMs / 60000)
 
-          // 🔥 CALCULAR DISTANCIA REAL del día usando coordenadas
+          //  CALCULAR DISTANCIA REAL del día usando coordenadas
           if (todasLasCoordenadas.length >= 2) {
             for (let i = 1; i < todasLasCoordenadas.length; i++) {
               const coord1 = todasLasCoordenadas[i - 1]
@@ -148,8 +148,8 @@ export function useRutaDiaria() {
         rutas_url: nuevaUrl,
         fecha_hora_fin: serverTimestamp(),
         total_coordenadas: todasLasCoordenadas.length,
-        duracion_total_minutos: duracionMinutos, // ← 🆕 AGREGADO
-        velocidad_promedio: velocidadPromedio, // ← 🆕 AGREGADO
+        duracion_total_minutos: duracionMinutos, // ←  AGREGADO
+        velocidad_promedio: velocidadPromedio, // ←  AGREGADO
         distancia_recorrida_km: distanciaRecorridaReal.toFixed(2),
       }
 
@@ -185,7 +185,7 @@ export function useRutaDiaria() {
 
       return true
     } catch (err) {
-      console.error('❌ Error agregando coordenada:', err)
+      console.error(' Error agregando coordenada:', err)
       error.value = err.message
       return false
     } finally {
@@ -231,7 +231,7 @@ export function useRutaDiaria() {
 
       return true
     } catch (err) {
-      console.error('❌ Error en ruta diaria:', err)
+      console.error(' Error en ruta diaria:', err)
       throw err
     }
   }
@@ -252,7 +252,7 @@ export function useRutaDiaria() {
       }
       return []
     } catch (err) {
-      console.error('❌ Error obteniendo coordenadas:', err)
+      console.error(' Error obteniendo coordenadas:', err)
       return []
     }
   }

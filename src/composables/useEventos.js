@@ -34,7 +34,7 @@ export function useEventos(userId) {
         updatedAt: serverTimestamp(),
       })
 
-      // 🆕 NUEVO: Actualizamos el documento para agregar el ID como campo
+      //  NUEVO: Actualizamos el documento para agregar el ID como campo
       await updateDoc(docRef, {
         id: docRef.id,
       })
@@ -42,7 +42,7 @@ export function useEventos(userId) {
       return docRef.id
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al guardar evento:', err)
+      console.error(' Error al guardar evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -69,7 +69,7 @@ export function useEventos(userId) {
       return eventos
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al obtener eventos:', err)
+      console.error(' Error al obtener eventos:', err)
       throw err
     } finally {
       loading.value = false
@@ -89,7 +89,7 @@ export function useEventos(userId) {
       })
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al actualizar evento:', err)
+      console.error(' Error al actualizar evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -106,7 +106,7 @@ export function useEventos(userId) {
       await deleteDoc(eventoDoc)
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al eliminar evento:', err)
+      console.error(' Error al eliminar evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -126,7 +126,7 @@ export function useEventos(userId) {
       })
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al cambiar estado del evento:', err)
+      console.error(' Error al cambiar estado del evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -143,12 +143,12 @@ export function useEventos(userId) {
       // eslint-disable-next-line no-unused-vars
       const { id, createdAt, updatedAt, ...dataSinId } = eventoData
 
-      // 🆕 Generar referencia con ID automático
+      //  Generar referencia con ID automático
       const nuevoDocRef = doc(collection(db, 'Usuarios', userId, 'Eventos'))
 
       // Guardar con el ID incluido
       await setDoc(nuevoDocRef, {
-        id: nuevoDocRef.id, // 🆕 El ID como campo
+        id: nuevoDocRef.id, //  El ID como campo
         ...dataSinId,
         nombre: `${dataSinId.nombre} (Copia)`,
         createdAt: serverTimestamp(),
@@ -158,7 +158,7 @@ export function useEventos(userId) {
       return nuevoDocRef.id
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al duplicar evento:', err)
+      console.error(' Error al duplicar evento:', err)
       throw err
     } finally {
       loading.value = false
@@ -204,14 +204,14 @@ export function useEventos(userId) {
       }
     } catch (err) {
       error.value = err.message
-      console.error('❌ Error al eliminar eventos:', err)
+      console.error(' Error al eliminar eventos:', err)
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  // 🔧 MODIFICAR el return para incluir la nueva función:
+  //  MODIFICAR el return para incluir la nueva función:
   return {
     loading,
     error,
@@ -221,6 +221,6 @@ export function useEventos(userId) {
     eliminarEvento,
     toggleEvento,
     duplicarEvento,
-    eliminarEventosPorUbicacion, // 🆕 AGREGAR ESTA LÍNEA
+    eliminarEventosPorUbicacion,
   }
 }

@@ -1,4 +1,4 @@
-/*Este es mi IndexPage.vue*/
+<!-- Este es mi IndexPage.vue -->
 <template>
   <q-page id="map-page" class="full-height">
     <div id="map" class="full-map"></div>
@@ -105,7 +105,7 @@
                 @click="cambiarEstiloDesdeMenu('streets')"
               >
                 <div class="style-preview">
-                  <!-- 🔥 SVG COMPLETO CALLES -->
+                  <!-- SVG COMPLETO CALLES -->
                   <svg
                     width="150"
                     height="100"
@@ -342,14 +342,15 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { auth } from 'src/firebase/firebaseConfig'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
-import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
+//import { useSimuladorUnidades } from 'src/composables/useSimuladorUnidades'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useQuasar } from 'quasar'
 import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
-import { Notify } from 'quasar'
+
+//import { Notify } from 'quasar'
 
 const geozonasCacheCompleto = ref([])
 
@@ -365,10 +366,11 @@ const {
 const geozonasDibujadas = ref(new Set())
 const poisDibujados = ref(new Set())
 
-const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
+const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
-const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
+const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear, recargarConfiguracion } =
+  useEventDetection()
 
 const marcadoresPOIs = ref([])
 //const marcadoresGeozonas = ref([])
@@ -383,16 +385,16 @@ const { obtenerPOIs } = usePOIs(userId.value)
 const { obtenerGeozonas } = useGeozonas(userId.value)
 const { obtenerEventos } = useEventos(userId.value)
 const traficoActivo = ref(false)
-const estiloMapa = ref('satellite') // ✅ NUEVO ESTADO
+const estiloMapa = ref('satellite')
 
 const poisCargados = ref([])
 const geozonasCargadas = ref([])
 
 const $q = useQuasar()
-const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
+//const { simulacionActiva, iniciarSimulacion } = useSimuladorUnidades()
 
 const { obtenerCentroGeozona } = useGeozonaUtils()
-const { obtenerDireccion } = useGeocoding() // 🔥 Agregar esta línea
+const { obtenerDireccion } = useGeocoding()
 
 const {
   conductores,
@@ -405,8 +407,8 @@ const {
 
 const { estadoCompartido } = useEventBus()
 
-const simuladorActivo = ref(false)
-let simuladorYaIniciado = false
+//const simuladorActivo = ref(false)
+//let simuladorYaIniciado = false
 
 let watchId = null
 let mapaAPI = null
@@ -436,9 +438,11 @@ watch(
     }
 
     const nuevoHash = nuevasUnidades
-      .map((u) => `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}`)
+      .map(
+        (u) =>
+          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}-${u.ignicion}-${u.velocidad ?? 0}`,
+      )
       .join('|')
-
     if (nuevoHash !== ultimoHashUnidades) {
       actualizarMarcadoresUnidades(nuevasUnidades)
       ultimoHashUnidades = nuevoHash
@@ -468,7 +472,7 @@ function detenerEvaluacionEventos() {
   }
 }
 
-const iniciarSimuladorAutomatico = async () => {
+/*const iniciarSimuladorAutomatico = async () => {
   if (simuladorYaIniciado || simulacionActiva.value) {
     return
   }
@@ -480,7 +484,7 @@ const iniciarSimuladorAutomatico = async () => {
     await obtenerConductores()
     await obtenerUnidades()
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error('Error:', error)
   }
 
   try {
@@ -489,7 +493,7 @@ const iniciarSimuladorAutomatico = async () => {
     const conductoresConUnidad = conductores.value.filter((c) => c.UnidadAsignada)
 
     if (conductoresConUnidad.length === 0) {
-      console.warn('⚠️ No hay conductores con unidades asignadas')
+      console.warn('No hay conductores con unidades asignadas')
       $q.notify({
         type: 'warning',
         message: 'No hay conductores con unidades para simular',
@@ -513,7 +517,7 @@ const iniciarSimuladorAutomatico = async () => {
       icon: 'explore',
     })
   } catch (error) {
-    console.error('❌ Error al iniciar simulador automático:', error)
+    console.error('Error al iniciar simulador automático:', error)
     simuladorYaIniciado = false
 
     $q.notify({
@@ -523,7 +527,7 @@ const iniciarSimuladorAutomatico = async () => {
       timeout: 3000,
     })
   }
-}
+}*/
 
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
@@ -620,7 +624,7 @@ function actualizarMarcadorUsuario(lat, lng) {
 
 function iniciarSeguimientoGPS() {
   if (!navigator.geolocation) {
-    console.error('❌ Geolocalización no soportada en este navegador')
+    console.error('Geolocalización no soportada en este navegador')
     return
   }
 
@@ -913,6 +917,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         },
       })
       mapaAPI.map.on('click', sourceId, (e) => {
+        if (window._clickEnUnidad) return
+        window._clickEnGeozona = true
+        setTimeout(() => {
+          window._clickEnGeozona = false
+        }, 100)
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
@@ -923,6 +932,14 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
 
         if (geozona) {
           mostrarPopupGeozonaConDireccion(geozona, e.lngLat)
+          const color = geozona.color || '#4ECDC4'
+          const colorHex = color.replace('#', '')
+          const r = parseInt(colorHex.substring(0, 2), 16)
+          const g = parseInt(colorHex.substring(2, 4), 16)
+          const b = parseInt(colorHex.substring(4, 6), 16)
+          const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+          const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+          const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -934,20 +951,26 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           }
 
           const popupContent = `
-      <div class="geozona-popup-container">
-        <div class="geozona-popup-header">
-          <div class="header-info">
-            <div class="header-title">${geozona.nombre}</div>
-            <div class="header-divider"></div>
-            <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
-          </div>
-          <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-            <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+    <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${bandColor};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
+      <div class="geozona-popup-header">
+        <div class="header-info">
+          <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
         </div>
-        <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+        <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
           <div class="points-list-container">
             ${direccionesPuntos
               .map(
@@ -957,10 +980,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Latitud:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Longitud:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -987,7 +1007,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
             .setHTML(popupContent)
             .addTo(mapaAPI.map)
         } else {
-          console.error('❌ Geozona NO encontrada')
+          console.error('Geozona NO encontrada')
         }
       })
 
@@ -1097,34 +1117,44 @@ const dibujarPOIsCombinados = async (pois) => {
         },
       })
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
+        if (window._clickEnUnidad) return
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
         }
-
         const feature = e.features[0]
         const poi = pois.find((p) => p.id === feature.properties.id)
 
+        const color = poi.color || '#FF5252'
+        const colorHex = color.replace('#', '')
+        const r = parseInt(colorHex.substring(0, 2), 16)
+        const g = parseInt(colorHex.substring(2, 4), 16)
+        const b = parseInt(colorHex.substring(4, 6), 16)
+        const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+        const textoColor = luminancia < 200 ? '#ffffff' : '#1f2937'
+        const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
+
         if (poi) {
           const popupContent = `
-            <div class="poi-popup-container">
-              <div class="poi-popup-header">
-                <div class="header-info">
-                  <div class="header-title">${poi.nombre}</div>
-
-                </div>
-              </div>
-              <div class="poi-popup-body">
-                <div class="address-info">
-                  <div class="address-icon"></div>
-                  <div class="address-text">${poi.direccion}</div>
-                </div>
-                <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
-                  Ver más detalles
-                </button>
-              </div>
+          <div class="poi-popup-container">
+            <div class="poi-color-band" style="background: ${bandColor};">
+              <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <span class="poi-band-nombre" style="color: ${textoColor};">${poi.nombre}</span>
             </div>
-          `
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+              <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
+                Ver más detalles
+              </button>
+            </div>
+          </div>
+                  `
 
           if (popupGlobalActivo) {
             popupGlobalActivo.remove()
@@ -1150,10 +1180,18 @@ const dibujarPOIsCombinados = async (pois) => {
       mapaAPI.map.on('mouseleave', 'pois-symbols', () => {
         mapaAPI.map.getCanvas().style.cursor = ''
       })
+
+      mapaAPI.map.on('movestart', () => {
+        if (window.setMapaDragging) window.setMapaDragging(true)
+      })
+
+      mapaAPI.map.on('moveend', () => {
+        if (window.setMapaDragging) window.setMapaDragging(false)
+      })
     }
   }
 }
-// 🚀 FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
+//  FUNCIÓN OPTIMIZADA: Actualizar capas POI sin redibujar todo
 const actualizarCapaPOIs = async () => {
   if (!mapaAPI?.map) return
 
@@ -1195,7 +1233,7 @@ const actualizarCapaPOIs = async () => {
       }
     })
 
-  // 🚀 SOLO ACTUALIZAR EL SOURCE (no recrear layers)
+  // SOLO ACTUALIZAR EL SOURCE (no recrear layers)
   const sourceId = 'pois-combined'
   if (mapaAPI.map.getSource(sourceId)) {
     mapaAPI.map.getSource(sourceId).setData({
@@ -1208,7 +1246,7 @@ const actualizarCapaPOIs = async () => {
 const dibujarTodosEnMapa = async () => {
   const mapPage = document.querySelector('#map-page')
   if (!mapPage || !mapPage._mapaAPI) {
-    console.warn('⚠️ Mapa no disponible para dibujar items')
+    console.warn(' Mapa no disponible para dibujar items')
     return
   }
 
@@ -1229,7 +1267,7 @@ const dibujarTodosEnMapa = async () => {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   } catch (error) {
-    console.error('❌ Error al cargar y dibujar items:', error)
+    console.error('Error al cargar y dibujar items:', error)
   }
 }
 
@@ -1373,7 +1411,7 @@ const limpiarCapasDelMapa = () => {
       try {
         marker.remove()
       } catch (e) {
-        console.warn('⚠️ Error al remover marcador:', e)
+        console.warn('Error al remover marcador:', e)
       }
     })
     marcadoresPOIs.value = []
@@ -1410,13 +1448,13 @@ const limpiarCapasDelMapa = () => {
 
 const recentrarEnUsuario = () => {
   if (!marcadorUsuario.value) {
-    $q.notify({
+    /*$q.notify({
       type: 'warning',
-      message: '⚠️ Ubicación GPS no disponible',
+      message: 'Ubicación GPS no disponible',
       caption: 'Esperando señal GPS...',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
     return
   }
 
@@ -1432,13 +1470,13 @@ const recentrarEnUsuario = () => {
     essential: true,
   })
 
-  $q.notify({
+  /*$q.notify({
     type: 'positive',
-    message: '🎯 Centrado en tu ubicación',
+    message: 'Centrado en tu ubicación',
     position: 'top',
     timeout: 1500,
     icon: 'my_location',
-  })
+  })*/
 }
 
 // En IndexPage.vue, reemplaza el método dibujarRutaTrayecto completo:
@@ -1446,17 +1484,14 @@ const recentrarEnUsuario = () => {
 const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
   const mapPage = document.getElementById('map-page')
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    console.warn('⚠️ Mapa no inicializado')
+    console.warn(' Mapa no inicializado')
     return
   }
 
   const map = mapPage._mapaAPI.map
 
   try {
-    console.log('📍 Dibujando ruta con', trayecto.coordenadas?.length, 'puntos')
-    console.log('🎨 Color del trayecto:', trayecto.color)
-
-    // 🔥 IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
+    // IMPORTANTE: Primero limpiar LAYERS, luego SOURCES
     const capasRuta = [
       'ruta-trayecto-borde',
       'ruta-trayecto',
@@ -1503,7 +1538,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
     const coordenadas = trayecto.coordenadas || []
 
     if (coordenadas.length === 0) {
-      console.warn('⚠️ Trayecto sin coordenadas')
+      console.warn('Trayecto sin coordenadas')
       return
     }
 
@@ -1529,7 +1564,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#000000',
-        'line-width': 10, // 👈 Cambiar de 8 a 12
+        'line-width': 10,
         'line-opacity': 1,
       },
     })
@@ -1541,12 +1576,11 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       source: 'ruta-trayecto',
       paint: {
         'line-color': '#FFFFFF',
-        'line-width': 8, // 👈 Cambiar de 5 a 8
+        'line-width': 8,
         'line-opacity': 1,
       },
     })
 
-    // 🎯 NUEVO: Agregar FLECHAS direccionales
     // Cargar el icono de flecha si no existe
     if (!map.hasImage('arrow-icon')) {
       const arrowSvg = `
@@ -1580,7 +1614,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       })
     }, 100)
 
-    // 🎯 NUEVO: Agregar CÍRCULOS de sombra en inicio y fin
+    // Agregar CÍRCULOS de sombra en inicio y fin
     const inicio = coordenadas[0]
     const fin = coordenadas[coordenadas.length - 1]
 
@@ -1603,7 +1637,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       paint: {
         'circle-radius': 20,
         'circle-color': '#1976D2',
-        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-opacity': 0.4,
         'circle-blur': 0.5,
       },
     })
@@ -1627,7 +1661,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       paint: {
         'circle-radius': 20,
         'circle-color': '#FF6D00',
-        'circle-opacity': 0.4, // 👈 Cambiar de 0.25 a 0.4
+        'circle-opacity': 0.4,
         'circle-blur': 0.5,
       },
     })
@@ -1727,20 +1761,18 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
       timeout: 2000,
       icon: 'route',
     })
-
-    console.log('✅ Ruta dibujada correctamente')
   } catch (error) {
-    console.error('❌ Error dibujando ruta:', error)
-    $q.notify({
+    console.error('Error dibujando ruta:', error)
+    /*$q.notify({
       type: 'negative',
       message: 'Error al mostrar la ruta',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
-// 🆕 MÉTODO PARA LIMPIAR RUTA
-const marcadoresRuta = ref([]) // 🆕 Para guardar referencias de marcadores A y B
+//  MÉTODO PARA LIMPIAR RUTA
+const marcadoresRuta = ref([]) // Para guardar referencias de marcadores A y B
 
 const limpiarRuta = () => {
   const mapPage = document.getElementById('map-page')
@@ -1748,7 +1780,7 @@ const limpiarRuta = () => {
 
   const map = mapPage._mapaAPI.map
 
-  // 🔥 PRIMERO remover LAYERS
+  // PRIMERO remover LAYERS
   const capas = [
     'ruta-trayecto-borde',
     'ruta-trayecto',
@@ -1770,7 +1802,7 @@ const limpiarRuta = () => {
     }
   })
 
-  // 🔥 DESPUÉS remover SOURCES
+  // DESPUÉS remover SOURCES
   const sources = [
     'ruta-trayecto',
     'ruta-flechas',
@@ -1791,7 +1823,7 @@ const limpiarRuta = () => {
     }
   })
 
-  // 🔥 Limpiar marcadores HTML (A y B)
+  // Limpiar marcadores HTML
   marcadoresRuta.value.forEach((marker) => {
     try {
       marker.remove()
@@ -1804,25 +1836,29 @@ const limpiarRuta = () => {
   // También limpiar por clase (por si quedó alguno)
   const marcadoresHTML = document.querySelectorAll('.marcador-ruta-custom')
   marcadoresHTML.forEach((m) => m.remove())
-
-  console.log('✅ Ruta limpiada correctamente')
 }
 
-// 🆕 EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
+// EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
 window.limpiarRuta = limpiarRuta
 
-// 🆕 Función para mostrar popup de geozona con dirección geocodificada
-// 🆕 Función para mostrar popup de geozona con dirección geocodificada
+// Función para mostrar popup de geozona con dirección geocodificada
 const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
   // Calcular centroide con dirección
   const centroInfo = await obtenerCentroGeozona(geozona)
 
   if (!centroInfo) {
-    console.error('❌ No se pudo calcular centroide')
+    console.error('No se pudo calcular centroide')
     return
   }
-
+  const color = geozona.color || '#4ECDC4'
+  const colorHex = color.replace('#', '')
+  const r = parseInt(colorHex.substring(0, 2), 16)
+  const g = parseInt(colorHex.substring(2, 4), 16)
+  const b = parseInt(colorHex.substring(4, 6), 16)
+  const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+  const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+  const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
   // Obtener direcciones de los puntos individuales (solo para polígonos)
   let direccionesPuntos = []
   if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
@@ -1849,11 +1885,16 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
 
   const popupContent = `
     <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${bandColor};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
       <div class="geozona-popup-header">
         <div class="header-info">
-          <div class="header-title">${geozona.nombre}</div>
-          <div class="header-divider"></div>
-          <!-- 🔥 CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
           <div class="header-subtitle">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
@@ -1863,7 +1904,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
           </div>
         </div>
         <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -1881,10 +1922,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Lat:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Lng:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -1924,6 +1962,13 @@ onMounted(async () => {
   await cargarUsuarioActual()
 
   try {
+    await obtenerUnidades()
+    console.log(`${unidades.value.length} unidades cargadas`)
+  } catch (error) {
+    console.error('Error al cargar unidades:', error)
+  }
+
+  try {
     const defaultCoords = [32.504421823945805, -116.9514484543167]
     const defaultZoom = 13
 
@@ -1931,7 +1976,7 @@ onMounted(async () => {
 
     const mapPage = document.getElementById('map-page')
     if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-      console.error('❌ Error: Mapa no inicializado correctamente')
+      console.error('Error: Mapa no inicializado correctamente')
       return
     }
     await new Promise((resolve) => {
@@ -1991,32 +2036,32 @@ onMounted(async () => {
           if (poi) {
             abrirGeozonasConPOI(poi)
           } else {
-            console.error('❌ POI no encontrado:', ubicacionData.id)
+            console.error('POI no encontrado:', ubicacionData.id)
           }
         } else if (ubicacionData.tipo === 'geozona') {
           const geozona = geozonasCargadas.value.find((g) => g.id === ubicacionData.id)
           if (geozona) {
             abrirGeozonasConPOI(geozona)
           } else {
-            console.error('❌ Geozona no encontrada:', ubicacionData.id)
+            console.error('Geozona no encontrada:', ubicacionData.id)
           }
         }
       } catch (error) {
-        console.error('❌ Error al abrir detalles:', error)
+        console.error('Error al abrir detalles:', error)
       }
     }
 
     window.addEventListener('empresa-cambiada', async (event) => {
-      console.log('🔄 Empresa cambiada:', event.detail.empresas)
+      console.log('Empresa cambiada:', event.detail.empresas)
 
-      // Solo notificar, NO recargar
+      /*// Solo notificar, NO recargar
       Notify.create({
         type: 'info',
-        message: '🏢 Empresa actualizada',
+        message: ' Empresa actualizada',
         caption: 'Los datos se actualizarán automáticamente',
         icon: 'business',
         timeout: 2000,
-      })
+      })*/
 
       // NO hacer: window.location.reload()
     })
@@ -2059,13 +2104,13 @@ onMounted(async () => {
 
     iniciarTracking()
 
-    setTimeout(async () => {
+    /* setTimeout(async () => {
       await iniciarSimuladorAutomatico()
-    }, 1000)
+    }, 1000)*/
 
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
-        console.warn('⚠️ Evento sin target válido')
+        console.warn('Evento sin target válido')
         return
       }
 
@@ -2096,7 +2141,7 @@ onMounted(async () => {
       const detailsBtn = event.target.closest('[data-action="ver-detalles-conductor"]')
       if (detailsBtn) {
         const conductorId = detailsBtn.dataset.conductorId
-        const conductorNombre = detailsBtn.dataset.conductorNombre
+        //const conductorNombre = detailsBtn.dataset.conductorNombre
 
         if (conductorId) {
           obtenerConductores().then(() => {
@@ -2122,32 +2167,32 @@ onMounted(async () => {
                       timestamp: Date.now(),
                     }
 
-                    $q.notify({
+                    /*$q.notify({
                       type: 'positive',
                       message: `Abriendo detalles de ${conductorNombre}`,
                       icon: 'person',
                       position: 'top',
                       timeout: 2000,
-                    })
+                    })*/
                   }, 100)
                 } else {
-                  console.warn('⚠️ Conductor sin grupo')
-                  $q.notify({
+                  console.warn('Conductor sin grupo')
+                  /*$q.notify({
                     type: 'warning',
                     message: 'El conductor no está asignado a ningún grupo',
                     icon: 'warning',
                     position: 'top',
-                  })
+                  })*/
                 }
               })
             } else {
-              console.error('❌ Conductor no encontrado')
-              $q.notify({
+              console.error('Conductor no encontrado')
+              /*$q.notify({
                 type: 'negative',
                 message: 'No se encontró el conductor',
                 icon: 'error',
                 position: 'top',
-              })
+              })*/
             }
           })
         }
@@ -2155,7 +2200,11 @@ onMounted(async () => {
       }
     })
     mapPage._mapaAPI.map.on('click', (e) => {
-      const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
+      if (window._clickEnUnidad) return
+
+      const clickEnMarcador =
+        e.originalEvent.target.closest('.mapboxgl-marker') ||
+        e.originalEvent.target.closest('.custom-marker-unidad')
 
       if (clickEnMarcador) {
         return
@@ -2179,6 +2228,7 @@ onMounted(async () => {
 
         const allPopups = document.querySelectorAll('.mapboxgl-popup')
         allPopups.forEach((popupEl) => {
+          if (popupEl.classList.contains('popup-unidad-mapbox')) return
           const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
           if (closeBtn) {
             closeBtn.click()
@@ -2199,17 +2249,17 @@ onMounted(async () => {
               essential: true,
             })
 
-            $q.notify({
+            /* $q.notify({
               type: 'positive',
               message: 'Mapa centrado en tu ubicación',
               position: 'top',
               timeout: 2000,
               icon: 'my_location',
-            })
+            })*/
           }
         },
         () => {
-          console.warn('⚠️ No se pudo obtener la ubicación GPS inicial')
+          console.warn('No se pudo obtener la ubicación GPS inicial')
         },
         {
           enableHighAccuracy: false,
@@ -2219,16 +2269,16 @@ onMounted(async () => {
       )
     }
   } catch (error) {
-    console.error('❌ Error inicializando mapa:', error)
-    $q.notify({
+    console.error('Error inicializando mapa:', error)
+    /*$q.notify({
       type: 'negative',
       message: 'Error al inicializar el mapa',
       icon: 'error',
       position: 'top',
-    })
+    })*/
   }
 
-  // ✅ LISTENERS GLOBALES (fuera del try-catch)
+  // LISTENERS GLOBALES (fuera del try-catch)
   let resizeTimeout
   const handleResize = () => {
     clearTimeout(resizeTimeout)
@@ -2249,23 +2299,26 @@ onMounted(async () => {
 
   window.addEventListener('redibujarMapa', async () => {
     await nextTick()
-
-    // Limpiar todo (incluyendo cache)
     limpiarCapasDelMapa()
-
     await nextTick()
-
-    // Redibujar todo desde cero
     await dibujarTodosEnMapa()
 
-    resetear()
-    await inicializarSistemaDeteccion()
+    const [eventos, pois, geozonas] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas(),
+    ])
+    recargarConfiguracion(
+      eventos.filter((e) => e.activo),
+      pois,
+      geozonas,
+    )
+
     detenerEvaluacionEventos()
     iniciarEvaluacionContinuaEventos()
 
-    // Actualizar marcadores de unidades ola
     await nextTick()
-    if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+    if (unidadesActivas.value?.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   })
@@ -2315,18 +2368,18 @@ const cancelarGeozona = () => {
 
   const $q = window.$q
   if ($q && $q.notify) {
-    $q.notify({
+    /*$q.notify({
       type: 'info',
       message: 'Creación de geozona cancelada',
       icon: 'cancel',
       position: 'top',
       timeout: 2000,
-    })
+    })*/
   }
 }
 
 onUnmounted(() => {
-  // 🔥 Limpiar listeners globales
+  // Limpiar listeners globales
   const mapPage = document.getElementById('map-page')
 
   if (window._mapMoveStartHandler && mapPage?._mapaAPI?.map) {
@@ -2373,7 +2426,7 @@ const manejarToggleTrafico = () => {
   traficoActivo.value = nuevoEstado
 }
 
-// ✅ NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
+// NUEVA FUNCIÓN PARA CAMBIAR ESTILO DESDE MENÚ
 const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   if (estiloMapa.value === nuevoEstilo) {
     return // Ya está en ese estilo
@@ -2383,33 +2436,29 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   if (resultado !== null) {
     estiloMapa.value = nuevoEstilo
 
-    $q.notify({
+    /*$q.notify({
       type: 'info',
       message:
-        nuevoEstilo === 'streets' ? '🗺️ Vista de calles activada' : '🛰️ Vista satelital activada',
+        nuevoEstilo === 'streets' ? ' Vista de calles activada' : ' Vista satelital activada',
       position: 'top',
       timeout: 1500,
       icon: nuevoEstilo === 'streets' ? 'map' : 'satellite',
-    })
+    })*/
 
-    // 🆕 ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
+    //  ESPERAR A QUE EL MAPA CARGUE EL NUEVO ESTILO
     const mapPage = document.getElementById('map-page')
     if (mapPage?._mapaAPI?.map) {
       mapPage._mapaAPI.map.once('styledata', async () => {
-        console.log('✅ Estilo cargado, redibujando capas...')
-
-        // 🎯 Esperar un momento para que el estilo termine de cargar completamente
+        // Esperar un momento para que el estilo termine de cargar completamente
         await new Promise((resolve) => setTimeout(resolve, 500))
 
-        // 🎯 Redibujar TODO (POIs, Geozonas, Unidades)
+        // Redibujar TODO (POIs, Geozonas, Unidades)
         await dibujarTodosEnMapa()
 
-        // 🎯 Actualizar marcadores de unidades si existen
+        // Actualizar marcadores de unidades si existen
         if (unidadesActivas.value && unidadesActivas.value.length > 0) {
           actualizarMarcadoresUnidades(unidadesActivas.value)
         }
-
-        console.log('✅ Capas redibujadas después de cambio de estilo')
       })
     }
   }
@@ -2428,7 +2477,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   border-top-color: #ffffff !important;
 }
 
-/* 🔥 Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
+/* Botón por DEFECTO (para POIs, Geozonas genéricas, etc.) */
 .mapboxgl-popup-close-button {
   position: absolute !important;
   top: 14px !important;
@@ -2458,11 +2507,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   transform: scale(1.05) !important;
 }
 
-/* 🔥 Botón específico para POPUP DE EVENTOS (a la derecha) */
+/* Botón específico para POPUP DE EVENTOS (a la derecha) */
 .evento-popup-mejorado .mapboxgl-popup-close-button {
   top: 16px !important;
   right: 16px !important;
-  left: auto !important; /* 🔥 IMPORTANTE: Anular el left del estilo por defecto */
+  left: auto !important;
   color: #6b7280 !important;
 }
 
@@ -2472,12 +2521,9 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   transform: scale(1.05) !important;
 }
 
-/* 🔥 Botón específico para POPUP DE UNIDADES (a la izquierda) */
+/* Botón específico para POPUP DE UNIDADES (a la izquierda) */
 .unidad-popup-container .mapboxgl-popup-close-button {
-  top: 16px !important;
-  left: 16px !important;
-  background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280 !important;
+  display: none !important;
 }
 
 .unidad-popup-container .mapboxgl-popup-close-button:hover {
@@ -2497,7 +2543,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: column;
+  grid-template-columns: 36px 1fr 36px;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   padding: 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -2506,15 +2556,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .header-divider {
   width: 100%;
   height: 1px;
-  margin-bottom: 10px;
-  background-color: #6b7280;
-  margin: 15px 0;
+  background-color: #e5e7eb; /* más sutil */
+  margin: 8px 0;
 }
 
 .header-info {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0; /* quitar el margin-bottom: 8px */
 }
 
 .header-title {
@@ -2522,29 +2573,37 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 700;
   color: #1f2937;
   line-height: 1.2;
-  margin-left: 15%;
+  padding-left: 48px;
+}
+.geozona-popup-container .header-title {
+  display: none;
 }
 
 .header-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
-  margin-top: 2px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .toggle-geozona-btn {
   background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280;
-
+  border: 1px solid #d1d5db;
   border-radius: 50%;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease !important;
-  align-self: flex-end;
-  margin-top: -32px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .toggle-geozona-btn:hover {
@@ -2577,15 +2636,15 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .points-list-container {
   max-height: 220px;
   overflow-y: auto;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .point-card {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
 }
 
 .point-card:last-child {
@@ -2593,14 +2652,14 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .point-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .point-address {
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 
 .address-name {
@@ -2608,12 +2667,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   color: #1f2937;
   background-color: #f3f4f6;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   border-left: 3px solid #3b82f6;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
-
 .point-coords {
   display: flex;
   flex-direction: column;
@@ -2635,7 +2693,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .details-btn {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -2643,13 +2701,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   font-size: 14px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 6px rgba(107, 114, 128, 0.3);
   margin-top: 8px;
 }
 .details-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
-  background: linear-gradient(135deg, #91c6bc 0%, #047857 100%);
+  box-shadow: 0 6px 12px rgba(107, 114, 128, 0.4);
+  background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
 }
 
 .points-list-container::-webkit-scrollbar {
@@ -2705,8 +2763,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .address-text {
   font-size: 13px;
-  color: #4b5563;
+  color: #374151;
+  font-weight: 500;
   flex: 1;
+  line-height: 1.4;
 }
 
 .mapboxgl-popup-content {
@@ -2768,15 +2828,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-size: 12px;
   color: #6b7280;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: break-word;
+  line-height: 1.3;
 }
 .unidad-popup-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 0;
+  padding: 0;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -2799,6 +2860,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   gap: 12px;
   justify-content: space-between;
   width: 100%;
+  padding: 0 16px 12px 16px;
 }
 .unidad-info {
   display: flex;
@@ -2807,7 +2869,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   flex: 1;
   min-width: 0;
 }
-/* ✅ Ícono del vehículo */
+/*  Ícono del vehículo */
 .unidad-icon {
   width: 40px !important;
   height: 40px !important;
@@ -2963,7 +3025,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   padding: 2px 8px;
   border-radius: 4px;
 }
-/* ... tus estilos existentes de IndexPage ... */
 
 /* ============================================ */
 /* === POPUP MEJORADO EVENTOS (FONDO BLANCO) === */
@@ -2987,16 +3048,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: white;
 }
 
-/* 🔥 NUEVO: Header blanco */
+/*  Header blanco */
 .evento-popup-header-white {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 56px 16px 18px; /* 🔥 Aumentado de 50px a 56px */
+  padding: 18px 56px 16px 18px;
   background: white;
 }
 
-/* 🔥 NUEVO: Icono con color (verde/naranja) */
+/*Icono con color (verde/naranja) */
 .evento-icon-white {
   width: 42px;
   height: 42px;
@@ -3014,7 +3075,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   min-width: 0;
 }
 
-/* 🔥 NUEVO: Título en negro */
+/* Título en negro */
 .evento-titulo-white {
   font-size: 17px;
   font-weight: 700;
@@ -3024,7 +3085,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
 }
 
-/* 🔥 NUEVO: Subtítulo en negro */
+/*  Subtítulo en negro */
 .evento-tipo-white {
   font-size: 13px;
   line-height: 1.3;
@@ -3032,7 +3093,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #4b5563;
 }
 
-/* 🔥 NUEVO: Separador estilo geozona */
+/* Separador estilo geozona */
 .header-divider-evento {
   width: 100%;
   height: 1px;
@@ -3112,11 +3173,15 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Estilos para el header subtitle con icono */
 .header-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: #374151;
+  font-weight: 500;
   margin-top: 2px;
   display: flex;
   align-items: center;
   line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .header-subtitle svg {
@@ -3143,6 +3208,93 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
   font-family: 'Courier New', monospace;
   font-weight: 600;
+}
+.geozona-color-band {
+  height: 56px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+.geozona-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geozona-popup-container .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.geozona-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.geozona-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+.mapboxgl-popup:has(.geozona-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.mapboxgl-popup:has(.poi-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.poi-color-band {
+  height: 56px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.poi-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poi-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.poi-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 </style>
 
@@ -3348,11 +3500,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
-/* ✅ NUEVO: Botón principal de capas */
+/* NUEVO: Botón principal de capas */
 .layers-menu-btn {
   position: fixed !important;
   top: 80px;
-  right: 20px; /* 🔥 DERECHA */
+  right: 20px;
   z-index: 1000;
 
   /* Glassmorphism */
@@ -3373,8 +3525,8 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 .recenter-btn {
   position: fixed !important;
-  top: 150px; /* 🔥 80px + 52px (tamaño) + 18px (espacio) = 150px */
-  right: 20px; /* 🔥 DERECHA */
+  top: 150px;
+  right: 20px;
   z-index: 1000;
 
   /* Glassmorphism */
@@ -3466,7 +3618,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: transparent !important;
 }
 
-/* ✅ SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
+/* SOLO EL HEADER "ESTILO DE MAPA" - Fondo blanco */
 .map-styles-section {
   background: #f9fafb;
   padding-bottom: 16px;
@@ -3476,7 +3628,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   background: transparent;
 }
 
-/* ✅ TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
+/* TODA LA SECCIÓN DE TRÁFICO - Fondo blanco */
 .traffic-section {
   background: white;
   padding-bottom: 8px;
@@ -3486,7 +3638,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   margin: 0;
 }
 
-/* ✅ LÍNEA DIVISORIA */
+/* LÍNEA DIVISORIA */
 .menu-separator {
   background-color: #949791cd !important;
   margin: 0 !important;
@@ -3654,7 +3806,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   image-rendering: crisp-edges;
 }
 
-/* 🎯 Optimización: Suavizar transiciones de opacidad */
+/* Optimización: Suavizar transiciones de opacidad */
 :deep(.custom-marker-unidad),
 :deep(.marker-container-poi),
 :deep(.marker-container-geozona) {
@@ -3662,17 +3814,17 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   will-change: opacity;
 }
 
-/* 🎯 Cursor durante panning */
+/* Cursor durante panning */
 :deep(.mapboxgl-canvas-container.mapboxgl-touch-drag-pan) {
   cursor: grabbing !important;
 }
 
-/* 🎯 Optimizar rendering del canvas durante movimiento */
+/* Optimizar rendering del canvas durante movimiento */
 :deep(.mapboxgl-canvas) {
   will-change: transform;
 }
 
-/* 🎯 Reducir peso visual de hover effects */
+/* Reducir peso visual de hover effects */
 :deep(.icono-poi-hover:hover),
 :deep(.icono-geozona-hover:hover),
 :deep(.icono-unidad-hover:hover) {

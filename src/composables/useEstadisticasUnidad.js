@@ -58,12 +58,11 @@ export function useEstadisticasUnidad() {
    */
   const descargarCoordenadasDeStorage = async (rutasUrl) => {
     if (!rutasUrl) {
-      console.warn('⚠️ No hay URL de rutas')
+      console.warn(' No hay URL de rutas')
       return []
     }
 
     try {
-      console.log('🌐 Descargando coordenadas desde:', rutasUrl)
       const response = await fetch(rutasUrl)
 
       if (!response.ok) {
@@ -98,16 +97,15 @@ export function useEstadisticasUnidad() {
           timestamp: coord.timestamp || coord.time || null,
         }))
 
-      console.log(`✅ ${coordenadasNormalizadas.length} coordenadas descargadas`)
       return coordenadasNormalizadas
     } catch (err) {
-      console.error('❌ Error descargando coordenadas del Storage:', err)
+      console.error(' Error descargando coordenadas del Storage:', err)
       return []
     }
   }
 
   /**
-   * 🔥 Calcula el tiempo de conducción analizando coordenadas con velocidad
+   *  Calcula el tiempo de conducción analizando coordenadas con velocidad
    */
   const calcularTiempoDesdeCoordenadasConVelocidad = (coordenadas) => {
     // Filtrar y ordenar coordenadas válidas
@@ -116,7 +114,6 @@ export function useEstadisticasUnidad() {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
     if (coordsValidas.length < 2) {
-      console.log('⚠️ No hay suficientes coordenadas con timestamp')
       return {
         tiempoTotal: 0,
         tiempoMovimiento: 0,
@@ -124,8 +121,6 @@ export function useEstadisticasUnidad() {
         desglose: [],
       }
     }
-
-    console.log(`📊 Analizando ${coordsValidas.length} coordenadas...`)
 
     let tiempoMovimiento = 0
     let tiempoDetenido = 0
@@ -167,10 +162,6 @@ export function useEstadisticasUnidad() {
 
     const tiempoTotal = tiempoMovimiento + tiempoDetenido
 
-    console.log(`✅ Tiempo en movimiento: ${formatearDuracion(tiempoMovimiento)}`)
-    console.log(`✅ Tiempo detenido: ${formatearDuracion(tiempoDetenido)}`)
-    console.log(`✅ Tiempo total de conducción: ${formatearDuracion(tiempoTotal)}`)
-
     return {
       tiempoTotal,
       tiempoMovimiento,
@@ -180,22 +171,17 @@ export function useEstadisticasUnidad() {
   }
 
   /**
-   * 🔥 Calcula el tiempo de conducción HOY
+   *  Calcula el tiempo de conducción HOY
    */
   const calcularTiempoConductionHoy = async (unidadId) => {
     try {
       const hoy = new Date()
       const fechaStr = formatearFechaParaFirestore(hoy)
 
-      console.log(`\n📊 === CALCULANDO TIEMPO DE CONDUCCIÓN ===`)
-      console.log(`📍 Unidad: ${unidadId}`)
-      console.log(`📅 Fecha: ${fechaStr}`)
-
       const rutaRef = doc(db, 'Unidades', unidadId, 'RutaDiaria', fechaStr)
       const rutaSnap = await getDoc(rutaRef)
 
       if (!rutaSnap.exists()) {
-        console.log(`❌ No hay datos de RutaDiaria para hoy`)
         return {
           tiempoTotal: 0,
           tiempoMovimiento: 0,
@@ -211,14 +197,13 @@ export function useEstadisticasUnidad() {
 
         if (coordenadas.length > 0) {
           const resultado = calcularTiempoDesdeCoordenadasConVelocidad(coordenadas)
-          console.log(`=== FIN CÁLCULO ===\n`)
+
           return resultado
         }
       }
 
       // Si no hay coordenadas, intentar usar campos del documento
       if (data.duracion_total_minutos) {
-        console.log(`⚠️ Usando duracion_total_minutos del documento`)
         const tiempoMs = data.duracion_total_minutos * 60 * 1000
         return {
           tiempoTotal: tiempoMs,
@@ -227,14 +212,13 @@ export function useEstadisticasUnidad() {
         }
       }
 
-      console.log(`❌ No se pudo calcular el tiempo`)
       return {
         tiempoTotal: 0,
         tiempoMovimiento: 0,
         tiempoDetenido: 0,
       }
     } catch (err) {
-      console.error('❌ Error calculando tiempo de conducción:', err)
+      console.error(' Error calculando tiempo de conducción:', err)
       return {
         tiempoTotal: 0,
         tiempoMovimiento: 0,
@@ -261,7 +245,7 @@ export function useEstadisticasUnidad() {
         tiempoDetenido: formatearDuracion(resultado.tiempoDetenido),
       }
     } catch (err) {
-      console.error('❌ Error obteniendo estadísticas:', err)
+      console.error(' Error obteniendo estadísticas:', err)
       error.value = err.message
 
       return {

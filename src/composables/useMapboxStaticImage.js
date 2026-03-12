@@ -1,5 +1,5 @@
 // composables/useMapboxStaticImage.js
-// 🗺️ GENERADOR DE MAPAS ESTÁTICOS USANDO MAPBOX STATIC IMAGES API
+//  GENERADOR DE MAPAS ESTÁTICOS USANDO MAPBOX STATIC IMAGES API
 // Con algoritmo Douglas-Peucker para simplificación inteligente
 
 /**
@@ -20,14 +20,14 @@ const MAP_RETINA = '@2x' // Alta resolución
  * ============================================
  */
 const COLORES_TRAYECTOS = [
-  'f43', // Rojo (era f44336)
-  '21f', // Azul (era 2196F3)
-  '4c5', // Verde (era 4CAF50)
-  'f90', // Naranja (era FF9800)
-  '92b', // Púrpura (era 9C27B0)
-  'fe3', // Amarillo (era FFEB3B)
-  '0bd', // Cyan (era 00BCD4)
-  'f57', // Naranja profundo (era FF5722)
+  'e74c3c', // Rojo vivo
+  '2980b9', // Azul fuerte
+  '27ae60', // Verde fuerte
+  'f39c12', // Amarillo oscuro
+  '8e44ad', // Púrpura
+  '16a085', // Verde azulado
+  'd35400', // Naranja quemado
+  '2c3e50', // Azul oscuro
 ]
 /**
  * ============================================
@@ -147,9 +147,7 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
   }
 
   const reduccion = ((1 - simplificadas.length / coordenadas.length) * 100).toFixed(1)
-  console.log(
-    `  ✅ ${coordenadas.length} → ${simplificadas.length} puntos (${reduccion}% reducción)`,
-  )
+  console.log(`   ${coordenadas.length} → ${simplificadas.length} puntos (${reduccion}% reducción)`)
 
   return simplificadas
 }
@@ -164,86 +162,33 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
  * Prepara los datos de trayectos para el mapa
  */
 function prepararDatosTrayectos(registros) {
-  const trayectosPorVehiculo = {}
-
-  registros.forEach((registro) => {
-    const vehiculoId = registro.vehiculoId || registro.unidadId || registro.idUnidad
-    const vehiculoNombre =
-      registro.vehiculo || registro.unidad || registro.unidadNombre || 'Sin nombre'
-
-    if (!trayectosPorVehiculo[vehiculoId]) {
-      trayectosPorVehiculo[vehiculoId] = {
-        vehiculoId,
-        vehiculoNombre,
-        placa: registro.placa || '',
-        coordenadas: [],
-      }
-    }
-
-    // Si el registro tiene array de coordenadas, usarlo
-    if (
-      registro.coordenadas &&
-      Array.isArray(registro.coordenadas) &&
-      registro.coordenadas.length > 0
-    ) {
-      console.log(`  📍 Agregando ${registro.coordenadas.length} coordenadas de ${vehiculoNombre}`)
-      trayectosPorVehiculo[vehiculoId].coordenadas.push(...registro.coordenadas)
-    }
-    // Fallback: si solo tiene lat/lng individuales
-    else if (registro.latitud && registro.longitud) {
-      trayectosPorVehiculo[vehiculoId].coordenadas.push({
-        lat: parseFloat(registro.latitud),
-        lng: parseFloat(registro.longitud),
-        timestamp: registro.fecha || registro.timestamp,
-      })
-    }
-  })
-
-  // Convertir a array y ordenar coordenadas
-  const trayectos = Object.values(trayectosPorVehiculo)
-    .filter((t) => t.coordenadas.length > 0)
-    .map((trayecto) => {
-      // Ordenar por timestamp
-      const coordenadasOrdenadas = trayecto.coordenadas.sort((a, b) => {
+  const trayectos = registros
+    .filter((registro) => registro.coordenadas && registro.coordenadas.length > 0)
+    .map((registro, index) => {
+      const coordenadasOrdenadas = [...registro.coordenadas].sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
         return timeA - timeB
       })
 
-      // 🔥 SIMPLIFICAR con Douglas-Peucker (máximo 80 puntos por trayecto)
-      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 50)
+      const maxPuntosPorViaje = registros.length > 4 ? 20 : 35
+
+      const coordenadasSimplificadas = simplificarCoordenadasInteligente(
+        coordenadasOrdenadas,
+        maxPuntosPorViaje,
+      )
 
       return {
-        ...trayecto,
+        vehiculoId: registro.idUnidad || registro.vehiculoId,
+        vehiculoNombre: `${registro.unidadNombre || 'Sin nombre'} - Viaje ${index + 1}`,
+        placa: registro.Placa || registro.placa || '',
         coordenadas: coordenadasSimplificadas,
       }
     })
 
-  trayectos.forEach((t, i) => {
-    console.log(`   ${i + 1}. ${t.vehiculoNombre}: ${t.coordenadas.length} puntos`)
-  })
-
   return trayectos
 }
-function calcularBoundingBox(trayectos) {
-  let minLat = Infinity
-  let maxLat = -Infinity
-  let minLng = Infinity
-  let maxLng = -Infinity
 
-  trayectos.forEach((trayecto) => {
-    trayecto.coordenadas.forEach((coord) => {
-      minLat = Math.min(minLat, coord.lat)
-      maxLat = Math.max(maxLat, coord.lat)
-      minLng = Math.min(minLng, coord.lng)
-      maxLng = Math.max(maxLng, coord.lng)
-    })
-  })
-
-  // 🔍 AGREGAR ESTOS LOGS:
-
-  return { minLat, maxLat, minLng, maxLng }
-}
 /**
  * Calcula el bounding box de todos los trayectos
  */
@@ -253,28 +198,13 @@ function calcularBoundingBox(trayectos) {
  */
 function generarURLMapaTrayectos(trayectos, config = {}) {
   if (!trayectos || trayectos.length === 0) {
-    console.warn('⚠️ No hay trayectos para generar mapa')
+    console.warn(' No hay trayectos para generar mapa')
     return null
   }
 
   const { mostrarPins = true } = config
 
-  const bbox = calcularBoundingBox(trayectos) // 👈 AQUÍ SE LLAMA
-  const centroLat = (bbox.minLat + bbox.maxLat) / 2
-  const centroLng = (bbox.minLng + bbox.maxLng) / 2
-
-  // Calcular zoom apropiado
-  const rangoLat = bbox.maxLat - bbox.minLat
-  const rangoLng = bbox.maxLng - bbox.minLng
-  const rangoMax = Math.max(rangoLat, rangoLng)
-
-  let zoom = 12
-  if (rangoMax > 1) zoom = 8
-  else if (rangoMax > 0.5) zoom = 9
-  else if (rangoMax > 0.2) zoom = 10
-  else if (rangoMax > 0.1) zoom = 11
-  else if (rangoMax > 0.05) zoom = 12
-  else zoom = 13
+  const padding = config.padding ?? 60
 
   // Construir overlays (paths + pins)
   const overlays = []
@@ -285,12 +215,26 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
     if (coordenadas.length === 0) return
 
+    const todasIguales = coordenadas.every(
+      (c) => c.lat === coordenadas[0].lat && c.lng === coordenadas[0].lng,
+    )
+
+    if (coordenadas.length < 2 || todasIguales) {
+      if (mostrarPins) {
+        const tamano = index === 0 ? 'pin-l' : 'pin-s'
+        overlays.push(
+          `${tamano}-${index + 1}+${color}(${coordenadas[0].lng.toFixed(6)},${coordenadas[0].lat.toFixed(6)})`,
+        )
+      }
+      return
+    }
+
     // 1. GeoJSON LineString (en lugar de path)
     const geojson = {
       type: 'Feature',
       properties: {
         stroke: `#${color}`,
-        'stroke-width': 2,
+        'stroke-width': 3,
         'stroke-opacity': 1,
       },
       geometry: {
@@ -306,29 +250,32 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
       const inicio = coordenadas[0]
-      overlays.push(`pin-s-circle+4CAF50(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`)
+      const tamano = index === 0 ? 'pin-l' : 'pin-s'
+      overlays.push(
+        `${tamano}-${index + 1}+${color}(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`,
+      )
     }
 
-    // 3. Pin de fin (color del trayecto)
+    // Pin de fin (cuadrado del mismo color)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
       overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
   })
 
-  overlays.forEach((overlay, i) => {
+  /*overlays.forEach((overlay, i) => {
     console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
-  })
+  })*/
 
   // Construir URL
   const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/${centroLng},${centroLat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
+  const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
 
   if (url.length > 8000) {
-    console.warn('⚠️ URL muy larga, puede fallar. Considera reducir más los puntos.')
+    console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
   }
 
   return url
@@ -340,7 +287,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
  */
 async function descargarImagenMapaBase64(url) {
   try {
-    // 🔥 USAR TU FIREBASE FUNCTION COMO PROXY
+    //  USAR TU FIREBASE FUNCTION COMO PROXY
     const proxyUrl = `https://us-central1-gpsmjindust.cloudfunctions.net/getMapboxImage?url=${encodeURIComponent(url)}`
 
     const response = await fetch(proxyUrl, {
@@ -362,7 +309,7 @@ async function descargarImagenMapaBase64(url) {
       reader.readAsDataURL(blob)
     })
   } catch (error) {
-    console.error('❌ Error descargando imagen del mapa:', error)
+    console.error(' Error descargando imagen del mapa:', error)
 
     // Si falla, devolver null (no mostrar mapa)
     return null
@@ -384,7 +331,7 @@ export function useMapboxStaticImage() {
       const trayectos = prepararDatosTrayectos(registros)
 
       if (trayectos.length === 0) {
-        console.warn('⚠️ No hay trayectos válidos para mostrar')
+        console.warn(' No hay trayectos válidos para mostrar')
         return null
       }
 
@@ -404,13 +351,13 @@ export function useMapboxStaticImage() {
         url,
       }
     } catch (error) {
-      console.error('❌ Error generando mapa:', error)
+      console.error(' Error generando mapa:', error)
       throw error
     }
   }
 
   /**
-   * 🆕 Genera un mapa estático para un evento (punto único)
+   *  Genera un mapa estático para un evento (punto único)
    * @param {Object} ubicacion - Objeto con { lat, lng, nombre, tipo }
    * @returns {Promise<Object>} - { imagenBase64, url }
    */
@@ -442,7 +389,7 @@ export function useMapboxStaticImage() {
         ubicacion: { lat, lng, nombre, tipo },
       }
     } catch (error) {
-      console.error('❌ Error generando mapa de evento:', error)
+      console.error(' Error generando mapa de evento:', error)
       throw error
     }
   }
@@ -470,7 +417,7 @@ export function useMapboxStaticImage() {
 
   return {
     generarMapaTrayectos,
-    generarMapaEvento, // 🆕 NUEVA FUNCIÓN
+    generarMapaEvento, //  NUEVA FUNCIÓN
     prepararDatosTrayectos,
     generarURLMapaTrayectos,
     descargarImagenMapaBase64,

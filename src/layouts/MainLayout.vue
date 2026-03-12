@@ -37,23 +37,22 @@
           </q-input>
 
           <!-- Panel de Filtros -->
-          <q-slide-transition>
-            <div v-show="mostrarFiltros" class="filtros-panel">
-              <q-chip
-                v-for="filtro in filtrosDisponibles"
-                :key="filtro.value"
-                :outline="!filtrosActivos.includes(filtro.value)"
-                :color="filtro.color"
-                text-color="white"
-                clickable
-                @click="toggleFiltro(filtro.value)"
-                size="sm"
-              >
-                <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
-                {{ filtro.label }}
-              </q-chip>
-            </div>
-          </q-slide-transition>
+
+          <div class="filtros-panel" :class="{ 'filtros-panel-visible': mostrarFiltros }">
+            <q-chip
+              v-for="filtro in filtrosDisponibles"
+              :key="filtro.value"
+              :outline="!filtrosActivos.includes(filtro.value)"
+              :color="filtro.color"
+              text-color="white"
+              clickable
+              @click="toggleFiltro(filtro.value)"
+              size="12px"
+            >
+              <q-icon :name="filtro.icon" size="14px" class="q-mr-xs" />
+              {{ filtro.label }}
+            </q-chip>
+          </div>
 
           <!-- Sugerencias de búsqueda - SIN PARPADEO -->
           <div
@@ -128,6 +127,7 @@
                     <q-icon name="history" class="q-mr-xs" />
                     Búsquedas recientes
                   </q-item-label>
+                  <q-separator></q-separator>
                   <q-item
                     class="text-grey"
                     v-for="(reciente, index) in busquedasRecientes"
@@ -177,12 +177,27 @@
 
               <q-card-section>
                 <div class="q-mb-sm">
-                  <q-icon name="info" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Versión:</strong> 1.0.0
+                  <q-icon
+                    name="account_circle"
+                    size="20px"
+                    class="q-mr-sm"
+                    style="color: #bb0000"
+                  />
+                  <strong>Cuenta:</strong> {{ usuarioActual }}
                 </div>
                 <div class="q-mb-sm">
                   <q-icon name="business" size="20px" class="q-mr-sm" style="color: #bb0000" />
-                  <strong>Empresa:</strong> MJ Industrial
+                  <strong>Empresa:</strong>
+                  <span v-if="Array.isArray(idEmpresaActual) && idEmpresaActual.length > 1">
+                    {{ idEmpresaActual.join(' / ') }}
+                  </span>
+                  <span v-else>
+                    {{
+                      Array.isArray(idEmpresaActual)
+                        ? idEmpresaActual[0]
+                        : idEmpresaActual || 'MJ Industrial'
+                    }}
+                  </span>
                 </div>
               </q-card-section>
 
@@ -505,7 +520,9 @@ const userId = ref(auth.currentUser?.uid || '')
 
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
-// ✅ LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
+const mapaDragging = ref(false)
+
+//  LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
   console.error('Error crítico: estadoCompartido.value no está definido en MainLayout')
 }
@@ -522,9 +539,12 @@ const mostrarSugerencias = ref(false)
 const mostrarFiltros = ref(false)
 const buscando = ref(false)
 const resultadosBusqueda = ref([])
-const busquedasRecientes = ref([])
+const busquedasRecientes = ref(
+  JSON.parse(localStorage.getItem('mjgps_busquedas_recientes') || '[]'),
+)
 const filtrosActivos = ref(['direccion', 'vehiculo', 'conductor', 'poi', 'geozona'])
 const searchInput = ref(null)
+const usuarioActual = ref(auth.currentUser?.email || '')
 
 //conductores
 const { gruposConductores, obtenerConductores, obtenerGruposConductores, conductoresPorGrupo } =
@@ -614,7 +634,7 @@ const resultadosAgrupados = computed(() => {
 
 // En tu <script setup> del MainLayout, agrega:
 
-// ⚡ WATCH OPTIMIZADO - CORREGIDO PARA EVITAR PARPADEO
+//  WATCH OPTIMIZADO - CORREGIDO PARA EVITAR PARPADEO
 let timeoutBusqueda = null
 
 watch(busqueda, (newVal) => {
@@ -647,7 +667,7 @@ watch(busqueda, (newVal) => {
   }, 300) // Reducido a 300ms
 })
 
-// ✅ BLOQUE CORRECTO
+//  BLOQUE CORRECTO
 watch(
   () => estadoCompartido.value.abrirGeozonasConPOI,
   (newValue) => {
@@ -660,7 +680,7 @@ watch(
   },
 )
 
-// 🔍 FUNCIÓN DE BÚSQUEDA CORREGIDA
+//  FUNCIÓN DE BÚSQUEDA CORREGIDA
 async function realizarBusqueda(termino) {
   // Verificar que el término sigue siendo el actual
   if (busqueda.value !== termino) {
@@ -706,7 +726,7 @@ async function realizarBusqueda(termino) {
   }
 }
 
-// 📍 BÚSQUEDA DE DIRECCIONES - CORREGIDA
+//  BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
   try {
     const response = await fetch(
@@ -776,7 +796,7 @@ async function buscarVehiculos(termino) {
   }
 }
 
-// 👤 BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
+//  BÚSQUEDA DE CONDUCTORES - IMPLEMENTACIÓN
 async function buscarConductores(termino) {
   try {
     // Asegurarnos de que los datos estén cargados
@@ -814,7 +834,7 @@ async function buscarConductores(termino) {
   }
 }
 
-// 🔧 FUNCIONES DE EVENTOS
+//  FUNCIONES DE EVENTOS
 const dentroDelMenu = ref(false)
 
 // Reemplazar las funciones de eventos
@@ -1000,7 +1020,7 @@ function actualizarMarcadorBusqueda(lat, lng) {
       }).addTo(map)
 
       // Vincular el popup solo una vez
-      window.marcadorBusqueda.bindPopup(`<b>📍 Ubicación buscada</b>`, {
+      window.marcadorBusqueda.bindPopup(`<b> Ubicación buscada</b>`, {
         closeButton: true,
         autoClose: false,
         closeOnClick: false,
@@ -1027,6 +1047,7 @@ function seleccionarResultado(resultado) {
     if (busquedasRecientes.value.length > 5) {
       busquedasRecientes.value.pop()
     }
+    localStorage.setItem('mjgps_busquedas_recientes', JSON.stringify(busquedasRecientes.value))
   }
 
   // Cerrar sugerencias y limpiar
@@ -1041,6 +1062,7 @@ function seleccionarResultado(resultado) {
 
 function eliminarReciente(index) {
   busquedasRecientes.value.splice(index, 1)
+  localStorage.setItem('mjgps_busquedas_recientes', JSON.stringify(busquedasRecientes.value))
 }
 
 function buscar() {
@@ -1086,20 +1108,22 @@ function getColorTipo(tipo) {
 onMounted(() => {
   auth.onAuthStateChanged(async (user) => {
     if (user) {
-      console.log('✅ Usuario autenticado:', user.uid)
-
       try {
         // Cargar datos del usuario y su empresa
         await cargarUsuarioActual()
-        console.log('🏢 Empresa cargada:', idEmpresaActual.value)
+        console.log(' Empresa cargada:', idEmpresaActual.value)
       } catch (error) {
-        console.error('❌ Error cargando usuario:', error)
+        console.error(' Error cargando usuario:', error)
       }
     }
   })
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
   })
+
+  window.setMapaDragging = (valor) => {
+    mapaDragging.value = valor
+  }
 })
 
 onUnmounted(() => {
@@ -1151,7 +1175,7 @@ const linksList = [
     title: 'GeoZonas y Puntos de interés',
     caption: 'Ubicaciones importantes',
     icon: 'place',
-    action: 'open-geozonas', // ✅ Cambiar a action
+    action: 'open-geozonas', //  Cambiar a action
   },
   {
     title: 'Eventos',
@@ -1193,9 +1217,7 @@ watch(
       setTimeout(() => {
         conductoresDrawerOpen.value = true
 
-        nextTick(() => {
-          console.log('Drawer renderizado, Conductores.vue debe recibir datos')
-        })
+        nextTick(() => {})
       }, 150)
     }
   },
@@ -1227,7 +1249,8 @@ watch(
 )
 
 function onDrawerMouseEnter() {
-  // Verificar explícitamente cada dialog
+  if (mapaDragging.value) return // <- agregar esta linea
+
   if (
     !estadoFlotaDrawerOpen.value &&
     !conductoresDrawerOpen.value &&
@@ -1272,7 +1295,7 @@ function handleLinkClick(link) {
       conductoresDrawerOpen.value = true
     })
   } else if (link.action === 'open-geozonas') {
-    // ✅ MEJORADO: Mejor sincronización
+    //  MEJORADO: Mejor sincronización
     cerrarTodosLosDialogs()
 
     if (router.currentRoute.value.path !== '/') {
@@ -1322,7 +1345,7 @@ function cerrarEventos() {
   eventosDrawerOpen.value = false
 }
 
-// ✅ FUNCIÓN PARA MOSTRAR EL DIALOG
+//  FUNCIÓN PARA MOSTRAR EL DIALOG
 function confirmarCierreSesion() {
   mostrarConfirmacionSalir.value = true
 }
@@ -1502,7 +1525,7 @@ function procesarResultado(resultado) {
     if (resultado.lat && resultado.lng) {
       centrarMapaEn(resultado.lat, resultado.lng)
       $q.notify({
-        message: `📍 Mostrando: ${resultado.nombre}`,
+        message: ` Mostrando: ${resultado.nombre}`,
         color: 'positive',
         icon: 'place',
         position: 'top',
@@ -1595,7 +1618,7 @@ function procesarResultado(resultado) {
     }
 
     $q.notify({
-      message: `🗺️ Geozona: ${resultado.nombre}`,
+      message: ` Geozona: ${resultado.nombre}`,
       color: 'purple',
       icon: 'layers',
       position: 'top',
@@ -1646,7 +1669,7 @@ function procesarResultado(resultado) {
   transform: translateX(4px);
 }
 
-/* 🔴 ESTILO PARA PÁGINAS ACTIVAS (ROJO) */
+/*ESTILO PARA PÁGINAS ACTIVAS (ROJO) */
 .nav-item-active-page {
   background-color: rgba(187, 0, 0, 0.15) !important;
   border-left: 4px solid #bb0000;
@@ -1665,7 +1688,7 @@ function procesarResultado(resultado) {
   font-weight: 600 !important;
 }
 
-/* 🟢 ESTILO PARA COMPONENTES/DRAWERS ACTIVOS (VERDE AZULADO) */
+/*ESTILO PARA COMPONENTES/DRAWERS ACTIVOS (VERDE AZULADO) */
 .nav-item-active-component {
   background: linear-gradient(
     90deg,
@@ -1688,7 +1711,7 @@ function procesarResultado(resultado) {
   font-weight: 600 !important;
 }
 
-/* ✅ RESETEAR COLOR CUANDO NO ESTÁ ACTIVO */
+/*  RESETEAR COLOR CUANDO NO ESTÁ ACTIVO */
 .nav-item:not(.nav-item-active-page):not(.nav-item-active-component)
   :deep(.q-item__section--avatar) {
   color: #616161 !important;
@@ -1741,7 +1764,7 @@ function procesarResultado(resultado) {
   border-radius: 50%;
 }
 
-/* ✅ HOVER mejorado con mayor especificidad */
+/*  HOVER mejorado con mayor especificidad */
 .info-btn:hover,
 .notif-btn:hover {
   background-color: rgba(255, 255, 255, 0.2) !important;
@@ -1749,7 +1772,7 @@ function procesarResultado(resultado) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* ✅ ACTIVE al hacer click */
+/*  ACTIVE al hacer click */
 .info-btn:active,
 .notif-btn:active {
   transform: scale(1.05) !important;
@@ -1766,17 +1789,17 @@ function procesarResultado(resultado) {
   transition: transform 0.3s ease;
 }
 
-/* ✅ Rotar icono de info */
+/*  Rotar icono de info */
 .info-btn:hover .q-icon {
   transform: rotate(15deg);
 }
 
-/* ✅ Animar icono de notificaciones */
+/*  Animar icono de notificaciones */
 .notif-btn:hover .q-icon {
   animation: swing 0.6s ease;
 }
 
-/* ✅ Animación de campana */
+/*  Animación de campana */
 @keyframes swing {
   0%,
   100% {
@@ -1799,12 +1822,12 @@ function procesarResultado(resultado) {
   transition: transform 0.3s ease;
 }
 
-/* ✅ Badge se agranda al hover */
+/*  Badge se agranda al hover */
 .notif-btn:hover :deep(.q-badge--floating) {
   transform: scale(0.95);
 }
 
-/* ✅ IMPORTANTE: Resetear estilos EXCEPTO para info-btn y notif-btn */
+/*  IMPORTANTE: Resetear estilos EXCEPTO para info-btn y notif-btn */
 :deep(.q-toolbar .q-btn):not(.info-btn):not(.notif-btn) {
   transform: none !important;
 }
@@ -1817,7 +1840,9 @@ function procesarResultado(resultado) {
   border-radius: 500px;
   transition: all 0.3s ease;
 }
-
+.search-input :deep(.q-field__control) {
+  border-radius: 500px !important;
+}
 .search-input:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   transform: translateY(-1px);
@@ -1894,10 +1919,11 @@ function procesarResultado(resultado) {
 }
 
 .search-container {
-  width: 500px;
+  width: 550px;
   max-width: 60vw;
   margin-left: 24px;
   border-radius: 500px;
+  overflow: visible !important;
 }
 
 .q-page-container {
@@ -1952,24 +1978,37 @@ function procesarResultado(resultado) {
 /* Nuevos estilos para el buscador */
 .filtros-panel {
   position: absolute;
-  top: 48px;
+  top: 52px; /* un poco más abajo para que la sombra de arriba sea visible */
   left: 0;
   right: 0;
   background: white;
-  padding: 8px;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 0 8px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   z-index: 1000;
+  /* Animación por visibility + opacity en lugar de max-height */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    transform 0.2s ease;
 }
-
+.filtros-panel-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  padding: 8px;
+}
 .sugerencias-menu {
   z-index: 9999 !important;
 }
 
-/* 🎨 FIX SCROLL EXTERNO EN MENU DE NOTIFICACIONES - ACTUALIZADO */
+/*  FIX SCROLL EXTERNO EN MENU DE NOTIFICACIONES - ACTUALIZADO */
 :deep(.notif-menu-custom) {
   overflow: hidden !important;
   max-height: none !important;
@@ -1990,5 +2029,39 @@ function procesarResultado(resultado) {
 
 :deep(.q-menu .q-card) {
   overflow: hidden !important;
+}
+
+.filtros-panel :deep(.q-chip) {
+  background-color: #f1f1f1 !important;
+  color: #555 !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+  border: none !important;
+}
+
+/* Hover */
+.filtros-panel :deep(.q-chip:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: #e0e0e0 !important;
+  cursor: pointer;
+}
+
+/* Click */
+.filtros-panel :deep(.q-chip:active) {
+  transform: translateY(0px);
+}
+
+/* Activo - rojo corporativo */
+.filtros-panel :deep(.q-chip--selected),
+.filtros-panel :deep(.q-chip.bg-red),
+.filtros-panel :deep(.q-chip.bg-blue),
+.filtros-panel :deep(.q-chip.bg-green),
+.filtros-panel :deep(.q-chip.bg-orange),
+.filtros-panel :deep(.q-chip.bg-purple) {
+  background-color: #bb0000 !important;
+  color: white !important;
 }
 </style>

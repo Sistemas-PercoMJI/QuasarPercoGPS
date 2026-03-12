@@ -7,12 +7,12 @@
       <q-btn flat dense round icon="close" color="white" @click="cerrarDrawer" class="btn-cerrar" />
     </div>
 
-    <!-- 🐛 DEBUG: Info temporal - ACTUALIZADO -->
+    <!--  DEBUG: Info temporal - ACTUALIZADO -->
     <div
       v-if="pois.length === 0 && geozonas.length === 0"
       class="q-pa-sm bg-warning text-white text-caption"
     >
-      <div>⚠️ No hay ubicaciones cargadas</div>
+      <div>No hay ubicaciones cargadas</div>
       <div>POIs: {{ pois.length }} | Geozonas: {{ geozonas.length }}</div>
       <q-btn
         flat
@@ -26,12 +26,12 @@
       />
     </div>
 
-    <!-- ✅ INFO: Datos cargados - COMPACTO -->
+    <!--  INFO: Datos cargados - COMPACTO -->
     <div
       v-else-if="pois.length > 0 || geozonas.length > 0"
       class="q-pa-xs bg-positive text-white text-caption text-center"
     >
-      ✅ {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
+      {{ pois.length }} POIs, {{ geozonas.length }} Geozonas
     </div>
 
     <!-- Stats compactas con animación -->
@@ -194,7 +194,7 @@
       transition-hide="slide-down"
     >
       <q-card class="dialog-evento-moderno">
-        <!-- 🎨 Header Moderno con Gradiente -->
+        <!--  Header Moderno con Gradiente -->
         <q-card-section class="evento-header">
           <div class="header-content">
             <div class="header-icon-wrapper">
@@ -221,7 +221,7 @@
         <!-- Cuerpo del Formulario con Scroll -->
         <div class="evento-body-scroll">
           <q-card-section class="evento-content">
-            <!-- 📝 Información Básica -->
+            <!--  Información Básica -->
             <div class="form-section">
               <div class="section-header">
                 <q-icon name="edit_note" size="20px" color="primary" />
@@ -259,7 +259,7 @@
               </div>
             </div>
 
-            <!-- 🎯 Condiciones de Activación -->
+            <!--  Condiciones de Activación -->
             <div class="form-section">
               <div class="section-header">
                 <q-icon name="rule" size="20px" color="orange" />
@@ -419,7 +419,7 @@
               </div>
             </div>
 
-            <!-- 🔔 Opciones de Alerta -->
+            <!--  Opciones de Alerta -->
             <div class="form-section">
               <div class="section-header">
                 <q-icon name="notifications_active" size="20px" color="deep-orange" />
@@ -459,7 +459,7 @@
               </div>
             </div>
 
-            <!-- ⏰ Configuración de Horario (Condicional) -->
+            <!--  Configuración de Horario (Condicional) -->
             <div v-if="nuevoEvento.aplicacion === 'horario'" class="form-section horario-section">
               <div class="section-header">
                 <q-icon name="access_time" size="20px" color="blue" />
@@ -598,7 +598,7 @@ const dialogNuevoEvento = ref(false)
 const eventoMenu = ref(null)
 const modoEdicion = ref(false)
 
-// 🆕 VARIABLE PARA OPCIONES FILTRADAS
+//  VARIABLE PARA OPCIONES FILTRADAS
 const opcionesFiltradas = ref([])
 
 // Datos cargados desde Firebase
@@ -689,7 +689,7 @@ const eventosFiltrados = computed(() => {
   return resultado
 })
 
-// 🆕 COMPUTED MEJORADO CON ICONOS (SIN SIDE EFFECTS)
+//  COMPUTED MEJORADO CON ICONOS (SIN SIDE EFFECTS)
 const opcionesUbicaciones = computed(() => {
   const tipos = nuevoEvento.value.condiciones.map((c) => c.tipo)
   const primerTipo = tipos[0]
@@ -732,7 +732,7 @@ const opcionesUbicaciones = computed(() => {
   return opciones
 })
 
-// 🆕 WATCH para inicializar opciones filtradas cuando cambien las condiciones
+//  WATCH para inicializar opciones filtradas cuando cambien las condiciones
 watch(
   () => nuevoEvento.value.condiciones.length,
   (newLength) => {
@@ -745,7 +745,7 @@ watch(
   { immediate: true },
 )
 
-// 🆕 WATCH para actualizar opciones filtradas cuando cambien POIs/Geozonas
+//  WATCH para actualizar opciones filtradas cuando cambien POIs/Geozonas
 watch([pois, geozonas], () => {
   if (opcionesFiltradas.value.length > 0) {
     opcionesFiltradas.value = opcionesFiltradas.value.map(() => opcionesUbicaciones.value)
@@ -769,7 +769,7 @@ const esFormularioValido = computed(() => {
 
 // Methods
 
-// 🆕 FUNCIÓN PARA FILTRAR UBICACIONES CON BÚSQUEDA
+//  FUNCIÓN PARA FILTRAR UBICACIONES CON BÚSQUEDA
 function filtrarUbicaciones(val, update, index) {
   update(() => {
     if (val === '') {
@@ -783,7 +783,7 @@ function filtrarUbicaciones(val, update, index) {
   })
 }
 
-// 🆕 FUNCIÓN PARA OBTENER ICONO SEGÚN TIPO
+//  FUNCIÓN PARA OBTENER ICONO SEGÚN TIPO
 function getIconoTipoCondicion(tipo) {
   return tipo === 'POI' ? 'place' : 'layers'
 }
@@ -851,7 +851,7 @@ async function toggleEventoEstado(evento) {
   }
 }
 
-// 🆕 FUNCIÓN MEJORADA PARA AGREGAR CONDICIÓN CON AUTO-COMPLETADO
+//  FUNCIÓN MEJORADA PARA AGREGAR CONDICIÓN CON AUTO-COMPLETADO
 function agregarCondicion() {
   // Obtener la última condición para copiar sus valores
   const ultimaCondicion = nuevoEvento.value.condiciones[nuevoEvento.value.condiciones.length - 1]
@@ -902,7 +902,7 @@ function abrirDialogoNuevo() {
   dialogNuevoEvento.value = true
 }
 
-// 🆕 FUNCIÓN MEJORADA PARA RESETEAR FORMULARIO
+//  FUNCIÓN MEJORADA PARA RESETEAR FORMULARIO
 function resetearFormulario() {
   nuevoEvento.value = {
     nombre: '',
@@ -917,7 +917,7 @@ function resetearFormulario() {
       },
     ],
     operadoresLogicos: [],
-    activacionAlerta: 'Cada vez',
+    activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
@@ -1008,7 +1008,7 @@ function editarEvento() {
       },
     ],
     operadoresLogicos: eventoMenu.value.operadoresLogicos || [],
-    activacionAlerta: eventoMenu.value.activacionAlerta || 'Cada vez',
+    activacionAlerta: eventoMenu.value.activacionAlerta || 'Al inicio',
     aplicacion: eventoMenu.value.aplicacion || 'siempre',
     diasSemana: eventoMenu.value.diasSemana || [],
     horaInicio: eventoMenu.value.horaInicio || '',
@@ -1091,14 +1091,14 @@ onMounted(async () => {
   }
 })
 
-// 🆕 MODIFICADO: Crear evento con ENTRADA y SALIDA automáticamente
+//  MODIFICADO: Crear evento con ENTRADA y SALIDA automáticamente
 function crearEventoConUbicacionPreseleccionada(data) {
   modoEdicion.value = false
 
   const nombreUbicacion = data.ubicacion.nombre
   const tipoUbicacion = data.tipo
 
-  // 🆕 AUTO-CREAR ENTRADA Y SALIDA
+  //  AUTO-CREAR ENTRADA Y SALIDA
   nuevoEvento.value = {
     nombre: `Evento en ${nombreUbicacion}`,
     descripcion: `Evento automático para ${tipoUbicacion === 'POI' ? 'punto de interés' : 'geozona'} "${nombreUbicacion}"`,
@@ -1117,14 +1117,14 @@ function crearEventoConUbicacionPreseleccionada(data) {
       },
     ],
     operadoresLogicos: ['AND'], // Operador entre las dos condiciones
-    activacionAlerta: 'Cada vez',
+    activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
     horaFin: '',
   }
 
-  // 🆕 Inicializar opciones filtradas para ambas condiciones
+  //  Inicializar opciones filtradas para ambas condiciones
   opcionesFiltradas.value = [opcionesUbicaciones.value, opcionesUbicaciones.value]
 
   dialogNuevoEvento.value = true
@@ -1132,7 +1132,7 @@ function crearEventoConUbicacionPreseleccionada(data) {
   if ($q && $q.notify) {
     $q.notify({
       type: 'positive',
-      message: `✅ Evento configurado con Entrada y Salida`,
+      message: ` Evento configurado con Entrada y Salida`,
       caption: `Ubicación: ${nombreUbicacion} (${tipoUbicacion})`,
       icon: 'check_circle',
       position: 'top',
@@ -1168,7 +1168,7 @@ async function cargarDatos() {
       }
     }
   } catch (err) {
-    console.error('❌ Error al cargar datos:', err)
+    console.error(' Error al cargar datos:', err)
     if ($q && $q.notify) {
       $q.notify({
         type: 'negative',
@@ -1226,16 +1226,16 @@ async function cargarDatos() {
 .drawer-header .text-h6 {
   color: white;
   margin: 0;
-  font-size: 20px; /* 🔥 Aumentado de 16px a 20px */
-  font-weight: 600; /* 🔥 Más bold (era 500) */
-  letter-spacing: 0.5px; /* 🔥 Espaciado para mejor legibilidad */
+  font-size: 20px; /*  Aumentado de 16px a 20px */
+  font-weight: 600; /*  Más bold (era 500) */
+  letter-spacing: 0.5px; /*  Espaciado para mejor legibilidad */
   flex: 1;
 }
 .drawer-header .q-btn {
   flex-shrink: 0; /* No permite que el botón se encoja */
 }
 
-/* 🆕 ANIMACIONES PARA STATS */
+/*  ANIMACIONES PARA STATS */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1316,7 +1316,7 @@ async function cargarDatos() {
   color: #7f8c8d;
 }
 
-/* 🆕 ANIMACIÓN PARA BOTONES */
+/*  ANIMACIÓN PARA BOTONES */
 .acciones-row {
   display: flex;
   gap: 8px;
@@ -1326,11 +1326,11 @@ async function cargarDatos() {
 .btn-nuevo {
   position: relative;
   overflow: hidden;
-  border-radius: 12px; /* 🔥 Aumentado para esquinas más curvas */
+  border-radius: 12px; /*  Aumentado para esquinas más curvas */
   min-width: 80px;
   font-size: 12px;
   font-weight: 600;
-  padding: 8px 20px; /* 🔥 Más padding horizontal */
+  padding: 8px 20px; /*  Más padding horizontal */
 }
 .btn-nuevo::after {
   content: '';
@@ -1427,7 +1427,7 @@ async function cargarDatos() {
   height: 100%;
 }
 
-/* 🆕 ANIMACIONES PARA ITEMS DE EVENTOS */
+/*  ANIMACIONES PARA ITEMS DE EVENTOS */
 .evento-item {
   border-bottom: 1px solid #f0f0f0;
   padding: 8px 12px;
@@ -1477,7 +1477,7 @@ async function cargarDatos() {
   border-left: 3px solid #1976d2;
 }
 
-/* 🆕 ANIMACIÓN PARA AVATAR */
+/*  ANIMACIÓN PARA AVATAR */
 .avatar-bounce {
   position: relative;
 }
@@ -1830,7 +1830,7 @@ async function cargarDatos() {
   gap: 4px;
 }
 
-/* 🆕 ANIMACIÓN PARA BOTÓN DE MENÚ */
+/*  ANIMACIÓN PARA BOTÓN DE MENÚ */
 .btn-menu-hover {
   transition: all 0.3s ease;
 }
@@ -1840,7 +1840,7 @@ async function cargarDatos() {
   transform: rotate(90deg);
 }
 
-/* 🆕 ANIMACIÓN PARA ITEMS DEL MENÚ */
+/*  ANIMACIÓN PARA ITEMS DEL MENÚ */
 .menu-item-hover {
   transition: all 0.2s ease;
 }
@@ -1885,7 +1885,7 @@ async function cargarDatos() {
   border-top: 1px solid #eee;
 }
 
-/* 🆕 ANIMACIÓN PARA TARJETAS DE CONDICIÓN */
+/*  ANIMACIÓN PARA TARJETAS DE CONDICIÓN */
 .condicion-card {
   padding: 12px;
   border-radius: 8px;
@@ -1899,7 +1899,7 @@ async function cargarDatos() {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-/* 🆕 ANIMACIÓN PARA BOTÓN DELETE */
+/*  ANIMACIÓN PARA BOTÓN DELETE */
 .btn-delete-hover {
   transition: all 0.3s ease;
 }
@@ -1909,7 +1909,7 @@ async function cargarDatos() {
   background-color: rgba(244, 67, 54, 0.1);
 }
 
-/* 🆕 ESTILOS PARA EL SELECTOR MEJORADO */
+/*  ESTILOS PARA EL SELECTOR MEJORADO */
 .q-select :deep(.q-field__prepend) {
   padding-right: 8px;
 }
@@ -1942,7 +1942,7 @@ async function cargarDatos() {
   transform: translateX(4px);
 }
 
-/* 🆕 ANIMACIONES DE ENTRADA */
+/*  ANIMACIONES DE ENTRADA */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -1958,7 +1958,7 @@ async function cargarDatos() {
   animation: fadeInUp 0.3s ease;
 }
 
-/* 🆕 RIPPLE EFFECT MEJORADO */
+/*  RIPPLE EFFECT MEJORADO */
 .evento-item:active {
   transform: scale(0.98);
 }
@@ -1970,7 +1970,7 @@ async function cargarDatos() {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0; /* 🔥 No se encoge */
+  flex-shrink: 0; /*  No se encoge */
 }
 .header-content {
   display: flex;
@@ -1980,7 +1980,7 @@ async function cargarDatos() {
   min-width: 0;
 }
 .header-icon-wrapper {
-  width: 48px; /* 🔥 Un poco más pequeño */
+  width: 48px; /*  Un poco más pequeño */
   height: 48px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 12px;
@@ -1996,7 +1996,7 @@ async function cargarDatos() {
   align-items: flex-start;
   justify-content: center;
   min-width: 0;
-  padding-left: 0; /* 🔥 Sin padding extra */
+  padding-left: 0; /*  Sin padding extra */
 }
 .header-title {
   font-size: 20px;
@@ -2038,7 +2038,7 @@ async function cargarDatos() {
 
 .evento-content {
   padding: 24px;
-  min-height: 100%; /* 🔥 IMPORTANTE */
+  min-height: 100%; /*  IMPORTANTE */
 }
 .form-section {
   margin-bottom: 24px;
@@ -2162,8 +2162,8 @@ async function cargarDatos() {
 
 /* Sección de Horario */
 .horario-section {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  border-color: #90caf9;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: #dee2e6;
 }
 
 /* Footer */

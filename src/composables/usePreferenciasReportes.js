@@ -31,7 +31,7 @@ const cargarPreferencias = () => {
       }
     }
   } catch (error) {
-    console.error('❌ Error cargando preferencias de columnas:', error)
+    console.error(' Error cargando preferencias de columnas:', error)
   }
 }
 
@@ -40,7 +40,7 @@ const guardarPreferencias = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(preferencias.value))
   } catch (error) {
-    console.error('❌ Error guardando preferencias de columnas:', error)
+    console.error(' Error guardando preferencias de columnas:', error)
   }
 }
 

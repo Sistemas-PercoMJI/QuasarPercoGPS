@@ -4,11 +4,12 @@ import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
+import { useGeocoding } from 'src/composables/useGeocoding'
 
 // Variables globales
 let unsubscribeGlobal = null
 const unidadesActivasGlobal = ref([])
-const unidadesRawGlobal = ref([]) // 🆕 Guardamos los datos sin filtrar
+const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
@@ -19,14 +20,13 @@ export function useTrackingUnidades() {
 
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
     if (!idEmpresaActual.value) {
-      console.warn('⚠️ No hay IdEmpresa, retornando array vacío')
+      console.warn(' No hay IdEmpresa, retornando array vacío')
       return []
     }
 
     const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      // 🔥 IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
+      //  IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
       if (!unidad.IdEmpresaConductor) {
-        console.log(`⚠️ Unidad sin IdEmpresaConductor:`, unidad.unidadNombre)
         return false
       }
 
@@ -38,31 +38,27 @@ export function useTrackingUnidades() {
       return perteneceAMisEmpresas
     })
 
-    console.log(
-      `🔍 Filtradas ${unidadesFiltradas.length} de ${unidadesRaw.length} unidades por IdEmpresaConductor`,
-    )
     return unidadesFiltradas
   }
 
   /**
    * Inicia el tracking en tiempo real
    */
+  const { obtenerDireccion } = useGeocoding()
+
   const iniciarTracking = () => {
     if (trackingIniciado) {
-      console.log('✅ Tracking ya está activo')
       return
     }
 
     if (!idEmpresaActual.value) {
-      console.warn('⚠️ No se puede iniciar tracking: IdEmpresa no disponible')
-      console.log('⏳ Reintentando en 1 segundo...')
+      console.warn(' No se puede iniciar tracking: IdEmpresa no disponible')
+
       setTimeout(() => {
         iniciarTracking()
       }, 1000)
       return
     }
-
-    console.log('🚀 Iniciando tracking para empresa:', idEmpresaActual.value)
 
     loadingGlobal.value = true
     errorGlobal.value = null
@@ -76,7 +72,7 @@ export function useTrackingUnidades() {
           const data = snapshot.val()
 
           if (data) {
-            // 🆕 Guardar TODAS las unidades sin filtrar
+            //  Guardar TODAS las unidades sin filtrar
             const todasLasUnidades = Object.entries(data)
               .filter(([, value]) => {
                 // Solo validación básica de ubicación
@@ -95,17 +91,45 @@ export function useTrackingUnidades() {
               .map(([key, value]) => ({
                 id: value.unidadId || value.id || key,
                 ...value,
+                timestamp: value.timestamp || Date.now(),
                 lat: value.ubicacion.lat,
                 lng: value.ubicacion.lng,
                 nombre: value.conductorNombre,
+                direccionTexto:
+                  value.direccionTexto === 'Obteniendo...' ? null : value.direccionTexto,
               }))
 
-            // 🆕 Actualizar datos raw
+            //  Actualizar datos raw
             unidadesRawGlobal.value = todasLasUnidades
 
-            // 🆕 Aplicar filtrado
-            const unidadesFiltradas = filtrarUnidadesPorEmpresa(todasLasUnidades)
+            // Geocodificar las que no tienen direccion
+            todasLasUnidades.forEach(async (unidad, index) => {
+              if (!unidad.direccionTexto && unidad.ubicacion) {
+                try {
+                  const direccion = await obtenerDireccion({
+                    lat: unidad.ubicacion.lat,
+                    lng: unidad.ubicacion.lng,
+                  })
+                  // Mutar el array reactivo directamente para disparar reactividad
+                  if (unidadesRawGlobal.value[index]) {
+                    unidadesRawGlobal.value[index] = {
+                      ...unidadesRawGlobal.value[index],
+                      direccionTexto: direccion,
+                    }
+                  }
+                } catch (e) {
+                  if (unidadesRawGlobal.value[index]) {
+                    unidadesRawGlobal.value[index] = {
+                      ...unidadesRawGlobal.value[index],
+                      direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)},${e.message}`,
+                    }
+                  }
+                }
+              }
+            })
 
+            //  Aplicar filtrado
+            const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
             unidadesActivasGlobal.value = unidadesFiltradas
             window._unidadesTrackeadas = unidadesFiltradas
           } else {
@@ -116,22 +140,21 @@ export function useTrackingUnidades() {
           loadingGlobal.value = false
         },
         (err) => {
-          console.error('❌ Error en tracking:', err)
+          console.error(' Error en tracking:', err)
           errorGlobal.value = err.message
           loadingGlobal.value = false
         },
       )
 
       trackingIniciado = true
-      console.log('✅ Tracking iniciado correctamente')
     } catch (err) {
-      console.error('❌ Error al iniciar tracking:', err)
+      console.error(' Error al iniciar tracking:', err)
       errorGlobal.value = err.message
       loadingGlobal.value = false
     }
   }
 
-  // 🆕 WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
+  //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
   watch(
     [idEmpresaActual, unidadesRawGlobal],
     () => {
@@ -152,7 +175,6 @@ export function useTrackingUnidades() {
       trackingIniciado = false
       unidadesRawGlobal.value = []
       unidadesActivasGlobal.value = []
-      console.log('🛑 Tracking detenido manualmente')
     }
   }
 

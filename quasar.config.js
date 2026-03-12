@@ -91,7 +91,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Notify', 'Dialog'], // ✅ AGREGAR 'Dialog' aquí
+      plugins: ['Notify', 'Dialog'],
     },
 
     // animations: 'all', // --- includes all animations
@@ -137,8 +137,8 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'InjectManifest', // ⬅️ Cambiar de GenerateSW a InjectManifest
-      // ❌ BORRAR workboxOptions completamente
+      workboxMode: 'InjectManifest', // Cambiar de GenerateSW a InjectManifest
+      // BORRAR workboxOptions completamente
       manifest: {
         name: 'MJ GPS',
         short_name: 'MJ GPS',

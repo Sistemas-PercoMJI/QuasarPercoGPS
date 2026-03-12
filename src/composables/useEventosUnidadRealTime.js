@@ -11,13 +11,12 @@ export function useEventosUnidadRealTime() {
 
   const escucharEventosDia = async (unidadId, fecha = new Date()) => {
     if (unsubscribe) {
-      console.log('🛑 Deteniendo listener anterior')
       unsubscribe()
       unsubscribe = null
     }
 
     if (!unidadId) {
-      console.warn('⚠️ No se proporcionó unidadId')
+      console.warn(' No se proporcionó unidadId')
       eventosUnidad.value = []
       return
     }
@@ -25,19 +24,11 @@ export function useEventosUnidadRealTime() {
     loadingEventos.value = true
     errorEventos.value = null
 
-    // 🔥 ASEGURARSE que la fecha esté en la zona horaria correcta
+    //  ASEGURARSE que la fecha esté en la zona horaria correcta
     const fechaLocal = new Date(fecha)
     fechaLocal.setHours(0, 0, 0, 0) // Reset a medianoche
 
     const fechaStr = fechaLocal.toISOString().split('T')[0]
-
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('📡 INICIANDO LISTENER DE EVENTOS')
-    console.log('   Unidad:', unidadId)
-    console.log('   Fecha objeto:', fecha)
-    console.log('   Fecha local:', fechaLocal)
-    console.log('   Fecha string:', fechaStr)
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
     try {
       const eventosRef = collection(
@@ -51,25 +42,19 @@ export function useEventosUnidadRealTime() {
 
       const q = query(eventosRef)
 
-      // 🔍 DEBUG - usar 'q' en lugar de 'eventosRef'
+      //  DEBUG - usar 'q' en lugar de 'eventosRef'
       const testSnapshot = await getDocs(q)
-      console.log(`🔍 TEST: ${testSnapshot.size} documentos encontrados en ${fechaStr}`)
 
-      // 🔥 Si no hay docs, mostrar la ruta exacta
+      //  Si no hay docs, mostrar la ruta exacta
       if (testSnapshot.size === 0) {
-        console.warn(
-          '⚠️ RUTA COMPLETA:',
-          `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`,
-        )
+        console.warn(' RUTA COMPLETA:', `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`)
       }
 
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          console.log(`✅ ${snapshot.size} eventos recibidos para ${fechaStr}`)
-
           if (snapshot.size === 0) {
-            console.warn('⚠️ No hay eventos en snapshot para', fechaStr)
+            console.warn(' No hay eventos en snapshot para', fechaStr)
             eventosUnidad.value = []
             loadingEventos.value = false
             return
@@ -113,6 +98,9 @@ export function useEventosUnidadRealTime() {
                 fechaTexto: formatearFechaHora(data.Timestamp),
                 icono: obtenerIconoEvento(data),
                 color: obtenerColorEvento(data),
+                ignicion: data.Ignicion ?? false,
+                velocidad: data.Velocidad || 0,
+                kilometraje: data.Kilometraje || null,
                 raw: data,
               })
             }
@@ -129,19 +117,16 @@ export function useEventosUnidadRealTime() {
 
           eventosUnidad.value = eventosArray
           loadingEventos.value = false
-          console.log('✅ Eventos únicos cargados:', eventosUnidad.value.length)
         },
         (error) => {
-          console.error('❌ ERROR EN SNAPSHOT:', error)
+          console.error(' ERROR EN SNAPSHOT:', error)
           errorEventos.value = error.message
           eventosUnidad.value = []
           loadingEventos.value = false
         },
       )
-
-      console.log('✅ Listener configurado para', fechaStr)
     } catch (error) {
-      console.error('❌ ERROR:', error)
+      console.error(' ERROR:', error)
       errorEventos.value = error.message
       eventosUnidad.value = []
       loadingEventos.value = false
@@ -150,7 +135,6 @@ export function useEventosUnidadRealTime() {
 
   const detenerEscucha = () => {
     if (unsubscribe) {
-      console.log('🛑 Deteniendo listener')
       unsubscribe()
       unsubscribe = null
     }

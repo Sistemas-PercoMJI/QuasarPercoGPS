@@ -27,7 +27,7 @@ export function useMultiTenancy() {
     try {
       const userId = getCurrentUserId()
       if (!userId) {
-        console.warn('⚠️ No hay usuario autenticado')
+        console.warn(' No hay usuario autenticado')
         usuarioActual.value = null
         idEmpresaActual.value = null
         return null
@@ -35,7 +35,7 @@ export function useMultiTenancy() {
 
       const userDocRef = doc(db, 'Usuarios', userId)
 
-      // 🆕 LISTENER: Escuchar cambios en tiempo real
+      //  LISTENER: Escuchar cambios en tiempo real
       const { onSnapshot } = await import('firebase/firestore')
 
       onSnapshot(
@@ -46,29 +46,26 @@ export function useMultiTenancy() {
             usuarioActual.value = userData
             idEmpresaActual.value = userData.IdEmpresaUsuario || null
 
-            console.log('✅ Usuario actualizado:', userData.Usuario)
-            console.log('🏢 Empresa(s):', idEmpresaActual.value)
-
-            // 🆕 Emitir evento global cuando cambia la empresa
+            //  Emitir evento global cuando cambia la empresa
             window.dispatchEvent(
               new CustomEvent('empresa-cambiada', {
                 detail: { empresas: idEmpresaActual.value },
               }),
             )
           } else {
-            console.error('❌ Usuario no encontrado en Firestore')
+            console.error(' Usuario no encontrado en Firestore')
             usuarioActual.value = null
             idEmpresaActual.value = null
           }
           cargandoUsuario.value = false
         },
         (error) => {
-          console.error('❌ Error escuchando usuario:', error)
+          console.error(' Error escuchando usuario:', error)
           cargandoUsuario.value = false
         },
       )
     } catch (error) {
-      console.error('❌ Error cargando usuario:', error)
+      console.error(' Error cargando usuario:', error)
       usuarioActual.value = null
       idEmpresaActual.value = null
       cargandoUsuario.value = false
@@ -91,7 +88,7 @@ export function useMultiTenancy() {
   })
 
   /**
-   * 🔥 FUNCIÓN PRINCIPAL - Crear query con filtro de empresa
+   *  FUNCIÓN PRINCIPAL - Crear query con filtro de empresa
    * @param {string} coleccion - Nombre de la colección ('Conductores', 'Unidades')
    * @param {string} campoEmpresa - Campo de empresa a filtrar
    */
@@ -102,17 +99,15 @@ export function useMultiTenancy() {
 
     // Sin empresa = sin filtro (super admin)
     if (!idEmpresa || (Array.isArray(idEmpresa) && idEmpresa.length === 0)) {
-      console.warn('⚠️ No hay empresa asignada, mostrando TODO')
+      //console.warn(' No hay empresa asignada, mostrando TODO')
       return query(collection(db, coleccion))
     }
 
     // Array de empresas = filtro múltiple
     if (Array.isArray(idEmpresa)) {
-      console.log(`🔍 Filtrando ${coleccion} por ${campoEmpresa} in [${idEmpresa.join(', ')}]`)
-
-      // ⚠️ Firebase 'in' soporta máximo 10 valores
+      //  Firebase 'in' soporta máximo 10 valores
       if (idEmpresa.length > 10) {
-        console.warn('⚠️ Solo se pueden filtrar hasta 10 empresas a la vez')
+        console.warn(' Solo se pueden filtrar hasta 10 empresas a la vez')
         return query(collection(db, coleccion), where(campoEmpresa, 'in', idEmpresa.slice(0, 10)))
       }
 
@@ -120,7 +115,7 @@ export function useMultiTenancy() {
     }
 
     // String simple = filtro único
-    console.log(`🔍 Filtrando ${coleccion} por ${campoEmpresa} = ${idEmpresa}`)
+
     return query(collection(db, coleccion), where(campoEmpresa, '==', idEmpresa))
   }
 
@@ -133,7 +128,7 @@ export function useMultiTenancy() {
     const idEmpresa = getIdEmpresaActual()
 
     if (!idEmpresa) {
-      console.warn('⚠️ No hay empresa asignada, devolviendo array vacío')
+      console.warn(' No hay empresa asignada, devolviendo array vacío')
       return []
     }
 

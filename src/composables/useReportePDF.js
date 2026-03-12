@@ -9,12 +9,12 @@ import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 
 const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
-  // 🔥 Usar la agrupación REAL que se aplicó, no la del selector
+  //  Usar la agrupación REAL que se aplicó, no la del selector
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
   // Si agrupamos por DÍA
   if (agruparPor === 'dia') {
-    // 🔥 CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
+    //  CORREGIDO: Convertir DD/MM/YYYY o YYYY/MM/DD a formato ISO
     let fechaISO = nombreGrupo
 
     if (nombreGrupo.includes('/')) {
@@ -32,7 +32,7 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
 
     const fecha = new Date(fechaISO + 'T00:00:00')
 
-    // 🔥 Validar que la fecha es válida
+    //  Validar que la fecha es válida
     if (isNaN(fecha.getTime())) {
       return {
         titulo: `DÍA: ${nombreGrupo}`,
@@ -117,7 +117,7 @@ const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
 const generarResumenPorTipo = (datosReales, config) => {
   if (!config.mostrarResumen) return null
 
-  // 🔥 NUEVO: Considerar agruparPor
+  //  NUEVO: Considerar agruparPor
   const agruparPor = datosReales?.agrupacionReal || config.agruparPor || 'unidad'
 
   // Si agrupamos por DÍA
@@ -486,7 +486,7 @@ export function useReportePDF() {
     doc.text(`Total de eventos: ${metadata.totalEventos}`, 14, yPosition)
     yPosition += 10
     // ========================================
-    // 🔥 NUEVO: Resumen estadístico
+    //  NUEVO: Resumen estadístico
     // ========================================
     const resumenPorTipo = generarResumenPorTipo(datosReales, config)
 
@@ -521,13 +521,13 @@ export function useReportePDF() {
     }
 
     // ========================================
-    // 🔥 NUEVO: Tabla de eventos con columnas dinámicas
+    //  NUEVO: Tabla de eventos con columnas dinámicas
     // ========================================
     // ========================================
-    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
+    //  TABLA DE EVENTOS CON COLUMNAS DINÁMICAS
     // ========================================
     // ========================================
-    // 🔥 TABLA DE EVENTOS CON COLUMNAS DINÁMICAS (OPTIMIZADA PARA 22 COLUMNAS)
+    //  TABLA DE EVENTOS CON COLUMNAS DINÁMICAS (OPTIMIZADA PARA 22 COLUMNAS)
     // ========================================
     if (datosReales.datosColumnas && datosReales.datosColumnas.length > 0) {
       if (yPosition > 200) {
@@ -543,14 +543,14 @@ export function useReportePDF() {
       const headers = config.columnasSeleccionadas
       const configuracionColumnas = datosReales.configuracionColumnas || []
 
-      // 🔥 OBTENER DATOS ORIGINALES (NO PROCESADOS)
+      //  OBTENER DATOS ORIGINALES (NO PROCESADOS)
       const rows = datosReales.eventosAgrupados
         ? Object.values(datosReales.eventosAgrupados).flat()
         : datosReales.datosColumnas
 
       const tableData = rows.map((evento) => {
         return headers.map((nombreCol) => {
-          // 🔥 MAPEO DE NOMBRES
+          //  MAPEO DE NOMBRES
           const nombreMapeado = nombreCol === 'Condición de evento' ? 'Condición' : nombreCol
 
           const columnaConfig = configuracionColumnas.find((c) => c.label === nombreMapeado)
@@ -569,13 +569,13 @@ export function useReportePDF() {
         })
       })
 
-      // 🔥 CONFIGURACIÓN DE ANCHOS INTELIGENTES
+      //  CONFIGURACIÓN DE ANCHOS INTELIGENTES
       const pageWidth = doc.internal.pageSize.width
       const margins = 28 // left + right
       const availableWidth = pageWidth - margins
       const totalColumnas = headers.length
 
-      // 🔥 DEFINIR PRIORIDADES DE COLUMNAS
+      //  DEFINIR PRIORIDADES DE COLUMNAS
       const columnasImportantes = [
         'Nombre de evento',
         'Hora de inicio de evento',
@@ -595,7 +595,7 @@ export function useReportePDF() {
         'Batería',
       ]
 
-      // 🔥 ASIGNAR ANCHOS DINÁMICOS
+      //  ASIGNAR ANCHOS DINÁMICOS
       const columnStyles = {}
 
       headers.forEach((nombreCol, index) => {
@@ -612,13 +612,13 @@ export function useReportePDF() {
 
         columnStyles[index] = {
           cellWidth: ancho,
-          overflow: 'linebreak', // 🔥 CRÍTICO: permite saltos de línea
+          overflow: 'linebreak', //  CRÍTICO: permite saltos de línea
           valign: 'middle',
           halign: 'left',
         }
       })
 
-      // 🔥 GENERAR TABLA OPTIMIZADA
+      //  GENERAR TABLA OPTIMIZADA
       autoTable(doc, {
         startY: yPosition,
         head: [headers],
@@ -627,15 +627,15 @@ export function useReportePDF() {
         headStyles: {
           fillColor: [145, 198, 188],
           fontStyle: 'bold',
-          fontSize: 5, // 🔥 Reducido de 8 a 5
-          cellPadding: 1, // 🔥 Reducido de 2 a 1
+          fontSize: 5, //  Reducido de 8 a 5
+          cellPadding: 1, //  Reducido de 2 a 1
           valign: 'middle',
           halign: 'center',
-          minCellHeight: 6, // 🔥 Altura mínima para headers
+          minCellHeight: 6, //  Altura mínima para headers
         },
         styles: {
-          fontSize: 5, // 🔥 Reducido de 7 a 5
-          cellPadding: 0.8, // 🔥 Reducido de 2 a 0.8
+          fontSize: 5, //  Reducido de 7 a 5
+          cellPadding: 0.8, //  Reducido de 2 a 0.8
           overflow: 'linebreak',
           cellWidth: 'wrap',
           minCellHeight: 5,
@@ -669,7 +669,7 @@ export function useReportePDF() {
           yPosition = 20
         }
 
-        // 🔥 NUEVO: Usar header contextual
+        //  NUEVO: Usar header contextual
         const headerInfo = generarHeaderGrupo(nombreGrupo, eventos, config, datosReales)
         if (headerInfo) {
           const pageWidth = doc.internal.pageSize.width
@@ -841,7 +841,7 @@ export function useReportePDF() {
             return nombres[col] || col
           })
 
-          // 🔥 SIMPLIFICADO: Usar configuracionColumnas directamente
+          //  SIMPLIFICADO: Usar configuracionColumnas directamente
           const tableData = eventosSubGrupo.map((evento) => {
             return columnasVisibles.map((col) => {
               // Buscar la configuración de la columna
@@ -865,33 +865,69 @@ export function useReportePDF() {
               // Fallback: usar la propiedad directamente
               const valor = evento[col]
 
-              // 🔥 DEBUG FALLBACK
+              //  DEBUG FALLBACK
 
               return valor !== undefined && valor !== null ? String(valor) : 'N/A'
             })
           })
 
-          // Generar tabla
+          const pageWidthSub = doc.internal.pageSize.width
+          const availableWidthSub = pageWidthSub - 28
+          const totalColumnasSub = headers.length
+          const columnStylesSub = {}
+          const importantesSub = [
+            'Nombre de evento',
+            'Hora de inicio de evento',
+            'Conductor',
+            'Vehículo',
+            'Tipo',
+            'Fecha',
+            'Hora',
+          ]
+          const menosImportantesSub = [
+            'Ubicación',
+            'Duración',
+            'Dirección',
+            'Coordenadas',
+            'Kilometraje',
+            'Batería',
+          ]
+
+          headers.forEach((nombreCol, index) => {
+            let ancho = availableWidthSub / totalColumnasSub
+            if (importantesSub.includes(nombreCol)) ancho *= 1.2
+            else if (menosImportantesSub.includes(nombreCol)) ancho *= 0.7
+            columnStylesSub[index] = {
+              cellWidth: ancho,
+              overflow: 'linebreak',
+              valign: 'middle',
+              halign: 'left',
+            }
+          })
+
           autoTable(doc, {
             startY: yPosition,
             head: [headers],
             body: tableData,
             theme: 'striped',
-            styles: {
-              fontSize: 7,
-              cellPadding: 2,
-            },
             headStyles: {
               fillColor: [145, 198, 188],
-              textColor: 255,
               fontStyle: 'bold',
+              fontSize: 5,
+              cellPadding: 1,
+              valign: 'middle',
               halign: 'center',
             },
-            alternateRowStyles: {
-              fillColor: [245, 245, 245],
+            styles: {
+              fontSize: 5,
+              cellPadding: 0.8,
+              overflow: 'linebreak',
+              minCellHeight: 5,
             },
+            columnStyles: columnStylesSub,
             margin: { left: headerSubGrupo ? 25 : 20, right: 20 },
-            didDrawPage: function (data) {
+            tableWidth: 'auto',
+            didDrawPage: (data) => {
               yPosition = data.cursor.y + 5
             },
           })
@@ -930,7 +966,7 @@ export function useReportePDF() {
     doc.text(`Generado: ${new Date().toLocaleString('es-MX')}`, 14, 28)
     doc.text(`Total de eventos: ${eventos.length}`, 14, 34)
 
-    // 🔥 NUEVO: Usar sistema de columnas dinámicas
+    //  NUEVO: Usar sistema de columnas dinámicas
     const tableData = eventos.map((evento) => {
       return columnas.map((nombreCol) => {
         const columnaConfig = COLUMNAS_POR_TIPO[nombreCol]
@@ -961,7 +997,7 @@ export function useReportePDF() {
   }
 
   /**
-   * 🆕 Genera un PDF con trayectos e incluye mapa
+   *  Genera un PDF con trayectos e incluye mapa
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos obtenidos de Firebase
    * @param {Object} mapaData - Datos del mapa (opcional) { dataURL, rutas }
@@ -1264,18 +1300,69 @@ export function useReportePDF() {
 
               doc.text(`Placa: ${placaDisplay}`, 20, yPos)
               yPos += 6
-              doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
+              // doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
               yPos += 10
 
-              // Leyenda (en la parte inferior)
+              const COLORES_LEYENDA = [
+                [231, 76, 60],
+                [41, 128, 185],
+                [39, 174, 96],
+                [243, 156, 18],
+                [142, 68, 173],
+                [22, 160, 133],
+                [211, 84, 0],
+                [44, 62, 80],
+              ]
               doc.setFontSize(9)
-              doc.setFillColor(76, 175, 80)
-              doc.circle(22, yPos - 2, 2, 'F')
-              doc.text('Punto de inicio', 26, yPos)
+              doc.setFont(undefined, 'normal')
+              doc.setTextColor(0, 0, 0)
 
-              doc.setFillColor(244, 67, 54)
-              doc.rect(100, yPos - 3, 4, 4, 'F')
-              doc.text('Punto de fin', 107, yPos)
+              const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+              trayectosParaMapa.forEach((trayecto, idx) => {
+                const trayectoRaw = trayectos[idx]
+                const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                const formatearHora = (timestamp) => {
+                  if (!timestamp) return 'N/A'
+                  const fecha = timestamp instanceof Date ? timestamp : new Date(timestamp)
+                  return fecha.toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  })
+                }
+
+                const horaInicio = formatearHora(
+                  trayectoRaw?.horaInicioTrabajo || trayectoRaw?.inicioTimestamp,
+                )
+                const horaFin = formatearHora(
+                  trayectoRaw?.horaFinTrabajo || trayectoRaw?.finTimestamp,
+                )
+                const ubicacionInicio = trayectoRaw?.ubicacionInicio || 'N/A'
+                const ubicacionFin = trayectoRaw?.ubicacionFin || 'N/A'
+
+                // Salto de página si no cabe
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.circle(22, yPos - 1.5, 2, 'F')
+                doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                yPos += 6
+
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.rect(20, yPos - 3, 4, 4, 'F')
+                doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                yPos += 8
+              })
             }
           } catch (error) {
             console.error('Error generando mapa:', error)
@@ -1313,7 +1400,7 @@ export function useReportePDF() {
   }
 
   /**
-   * 🆕 Genera un PDF con reporte de horas de trabajo
+   *  Genera un PDF con reporte de horas de trabajo
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos calculados de horas
    */
@@ -1375,7 +1462,7 @@ export function useReportePDF() {
       doc.text('Resumen del Informe', 14, yPos)
       yPos += 8
 
-      // 🔥 PASO 1: RECALCULAR LOS TOTALES A PARTIR DE LOS DATOS DETALLADOS
+      //  PASO 1: RECALCULAR LOS TOTALES A PARTIR DE LOS DATOS DETALLADOS
       const resumenRecalculado = {}
       const totalesRecalculados = { duracionFuera: '00:00:00', duracionDentro: '00:00:00' }
 
@@ -1412,7 +1499,7 @@ export function useReportePDF() {
         )
       })
 
-      // 🔥 PASO 2: PREPARAR LOS DATOS PARA LA TABLA USANDO NUESTRO RESUMEN RECALCULADO
+      //  PASO 2: PREPARAR LOS DATOS PARA LA TABLA USANDO NUESTRO RESUMEN RECALCULADO
       const resumenData = Object.values(resumenRecalculado).map((item) => {
         // Calcular duración total
         const duracionTotal = sumarTiempos(item.duracionFuera, item.duracionDentro)
@@ -1442,7 +1529,7 @@ export function useReportePDF() {
         ]
       })
 
-      // 🔥 PASO 3: AÑADIR LA FILA DE TOTALES RECALCULADA
+      //  PASO 3: AÑADIR LA FILA DE TOTALES RECALCULADA
       const duracionTotalFinal = sumarTiempos(
         totalesRecalculados.duracionFuera,
         totalesRecalculados.duracionDentro,
@@ -1470,7 +1557,7 @@ export function useReportePDF() {
         { content: totalesRecalculados.duracionDentro, styles: { fontStyle: 'bold' } },
       ])
 
-      // 🔥 PASO 4: DIBUJAR LA TABLA
+      //  PASO 4: DIBUJAR LA TABLA
       autoTable(doc, {
         startY: yPos,
         head: [
@@ -1547,7 +1634,7 @@ export function useReportePDF() {
       return nombreColumnaAPropiedad[nombreEspanol] || nombreEspanol
     })
 
-    console.log('🔍 Columnas convertidas:', columnasVisibles)
+    console.log(' Columnas convertidas:', columnasVisibles)
 
     // ========================================
     // LOOP POR CADA UNIDAD/CONDUCTOR
@@ -1604,6 +1691,48 @@ export function useReportePDF() {
       doc.line(20, yPos, doc.internal.pageSize.getWidth() - 20, yPos)
       yPos += 8
 
+      const columnasDiasResumidos = {
+        Fecha: (d) => ({ content: d.fechaFormateada, styles: {} }),
+        Viajes: (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+        'Total de viajes': (d) => ({ content: d.viajesDelDia.toString(), styles: {} }),
+        'Viajes dentro del horario': (d) => ({ content: d.viajesDentro.toString(), styles: {} }),
+        'Viajes fuera del horario': (d) => ({ content: d.viajesFuera.toString(), styles: {} }),
+        Conductor: (d) => ({ content: d.conductor, styles: {} }),
+        'Hora de inicio de trabajo': (d) => ({ content: d.horaInicio, styles: {} }),
+        'Hora de fin de trabajo': (d) => ({ content: d.horaFin, styles: {} }),
+        'Ubicación de inicio de trabajo': (d) => ({ content: d.ubicacionInicio, styles: {} }),
+        'Ubicación de fin de trabajo': (d) => ({ content: d.ubicacionFin, styles: {} }),
+        'Duración total de trabajo': (d) => ({ content: d.duracionTotalDia, styles: {} }),
+        'Duración dentro del horario comercial': (d) => ({
+          content: d.duracionDentroDia,
+          styles: {},
+        }),
+        'Duración fuera del horario comercial': (d) => {
+          const tieneFuera = d.duracionFueraDia !== '00:00:00'
+          return {
+            content: d.duracionFueraDia,
+            styles:
+              d.remarcar && tieneFuera
+                ? { fillColor: [255, 235, 238], textColor: [211, 47, 47], fontStyle: 'bold' }
+                : {},
+          }
+        },
+      }
+
+      // Filtrar solo las columnas seleccionadas que existen en dias_resumidos
+      const columnasFiltradas = config.columnasSeleccionadas.filter(
+        (col) => columnasDiasResumidos[col],
+      )
+      const headersDiasResumidos =
+        columnasFiltradas.length > 0
+          ? columnasFiltradas
+          : [
+              'Fecha',
+              'Viajes',
+              'Duración total de trabajo',
+              'Duración dentro del horario comercial',
+              'Duración fuera del horario comercial',
+            ]
       // ========================================
       // DECIDIR QUÉ MOSTRAR SEGÚN tipoDetalle
       // ========================================
@@ -1652,12 +1781,106 @@ export function useReportePDF() {
           doc.text(`  Viajes del día: ${viajesDelDia}`, 25, yPos)
           yPos += 8
 
+          // Mini resumen del día
+          const resumenMiniDia = []
+          let durTotalDia = '00:00:00'
+          let durDentroDia = '00:00:00'
+          let durFueraDia = '00:00:00'
+
+          registrosDelDia.forEach((r) => {
+            durTotalDia = sumarTiempos(durTotalDia, r.duracionTotal || '00:00:00')
+            durDentroDia = sumarTiempos(durDentroDia, r.duracionDentroHorario || '00:00:00')
+            durFueraDia = sumarTiempos(durFueraDia, r.duracionFueraHorario || '00:00:00')
+          })
+
+          // const tieneFueraDia = durFueraDia !== '00:00:00'
+
+          const datos = {
+            fechaFormateada: fecha,
+            viajesDelDia,
+            viajesDentro: registrosDelDia.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0),
+            viajesFuera: registrosDelDia.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0),
+            conductor:
+              [...new Set(registrosDelDia.map((r) => r.conductorNombre).filter(Boolean))].join(
+                ', ',
+              ) || 'N/A',
+            horaInicio: registrosDelDia[0]?.horaInicioTrabajo || 'N/A',
+            horaFin: registrosDelDia[registrosDelDia.length - 1]?.horaFinTrabajo || 'N/A',
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || 'N/A',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || 'N/A',
+            duracionTotalDia: durTotalDia,
+            duracionDentroDia: durDentroDia,
+            duracionFueraDia: durFueraDia,
+            remarcar: config.remarcarHorasExtra,
+          }
+
+          resumenMiniDia.push(headersDiasResumidos.map((col) => columnasDiasResumidos[col](datos)))
+
+          const pageWMini = doc.internal.pageSize.getWidth()
+          const availableWMini = pageWMini - 34
+          const totalColsMini = headersDiasResumidos.length
+          const colStylesMini = {}
+
+          const anchosMini = {
+            Fecha: 1.2,
+            'Hora de inicio de trabajo': 1.2,
+            'Hora de fin de trabajo': 1.2,
+            'Total de viajes': 0.6,
+            'Viajes dentro del horario': 0.6,
+            'Viajes fuera del horario': 0.6,
+            Conductor: 1.2,
+            'Ubicación de inicio de trabajo': 1.5,
+            'Ubicación de fin de trabajo': 1.5,
+            'Duración total de trabajo': 1.0,
+            'Duración dentro del horario comercial': 1.0,
+            'Duración fuera del horario comercial': 1.0,
+          }
+
+          const totalPesosMini = headersDiasResumidos.reduce(
+            (sum, col) => sum + (anchosMini[col] || 1),
+            0,
+          )
+          headersDiasResumidos.forEach((col, i) => {
+            colStylesMini[i] = {
+              cellWidth: ((anchosMini[col] || 1) / totalPesosMini) * availableWMini,
+              overflow: 'linebreak',
+              valign: 'middle',
+            }
+          })
+
+          autoTable(doc, {
+            startY: yPos,
+            head: [headersDiasResumidos],
+            body: resumenMiniDia,
+            theme: 'grid',
+            headStyles: {
+              fillColor: [145, 198, 188],
+              fontStyle: 'bold',
+              fontSize: 7, // ← subir de 6 a 7
+              cellPadding: 1,
+              valign: 'middle',
+              halign: 'center',
+              minCellHeight: totalColsMini > 8 ? 10 : 8,
+            },
+            styles: {
+              fontSize: 7,
+              cellPadding: 2,
+              overflow: 'linebreak',
+            },
+            columnStyles: colStylesMini,
+            margin: { left: 20, right: 14 },
+            tableWidth: 'auto',
+          })
+
+          yPos = doc.lastAutoTable.finalY + 8
           // Mapa del día (si está activo)
           if (config.mostrarMapaZona && registrosDelDia.length > 0) {
             try {
               const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
 
               if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+                doc.addPage() // ← AGREGAR ESTO
+                yPos = 20 // ← Y ESTO
                 const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
                   width: 1200,
                   height: 800,
@@ -1676,6 +1899,69 @@ export function useReportePDF() {
 
                 doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
                 yPos += mapHeight + 10
+
+                const COLORES_LEYENDA = [
+                  [231, 76, 60],
+                  [41, 128, 185],
+                  [39, 174, 96],
+                  [243, 156, 18],
+                  [142, 68, 173],
+                  [22, 160, 133],
+                  [211, 84, 0],
+                  [44, 62, 80],
+                ]
+
+                const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+                doc.setFontSize(9)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(0, 0, 0)
+
+                trayectosParaMapa.forEach((trayecto, idx) => {
+                  const registroRaw = registrosDelDia?.[idx] || registros?.[idx]
+                  const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                  const horaInicio =
+                    registroRaw?.horaInicioTrabajo ||
+                    registroRaw?.horaInicio ||
+                    (registroRaw?.inicioTimestamp
+                      ? new Date(registroRaw.inicioTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const horaFin =
+                    registroRaw?.horaFinTrabajo ||
+                    registroRaw?.horaFin ||
+                    (registroRaw?.finTimestamp
+                      ? new Date(registroRaw.finTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                  const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.circle(22, yPos - 1.5, 2, 'F')
+                  doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                  yPos += 6
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.rect(20, yPos - 3, 4, 4, 'F')
+                  doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                  yPos += 8
+                })
               }
             } catch (error) {
               console.error('Error generando mapa del día:', error)
@@ -1695,7 +1981,7 @@ export function useReportePDF() {
             // Asegúrate de usar registrosDelDia aquí
             if (registro.detallesViajes && registro.detallesViajes.length > 0) {
               registro.detallesViajes.forEach((viaje) => {
-                // 🔥 PASO 1: Calcular si tiene horas extra (usando nombres de propiedad correctos y valores por defecto)
+                //  PASO 1: Calcular si tiene horas extra (usando nombres de propiedad correctos y valores por defecto)
                 const duracionDentro = viaje.duracionDentro || '00:00:00'
                 const duracionFuera = viaje.duracionFuera || '00:00:00'
 
@@ -1716,7 +2002,7 @@ export function useReportePDF() {
 
                 if (!incluirViaje) return
 
-                // 🔥 PASO 2: Mapear valores según columnas seleccionadas
+                //  PASO 2: Mapear valores según columnas seleccionadas
                 const fila = columnasVisiblesViajes.map((prop) => {
                   let valor = 'N/A'
 
@@ -1737,7 +2023,7 @@ export function useReportePDF() {
                     } else if (prop === 'duracionFueraHorario') {
                       valor = duracionFuera // Usar la variable que ya preparamos
                     }
-                    // 🔥 CORRECCIÓN AQUÍ: Mapear los nombres de las horas
+                    //  CORRECCIÓN AQUÍ: Mapear los nombres de las horas
                     else if (prop === 'horaInicioTrabajo') {
                       valor = viaje.horaInicio || 'N/A'
                     } else if (prop === 'horaFinTrabajo') {
@@ -1749,7 +2035,7 @@ export function useReportePDF() {
                     }
                   }
 
-                  // 🔥 PASO 3: Aplicar estilo especial para horas fuera de horario
+                  //  PASO 3: Aplicar estilo especial para horas fuera de horario
                   if (prop === 'duracionFueraHorario' && config.remarcarHorasExtra && tieneFuera) {
                     return {
                       content: valor,
@@ -1772,7 +2058,7 @@ export function useReportePDF() {
           if (todosLosViajes.length > 0) {
             autoTable(doc, {
               startY: yPos,
-              head: [headersViajes], // 🔥 USAR HEADERS CONFIGURABLES
+              head: [headersViajes], //  USAR HEADERS CONFIGURABLES
               body: todosLosViajes,
               theme: 'grid',
               headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
@@ -1780,9 +2066,9 @@ export function useReportePDF() {
               margin: { left: 20, right: 20 },
             })
 
-            yPos = doc.lastAutoTable.finalY + 5 // 🔥 Cambiar de +10 a +5
+            yPos = doc.lastAutoTable.finalY + 5 //  Cambiar de +10 a +5
 
-            // 🔥 AGREGAR MÉTRICAS DEL DÍA
+            //  AGREGAR MÉTRICAS DEL DÍA
             const totalViajesDelDia = registrosDelDia.reduce(
               (sum, r) => sum + (r.totalViajes || 0),
               0,
@@ -1821,51 +2107,52 @@ export function useReportePDF() {
           registrosPorFecha[fecha].push(registro)
         })
 
-        // Preparar resumen por día
         const resumenPorDia = []
 
         Object.entries(registrosPorFecha).forEach(([fecha, registrosDelDia]) => {
           const fechaFormateada = new Date(fecha + 'T00:00:00').toLocaleDateString('es-MX', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
+            day: '2-digit',
+            month: '2-digit',
             year: 'numeric',
           })
 
           const viajesDelDia = registrosDelDia.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
 
-          // Calcular duraciones totales del día
           let duracionTotalDia = '00:00:00'
           let duracionDentroDia = '00:00:00'
           let duracionFueraDia = '00:00:00'
 
-          // Sumar duraciones (aquí necesitarías una función helper para sumar tiempos HH:MM:SS)
-          // Por simplicidad, mostrar el del primer registro
-          if (registrosDelDia[0]) {
-            duracionTotalDia = registrosDelDia[0].duracionTotal || '00:00:00'
-            duracionDentroDia = registrosDelDia[0].duracionDentroHorario || '00:00:00'
-            duracionFueraDia = registrosDelDia[0].duracionFueraHorario || '00:00:00'
+          registrosDelDia.forEach((r) => {
+            duracionTotalDia = sumarTiempos(duracionTotalDia, r.duracionTotal || '00:00:00')
+            duracionDentroDia = sumarTiempos(
+              duracionDentroDia,
+              r.duracionDentroHorario || '00:00:00',
+            )
+            duracionFueraDia = sumarTiempos(duracionFueraDia, r.duracionFueraHorario || '00:00:00')
+          })
+
+          const datos = {
+            fechaFormateada,
+            viajesDelDia,
+            viajesDentro: registrosDelDia.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0),
+            viajesFuera: registrosDelDia.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0),
+            conductor:
+              [...new Set(registrosDelDia.map((r) => r.conductorNombre).filter(Boolean))].join(
+                ', ',
+              ) || 'N/A',
+            horaInicio: registrosDelDia[0]?.horaInicioTrabajo || 'N/A',
+            horaFin: registrosDelDia[registrosDelDia.length - 1]?.horaFinTrabajo || 'N/A',
+            ubicacionInicio: registrosDelDia[0]?.ubicacionInicio || 'N/A',
+            ubicacionFin: registrosDelDia[registrosDelDia.length - 1]?.ubicacionFin || 'N/A',
+            duracionTotalDia,
+            duracionDentroDia,
+            duracionFueraDia,
+            remarcar: config.remarcarHorasExtra,
           }
 
-          const tieneFuera = duracionFueraDia !== '00:00:00'
+          const fila = headersDiasResumidos.map((col) => columnasDiasResumidos[col](datos))
 
-          resumenPorDia.push([
-            { content: fechaFormateada, styles: {} },
-            { content: viajesDelDia.toString(), styles: {} },
-            { content: duracionTotalDia, styles: {} },
-            { content: duracionDentroDia, styles: {} },
-            {
-              content: duracionFueraDia,
-              styles:
-                config.remarcarHorasExtra && tieneFuera
-                  ? {
-                      fillColor: [255, 235, 238],
-                      textColor: [211, 47, 47],
-                      fontStyle: 'bold',
-                    }
-                  : {},
-            },
-          ])
+          resumenPorDia.push(fila)
         })
 
         if (resumenPorDia.length > 0) {
@@ -1876,22 +2163,275 @@ export function useReportePDF() {
 
           autoTable(doc, {
             startY: yPos,
-            head: [['Fecha', 'Viajes', 'Duración Total', 'Dentro Hor.', 'Fuera Hor.']],
+            head: [headersDiasResumidos],
             body: resumenPorDia,
             theme: 'grid',
             headStyles: { fillColor: [145, 198, 188], fontSize: 9 },
             styles: { fontSize: 8, cellPadding: 3 },
-            columnStyles: {
-              0: { cellWidth: 80 },
-              1: { cellWidth: 30 }, // Viajes
-              2: { cellWidth: 40 }, // Duración Total
-              3: { cellWidth: 40 }, // Dentro
-              4: { cellWidth: 40 }, // Fuera
-            },
             margin: { left: 20, right: 20 },
           })
 
           yPos = doc.lastAutoTable.finalY + 10
+        }
+        // Mapa del día (si está activo)
+        if (config.mostrarMapaZona) {
+          // eslint-disable-next-line no-unused-vars
+          for (const [fechaDia, registrosDelDia] of Object.entries(registrosPorFecha)) {
+            try {
+              const trayectosParaMapa = prepararDatosTrayectos(registrosDelDia)
+              if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+                doc.addPage()
+                yPos = 20
+                doc.setFontSize(12)
+                doc.setFont(undefined, 'bold')
+                doc.setTextColor(0, 0, 0)
+                doc.text(`Mapa - ${nombreEntidad}`, 20, yPos)
+                yPos += 10
+
+                const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                  width: 1200,
+                  height: 800,
+                  padding: 50,
+                  mostrarPins: true,
+                })
+                const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+                const pageWidth = doc.internal.pageSize.getWidth()
+                const availableWidth = pageWidth - 28
+                const mapHeight = availableWidth / 1.5
+                doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
+                yPos += mapHeight + 10
+
+                const COLORES_LEYENDA = [
+                  [231, 76, 60],
+                  [41, 128, 185],
+                  [39, 174, 96],
+                  [243, 156, 18],
+                  [142, 68, 173],
+                  [22, 160, 133],
+                  [211, 84, 0],
+                  [44, 62, 80],
+                ]
+
+                const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+                doc.setFontSize(9)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(0, 0, 0)
+
+                trayectosParaMapa.forEach((trayecto, idx) => {
+                  const registroRaw = registrosDelDia?.[idx] || registros?.[idx]
+                  const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                  const horaInicio =
+                    registroRaw?.horaInicioTrabajo ||
+                    registroRaw?.horaInicio ||
+                    (registroRaw?.inicioTimestamp
+                      ? new Date(registroRaw.inicioTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+
+                  const horaFin =
+                    registroRaw?.horaFinTrabajo ||
+                    registroRaw?.horaFin ||
+                    (registroRaw?.finTimestamp
+                      ? new Date(registroRaw.finTimestamp).toLocaleTimeString('es-MX', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })
+                      : 'N/A')
+                  const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                  const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.circle(22, yPos - 1.5, 2, 'F')
+                  doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                  yPos += 6
+
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                  doc.rect(20, yPos - 3, 4, 4, 'F')
+                  doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                  yPos += 8
+                })
+              }
+            } catch (error) {
+              console.error('Error generando mapa:', error)
+            }
+          }
+        }
+      } else if (config.tipoDetalle === 'viajes_detallados') {
+        // Todos los viajes de todos los días en una sola tabla
+        const todosLosViajes = []
+
+        registros.forEach((registro) => {
+          if (registro.detallesViajes && registro.detallesViajes.length > 0) {
+            registro.detallesViajes.forEach((viaje) => {
+              const duracionDentro = viaje.duracionDentro || '00:00:00'
+              const duracionFuera = viaje.duracionFuera || '00:00:00'
+
+              const [hF, mF, sF] = duracionFuera.split(':').map(Number)
+              const tieneFuera = hF > 0 || mF > 0 || sF > 0
+
+              const fila = columnasVisiblesViajes.map((prop) => {
+                let valor = 'N/A'
+
+                if (prop === 'fecha' || prop === 'conductorNombre') {
+                  valor = registro[prop] || 'N/A'
+                } else if (prop === 'horaInicioTrabajo') {
+                  valor = viaje.horaInicio || 'N/A'
+                } else if (prop === 'horaFinTrabajo') {
+                  valor = viaje.horaFin || 'N/A'
+                } else if (prop === 'duracionDentroHorario') {
+                  valor = duracionDentro
+                } else if (prop === 'duracionFueraHorario') {
+                  valor = duracionFuera
+                } else if (prop === 'duracionTotal') {
+                  valor = viaje.duracionTotal || 'N/A'
+                } else {
+                  valor = viaje[prop] || registro[prop] || 'N/A'
+                }
+
+                if (prop === 'duracionFueraHorario' && config.remarcarHorasExtra && tieneFuera) {
+                  return {
+                    content: valor,
+                    styles: {
+                      fillColor: [255, 235, 238],
+                      textColor: [211, 47, 47],
+                      fontStyle: 'bold',
+                    },
+                  }
+                }
+
+                return { content: valor, styles: {} }
+              })
+
+              todosLosViajes.push(fila)
+            })
+          }
+        })
+
+        if (todosLosViajes.length > 0) {
+          autoTable(doc, {
+            startY: yPos,
+            head: [headersViajes],
+            body: todosLosViajes,
+            theme: 'grid',
+            headStyles: { fillColor: [145, 198, 188], fontSize: 8 },
+            styles: { fontSize: 7, cellPadding: 2 },
+            margin: { left: 20, right: 30 },
+          })
+          yPos = doc.lastAutoTable.finalY + 10
+
+          const totalViajesEntidad = registros.reduce((sum, r) => sum + (r.totalViajes || 0), 0)
+          const viajesDentro = registros.reduce((sum, r) => sum + (r.viajesDentroHorario || 0), 0)
+          const viajesFuera = registros.reduce((sum, r) => sum + (r.viajesFueraHorario || 0), 0)
+
+          doc.setFontSize(9)
+          doc.setFont(undefined, 'bold')
+          doc.setTextColor(80, 80, 80)
+          doc.text(
+            `Total de viajes: ${totalViajesEntidad} | Viajes dentro del horario: ${viajesDentro} | Viajes fuera del horario: ${viajesFuera}`,
+            20,
+            yPos,
+          )
+          yPos += 10
+        }
+
+        // Mapa (si está activo)
+        if (config.mostrarMapaZona) {
+          try {
+            const trayectosParaMapa = prepararDatosTrayectos(registros)
+            if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
+              doc.addPage()
+              yPos = 20
+              doc.setFontSize(12)
+              doc.setFont(undefined, 'bold')
+              doc.setTextColor(0, 0, 0)
+              doc.text(`Mapa - ${nombreEntidad}`, 20, yPos)
+              yPos += 10
+
+              const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+                width: 1200,
+                height: 800,
+                padding: 50,
+                mostrarPins: true,
+              })
+              const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+              const pageWidth = doc.internal.pageSize.getWidth()
+              const availableWidth = pageWidth - 28
+              const mapHeight = availableWidth / 1.5
+              doc.addImage(imagenBase64, 'PNG', 14, yPos, availableWidth, mapHeight)
+              yPos += mapHeight + 10
+
+              const COLORES_LEYENDA = [
+                [231, 76, 60],
+                [41, 128, 185],
+                [39, 174, 96],
+                [243, 156, 18],
+                [142, 68, 173],
+                [22, 160, 133],
+                [211, 84, 0],
+                [44, 62, 80],
+              ]
+
+              const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+
+              doc.setFontSize(9)
+              doc.setFont(undefined, 'normal')
+              doc.setTextColor(0, 0, 0)
+
+              trayectosParaMapa.forEach((trayecto, idx) => {
+                const registroRaw = registros?.[idx] || registros?.[idx]
+                const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+
+                const formatearHora = (timestamp) => {
+                  if (!timestamp) return 'N/A'
+                  const fecha = timestamp instanceof Date ? timestamp : new Date(timestamp)
+                  return fecha.toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                  })
+                }
+
+                const horaInicio = formatearHora(registroRaw?.horaInicioTrabajo)
+                const horaFin = formatearHora(registroRaw?.horaFinTrabajo)
+                const ubicacionInicio = registroRaw?.ubicacionInicio || 'N/A'
+                const ubicacionFin = registroRaw?.ubicacionFin || 'N/A'
+
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.circle(22, yPos - 1.5, 2, 'F')
+                doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
+                yPos += 6
+
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFillColor(rgb[0], rgb[1], rgb[2])
+                doc.rect(20, yPos - 3, 4, 4, 'F')
+                doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
+                yPos += 8
+              })
+            }
+          } catch (error) {
+            console.error('Error generando mapa:', error)
+          }
         }
       }
     }
@@ -1911,6 +2451,6 @@ export function useReportePDF() {
     generarPDFEventos,
     generarPDFSimple,
     generarPDFTrayectos,
-    generarPDFHorasTrabajo, // 🆕
+    generarPDFHorasTrabajo, //
   }
 }

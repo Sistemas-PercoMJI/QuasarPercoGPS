@@ -74,6 +74,8 @@ export function useReportesEventos() {
             lat: 32.5149 + (Math.random() - 0.5) * 0.1,
             lng: -117.0382 + (Math.random() - 0.5) * 0.1,
           },
+          ignicion: true,
+          kilometraje: null,
           direccion: `Tijuana, Baja California, México`,
           velocidad: tipoEvento.includes('Exceso')
             ? Math.floor(Math.random() * 40) + 80
@@ -142,7 +144,7 @@ export function useReportesEventos() {
     try {
       const todosLosEventos = []
 
-      // 🔥 MAPEO DE NOMBRES A IDS
+      //  MAPEO DE NOMBRES A IDS
       const unidadesIds = unidadesNombres.map((nombre) => {
         // Intentar obtener el ID del mapeo global
         if (window.unidadesMap && window.unidadesMap[nombre]) {
@@ -169,7 +171,7 @@ export function useReportesEventos() {
           const fechaStr = fechaActual.toISOString().split('T')[0]
 
           try {
-            // 🔥 PASO 1: OBTENER DATOS DE RUTA DIARIA PRIMERO (para conductor)
+            //  PASO 1: OBTENER DATOS DE RUTA DIARIA PRIMERO (para conductor)
             let conductorNombre = 'Sin conductor'
 
             try {
@@ -179,7 +181,7 @@ export function useReportesEventos() {
               if (rutaDiariaSnap.exists()) {
                 const rutaData = rutaDiariaSnap.data()
 
-                // 🔥 LIMPIAR "undefined" del nombre si existe
+                //  LIMPIAR "undefined" del nombre si existe
                 let nombreLimpio = rutaData.conductor_nombre || 'Sin conductor'
                 nombreLimpio = nombreLimpio
                   .replace(/\s*undefined\s*/gi, '')
@@ -195,7 +197,7 @@ export function useReportesEventos() {
               console.warn(`Error al obtener RutaDiaria:`, errRuta.message)
             }
 
-            // 🔥 PASO 2: OBTENER EVENTOS DIARIOS
+            //  PASO 2: OBTENER EVENTOS DIARIOS
             const eventosRef = collection(
               db,
               `Unidades/${unidadId}/RutaDiaria/${fechaStr}/EventoDiario`,
@@ -207,7 +209,7 @@ export function useReportesEventos() {
               snapshot.forEach((doc) => {
                 const data = doc.data()
 
-                // 🔥 CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
+                //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
                 const duracionSegundos = data.DuracionDentro || null
 
                 // Formatear duración como HH:MM:SS si existe
@@ -235,7 +237,7 @@ export function useReportesEventos() {
                     data.PoiNombre ||
                     data.poiNombre ||
                     'N/A',
-                  // 🔥 CORRECCIÓN 2: Usar conductor obtenido de RutaDiaria
+                  //  CORRECCIÓN 2: Usar conductor obtenido de RutaDiaria
                   conductorNombre: conductorNombre,
                   unidadNombre: window.unidadesMap
                     ? Object.keys(window.unidadesMap).find(
@@ -246,12 +248,14 @@ export function useReportesEventos() {
                   coordenadas: data.Coordenadas || data.coordenadas || { lat: 0, lng: 0 },
                   direccion: data.Direccion || data.direccion || 'Sin dirección',
                   velocidad: data.Velocidad || data.velocidad || 0,
-                  // 🔥 CORRECCIÓN 1: Usar el campo correcto y formateado
+                  ignicion: data.Ignicion ?? null,
+                  kilometraje: data.Kilometraje || null,
+                  //  CORRECCIÓN 1: Usar el campo correcto y formateado
                   duracion: duracionFormateada,
                   duracionSegundos: duracionSegundos, // Mantener el valor numérico también
                   mensaje: data.Mensaje || data.mensaje || data.NombreEvento || 'Sin mensaje',
                   detalles: data.Detalles || data.detalles || '',
-                  // 🆕 Campos adicionales útiles
+                  //  Campos adicionales útiles
                   idEvento: data.IdEvento || data.idEvento || '',
                   idRutaDiaria: data.IdRutaDiaria || data.idRutaDiaria || fechaStr,
                   tipoUbicacion: data.tipoUbicacion || 'Geozona',
@@ -271,7 +275,7 @@ export function useReportesEventos() {
         }
       }
 
-      // 🔥 SI NO HAY EVENTOS REALES, GENERAR SIMULADOS
+      //  SI NO HAY EVENTOS REALES, GENERAR SIMULADOS
       if (todosLosEventos.length === 0) {
         for (let i = 0; i < unidadesNombres.length; i++) {
           const nombre = unidadesNombres[i]
