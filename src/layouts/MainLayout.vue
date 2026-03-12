@@ -510,6 +510,7 @@ import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 import { useTutorial } from 'src/composables/useTutorial'
 import mapboxgl from 'mapbox-gl'
+import { LOCALIZACIONES_INTERNAS } from 'src/data/localizaciones.js'
 
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
@@ -729,23 +730,32 @@ async function realizarBusqueda(termino) {
 
 //  BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
+  const terminoLower = termino.toLowerCase()
+
+  // Buscar en localizaciones internas primero
+  const internas = LOCALIZACIONES_INTERNAS.filter(
+    (loc) =>
+      loc.nombre.toLowerCase().includes(terminoLower) ||
+      loc.keywords.some((k) => k.includes(terminoLower)),
+  ).map((loc) => ({
+    id: `dir-interna-${loc.id}`,
+    tipo: 'direccion',
+    nombre: loc.nombre,
+    detalle: loc.direccion,
+    lat: loc.lat,
+    lng: loc.lng,
+  }))
+
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
-      {
-        headers: {
-          'User-Agent': 'MJ GPS App/1.0',
-        },
-      },
+      { headers: { 'User-Agent': 'MJ GPS App/1.0' } },
     )
 
-    if (!response.ok) {
-      throw new Error('Error en la respuesta de Nominatim')
-    }
+    if (!response.ok) throw new Error('Error en Nominatim')
 
     const data = await response.json()
-
-    return data.map((lugar) => ({
+    const externas = data.map((lugar) => ({
       id: `dir-${lugar.place_id}`,
       tipo: 'direccion',
       nombre: lugar.display_name.split(',')[0],
@@ -753,9 +763,12 @@ async function buscarDirecciones(termino) {
       lat: parseFloat(lugar.lat),
       lng: parseFloat(lugar.lon),
     }))
+
+    // Internas primero, luego externas
+    return [...internas, ...externas]
   } catch (error) {
     console.error('Error buscando direcciones:', error)
-    return []
+    return internas // Si falla Nominatim, al menos devuelve las internas
   }
 }
 
