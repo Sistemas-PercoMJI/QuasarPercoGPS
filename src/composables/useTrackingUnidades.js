@@ -19,26 +19,16 @@ export function useTrackingUnidades() {
   const { idEmpresaActual } = useMultiTenancy()
 
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
-    if (!idEmpresaActual.value) {
-      console.warn(' No hay IdEmpresa, retornando array vacío')
-      return []
-    }
+    if (!idEmpresaActual.value) return []
 
-    const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      //  IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
-      if (!unidad.IdEmpresaConductor) {
-        return false
-      }
+    return unidadesRaw.filter((unidad) => {
+      const empresaDeUnidad = unidad.IdEmpresaConductor || unidad.IdEmpresaUnidad
+      if (!empresaDeUnidad) return false
 
-      // Soportar array de empresas
-      const perteneceAMisEmpresas = Array.isArray(idEmpresaActual.value)
-        ? idEmpresaActual.value.includes(unidad.IdEmpresaConductor)
-        : unidad.IdEmpresaConductor === idEmpresaActual.value
-
-      return perteneceAMisEmpresas
+      return Array.isArray(idEmpresaActual.value)
+        ? idEmpresaActual.value.includes(empresaDeUnidad)
+        : empresaDeUnidad === idEmpresaActual.value
     })
-
-    return unidadesFiltradas
   }
 
   /**
@@ -83,7 +73,6 @@ export function useTrackingUnidades() {
                   typeof value.ubicacion.lng === 'number' &&
                   !isNaN(value.ubicacion.lat) &&
                   !isNaN(value.ubicacion.lng) &&
-                  value.conductorNombre &&
                   value.unidadNombre
 
                 return esValida
