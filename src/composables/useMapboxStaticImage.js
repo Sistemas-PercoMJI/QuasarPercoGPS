@@ -171,7 +171,7 @@ function prepararDatosTrayectos(registros) {
         return timeA - timeB
       })
 
-      const maxPuntosPorViaje = registros.length > 4 ? 20 : 35
+      const maxPuntosPorViaje = 100
 
       const coordenadasSimplificadas = simplificarCoordenadasInteligente(
         coordenadasOrdenadas,

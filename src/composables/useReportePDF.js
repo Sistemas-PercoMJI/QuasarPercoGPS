@@ -7,6 +7,7 @@ import { useMapboxStaticImage } from './useMapboxStaticImage'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
+import { useSortTimestamp } from './useSortTimestamp'
 
 const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   //  Usar la agrupación REAL que se aplicó, no la del selector
@@ -662,8 +663,11 @@ export function useReportePDF() {
     // ========================================
     // OPCIÓN ALTERNATIVA: Eventos agrupados (si usas agrupación)
     // ========================================
+
     if (datosReales.eventosAgrupados && Object.keys(datosReales.eventosAgrupados).length > 0) {
-      Object.entries(datosReales.eventosAgrupados).forEach(([nombreGrupo, eventos], index) => {
+      const { sortPorTimestamp } = useSortTimestamp()
+      Object.entries(datosReales.eventosAgrupados).forEach(([nombreGrupo, eventosRaw], index) => {
+        const eventos = sortPorTimestamp(eventosRaw)
         if (index > 0 || yPosition > 200) {
           doc.addPage()
           yPosition = 20
@@ -1003,6 +1007,7 @@ export function useReportePDF() {
    * @param {Object} mapaData - Datos del mapa (opcional) { dataURL, rutas }
    */
   const generarPDFTrayectos = async (config, datosReales) => {
+    const { sortRegistros } = useSortTimestamp()
     const doc = new jsPDF('landscape')
     let yPos = 20
 
@@ -1130,8 +1135,8 @@ export function useReportePDF() {
       useMapboxStaticImage()
 
     if (datosReales.eventosAgrupados) {
-      for (const [nombreEntidad, trayectos] of Object.entries(datosReales.eventosAgrupados)) {
-        // Nueva página para cada entidad
+      for (const [nombreEntidad, trayectosRaw] of Object.entries(datosReales.eventosAgrupados)) {
+        const trayectos = sortRegistros(trayectosRaw)
         doc.addPage()
         yPos = 20
 
@@ -1405,6 +1410,7 @@ export function useReportePDF() {
    * @param {Object} datosReales - Datos calculados de horas
    */
   const generarPDFHorasTrabajo = async (config, datosReales) => {
+    const { sortRegistros } = useSortTimestamp()
     const doc = new jsPDF('landscape')
     let yPos = 20
     const sumarTiempos = (tiempo1, tiempo2) => {
@@ -1642,7 +1648,8 @@ export function useReportePDF() {
     const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
       useMapboxStaticImage()
 
-    for (const [nombreEntidad, registros] of Object.entries(registrosPorEntidad)) {
+    for (const [nombreEntidad, registrosRaw] of Object.entries(registrosPorEntidad)) {
+      const registros = sortRegistros(registrosRaw)
       // Nueva página para cada entidad
       doc.addPage()
       yPos = 20
