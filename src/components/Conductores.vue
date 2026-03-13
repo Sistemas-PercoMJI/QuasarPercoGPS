@@ -447,6 +447,7 @@
                   <q-select
                     v-model="conductorEditando.UnidadAsignada"
                     :options="opcionesUnidadesFiltradas"
+                    :disable="!esAdmin"
                     outlined
                     dense
                     emit-value
@@ -1194,6 +1195,7 @@ const conductoresFiltrados = computed(() => {
   if (grupoSeleccionado.value === '__todos__') {
     resultado = conductores.value.filter((c) => c.UnidadAsignada)
   }
+
   // Agregar este caso
   else if (grupoSeleccionado.value === '__sin_conductor__') {
     resultado = unidades.value
@@ -1214,6 +1216,8 @@ const conductoresFiltrados = computed(() => {
       }))
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
+    console.log('Grupo:', grupoSeleccionado.value, 'Resultado:', resultado)
+    console.log('Todos los conductores:', conductores.value)
   }
 
   if (busqueda.value) {
@@ -1409,6 +1413,10 @@ const esPlacasVigente = computed(() => {
 const idsUnidadesVisibles = computed(() => {
   if (!filtroMapaActivo.value) {
     return []
+  }
+
+  if (grupoSeleccionado.value === '__todos__') {
+    return null
   }
 
   const conductoresDelGrupo = conductoresFiltrados.value
