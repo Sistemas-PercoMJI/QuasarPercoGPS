@@ -1368,6 +1368,22 @@ export function useReportePDF() {
                 doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
                 yPos += 8
               })
+              const todosLosPins = trayectosParaMapa.flatMap((t) => t.pinsConexion || [])
+              if (todosLosPins.length > 0) {
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFontSize(8)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(180, 0, 0)
+                doc.text('✖ = Pérdida de señal', 26, yPos)
+                yPos += 5
+                doc.setTextColor(0, 150, 0)
+                doc.text('★ = Reconexión de señal', 26, yPos)
+                yPos += 8
+                doc.setTextColor(0, 0, 0)
+              }
             }
           } catch (error) {
             console.error('Error generando mapa:', error)
@@ -1969,6 +1985,22 @@ export function useReportePDF() {
                   doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
                   yPos += 8
                 })
+                const todosLosPins = trayectosParaMapa.flatMap((t) => t.pinsConexion || [])
+                if (todosLosPins.length > 0) {
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFontSize(8)
+                  doc.setFont(undefined, 'normal')
+                  doc.setTextColor(180, 0, 0)
+                  doc.text('✖ = Pérdida de señal', 26, yPos)
+                  yPos += 5
+                  doc.setTextColor(0, 150, 0)
+                  doc.text('★ = Reconexión de señal', 26, yPos)
+                  yPos += 8
+                  doc.setTextColor(0, 0, 0)
+                }
               }
             } catch (error) {
               console.error('Error generando mapa del día:', error)
@@ -2271,6 +2303,22 @@ export function useReportePDF() {
                   doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
                   yPos += 8
                 })
+                const todosLosPins = trayectosParaMapa.flatMap((t) => t.pinsConexion || [])
+                if (todosLosPins.length > 0) {
+                  if (yPos > pageHeightLeyenda - 20) {
+                    doc.addPage()
+                    yPos = 20
+                  }
+                  doc.setFontSize(8)
+                  doc.setFont(undefined, 'normal')
+                  doc.setTextColor(180, 0, 0)
+                  doc.text('✖ = Pérdida de señal', 26, yPos)
+                  yPos += 5
+                  doc.setTextColor(0, 150, 0)
+                  doc.text('★ = Reconexión de señal', 26, yPos)
+                  yPos += 8
+                  doc.setTextColor(0, 0, 0)
+                }
               }
             } catch (error) {
               console.error('Error generando mapa:', error)
@@ -2435,6 +2483,22 @@ export function useReportePDF() {
                 doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
                 yPos += 8
               })
+              const todosLosPins = trayectosParaMapa.flatMap((t) => t.pinsConexion || [])
+              if (todosLosPins.length > 0) {
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
+                doc.setFontSize(8)
+                doc.setFont(undefined, 'normal')
+                doc.setTextColor(180, 0, 0)
+                doc.text('✖ = Pérdida de señal', 26, yPos)
+                yPos += 5
+                doc.setTextColor(0, 150, 0)
+                doc.text('★ = Reconexión de señal', 26, yPos)
+                yPos += 8
+                doc.setTextColor(0, 0, 0)
+              }
             }
           } catch (error) {
             console.error('Error generando mapa:', error)
