@@ -342,6 +342,27 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
       overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
     if (trayecto.pinsConexion && trayecto.pinsConexion.length > 0) {
+      for (let i = 0; i < trayecto.pinsConexion.length - 1; i += 2) {
+        const pinPerdida = trayecto.pinsConexion[i]
+        const pinReconexion = trayecto.pinsConexion[i + 1]
+
+        const geojsonGap = {
+          type: 'Feature',
+          properties: {
+            stroke: '#ff0000',
+            'stroke-width': 2,
+            'stroke-opacity': 0.6,
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [pinPerdida.lng, pinPerdida.lat],
+              [pinReconexion.lng, pinReconexion.lat],
+            ],
+          },
+        }
+        overlays.push(`geojson(${encodeURIComponent(JSON.stringify(geojsonGap))})`)
+      }
       trayecto.pinsConexion.forEach((pin) => {
         if (pin.tipo === 'perdida') {
           overlays.push(`pin-s-cross+ff0000(${pin.lng.toFixed(6)},${pin.lat.toFixed(6)})`)
