@@ -1434,7 +1434,7 @@ const gruposConEspeciales = computed(() => {
   // BOTÓN ESPECIAL: Ver TODOS los conductores
   grupos.push({
     id: '__todos__',
-    Nombre: 'Conductores Con Unidad',
+    Nombre: 'Conductores con unidadades',
     ConductoresIds: [],
     esGrupoEspecial: true,
     icono: 'groups',
@@ -1457,7 +1457,7 @@ const gruposConEspeciales = computed(() => {
   if (unidadesSinConductor.length > 0) {
     grupos.push({
       id: '__sin_conductor__',
-      Nombre: 'Unidades Sin Conductor',
+      Nombre: 'Conductores sin unidades',
       ConductoresIds: [],
       esGrupoEspecial: true,
       icono: 'directions_car',
