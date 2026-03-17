@@ -776,6 +776,9 @@ async function buscarVehiculos(termino) {
   try {
     // Asegurarnos de que los datos estén cargados
     await cargarDatosUnidades()
+    const empresas = Array.isArray(idEmpresaActual.value) // ← agregar
+      ? idEmpresaActual.value // ← agregar
+      : [idEmpresaActual.value] // ← agregar
 
     const resultados = []
 
@@ -783,6 +786,7 @@ async function buscarVehiculos(termino) {
     const unidadesEncontradas = buscarUnidadesPorTermino(termino)
 
     for (const unidad of unidadesEncontradas) {
+      if (!empresas.includes(unidad.IdEmpresaUnidad)) continue
       // Formatear la información de la unidad
       let detalle = `ID: ${unidad.Id || 'N/A'}`
 
@@ -815,7 +819,9 @@ async function buscarConductores(termino) {
   try {
     // Asegurarnos de que los datos estén cargados
     await cargarDatosConductores()
-
+    const empresas = Array.isArray(idEmpresaActual.value) // ← agregar
+      ? idEmpresaActual.value // ← agregar
+      : [idEmpresaActual.value]
     const resultados = []
     const terminoLower = termino.toLowerCase()
 
@@ -824,6 +830,7 @@ async function buscarConductores(termino) {
       const conductoresDelGrupo = conductoresPorGrupo(grupo.id) || []
 
       for (const conductor of conductoresDelGrupo) {
+        if (!empresas.includes(conductor.IdEmpresaConductor)) continue
         if (
           conductor.Nombre?.toLowerCase().includes(terminoLower) ||
           conductor.Telefono?.toLowerCase().includes(terminoLower)
