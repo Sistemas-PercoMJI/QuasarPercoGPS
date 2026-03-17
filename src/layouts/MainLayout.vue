@@ -940,7 +940,7 @@ function toggleFiltro(filtro) {
     realizarBusqueda(busqueda.value)
   }
 }
-function centrarMapaEn(lat, lng, zoom = 15) {
+function centrarMapaEn(lat, lng, zoom = 15, nombre = 'Ubicación buscada', detalle = '') {
   const mapPage = document.getElementById('map-page')
 
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
@@ -961,7 +961,7 @@ function centrarMapaEn(lat, lng, zoom = 15) {
     essential: true,
   })
 
-  actualizarMarcadorBusqueda(lat, lng)
+  actualizarMarcadorBusqueda(lat, lng, nombre, detalle)
 }
 
 //let busquedaEnProgreso = ref(false)
@@ -1005,7 +1005,7 @@ function centrarMapaEn(lat, lng, zoom = 15) {
   }
 }*/
 
-function actualizarMarcadorBusqueda(lat, lng) {
+function actualizarMarcadorBusqueda(lat, lng, nombre = 'Ubicación buscada', detalle = '') {
   const mapPage = document.getElementById('map-page')
   if (!mapPage?._mapaAPI?.map) return
 
@@ -1036,22 +1036,22 @@ function actualizarMarcadorBusqueda(lat, lng) {
         closeOnClick: false,
         className: 'popup-animated',
       }).setHTML(`
-          <div class="poi-popup-container">
-            <div class="poi-color-band" style="background: #4285F4;">
-              <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-              </button>
-              <span class="poi-band-nombre" style="color: white;">Ubicación buscada</span>
-            </div>
-            <div class="poi-popup-body">
-              <div class="address-info">
-                <div class="address-text">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-              </div>
-            </div>
-          </div>
-        `),
+    <div class="poi-popup-container">
+      <div class="poi-color-band" style="background: #4285F4;">
+        <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <span class="poi-band-nombre" style="color: white;">${nombre}</span>
+      </div>
+      <div class="poi-popup-body">
+        <div class="address-info">
+          <div class="address-text">${detalle || 'Sin dirección'}</div>
+        </div>
+      </div>
+    </div>
+  `),
     )
     .addTo(map)
 
@@ -1542,7 +1542,7 @@ function procesarResultado(resultado) {
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
     if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng)
+      centrarMapaEn(resultado.lat, resultado.lng, 15, resultado.nombre, resultado.detalle)
       $q.notify({
         message: ` Mostrando: ${resultado.nombre}`,
         color: 'positive',
@@ -1589,7 +1589,7 @@ function procesarResultado(resultado) {
   } else if (resultado.tipo === 'poi') {
     if (resultado.lat && resultado.lng) {
       // Centrar en el POI con zoom cercano
-      centrarMapaEn(resultado.lat, resultado.lng, 18)
+      centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
 
       // Abrir drawer de Geozonas con el POI seleccionado
       cerrarTodosLosDialogs()
