@@ -1434,7 +1434,7 @@ const gruposConEspeciales = computed(() => {
   // BOTÓN ESPECIAL: Ver TODOS los conductores
   grupos.push({
     id: '__todos__',
-    Nombre: 'Todos los Conductores',
+    Nombre: 'Conductores Con Unidad',
     ConductoresIds: [],
     esGrupoEspecial: true,
     icono: 'groups',
