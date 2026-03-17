@@ -1007,69 +1007,55 @@ function centrarMapaEn(lat, lng, zoom = 15) {
 
 function actualizarMarcadorBusqueda(lat, lng) {
   const mapPage = document.getElementById('map-page')
-  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    console.warn('Mapa no disponible para actualizar marcador')
-    return
-  }
+  if (!mapPage?._mapaAPI?.map) return
 
   const map = mapPage._mapaAPI.map
 
-  // Importar mapboxgl desde el scope global que ya usa IndexPage
-
-  if (!mapboxgl) {
-    console.warn('mapboxgl no disponible en window')
-    return
+  // Siempre limpiar el anterior
+  if (window.marcadorBusqueda) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
   }
 
-  try {
-    if (!window.marcadorBusqueda) {
-      // Crear elemento del marcador
-      const el = document.createElement('div')
-      el.style.cssText = `
-        width: 20px;
-        height: 20px;
-        background: #4285F4;
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-      `
+  const el = document.createElement('div')
+  el.style.cssText = `
+    width: 20px; height: 20px;
+    background: #4285F4;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+  `
 
-      window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .setPopup(
-          new mapboxgl.Popup({
-            offset: 25,
-            closeButton: true,
-            closeOnClick: false,
-            className: 'popup-animated',
-          }).setHTML(`
-      <div class="poi-popup-container">
-        <div class="poi-color-band" style="background: #4285F4;">
-          <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <span class="poi-band-nombre" style="color: white;">Ubicación buscada</span>
-        </div>
-        <div class="poi-popup-body">
-          <div class="address-info">
-            <div class="address-text">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+  window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
+    .setLngLat([lng, lat])
+    .setPopup(
+      new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        className: 'popup-animated',
+      }).setHTML(`
+          <div class="poi-popup-container">
+            <div class="poi-color-band" style="background: #4285F4;">
+              <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <span class="poi-band-nombre" style="color: white;">Ubicación buscada</span>
+            </div>
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-text">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    `),
-        )
-        .addTo(map)
-    } else {
-      window.marcadorBusqueda.setLngLat([lng, lat])
-    }
+        `),
+    )
+    .addTo(map)
 
-    window.marcadorBusqueda.getPopup().addTo(map)
-  } catch (error) {
-    console.error('Error al actualizar marcador:', error)
-  }
+  window.marcadorBusqueda.getPopup().addTo(map)
 }
 // Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
