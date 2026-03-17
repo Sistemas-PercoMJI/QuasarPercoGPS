@@ -1840,6 +1840,12 @@ const limpiarRuta = () => {
 
 // EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
+window.centrarEnUnidad = (unidadId) => {
+  const mapPage = document.getElementById('map-page')
+  if (mapPage?._mapaAPI?.centrarEnUnidad) {
+    mapPage._mapaAPI.centrarEnUnidad(unidadId)
+  }
+}
 window.limpiarRuta = limpiarRuta
 
 // Función para mostrar popup de geozona con dirección geocodificada
@@ -2388,6 +2394,7 @@ onUnmounted(() => {
   if (window._mapMoveEndHandler && mapPage?._mapaAPI?.map) {
     mapPage._mapaAPI.map.off('moveend', window._mapMoveEndHandler)
   }
+  if (window.centrarEnUnidad) delete window.centrarEnUnidad
 
   // Limpiar flags
   delete window._mapListenersRegistered

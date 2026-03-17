@@ -1560,9 +1560,27 @@ function procesarResultado(resultado) {
       })
     }
   } else if (resultado.tipo === 'vehiculo') {
+    // Primero abrir el panel (comportamiento original)
     estadoFlotaDrawerOpen.value = true
+
+    // Luego intentar centrar en el marcador
+    const unidadId = resultado.datosUnidad?.id
+    if (unidadId !== undefined && unidadId !== null) {
+      // const unidadKey = `unidad_${unidadId}`
+
+      // Pequeño delay para que el panel no interfiera con el flyTo
+      setTimeout(() => {
+        const mapPage = document.getElementById('map-page')
+        const mapaAPI = mapPage?._mapaAPI
+
+        if (mapaAPI?.centrarEnUnidad) {
+          mapaAPI.centrarEnUnidad(String(unidadId)) // sin el prefijo unidad_
+        }
+      }, 300)
+    }
+
     $q.notify({
-      message: `🚗 Vehículo: ${resultado.nombre}`,
+      message: `Vehículo: ${resultado.nombre}`,
       color: 'positive',
       icon: 'directions_car',
       position: 'top',

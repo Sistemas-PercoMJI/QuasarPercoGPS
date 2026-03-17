@@ -2040,6 +2040,7 @@ export function useMapboxGL() {
       //  Crear objeto mapaAPI con todas las funciones
       const mapaAPI = {
         map: map.value,
+        marcadoresUnidades,
         resize: () => {
           if (map.value && map.value.resize) {
             map.value.resize()
