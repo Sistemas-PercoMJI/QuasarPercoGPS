@@ -135,7 +135,7 @@ export function useTrayectosDiarios() {
           if (viajeActual.length > 0) {
             const ultimo = viajeActual[viajeActual.length - 1]
             const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-            if (gap >= 5 * 60 * 1000) {
+            if (gap >= 2 * 60 * 1000) {
               // Antes de cerrar, quitar puntos false del final
               while (
                 viajeActual.length > 0 &&
@@ -171,7 +171,7 @@ export function useTrayectosDiarios() {
           } else if (siguienteIgnicion) {
             const gap =
               new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
-            if (gap >= 5 * 60 * 1000) {
+            if (gap >= 2 * 60 * 1000) {
               // Gap suficiente: cerrar viaje quitando false del final
               while (
                 viajeActual.length > 0 &&
@@ -190,7 +190,7 @@ export function useTrayectosDiarios() {
         if (viajeActual.length > 0) {
           const ultimo = viajeActual[viajeActual.length - 1]
           const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-          if (gap >= 5 * 60 * 1000) {
+          if (gap >= 2 * 60 * 1000) {
             if (viajeActual.length >= 2) viajes.push(viajeActual)
             viajeActual = []
           }
