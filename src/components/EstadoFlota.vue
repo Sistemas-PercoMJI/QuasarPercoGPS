@@ -369,6 +369,7 @@
                     v-for="trayecto in trayectosFiltradosPorHora"
                     :key="trayecto.id"
                     class="trayecto-card-compact"
+                    :class="{ 'trayecto-activo': trayectoActivoId === trayecto.id }"
                     @click="mostrarRutaEnMapa(trayecto)"
                     style="cursor: pointer"
                   >
@@ -624,6 +625,8 @@ const { estadoCompartido: estadoEventBus } = useEventBus()
 
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
+
+const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
 
@@ -939,6 +942,7 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
 }
 
 const cargarTrayectosDia = async () => {
+  trayectoActivoId.value = null
   if (!vehiculoSeleccionado.value) return
 
   loadingHistorial.value = true
@@ -1002,6 +1006,8 @@ const resetearFiltroEventos = () => {
 
 // Mostrar ruta en mapa (trayectos)
 const mostrarRutaEnMapa = (trayecto) => {
+  trayectoActivoId.value = trayecto.id //
+
   const trayectoConColor = {
     ...trayecto,
     color: trayecto.color || '#00E5FF',
@@ -1011,7 +1017,6 @@ const mostrarRutaEnMapa = (trayecto) => {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
 
-  //  Activar botón de limpiar
   hayElementosEnMapa.value = true
 }
 
@@ -2075,6 +2080,12 @@ onUnmounted(() => {
   color: #212121;
   font-weight: 600;
   margin-top: 4px;
+}
+
+.trayecto-activo {
+  background: #e3f2fd !important;
+  border-left-color: #1565c0 !important;
+  box-shadow: 0 4px 16px rgba(21, 101, 192, 0.25) !important;
 }
 
 /* ============================================ */
