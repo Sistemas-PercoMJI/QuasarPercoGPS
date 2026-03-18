@@ -205,7 +205,7 @@ function prepararDatosTrayectos(registros) {
             Math.sin(dLng / 2) ** 2
         const distanciaKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
-        if (diffSegundos > 120 && distanciaKm > 0.1) {
+        if (diffSegundos > 120 && distanciaKm > 0.5) {
           // Encontrar índices en coordenadasOrdenadas para protegerlos
           const idxAnterior = coordenadasOrdenadas.indexOf(anterior)
           const idxActual = coordenadasOrdenadas.indexOf(actual)
