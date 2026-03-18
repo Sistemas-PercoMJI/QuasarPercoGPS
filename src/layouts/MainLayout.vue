@@ -1551,6 +1551,15 @@ async function buscarGeozonas(termino) {
 // 8. ACTUALIZAR LA FUNCIÓN procesarResultado
 // ============================================
 function procesarResultado(resultado) {
+  const mapPage = document.getElementById('map-page')
+  if (mapPage?._mapaAPI) {
+    mapPage._mapaAPI.cerrarPopupGlobal?.()
+  }
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
     if (resultado.lat && resultado.lng) {
