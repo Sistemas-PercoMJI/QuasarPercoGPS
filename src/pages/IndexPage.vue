@@ -1846,6 +1846,72 @@ window.centrarEnUnidad = (unidadId) => {
     mapPage._mapaAPI.centrarEnUnidad(unidadId)
   }
 }
+window.abrirPopupPOI = (poiId) => {
+  const poi = poisCargados.value.find((p) => p.id === poiId)
+  if (!poi || !mapaAPI?.map) return
+
+  const { lat, lng } = poi.coordenadas
+  const color = poi.color || '#FF5252'
+  const colorHex = color.replace('#', '')
+  const r = parseInt(colorHex.substring(0, 2), 16)
+  const g = parseInt(colorHex.substring(2, 4), 16)
+  const b = parseInt(colorHex.substring(4, 6), 16)
+  const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+  const textoColor = luminancia < 200 ? '#ffffff' : '#1f2937'
+  const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
+
+  if (popupGlobalActivo) popupGlobalActivo.remove()
+
+  popupGlobalActivo = new mapboxgl.Popup({
+    offset: 25,
+    className: 'popup-animated',
+    closeButton: true,
+    closeOnClick: false,
+  })
+    .setLngLat([lng, lat])
+    .setHTML(
+      `
+      <div class="poi-popup-container">
+        <div class="poi-color-band" style="background: ${bandColor};">
+          <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <span class="poi-band-nombre" style="color: ${textoColor};">${poi.nombre}</span>
+        </div>
+        <div class="poi-popup-body">
+          <div class="address-info">
+            <div class="address-text">${poi.direccion}</div>
+          </div>
+          <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
+            Ver más detalles
+          </button>
+        </div>
+      </div>
+    `,
+    )
+    .addTo(mapaAPI.map)
+}
+
+window.abrirPopupGeozona = (geozonaId) => {
+  const geozona = geozonasCargadas.value.find((g) => g.id === geozonaId)
+  if (!geozona || !mapaAPI?.map) return
+
+  let lat, lng
+  if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+    lat = geozona.centro.lat
+    lng = geozona.centro.lng
+  } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+    const lats = geozona.puntos.map((p) => p.lat)
+    const lngs = geozona.puntos.map((p) => p.lng)
+    lat = lats.reduce((a, b) => a + b) / lats.length
+    lng = lngs.reduce((a, b) => a + b) / lngs.length
+  }
+  if (!lat || !lng) return
+
+  mostrarPopupGeozonaConDireccion(geozona, { lng, lat })
+}
 window.limpiarRuta = limpiarRuta
 
 // Función para mostrar popup de geozona con dirección geocodificada
@@ -2395,6 +2461,8 @@ onUnmounted(() => {
     mapPage._mapaAPI.map.off('moveend', window._mapMoveEndHandler)
   }
   if (window.centrarEnUnidad) delete window.centrarEnUnidad
+  if (window.abrirPopupPOI) delete window.abrirPopupPOI
+  if (window.abrirPopupGeozona) delete window.abrirPopupGeozona
 
   // Limpiar flags
   delete window._mapListenersRegistered

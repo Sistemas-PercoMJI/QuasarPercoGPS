@@ -1613,61 +1613,41 @@ function procesarResultado(resultado) {
     })
   } else if (resultado.tipo === 'poi') {
     if (resultado.lat && resultado.lng) {
-      // Centrar en el POI con zoom cercano
       centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
 
-      // Abrir drawer de Geozonas con el POI seleccionado
+      setTimeout(() => {
+        // ← agregar
+        window.abrirPopupPOI?.(resultado.poiId) // ← agregar
+      }, 1600) // ← después del flyTo de 1500ms
+
       cerrarTodosLosDialogs()
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-
-        // Pasar información del POI al drawer usando estado compartido
         estadoCompartido.value.abrirGeozonasConPOI = {
-          item: {
-            id: resultado.poiId,
-            tipo: 'poi',
-          },
+          item: { id: resultado.poiId, tipo: 'poi' },
           timestamp: Date.now(),
         }
       }, 100)
     }
-
-    $q.notify({
-      message: `📌 POI: ${resultado.nombre}`,
-      color: 'red',
-      icon: 'location_on',
-      position: 'top',
-      timeout: 3000,
-    })
   } else if (resultado.tipo === 'geozona') {
     if (resultado.lat && resultado.lng) {
-      // Centrar en la geozona con zoom medio (para ver todo el área)
       const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
-      centrarMapaEn(resultado.lat, resultado.lng, zoom)
+      centrarMapaEn(resultado.lat, resultado.lng, zoom, resultado.nombre, resultado.detalle)
 
-      // Abrir drawer de Geozonas con la geozona seleccionada
+      setTimeout(() => {
+        // ← agregar
+        window.abrirPopupGeozona?.(resultado.geozonaId) // ← agregar
+      }, 1600)
+
       cerrarTodosLosDialogs()
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-
-        // Pasar información de la geozona al drawer usando estado compartido
         estadoCompartido.value.abrirGeozonasConPOI = {
-          item: {
-            id: resultado.geozonaId,
-            tipo: 'geozona',
-          },
+          item: { id: resultado.geozonaId, tipo: 'geozona' },
           timestamp: Date.now(),
         }
       }, 100)
     }
-
-    $q.notify({
-      message: ` Geozona: ${resultado.nombre}`,
-      color: 'purple',
-      icon: 'layers',
-      position: 'top',
-      timeout: 3000,
-    })
   }
 }
 function limpiarMarcadorBusqueda() {
