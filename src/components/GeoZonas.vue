@@ -1485,7 +1485,26 @@ const emit = defineEmits(['close', 'item-seleccionado', 'crear-evento-ubicacion'
 const $q = useQuasar()
 //  AGREGAR esta línea
 const { estadoCompartido, resetAbrirGeozonas } = useEventBus()
-
+const props = defineProps({
+  itemASeleccionar: { type: Object, default: null },
+})
+watch(
+  () => props.itemASeleccionar,
+  async (newVal) => {
+    if (!newVal) return
+    if (items.value.length === 0) {
+      // Esperar a que los items carguen
+      const unwatch = watch(items, (newItems) => {
+        if (newItems.length > 0) {
+          unwatch()
+          handleSeleccionDesdeMapa(newVal)
+        }
+      })
+      return
+    }
+    handleSeleccionDesdeMapa(newVal)
+  },
+)
 // Usar el composable de POIs
 const { crearPOI, obtenerPOIs, actualizarPOI, eliminarPOI } = usePOIs(userId.value)
 //seleccionador de color para POI:
@@ -1749,9 +1768,9 @@ function tieneEventosAsignados(ubicacionId, tipo) {
 //  FUNCIÓN CENTRALIZADA PARA MANEJAR LA SELECCIÓN
 function handleSeleccionDesdeMapa(item) {
   // Determinar si es POI o Geozona
-  if (item.coordenadas && !item.tipoGeozona) {
+  if (item.tipo === 'poi' || (item.coordenadas && !item.tipoGeozona)) {
     vistaActual.value = 'poi'
-  } else if (item.tipoGeozona) {
+  } else if (item.tipo === 'geozona' || item.tipoGeozona) {
     vistaActual.value = 'geozona'
   }
 

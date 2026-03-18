@@ -429,7 +429,11 @@
       @hide="onDialogHide"
     >
       <q-card class="component-card">
-        <GeoZonas @close="cerrarGeozonas" @crear-evento-ubicacion="abrirEventosConUbicacion" />
+        <GeoZonas
+          @close="cerrarGeozonas"
+          @crear-evento-ubicacion="abrirEventosConUbicacion"
+          :item-a-seleccionar="itemParaGeozonas"
+        />
       </q-card>
     </q-dialog>
 
@@ -509,6 +513,8 @@ import { useEventBus } from 'src/composables/useEventBus.js'
 import { useConductoresFirebase } from 'src/composables/useConductoresFirebase'
 import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 import { useTutorial } from 'src/composables/useTutorial'
+import mapboxgl from 'mapbox-gl'
+import { LOCALIZACIONES_INTERNAS } from 'src/data/localizaciones.js'
 
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
@@ -563,6 +569,7 @@ const poisCargados = ref(false)
 const geozonasCargadas = ref(false)
 const pois = ref([])
 const geozonas = ref([])
+const itemParaGeozonas = ref(null)
 
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
@@ -728,23 +735,32 @@ async function realizarBusqueda(termino) {
 
 //  BÚSQUEDA DE DIRECCIONES - CORREGIDA
 async function buscarDirecciones(termino) {
+  const terminoLower = termino.toLowerCase()
+
+  // Buscar en localizaciones internas primero
+  const internas = LOCALIZACIONES_INTERNAS.filter(
+    (loc) =>
+      loc.nombre.toLowerCase().includes(terminoLower) ||
+      loc.keywords.some((k) => k.includes(terminoLower)),
+  ).map((loc) => ({
+    id: `dir-interna-${loc.id}`,
+    tipo: 'direccion',
+    nombre: loc.nombre,
+    detalle: loc.direccion,
+    lat: loc.lat,
+    lng: loc.lng,
+  }))
+
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termino)}&limit=5&countrycodes=mx`,
-      {
-        headers: {
-          'User-Agent': 'MJ GPS App/1.0',
-        },
-      },
+      { headers: { 'User-Agent': 'MJ GPS App/1.0' } },
     )
 
-    if (!response.ok) {
-      throw new Error('Error en la respuesta de Nominatim')
-    }
+    if (!response.ok) throw new Error('Error en Nominatim')
 
     const data = await response.json()
-
-    return data.map((lugar) => ({
+    const externas = data.map((lugar) => ({
       id: `dir-${lugar.place_id}`,
       tipo: 'direccion',
       nombre: lugar.display_name.split(',')[0],
@@ -752,9 +768,12 @@ async function buscarDirecciones(termino) {
       lat: parseFloat(lugar.lat),
       lng: parseFloat(lugar.lon),
     }))
+
+    // Internas primero, luego externas
+    return [...internas, ...externas]
   } catch (error) {
     console.error('Error buscando direcciones:', error)
-    return []
+    return internas // Si falla Nominatim, al menos devuelve las internas
   }
 }
 
@@ -762,6 +781,9 @@ async function buscarVehiculos(termino) {
   try {
     // Asegurarnos de que los datos estén cargados
     await cargarDatosUnidades()
+    const empresas = Array.isArray(idEmpresaActual.value) // ← agregar
+      ? idEmpresaActual.value // ← agregar
+      : [idEmpresaActual.value] // ← agregar
 
     const resultados = []
 
@@ -769,6 +791,7 @@ async function buscarVehiculos(termino) {
     const unidadesEncontradas = buscarUnidadesPorTermino(termino)
 
     for (const unidad of unidadesEncontradas) {
+      if (!empresas.includes(unidad.IdEmpresaUnidad)) continue
       // Formatear la información de la unidad
       let detalle = `ID: ${unidad.Id || 'N/A'}`
 
@@ -801,7 +824,9 @@ async function buscarConductores(termino) {
   try {
     // Asegurarnos de que los datos estén cargados
     await cargarDatosConductores()
-
+    const empresas = Array.isArray(idEmpresaActual.value) // ← agregar
+      ? idEmpresaActual.value // ← agregar
+      : [idEmpresaActual.value]
     const resultados = []
     const terminoLower = termino.toLowerCase()
 
@@ -810,6 +835,7 @@ async function buscarConductores(termino) {
       const conductoresDelGrupo = conductoresPorGrupo(grupo.id) || []
 
       for (const conductor of conductoresDelGrupo) {
+        if (!empresas.includes(conductor.IdEmpresaConductor)) continue
         if (
           conductor.Nombre?.toLowerCase().includes(terminoLower) ||
           conductor.Telefono?.toLowerCase().includes(terminoLower)
@@ -850,6 +876,7 @@ function limpiarBusqueda() {
   resultadosBusqueda.value = []
   mostrarSugerencias.value = false
   buscando.value = false
+  limpiarMarcadorBusqueda()
 }
 
 function seleccionarBusquedaReciente(reciente) {
@@ -925,7 +952,7 @@ function toggleFiltro(filtro) {
     realizarBusqueda(busqueda.value)
   }
 }
-function centrarMapaEn(lat, lng, zoom = 15) {
+function centrarMapaEn(lat, lng, zoom = 15, nombre = 'Ubicación buscada', detalle = '') {
   const mapPage = document.getElementById('map-page')
 
   if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
@@ -946,7 +973,7 @@ function centrarMapaEn(lat, lng, zoom = 15) {
     essential: true,
   })
 
-  actualizarMarcadorBusqueda(lat, lng)
+  actualizarMarcadorBusqueda(lat, lng, nombre, detalle)
 }
 
 //let busquedaEnProgreso = ref(false)
@@ -990,53 +1017,57 @@ function centrarMapaEn(lat, lng, zoom = 15) {
   }
 }*/
 
-function actualizarMarcadorBusqueda(lat, lng) {
+function actualizarMarcadorBusqueda(lat, lng, nombre = 'Ubicación buscada', detalle = '') {
   const mapPage = document.getElementById('map-page')
-  if (!mapPage || !mapPage._mapaAPI || !mapPage._mapaAPI.map) {
-    console.warn('Mapa no disponible para actualizar marcador')
-    return
-  }
+  if (!mapPage?._mapaAPI?.map) return
 
   const map = mapPage._mapaAPI.map
 
-  // Importar mapboxgl desde el scope global que ya usa IndexPage
-  const mapboxgl = window.mapboxgl
-
-  if (!mapboxgl) {
-    console.warn('mapboxgl no disponible en window')
-    return
+  // Siempre limpiar el anterior
+  if (window.marcadorBusqueda) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
   }
 
-  try {
-    if (!window.marcadorBusqueda) {
-      // Crear elemento del marcador
-      const el = document.createElement('div')
-      el.style.cssText = `
-        width: 20px;
-        height: 20px;
-        background: #4285F4;
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-      `
+  const el = document.createElement('div')
+  el.style.cssText = `
+    width: 20px; height: 20px;
+    background: #4285F4;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+  `
 
-      window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([lng, lat])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25, closeButton: true, closeOnClick: false }).setHTML(
-            '<b>📍 Ubicación buscada</b>',
-          ),
-        )
-        .addTo(map)
-    } else {
-      window.marcadorBusqueda.setLngLat([lng, lat])
-    }
+  window.marcadorBusqueda = new mapboxgl.Marker({ element: el, anchor: 'center' })
+    .setLngLat([lng, lat])
+    .setPopup(
+      new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        className: 'popup-animated',
+      }).setHTML(`
+    <div class="poi-popup-container">
+      <div class="poi-color-band" style="background: #4285F4;">
+        <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <span class="poi-band-nombre" style="color: white;">${nombre}</span>
+      </div>
+      <div class="poi-popup-body">
+        <div class="address-info">
+          <div class="address-text">${detalle || 'Sin dirección'}</div>
+        </div>
+      </div>
+    </div>
+  `),
+    )
+    .addTo(map)
 
-    window.marcadorBusqueda.getPopup().addTo(map)
-  } catch (error) {
-    console.error('Error al actualizar marcador:', error)
-  }
+  window.marcadorBusqueda.getPopup().addTo(map)
 }
 // Modificar la función seleccionarResultado para usar el nuevo sistema
 function seleccionarResultado(resultado) {
@@ -1326,6 +1357,7 @@ function cerrarTodosLosDialogs() {
   conductoresDrawerOpen.value = false
   geozonaDrawerOpen.value = false
   eventosDrawerOpen.value = false
+  limpiarMarcadorBusqueda()
 }
 
 function cerrarEstadoFlota() {
@@ -1519,10 +1551,19 @@ async function buscarGeozonas(termino) {
 // 8. ACTUALIZAR LA FUNCIÓN procesarResultado
 // ============================================
 function procesarResultado(resultado) {
+  const mapPage = document.getElementById('map-page')
+  if (mapPage?._mapaAPI) {
+    mapPage._mapaAPI.cerrarPopupGlobal?.()
+  }
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
     if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng)
+      centrarMapaEn(resultado.lat, resultado.lng, 15, resultado.nombre, resultado.detalle)
       $q.notify({
         message: ` Mostrando: ${resultado.nombre}`,
         color: 'positive',
@@ -1540,9 +1581,27 @@ function procesarResultado(resultado) {
       })
     }
   } else if (resultado.tipo === 'vehiculo') {
+    // Primero abrir el panel (comportamiento original)
     estadoFlotaDrawerOpen.value = true
+
+    // Luego intentar centrar en el marcador
+    const unidadId = resultado.datosUnidad?.id
+    if (unidadId !== undefined && unidadId !== null) {
+      // const unidadKey = `unidad_${unidadId}`
+
+      // Pequeño delay para que el panel no interfiera con el flyTo
+      setTimeout(() => {
+        const mapPage = document.getElementById('map-page')
+        const mapaAPI = mapPage?._mapaAPI
+
+        if (mapaAPI?.centrarEnUnidad) {
+          mapaAPI.centrarEnUnidad(String(unidadId)) // sin el prefijo unidad_
+        }
+      }, 300)
+    }
+
     $q.notify({
-      message: `🚗 Vehículo: ${resultado.nombre}`,
+      message: `Vehículo: ${resultado.nombre}`,
       color: 'positive',
       icon: 'directions_car',
       position: 'top',
@@ -1568,61 +1627,44 @@ function procesarResultado(resultado) {
     })
   } else if (resultado.tipo === 'poi') {
     if (resultado.lat && resultado.lng) {
-      // Centrar en el POI con zoom cercano
-      centrarMapaEn(resultado.lat, resultado.lng, 18)
+      centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
+      setTimeout(() => {
+        window.abrirPopupPOI?.(resultado.poiId)
+      }, 1600)
 
-      // Abrir drawer de Geozonas con el POI seleccionado
+      itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
       cerrarTodosLosDialogs()
+      itemParaGeozonas.value = null
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-
-        // Pasar información del POI al drawer usando estado compartido
-        estadoCompartido.value.abrirGeozonasConPOI = {
-          item: {
-            id: resultado.poiId,
-            tipo: 'poi',
-          },
-          timestamp: Date.now(),
-        }
+        setTimeout(() => {
+          itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
+        }, 300)
       }, 100)
     }
-
-    $q.notify({
-      message: `📌 POI: ${resultado.nombre}`,
-      color: 'red',
-      icon: 'location_on',
-      position: 'top',
-      timeout: 3000,
-    })
   } else if (resultado.tipo === 'geozona') {
     if (resultado.lat && resultado.lng) {
-      // Centrar en la geozona con zoom medio (para ver todo el área)
       const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
-      centrarMapaEn(resultado.lat, resultado.lng, zoom)
+      centrarMapaEn(resultado.lat, resultado.lng, zoom, resultado.nombre, resultado.detalle)
+      setTimeout(() => {
+        window.abrirPopupGeozona?.(resultado.geozonaId)
+      }, 1600)
 
-      // Abrir drawer de Geozonas con la geozona seleccionada
       cerrarTodosLosDialogs()
+      itemParaGeozonas.value = null // ← reset primero
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-
-        // Pasar información de la geozona al drawer usando estado compartido
-        estadoCompartido.value.abrirGeozonasConPOI = {
-          item: {
-            id: resultado.geozonaId,
-            tipo: 'geozona',
-          },
-          timestamp: Date.now(),
-        }
+        setTimeout(() => {
+          itemParaGeozonas.value = { id: resultado.geozonaId, tipo: 'geozona' }
+        }, 300) // ← esperar a que el componente monte
       }, 100)
     }
-
-    $q.notify({
-      message: ` Geozona: ${resultado.nombre}`,
-      color: 'purple',
-      icon: 'layers',
-      position: 'top',
-      timeout: 3000,
-    })
+  }
+}
+function limpiarMarcadorBusqueda() {
+  if (window.marcadorBusqueda) {
+    window.marcadorBusqueda.remove()
+    window.marcadorBusqueda = null
   }
 }
 </script>
@@ -2062,5 +2104,13 @@ function procesarResultado(resultado) {
 .filtros-panel :deep(.q-chip.bg-purple) {
   background-color: #bb0000 !important;
   color: white !important;
+}
+
+.sugerencias-card :deep(.q-item) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.sugerencias-card :deep(.q-item:last-child) {
+  border-bottom: none;
 }
 </style>

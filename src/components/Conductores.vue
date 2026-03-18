@@ -447,6 +447,7 @@
                   <q-select
                     v-model="conductorEditando.UnidadAsignada"
                     :options="opcionesUnidadesFiltradas"
+                    :disable="!esAdmin"
                     outlined
                     dense
                     emit-value
@@ -1192,17 +1193,19 @@ const conductoresFiltrados = computed(() => {
   let resultado = []
 
   if (grupoSeleccionado.value === '__todos__') {
-    resultado = conductores.value
+    resultado = conductores.value.filter((c) => c.UnidadAsignada)
   }
+
   // Agregar este caso
   else if (grupoSeleccionado.value === '__sin_conductor__') {
     resultado = unidades.value
       .filter((u) => {
         const sinConductor = !u.ConductorAsignado
+        const tieneImei = u.imei && u.imei.toString().trim().length === 15
         const mismaEmpresa = Array.isArray(idEmpresaActual.value)
           ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
           : u.IdEmpresaUnidad === idEmpresaActual.value
-        return sinConductor && mismaEmpresa
+        return sinConductor && tieneImei && mismaEmpresa
       })
       .map((u) => ({
         id: u.id,
@@ -1213,6 +1216,8 @@ const conductoresFiltrados = computed(() => {
       }))
   } else {
     resultado = conductoresPorGrupo(grupoSeleccionado.value)
+    console.log('Grupo:', grupoSeleccionado.value, 'Resultado:', resultado)
+    console.log('Todos los conductores:', conductores.value)
   }
 
   if (busqueda.value) {
@@ -1226,6 +1231,7 @@ const conductoresFiltrados = computed(() => {
 
   return resultado
 })
+
 function filtrarUnidades(val, update) {
   update(() => {
     if (val === '') {
@@ -1405,17 +1411,14 @@ const esPlacasVigente = computed(() => {
 
 // Computed: IDs de unidades que deben mostrarse en el mapa
 const idsUnidadesVisibles = computed(() => {
-  // Si el filtro NO está activo, NO mostrar nada
   if (!filtroMapaActivo.value) {
     return []
   }
 
-  // SOLO si es el grupo "TODOS" mostrar todas las unidades mod fi
   if (grupoSeleccionado.value === '__todos__') {
     return null
   }
 
-  // Para cualquier otro grupo = filtrado estricto
   const conductoresDelGrupo = conductoresFiltrados.value
   const idsUnidades = conductoresDelGrupo
     .filter((c) => c.UnidadAsignada)
@@ -1431,7 +1434,7 @@ const gruposConEspeciales = computed(() => {
   // BOTÓN ESPECIAL: Ver TODOS los conductores
   grupos.push({
     id: '__todos__',
-    Nombre: 'Todos los Conductores',
+    Nombre: 'Conductores con unidad',
     ConductoresIds: [],
     esGrupoEspecial: true,
     icono: 'groups',
@@ -1454,7 +1457,7 @@ const gruposConEspeciales = computed(() => {
   if (unidadesSinConductor.length > 0) {
     grupos.push({
       id: '__sin_conductor__',
-      Nombre: 'Unidades Sin Conductor',
+      Nombre: 'Conductores sin unidad',
       ConductoresIds: [],
       esGrupoEspecial: true,
       icono: 'directions_car',

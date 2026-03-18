@@ -3,11 +3,13 @@ import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { doc, getDoc } from 'firebase/firestore'
 import { useGeocoding } from './useGeocoding'
+import { useSortTimestamp } from './useSortTimestamp'
 
 export function useTrayectosDiarios() {
   const loading = ref(false)
   const error = ref(null)
   const { obtenerDireccion } = useGeocoding()
+  const { sortPorTimestamp } = useSortTimestamp()
 
   /**
    * Calcula distancia entre dos puntos (fórmula Haversine)
@@ -74,6 +76,11 @@ export function useTrayectosDiarios() {
           const timestamp = coord.timestamp || coord.time
           return lat && lng && timestamp
         })
+        .filter((coord) => {
+          // 👈 NUEVO: descartar puntos de serverTime (buffer Ruptela)
+          const ts = coord.timestamp || coord.time || ''
+          return !/\.\d{3}Z$/.test(ts)
+        })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
@@ -81,9 +88,7 @@ export function useTrayectosDiarios() {
           ignicion: coord.ignicion,
           velocidad: coord.velocidad,
         }))
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-
-      return coordenadasNormalizadas
+      return sortPorTimestamp(coordenadasNormalizadas)
     } catch (err) {
       console.error(' Error descargando coordenadas:', err)
       return []
@@ -231,7 +236,8 @@ export function useTrayectosDiarios() {
       .map((puntosViaje) => {
         if (puntosViaje.length < 2) return null
 
-        const coordsConVelocidad = enriquecerCoordenadasConVelocidad(puntosViaje)
+        const puntosOrdenados = sortPorTimestamp(puntosViaje)
+        const coordsConVelocidad = enriquecerCoordenadasConVelocidad(puntosOrdenados)
 
         let distancia = 0
         let velocidadMax = 0
@@ -303,7 +309,6 @@ export function useTrayectosDiarios() {
 
       // Analizar trayectos
       const trayectos = analizarTrayectos(coordenadas)
-
       // Generar resumen
       const resumen = await generarResumenDesdeData(data, trayectos)
 
@@ -346,7 +351,7 @@ export function useTrayectosDiarios() {
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'WebGpsPerco/1.0', // Nominatim requiere User-Agent
+          'User-Agent': 'WebGpsPerco/1.0',
         },
       })
 

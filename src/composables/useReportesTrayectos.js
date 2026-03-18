@@ -45,6 +45,11 @@ export function useReportesTrayectos() {
           const lng = coord.lng || coord.longitude || coord.lon
           return lat && lng
         })
+        .filter((coord) => {
+          // 👈 AGREGAR ESTO
+          const ts = coord.timestamp || coord.time || ''
+          return !/\.\d{3}Z$/.test(ts)
+        })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
