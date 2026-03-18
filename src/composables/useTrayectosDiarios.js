@@ -76,6 +76,11 @@ export function useTrayectosDiarios() {
           const timestamp = coord.timestamp || coord.time
           return lat && lng && timestamp
         })
+        .filter((coord) => {
+          // 👈 NUEVO: descartar puntos de serverTime (buffer Ruptela)
+          const ts = coord.timestamp || coord.time || ''
+          return !/\.\d{3}Z$/.test(ts)
+        })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
