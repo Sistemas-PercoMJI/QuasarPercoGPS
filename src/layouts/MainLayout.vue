@@ -429,7 +429,11 @@
       @hide="onDialogHide"
     >
       <q-card class="component-card">
-        <GeoZonas @close="cerrarGeozonas" @crear-evento-ubicacion="abrirEventosConUbicacion" />
+        <GeoZonas
+          @close="cerrarGeozonas"
+          @crear-evento-ubicacion="abrirEventosConUbicacion"
+          :item-a-seleccionar="itemParaGeozonas"
+        />
       </q-card>
     </q-dialog>
 
@@ -565,6 +569,7 @@ const poisCargados = ref(false)
 const geozonasCargadas = ref(false)
 const pois = ref([])
 const geozonas = ref([])
+const itemParaGeozonas = ref(null)
 
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
@@ -1614,38 +1619,35 @@ function procesarResultado(resultado) {
   } else if (resultado.tipo === 'poi') {
     if (resultado.lat && resultado.lng) {
       centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
-
       setTimeout(() => {
-        // ← agregar
-        window.abrirPopupPOI?.(resultado.poiId) // ← agregar
-      }, 1600) // ← después del flyTo de 1500ms
+        window.abrirPopupPOI?.(resultado.poiId)
+      }, 1600)
 
+      itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
       cerrarTodosLosDialogs()
+      itemParaGeozonas.value = null
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-        estadoCompartido.value.abrirGeozonasConPOI = {
-          item: { id: resultado.poiId, tipo: 'poi' },
-          timestamp: Date.now(),
-        }
+        setTimeout(() => {
+          itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
+        }, 300)
       }, 100)
     }
   } else if (resultado.tipo === 'geozona') {
     if (resultado.lat && resultado.lng) {
       const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
       centrarMapaEn(resultado.lat, resultado.lng, zoom, resultado.nombre, resultado.detalle)
-
       setTimeout(() => {
-        // ← agregar
-        window.abrirPopupGeozona?.(resultado.geozonaId) // ← agregar
+        window.abrirPopupGeozona?.(resultado.geozonaId)
       }, 1600)
 
       cerrarTodosLosDialogs()
+      itemParaGeozonas.value = null // ← reset primero
       setTimeout(() => {
         geozonaDrawerOpen.value = true
-        estadoCompartido.value.abrirGeozonasConPOI = {
-          item: { id: resultado.geozonaId, tipo: 'geozona' },
-          timestamp: Date.now(),
-        }
+        setTimeout(() => {
+          itemParaGeozonas.value = { id: resultado.geozonaId, tipo: 'geozona' }
+        }, 300) // ← esperar a que el componente monte
       }, 100)
     }
   }
