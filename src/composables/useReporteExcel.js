@@ -1,7 +1,155 @@
 // composables/useReporteExcel.js
 import ExcelJS from 'exceljs'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
+import { useMapboxStaticImage } from './useMapboxStaticImage'
 
+async function agregarHojaMapas(workbook, entidades, config, etiqueta = 'Unidad') {
+  const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
+    useMapboxStaticImage()
+  console.log('🗺️ agregarHojaMapas llamado')
+  console.log('Entidades:', Object.keys(entidades))
+
+  const mapaSheet = workbook.addWorksheet('Mapas')
+  let filaActual = 1
+
+  // Título de la hoja
+  mapaSheet.addRow(['MAPAS DE TRAYECTOS'])
+  mapaSheet.getCell('A1').font = { bold: true, size: 14 }
+  mapaSheet.addRow([`Generado: ${new Date().toLocaleString('es-MX')}`])
+  mapaSheet.addRow([])
+  filaActual = 4
+
+  for (const [nombreEntidad, registros] of Object.entries(entidades)) {
+    console.log(`📦 ${nombreEntidad}:`, registros.length, 'registros')
+    console.log('Primer registro keys:', Object.keys(registros[0] || {}))
+    console.log('Tiene coordenadas?', registros[0]?.coordenadas?.length)
+    try {
+      const trayectosParaMapa = prepararDatosTrayectos(registros)
+      console.log('Trayectos para mapa:', trayectosParaMapa.length)
+      console.log('Coords del primer trayecto:', trayectosParaMapa[0]?.coordenadas?.length)
+
+      if (!trayectosParaMapa.length || !trayectosParaMapa[0].coordenadas.length) {
+        // Sin coordenadas - poner aviso
+        const avisoRow = mapaSheet.addRow([`${etiqueta}: ${nombreEntidad} — Sin datos de mapa`])
+        avisoRow.font = { italic: true, color: { argb: 'FF999999' } }
+        filaActual++
+        mapaSheet.addRow([])
+        filaActual++
+        continue
+      }
+
+      // Título de la entidad
+      const tituloRow = mapaSheet.addRow([`${etiqueta.toUpperCase()}: ${nombreEntidad}`])
+      tituloRow.font = { bold: true, size: 12, color: { argb: 'FF2980B9' } }
+      tituloRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE3F2FD' } }
+      mapaSheet.mergeCells(filaActual, 1, filaActual, 10)
+      filaActual++
+
+      // Generar imagen del mapa
+      const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
+        width: 1200,
+        height: 800,
+        padding: 50,
+        mostrarPins: true,
+      })
+
+      const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+
+      if (!imagenBase64) {
+        const errorRow = mapaSheet.addRow([`No se pudo generar el mapa para ${nombreEntidad}`])
+        errorRow.font = { italic: true, color: { argb: 'FFCC0000' } }
+        filaActual++
+        mapaSheet.addRow([])
+        filaActual++
+        continue
+      }
+
+      // Insertar imagen en ExcelJS
+      // La imagen viene como "data:image/png;base64,..." - extraer solo el base64
+      const base64Data = imagenBase64.split(',')[1]
+
+      const imageId = workbook.addImage({
+        base64: base64Data,
+        extension: 'png',
+      })
+
+      // Cada celda de Excel es aprox 20px de alto y 64px de ancho por defecto
+      // Queremos la imagen de aprox 600px ancho x 400px alto
+      // En unidades de ExcelJS: col width en chars, row height en pts
+      const IMAGEN_COLS = 10 // ancho en columnas
+      const IMAGEN_FILAS = 20 // alto en filas
+
+      // Ajustar alto de las filas de la imagen
+      for (let i = filaActual; i < filaActual + IMAGEN_FILAS; i++) {
+        mapaSheet.getRow(i).height = 20
+      }
+      // Ajustar ancho de columnas
+      for (let c = 1; c <= IMAGEN_COLS; c++) {
+        mapaSheet.getColumn(c).width = 12
+      }
+
+      mapaSheet.addImage(imageId, {
+        tl: { col: 0, row: filaActual - 1 },
+        br: { col: IMAGEN_COLS, row: filaActual - 1 + IMAGEN_FILAS },
+        editAs: 'oneCell',
+      })
+
+      filaActual += IMAGEN_FILAS
+
+      // Leyenda de trayectos
+      const COLORES_LEYENDA = [
+        'e74c3c',
+        '2980b9',
+        '27ae60',
+        'f39c12',
+        '8e44ad',
+        '16a085',
+        'd35400',
+        '2c3e50',
+      ]
+
+      trayectosParaMapa.forEach((trayecto, idx) => {
+        const color = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
+        const trayectoRaw = registros[idx]
+        const horaInicio =
+          trayectoRaw?.horaInicioTrabajo || trayectoRaw?.inicioTimestamp
+            ? new Date(
+                trayectoRaw.inicioTimestamp || trayectoRaw.horaInicioTrabajo,
+              ).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })
+            : 'N/A'
+        const horaFin =
+          trayectoRaw?.horaFinTrabajo || trayectoRaw?.finTimestamp
+            ? new Date(trayectoRaw.finTimestamp || trayectoRaw.horaFinTrabajo).toLocaleTimeString(
+                'es-MX',
+                { hour: '2-digit', minute: '2-digit', hour12: false },
+              )
+            : 'N/A'
+
+        const leyendaRow = mapaSheet.addRow([
+          `  ■ Trayecto ${idx + 1}`,
+          `Inicio: ${horaInicio}`,
+          `Fin: ${horaFin}`,
+          trayectoRaw?.ubicacionInicio || '',
+          trayectoRaw?.ubicacionFin || '',
+        ])
+        leyendaRow.getCell(1).font = { bold: true, color: { argb: `FF${color.toUpperCase()}` } }
+        leyendaRow.font = { size: 9 }
+        filaActual++
+      })
+
+      // Espacio entre entidades
+      mapaSheet.addRow([])
+      mapaSheet.addRow([])
+      filaActual += 2
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    } catch (error) {
+      console.error(`Error generando mapa para ${nombreEntidad}:`, error)
+      const errorRow = mapaSheet.addRow([`Error al generar mapa: ${nombreEntidad}`])
+      errorRow.font = { italic: true, color: { argb: 'FFCC0000' } }
+      filaActual++
+    }
+  }
+}
 export function useReporteExcel() {
   /**
    * Genera un archivo Excel con eventos agrupados
@@ -1206,6 +1354,14 @@ export function useReporteExcel() {
       }
     })
 
+    if (config.mostrarMapaZona) {
+      await agregarHojaMapas(
+        workbook,
+        registrosPorEntidad,
+        config,
+        config.reportarPor === 'Unidades' ? 'Unidad' : 'Conductor',
+      )
+    }
     // ========================================
     // Guardar el archivo
     // ========================================
@@ -1513,6 +1669,16 @@ export function useReporteExcel() {
           }
         })
       })
+    }
+    console.log('🗺️ config.mostrarMapaTrayecto:', config.mostrarMapaTrayecto)
+    console.log('🗺️ config completo:', config)
+    if (datosReales.eventosAgrupados && config.mostrarMapaTrayecto) {
+      await agregarHojaMapas(
+        workbook,
+        datosReales.eventosAgrupados,
+        config,
+        config.reportarPor === 'Unidades' ? 'Unidad' : 'Conductor',
+      )
     }
 
     // ========================================

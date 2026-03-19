@@ -1489,6 +1489,8 @@ const generarExcel = async () => {
       horarioFin: horarioFin.value,
       remarcarHorasExtra: remarcarHorasExtra.value,
       diasLaborables: diasLaborablesSeleccionados.value,
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // ← AGREGAR
+      mostrarMapaZona: mostrarMapaZona.value,
     }
 
     let blob, filename
