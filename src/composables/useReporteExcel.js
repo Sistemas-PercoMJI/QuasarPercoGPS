@@ -6,8 +6,6 @@ import { useMapboxStaticImage } from './useMapboxStaticImage'
 async function agregarHojaMapas(workbook, entidades, config, etiqueta = 'Unidad') {
   const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
     useMapboxStaticImage()
-  console.log('🗺️ agregarHojaMapas llamado')
-  console.log('Entidades:', Object.keys(entidades))
 
   const mapaSheet = workbook.addWorksheet('Mapas')
   let filaActual = 1
@@ -20,13 +18,8 @@ async function agregarHojaMapas(workbook, entidades, config, etiqueta = 'Unidad'
   filaActual = 4
 
   for (const [nombreEntidad, registros] of Object.entries(entidades)) {
-    console.log(`📦 ${nombreEntidad}:`, registros.length, 'registros')
-    console.log('Primer registro keys:', Object.keys(registros[0] || {}))
-    console.log('Tiene coordenadas?', registros[0]?.coordenadas?.length)
     try {
       const trayectosParaMapa = prepararDatosTrayectos(registros)
-      console.log('Trayectos para mapa:', trayectosParaMapa.length)
-      console.log('Coords del primer trayecto:', trayectosParaMapa[0]?.coordenadas?.length)
 
       if (!trayectosParaMapa.length || !trayectosParaMapa[0].coordenadas.length) {
         // Sin coordenadas - poner aviso
@@ -1670,8 +1663,7 @@ export function useReporteExcel() {
         })
       })
     }
-    console.log('🗺️ config.mostrarMapaTrayecto:', config.mostrarMapaTrayecto)
-    console.log('🗺️ config completo:', config)
+
     if (datosReales.eventosAgrupados && config.mostrarMapaTrayecto) {
       await agregarHojaMapas(
         workbook,
