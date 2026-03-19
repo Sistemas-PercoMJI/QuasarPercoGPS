@@ -3,6 +3,16 @@ const { setGlobalOptions } = require('firebase-functions/v2')
 const logger = require('firebase-functions/logger')
 const nodemailer = require('nodemailer')
 
+const { getAuth } = require('firebase-admin/auth')
+const { initializeApp } = require('firebase-admin/app')
+
+// Inicializar Admin SDK (solo si no está ya inicializado)
+try {
+  initializeApp()
+} catch (e) {
+  console.log(e)
+}
+
 setGlobalOptions({
   region: 'us-central1',
   memory: '256MB',
@@ -185,3 +195,25 @@ exports.enviarSolicitudPassword = onRequest(
     }
   },
 )
+
+exports.verificarCorreoExiste = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Método no permitido' })
+  }
+
+  const { correo } = req.body
+
+  if (!correo) {
+    return res.status(400).json({ success: false, error: 'Correo requerido' })
+  }
+
+  try {
+    await getAuth().getUserByEmail(correo)
+    return res.json({ success: true, existe: true })
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      return res.json({ success: true, existe: false })
+    }
+    return res.status(500).json({ success: false, error: error.message })
+  }
+})

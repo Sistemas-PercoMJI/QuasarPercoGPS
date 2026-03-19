@@ -194,31 +194,29 @@ async function validarCorreoFirebase() {
 
   validandoCorreo.value = true
   errores.correocuenta = ''
+  correoValido.value = null
 
   try {
-    const { getAuth, signInWithEmailAndPassword } = await import('firebase/auth')
-    const auth = getAuth()
+    const response = await fetch(
+      'https://us-central1-gpsmjindust.cloudfunctions.net/verificarCorreoExiste',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo: form.correocuenta }),
+      },
+    )
 
-    await signInWithEmailAndPassword(auth, form.correocuenta, 'dummy_password_check_123')
+    const data = await response.json()
 
-    // Si no lanza error (raro), el correo existe
-    correoValido.value = true
-  } catch (error) {
-    if (
-      error.code === 'auth/wrong-password' ||
-      error.code === 'auth/invalid-credential' ||
-      error.code === 'auth/invalid-login-credentials'
-    ) {
-      // Correo existe pero contraseña incorrecta — eso es lo que queremos
+    if (data.existe) {
       correoValido.value = true
-    } else if (error.code === 'auth/user-not-found') {
-      correoValido.value = false
-      errores.correocuenta = 'No se encontró una cuenta con ese correo'
     } else {
-      // Cualquier otro error, asumimos que el correo no existe
       correoValido.value = false
       errores.correocuenta = 'No se encontró una cuenta con ese correo'
     }
+  } catch (error) {
+    console.error('Error verificando correo:', error)
+    correoValido.value = null
   } finally {
     validandoCorreo.value = false
   }
