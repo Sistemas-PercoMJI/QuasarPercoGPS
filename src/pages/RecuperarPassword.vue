@@ -53,7 +53,10 @@
                 :error="!!errores.correocuenta"
                 :error-message="errores.correocuenta"
                 :loading="validandoCorreo"
+                clearable
+                clear-icon="close"
                 @update:model-value="validarCorreoDebounced"
+                @clear="((correoValido = null), (errores.correocuenta = ''))"
                 class="custom-input"
               >
                 <template v-slot:prepend>
@@ -64,12 +67,6 @@
                     v-if="correoValido === true"
                     name="check_circle"
                     color="positive"
-                    size="20px"
-                  />
-                  <q-icon
-                    v-else-if="correoValido === false"
-                    name="cancel"
-                    color="negative"
                     size="20px"
                   />
                 </template>
