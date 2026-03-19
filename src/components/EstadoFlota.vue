@@ -362,6 +362,20 @@
                   <q-icon name="route" size="18px" color="primary" />
                   <span>Historial de viajes</span>
                   <q-badge color="primary" :label="trayectosFiltradosPorHora.length" />
+
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    :icon="refrescandoTrayectos ? 'hourglass_empty' : 'refresh'"
+                    :color="refrescandoTrayectos ? 'grey-5' : 'grey-6'"
+                    :disable="refrescandoTrayectos"
+                    @click="cargarTrayectosDia(false)"
+                    class="q-ml-auto"
+                  >
+                    <q-tooltip>Actualizar trayectos</q-tooltip>
+                  </q-btn>
                 </div>
 
                 <div class="timeline-list">
@@ -629,6 +643,9 @@ const hayElementosEnMapa = ref(false)
 const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
+
+const refrescandoTrayectos = ref(false)
+let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
 const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
@@ -941,11 +958,13 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
   }
 }
 
-const cargarTrayectosDia = async () => {
+const cargarTrayectosDia = async (silencioso = false) => {
   trayectoActivoId.value = null
   if (!vehiculoSeleccionado.value) return
 
-  loadingHistorial.value = true
+  if (!silencioso) loadingHistorial.value = true
+  else refrescandoTrayectos.value = true
+
   try {
     const resultado = await obtenerTrayectosDia(
       vehiculoSeleccionado.value.id,
@@ -959,6 +978,28 @@ const cargarTrayectosDia = async () => {
     resumenDia.value = null
   } finally {
     loadingHistorial.value = false
+    refrescandoTrayectos.value = false
+  }
+}
+
+const iniciarAutoRefresh = () => {
+  detenerAutoRefresh()
+  intervalRefreshTrayectos = setInterval(
+    async () => {
+      const esHoy = fechaSeleccionada.value.toDateString() === new Date().toDateString()
+      const unidadActual = vehiculos.value.find((v) => v.id === vehiculoSeleccionado.value?.id)
+      if (esHoy && unidadActual?.ignicion && tabActual.value === 'hoy') {
+        await cargarTrayectosDia(true)
+      }
+    },
+    2 * 60 * 1000,
+  )
+}
+
+const detenerAutoRefresh = () => {
+  if (intervalRefreshTrayectos) {
+    clearInterval(intervalRefreshTrayectos)
+    intervalRefreshTrayectos = null
   }
 }
 
@@ -1355,6 +1396,8 @@ watch(fechaSeleccionadaEventos, (nuevaFecha) => {
 watch(tabActual, () => {
   // Limpiar mapa al cambiar de tab
   limpiarTodoDelMapa()
+  iniciarAutoRefresh()
+  detenerAutoRefresh()
 })
 
 watch(
@@ -1387,6 +1430,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   detenerEscucha()
+  detenerAutoRefresh()
 
   // Limpiar todo del mapa
   if (window.limpiarRuta) {
