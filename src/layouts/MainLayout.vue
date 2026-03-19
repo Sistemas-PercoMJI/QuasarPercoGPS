@@ -1151,6 +1151,8 @@ onMounted(() => {
     cerrarTodosLosDialogs()
   })
 
+  document.addEventListener('click', handleClickOutside)
+
   window.setMapaDragging = (valor) => {
     mapaDragging.value = valor
   }
