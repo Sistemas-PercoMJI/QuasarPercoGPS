@@ -1,6 +1,6 @@
 <!-- src/components/SoporteTecnicoPanel.vue -->
 <template>
-  <q-card class="soporte-card">
+  <q-card class="soporte-card" @paste="onPaste">
     <!-- Header -->
     <q-card-section
       class="row items-center q-pa-none"
@@ -181,7 +181,10 @@
               class="btn-adjuntar"
               @click="triggerFileInput"
             />
-
+            <div class="text-caption text-grey-5 q-mt-xs">
+              <q-icon name="info" size="12px" class="q-mr-xs" />
+              También puedes pegar capturas con Ctrl+V
+            </div>
             <!-- Input file oculto -->
             <input
               ref="fileInput"
@@ -259,6 +262,19 @@ function onFileChange(event) {
   }
   // Reset para permitir seleccionar el mismo archivo de nuevo
   event.target.value = ''
+}
+
+function onPaste(event) {
+  const items = event.clipboardData?.items
+  if (!items) return
+
+  const imageItems = Array.from(items).filter((item) => item.type.startsWith('image/'))
+  if (imageItems.length === 0) return
+
+  const archivos = imageItems.map((item) => item.getAsFile()).filter(Boolean)
+  if (archivos.length > 0) {
+    agregarImagenes(archivos)
+  }
 }
 </script>
 
