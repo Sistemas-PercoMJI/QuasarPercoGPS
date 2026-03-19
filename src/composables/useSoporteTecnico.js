@@ -7,40 +7,32 @@ const FUNCTION_URL = 'https://us-central1-gpsmjindust.cloudfunctions.net/enviarT
 const MAX_IMAGENES = 3
 const MAX_TAMANO_MB = 2
 
+const form = ref({
+  nombre: '',
+  empresa: '',
+  correoCuenta: '',
+  correoSeguimiento: '',
+  descripcion: '',
+})
+const imagenes = ref([]) // [{ nombre, base64, tipo, preview }]
+
+// ─── Estado del panel ────────────────────────────────────────────────────
+const enviando = ref(false)
+const enviado = ref(false)
+const errorEnvio = ref(null)
+const errorImagenes = ref(null)
+
 export function useSoporteTecnico() {
-  const { idEmpresaActual } = useMultiTenancy()
-
-  // ─── Estado del formulario ───────────────────────────────────────────────
-  const form = ref({
-    nombre: '',
-    empresa: '',
-    correoCuenta: '',
-    correoSeguimiento: '',
-    descripcion: '',
-  })
-
-  const imagenes = ref([]) // [{ nombre, base64, tipo, preview }]
-
-  // ─── Estado del panel ────────────────────────────────────────────────────
-  const enviando = ref(false)
-  const enviado = ref(false)
-  const errorEnvio = ref(null)
-  const errorImagenes = ref(null)
-
-  // ─── Resolver empresa (puede ser string o array) ─────────────────────────
-  const resolverEmpresa = () => {
-    const id = idEmpresaActual.value
-    if (!id) return ''
-    if (Array.isArray(id)) return id[0] || ''
-    return id
-  }
-
   // ─── Inicializar formulario con datos del usuario logueado ───────────────
   function inicializarForm() {
+    const { usuarioActual, idEmpresaActual } = useMultiTenancy()
     const user = auth.currentUser
+    const empresa = Array.isArray(idEmpresaActual.value)
+      ? idEmpresaActual.value.join(' / ')
+      : idEmpresaActual.value || ''
     form.value = {
-      nombre: user?.displayName || user?.email || '',
-      empresa: resolverEmpresa(),
+      nombre: usuarioActual.value?.Usuario || user?.displayName || user?.email || '',
+      empresa,
       correoCuenta: user?.email || '',
       correoSeguimiento: '',
       descripcion: '',
