@@ -53,7 +53,7 @@
                 :error="!!errores.correocuenta"
                 :error-message="errores.correocuenta"
                 :loading="validandoCorreo"
-                @blur="validarCorreoFirebase"
+                @update:model-value="validarCorreoDebounced"
                 class="custom-input"
               >
                 <template v-slot:prepend>
@@ -187,7 +187,22 @@ const errores = reactive({
   nombre: '',
   correoContacto: '',
 })
+let debounceTimer = null
 
+function validarCorreoDebounced(val) {
+  clearTimeout(debounceTimer)
+
+  // Resetear estado mientras escribe
+  correoValido.value = null
+  errores.correocuenta = ''
+
+  // Solo validar si parece un correo completo
+  if (!val || !val.includes('@') || !val.includes('.')) return
+
+  debounceTimer = setTimeout(() => {
+    validarCorreoFirebase()
+  }, 800) // espera 800ms después de que deje de escribir
+}
 // Validar contra Firebase Auth si el correo existe
 async function validarCorreoFirebase() {
   if (!form.correocuenta || !form.correocuenta.includes('@')) return
