@@ -222,6 +222,7 @@ exports.enviarTicketSoporte = onRequest(
   {
     cors: true,
     secrets: ['NOREPLY_EMAIL_PASSWORD'],
+    memory: '512MiB',
   },
   async (req, res) => {
     try {
@@ -305,8 +306,8 @@ exports.enviarTicketSoporte = onRequest(
 
                     <!-- Header -->
                     <tr>
-                      <td style="background-color:#bb0000; padding: 28px 36px;">
-                        <p style="margin:0; font-size:11px; color:#f8c8c8; text-transform:uppercase; letter-spacing:1px;">PercoGPS — Sistema de seguimiento de flotas</p>
+                      <td style="background-color:#1B5E20; padding: 28px 36px;">
+                        <p style="margin:0; font-size:11px; color:#a5d6a7; text-transform:uppercase; letter-spacing:1px;">PercoGPS — Sistema de seguimiento de flotas</p>
                         <h1 style="margin:8px 0 0; font-size:20px; color:#ffffff; font-weight:700;">Nuevo ticket de soporte técnico</h1>
                       </td>
                     </tr>
