@@ -437,10 +437,6 @@ export function useEventDetection() {
       if (tracking.tieneEventoSalida) {
         await notificarEventos(unidad, ubicacion, tipo, 'Salida', tracking.eventos)
       }
-    } else {
-      console.log(
-        `✅ Sin evento - unidad:${unidad.id} ubicacion:${ubicacion.nombre} estadoAnterior=${estadoAnterior} estaDentro=${estaDentro}`,
-      )
     }
 
     // Actualizar estado si cambió pero no cruzó umbral
