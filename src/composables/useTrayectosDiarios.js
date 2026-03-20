@@ -128,8 +128,6 @@ export function useTrayectosDiarios() {
       return true
     })
 
-    const tieneAlgunFalse = coordenadas.some((c) => c.ignicion === false || c.ignicion === 'false')
-
     const viajes = []
     let viajeActual = []
 
@@ -137,79 +135,33 @@ export function useTrayectosDiarios() {
       const punto = coordenadasLimpias[i]
       const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
-      if (tieneAlgunFalse) {
-        if (ignicion) {
-          // Ver si hay un gap grande con el punto anterior
-          if (viajeActual.length > 0) {
-            const ultimo = viajeActual[viajeActual.length - 1]
-            const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-            if (gap >= 2 * 60 * 1000) {
-              // Antes de cerrar, quitar puntos false del final
-              while (
-                viajeActual.length > 0 &&
-                (viajeActual[viajeActual.length - 1].ignicion === false ||
-                  viajeActual[viajeActual.length - 1].ignicion === 'false')
-              ) {
-                viajeActual.pop()
-              }
-              if (viajeActual.length >= 2) viajes.push(viajeActual)
-              viajeActual = []
-            }
-          }
-          viajeActual.push(punto)
-        } else {
-          // ignicion false: solo agregar, no cerrar todavía
-          viajeActual.push(punto)
-
-          // Cerrar si el siguiente punto true tiene gap >= 2 min
-          const siguiente = coordenadas[i + 1]
-          const siguienteIgnicion = siguiente?.ignicion === true || siguiente?.ignicion === 'true'
-
-          if (!siguiente) {
-            // Fin del array: cerrar quitando false del final
-            while (
-              viajeActual.length > 0 &&
-              (viajeActual[viajeActual.length - 1].ignicion === false ||
-                viajeActual[viajeActual.length - 1].ignicion === 'false')
-            ) {
-              viajeActual.pop()
-            }
-            if (viajeActual.length >= 2) viajes.push(viajeActual)
-            viajeActual = []
-          } else if (siguienteIgnicion) {
-            const gap =
-              new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
-            if (gap >= 2 * 60 * 1000) {
-              // Gap suficiente: cerrar viaje quitando false del final
-              while (
-                viajeActual.length > 0 &&
-                (viajeActual[viajeActual.length - 1].ignicion === false ||
-                  viajeActual[viajeActual.length - 1].ignicion === 'false')
-              ) {
-                viajeActual.pop()
-              }
-              if (viajeActual.length >= 2) viajes.push(viajeActual)
-              viajeActual = []
-            }
-          }
-        }
-      } else {
-        // Fallback: solo gaps de tiempo
-        if (viajeActual.length > 0) {
-          const ultimo = viajeActual[viajeActual.length - 1]
-          const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-          if (gap >= 2 * 60 * 1000) {
-            if (viajeActual.length >= 2) viajes.push(viajeActual)
-            viajeActual = []
-          }
-        }
+      if (ignicion) {
         viajeActual.push(punto)
+      } else {
+        // ignicion false — buscar el siguiente ping
+        const siguiente = coordenadasLimpias[i + 1]
+
+        if (!siguiente) {
+          // Fin del array, cerrar viaje
+          if (viajeActual.length >= 2) viajes.push(viajeActual)
+          viajeActual = []
+        } else {
+          const siguienteIgnicion = siguiente.ignicion === true || siguiente.ignicion === 'true'
+          const gap = new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
+
+          if (!siguienteIgnicion || gap >= 2 * 60 * 1000) {
+            // Siguiente también es false, O hay gap >= 2 min → confirmar fin de viaje
+            if (viajeActual.length >= 2) viajes.push(viajeActual)
+            viajeActual = []
+          }
+          // Si el siguiente es true con gap < 2 min → fue un apagón momentáneo, continuar viaje
+        }
       }
     }
 
     if (viajeActual.length >= 2) viajes.push(viajeActual)
 
-    return viajes.filter((viaje) => viaje.some((p) => p.ignicion === true || p.ignicion === 'true'))
+    return viajes
   }
 
   /**
