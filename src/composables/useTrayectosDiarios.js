@@ -122,13 +122,19 @@ export function useTrayectosDiarios() {
   const agruparEnViajes = (coordenadas) => {
     if (!coordenadas || coordenadas.length === 0) return []
 
+    const coordenadasLimpias = coordenadas.filter((c) => {
+      const ignicionFalse = c.ignicion === false || c.ignicion === 'false'
+      if (ignicionFalse && c.velocidad > 0) return false
+      return true
+    })
+
     const tieneAlgunFalse = coordenadas.some((c) => c.ignicion === false || c.ignicion === 'false')
 
     const viajes = []
     let viajeActual = []
 
-    for (let i = 0; i < coordenadas.length; i++) {
-      const punto = coordenadas[i]
+    for (let i = 0; i < coordenadasLimpias.length; i++) {
+      const punto = coordenadasLimpias[i]
       const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
       if (tieneAlgunFalse) {
@@ -265,6 +271,16 @@ export function useTrayectosDiarios() {
         }
       })
       .filter(Boolean)
+      .filter((t) => {
+        // Filtrar trayectos donde la distancia es menor a 0.5 km
+        // y la duración es mayor a 10 minutos (estaba parado)
+        const duracionMs =
+          new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
+        const duracionMin = duracionMs / 60000
+
+        if (t.distancia < 0.5 && duracionMin > 10) return false
+        return true
+      })
   }
 
   /**
