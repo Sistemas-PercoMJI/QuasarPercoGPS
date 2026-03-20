@@ -369,8 +369,13 @@ const poisDibujados = ref(new Set())
 const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
-const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear, recargarConfiguracion } =
-  useEventDetection()
+const {
+  inicializar,
+  evaluarEventosParaUnidadesSimulacion,
+  resetear,
+  recargarConfiguracion,
+  reconstruirEstadoDesdeFirebase,
+} = useEventDetection()
 
 const marcadoresPOIs = ref([])
 //const marcadoresGeozonas = ref([])
@@ -677,8 +682,15 @@ async function inicializarSistemaDeteccion() {
     ])
 
     const eventosActivos = eventos.filter((e) => e.activo)
-
     inicializar(eventosActivos, pois, geozonas)
+
+    // NUEVO: Reconstruir estado desde Firebase antes de iniciar el intervalo
+    const unidadesIds = unidadesActivas.value?.map((u) => u.unidadId || u.id).filter(Boolean) || []
+
+    if (unidadesIds.length > 0) {
+      await reconstruirEstadoDesdeFirebase(unidadesIds)
+      console.log('✅ Estado de geozonas reconstruido desde Firebase')
+    }
   } catch (error) {
     console.error('Error al inicializar detección:', error)
   }
