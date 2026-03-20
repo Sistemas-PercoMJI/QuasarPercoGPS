@@ -530,6 +530,8 @@ import { LOCALIZACIONES_INTERNAS } from 'src/data/localizaciones.js'
 import SoporteTecnicoPanel from 'src/components/SoporteTecnicoPanel.vue'
 import { useSoporteTecnico } from 'src/composables/useSoporteTecnico'
 
+import { useNotificacionesEventos } from 'src/composables/useNotificacionesEventos'
+
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
 const { iniciarTutorial } = useTutorial(router)
@@ -586,6 +588,8 @@ const pois = ref([])
 const geozonas = ref([])
 const itemParaGeozonas = ref(null)
 const { inicializarForm, resetear } = useSoporteTecnico()
+
+const { iniciarEscucha, detenerEscucha } = useNotificacionesEventos()
 
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
@@ -1165,6 +1169,8 @@ onMounted(() => {
         console.error(' Error cargando usuario:', error)
       }
     }
+
+    await iniciarEscucha()
   })
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
@@ -1178,10 +1184,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('cerrarTodosDialogs', () => {})
-})
-
-onUnmounted(() => {
   if (window.marcadorBusqueda && window.marcadorBusqueda.remove) {
     window.marcadorBusqueda.remove()
     window.marcadorBusqueda = null
@@ -1190,7 +1192,12 @@ onUnmounted(() => {
   if (timeoutBusqueda) {
     clearTimeout(timeoutBusqueda)
   }
+
+  window.removeEventListener('cerrarTodosDialogs', () => {})
+
+  detenerEscucha()
 })
+
 function handleClickOutside(event) {
   const searchContainer = document.querySelector('.search-container')
   const sugerenciasContainer = document.querySelector('.sugerencias-container')
