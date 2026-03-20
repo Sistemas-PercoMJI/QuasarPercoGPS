@@ -455,6 +455,24 @@ watch(
   },
   { deep: false, immediate: false },
 )
+let estadoReconstruido = false
+
+watch(
+  unidadesActivas,
+  async (nuevasUnidades) => {
+    if (!nuevasUnidades || nuevasUnidades.length === 0) return
+    if (estadoReconstruido) return
+
+    estadoReconstruido = true
+
+    const unidadesIds = nuevasUnidades.map((u) => u.unidadId || u.id).filter(Boolean)
+
+    console.log('Reconstruyendo estado con IDs:', unidadesIds)
+    await reconstruirEstadoDesdeFirebase(unidadesIds)
+    console.log('✅ Estado reconstruido desde watch')
+  },
+  { immediate: false },
+)
 
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
@@ -680,17 +698,8 @@ async function inicializarSistemaDeteccion() {
       obtenerPOIs(),
       obtenerGeozonas(),
     ])
-
     const eventosActivos = eventos.filter((e) => e.activo)
     inicializar(eventosActivos, pois, geozonas)
-
-    // NUEVO: Reconstruir estado desde Firebase antes de iniciar el intervalo
-    const unidadesIds = unidadesActivas.value?.map((u) => u.unidadId || u.id).filter(Boolean) || []
-
-    if (unidadesIds.length > 0) {
-      await reconstruirEstadoDesdeFirebase(unidadesIds)
-      console.log('✅ Estado de geozonas reconstruido desde Firebase')
-    }
   } catch (error) {
     console.error('Error al inicializar detección:', error)
   }
