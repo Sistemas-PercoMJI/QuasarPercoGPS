@@ -414,14 +414,14 @@
                         <span class="stat-valor">{{ trayecto.distancia }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="speed" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadMax }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionInicio">
+                        <q-icon name="trip_origin" size="14px" color="green" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionInicio }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="trending_flat" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadPromedio }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionFin">
+                        <q-icon name="place" size="14px" color="red" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionFin }}</span>
                       </div>
                     </div>
                   </div>
@@ -2741,5 +2741,22 @@ onUnmounted(() => {
 .fade-scale-btn-leave-to {
   opacity: 0;
   transform: scale(0.7) translateY(20px);
+}
+
+.stat-item-full {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+.stat-valor-dir {
+  color: #424242;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 </style>

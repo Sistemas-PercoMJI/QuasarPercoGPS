@@ -309,21 +309,39 @@ export function useTrayectosDiarios() {
       // Generar resumen
       const resumen = await generarResumenDesdeData(data, trayectos)
 
+      const trayectosMapeados = trayectos.map((t, index) => ({
+        id: `trayecto_${fechaStr}_${index}`,
+        titulo: `Viaje ${index + 1}`,
+        horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
+        horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
+        duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
+        distancia: `${t.distancia.toFixed(2)} km`,
+        coordenadas: t.coordenadas,
+        icono: 'navigation',
+        color: 'green',
+        direccionInicio: null,
+        direccionFin: null,
+        inicio: t.inicio,
+        fin: t.fin,
+      }))
+
+      const trayectosConDirecciones = await Promise.all(
+        trayectosMapeados.map(async (t) => {
+          const [dirInicio, dirFin] = await Promise.all([
+            obtenerDireccion({ lat: t.inicio.lat, lng: t.inicio.lng }),
+            obtenerDireccion({ lat: t.fin.lat, lng: t.fin.lng }),
+          ])
+          return {
+            ...t,
+            direccionInicio: dirInicio,
+            direccionFin: dirFin,
+          }
+        }),
+      )
+
       return {
         existenDatos: true,
-        trayectos: trayectos.map((t, index) => ({
-          id: `trayecto_${fechaStr}_${index}`,
-          titulo: `Viaje ${index + 1}`,
-          horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
-          horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
-          duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
-          distancia: `${t.distancia.toFixed(2)} km`,
-          velocidadMax: `${Math.round(t.velocidadMax)} km/h`,
-          velocidadPromedio: `${Math.round(t.velocidadPromedio)} km/h`,
-          coordenadas: t.coordenadas,
-          icono: 'navigation',
-          color: 'green',
-        })),
+        trayectos: trayectosConDirecciones,
         resumen,
       }
     } catch (err) {
