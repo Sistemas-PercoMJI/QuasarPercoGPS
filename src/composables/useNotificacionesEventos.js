@@ -17,7 +17,7 @@ export function useNotificacionesEventos() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
   }
 
-  const eventoANotificacion = (evento, unidadNombre, esNuevo = false) => {
+  const eventoANotificacion = (evento, unidadNombre) => {
     const esEntrada = evento.TipoEvento === 'Entrada'
     const nombreUbicacion = evento.PoiNombre || evento.GeozonaNombre || 'Ubicación'
     const tipoUbicacion = evento.tipoUbicacion || 'POI'
@@ -30,16 +30,15 @@ export function useNotificacionesEventos() {
       ubicacionNombre: nombreUbicacion,
       tipoUbicacion,
       accion: esEntrada ? 'Entrada' : 'Salida',
-      // Solo generar mapa si es nuevo
-      ubicacion:
-        esNuevo && evento.Coordenadas
-          ? {
-              lat: evento.Coordenadas.lat,
-              lng: evento.Coordenadas.lng,
-              nombre: nombreUbicacion,
-              tipo: tipoUbicacion,
-            }
-          : null,
+      // 🆕 Siempre pasar ubicacion para generar mapa
+      ubicacion: evento.Coordenadas
+        ? {
+            lat: evento.Coordenadas.lat,
+            lng: evento.Coordenadas.lng,
+            nombre: nombreUbicacion,
+            tipo: tipoUbicacion,
+          }
+        : null,
     }
   }
 
@@ -120,7 +119,9 @@ export function useNotificacionesEventos() {
               const tsEvento = evento.Timestamp?.toDate?.()?.getTime?.() || 0
               const esNuevo = ahora - tsEvento < 30 * 1000
 
-              const notifData = eventoANotificacion(evento, unidadNombre, esNuevo)
+              const notifData = eventoANotificacion(evento, unidadNombre)
+
+              // Solo marcar como leído si es histórico
               if (!esNuevo) {
                 notifData.yaLeida = true
               }
