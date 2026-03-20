@@ -202,6 +202,10 @@ export function useEventDetection() {
     // ENTRADA DETECTADA
     // ========================================
     if (estaDentro && estadoAnterior !== 'dentro') {
+      console.warn(
+        `⚠️ ENTRADA DISPARADA - unidad:${unidad.id} ubicacion:${ubicacion.nombre} estadoAnterior=${estadoAnterior} timestamp:${new Date().toISOString()}`,
+      )
+
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
 
       const nombreConductor = (() => {
