@@ -473,6 +473,7 @@ watch(
     console.log('Reconstruyendo estado con IDs:', unidadesIds)
     await reconstruirEstadoDesdeFirebase(unidadesIds)
     console.log('✅ Estado reconstruido desde watch')
+    iniciarEvaluacionContinuaEventos()
   },
   { immediate: false },
 )
