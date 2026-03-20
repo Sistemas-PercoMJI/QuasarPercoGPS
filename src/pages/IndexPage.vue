@@ -427,6 +427,9 @@ watch(
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) return
 
+    if (nuevasUnidades?.length > 0) {
+      console.log('Estructura unidad:', JSON.stringify(nuevasUnidades[0], null, 2))
+    }
     if (!nuevasUnidades || nuevasUnidades.length === 0) {
       limpiarMarcadoresUnidades()
       return
@@ -2191,7 +2194,7 @@ onMounted(async () => {
     })
 
     await inicializarSistemaDeteccion()
-    iniciarEvaluacionContinuaEventos()
+    // iniciarEvaluacionContinuaEventos()
 
     iniciarSeguimientoGPS()
 
