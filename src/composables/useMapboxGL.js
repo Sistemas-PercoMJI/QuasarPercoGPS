@@ -754,6 +754,33 @@ export function useMapboxGL() {
 
             popup.on('open', () => {
               registrarPopupActivo(popup)
+
+              // Si la dirección aún dice "Obteniendo..." pero ya tenemos una en cache, aplicarla
+              const cached = ultimasPosiciones.get(unidadId)
+              if (cached?.direccionTexto) {
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  const dirEl = popupEl.querySelector('.unidad-direccion')
+                  if (dirEl && dirEl.textContent === 'Obteniendo...') {
+                    dirEl.textContent = cached.direccionTexto
+                  }
+                }
+              } else if (!cached?.direccionTexto) {
+                // No tenemos dirección todavía → disparar geocoding ahora
+                const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
+                if (lngLat) {
+                  obtenerDireccion(lngLat.lat, lngLat.lng).then((direccion) => {
+                    const c = ultimasPosiciones.get(unidadId)
+                    if (c) c.direccionTexto = direccion
+
+                    const popupEl = popup.getElement()
+                    if (popupEl) {
+                      const dirEl = popupEl.querySelector('.unidad-direccion')
+                      if (dirEl) dirEl.textContent = direccion
+                    }
+                  })
+                }
+              }
             })
 
             const element = crearIconoUnidad(unidad)
@@ -779,16 +806,6 @@ export function useMapboxGL() {
               .setLngLat([lng, lat])
               .setPopup(popup)
               .addTo(map.value)
-
-            if (!unidad.direccionTexto) {
-              obtenerDireccion(lat, lng).then((direccion) => {
-                const popupEl = popup.getElement()
-                if (popupEl) {
-                  const dirEl = popupEl.querySelector('.unidad-direccion')
-                  if (dirEl) dirEl.textContent = direccion
-                }
-              })
-            }
 
             marcadoresUnidades.value[unidadId] = marker
 
@@ -901,6 +918,33 @@ export function useMapboxGL() {
 
         popup.on('open', () => {
           registrarPopupActivo(popup)
+
+          // Si la dirección aún dice "Obteniendo..." pero ya tenemos una en cache, aplicarla
+          const cached = ultimasPosiciones.get(unidadId)
+          if (cached?.direccionTexto) {
+            const popupEl = popup.getElement()
+            if (popupEl) {
+              const dirEl = popupEl.querySelector('.unidad-direccion')
+              if (dirEl && dirEl.textContent === 'Obteniendo...') {
+                dirEl.textContent = cached.direccionTexto
+              }
+            }
+          } else if (!cached?.direccionTexto) {
+            // No tenemos dirección todavía → disparar geocoding ahora
+            const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
+            if (lngLat) {
+              obtenerDireccion(lngLat.lat, lngLat.lng).then((direccion) => {
+                const c = ultimasPosiciones.get(unidadId)
+                if (c) c.direccionTexto = direccion
+
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  const dirEl = popupEl.querySelector('.unidad-direccion')
+                  if (dirEl) dirEl.textContent = direccion
+                }
+              })
+            }
+          }
         })
 
         const element = crearIconoUnidad(unidad)
@@ -928,6 +972,11 @@ export function useMapboxGL() {
           .addTo(map.value)
         if (!unidad.direccionTexto) {
           obtenerDireccion(lat, lng).then((direccion) => {
+            // Guardar en cache para que el popup la tenga al abrirse
+            const posCache = ultimasPosiciones.get(unidadId)
+            if (posCache) posCache.direccionTexto = direccion
+
+            // Actualizar DOM si el popup YA está abierto
             const popupEl = popup.getElement()
             if (popupEl) {
               const dirEl = popupEl.querySelector('.unidad-direccion')
