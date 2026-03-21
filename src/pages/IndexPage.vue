@@ -30,7 +30,13 @@
                 <div class="style-preview">
                   <img
                     :src="previewSatelite"
-                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                      border-radius: 10px;
+                      border: 1px solid #e5e7eb;
+                    "
                     loading="lazy"
                   />
                 </div>
@@ -52,7 +58,13 @@
                 <div class="style-preview">
                   <img
                     :src="previewCalles"
-                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                      border-radius: 10px;
+                      border: 1px solid #e5e7eb;
+                    "
                     loading="lazy"
                   />
                 </div>
