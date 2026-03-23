@@ -315,6 +315,7 @@ function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
     intervaloEvaluacionEventos = null
+    console.log('🛑 Evaluación detenida')
   }
 }
 
