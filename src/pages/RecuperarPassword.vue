@@ -53,7 +53,10 @@
                 :error="!!errores.correocuenta"
                 :error-message="errores.correocuenta"
                 :loading="validandoCorreo"
-                @blur="validarCorreoFirebase"
+                clearable
+                clear-icon="close"
+                @update:model-value="validarCorreoDebounced"
+                @clear="((correoValido = null), (errores.correocuenta = ''))"
                 class="custom-input"
               >
                 <template v-slot:prepend>
@@ -64,12 +67,6 @@
                     v-if="correoValido === true"
                     name="check_circle"
                     color="positive"
-                    size="20px"
-                  />
-                  <q-icon
-                    v-else-if="correoValido === false"
-                    name="cancel"
-                    color="negative"
                     size="20px"
                   />
                 </template>
@@ -187,38 +184,51 @@ const errores = reactive({
   nombre: '',
   correoContacto: '',
 })
+let debounceTimer = null
 
+function validarCorreoDebounced(val) {
+  clearTimeout(debounceTimer)
+
+  // Resetear estado mientras escribe
+  correoValido.value = null
+  errores.correocuenta = ''
+
+  // Solo validar si parece un correo completo
+  if (!val || !val.includes('@') || !val.includes('.')) return
+
+  debounceTimer = setTimeout(() => {
+    validarCorreoFirebase()
+  }, 800) // espera 800ms después de que deje de escribir
+}
 // Validar contra Firebase Auth si el correo existe
 async function validarCorreoFirebase() {
   if (!form.correocuenta || !form.correocuenta.includes('@')) return
 
   validandoCorreo.value = true
   errores.correocuenta = ''
+  correoValido.value = null
 
   try {
-    const { getAuth, signInWithEmailAndPassword } = await import('firebase/auth')
-    const auth = getAuth()
+    const response = await fetch(
+      'https://us-central1-gpsmjindust.cloudfunctions.net/verificarCorreoExiste',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo: form.correocuenta }),
+      },
+    )
 
-    await signInWithEmailAndPassword(auth, form.correocuenta, 'dummy_password_check_123')
+    const data = await response.json()
 
-    // Si no lanza error (raro), el correo existe
-    correoValido.value = true
-  } catch (error) {
-    if (
-      error.code === 'auth/wrong-password' ||
-      error.code === 'auth/invalid-credential' ||
-      error.code === 'auth/invalid-login-credentials'
-    ) {
-      // Correo existe pero contraseña incorrecta — eso es lo que queremos
+    if (data.existe) {
       correoValido.value = true
-    } else if (error.code === 'auth/user-not-found') {
-      correoValido.value = false
-      errores.correocuenta = 'No se encontró una cuenta con ese correo'
     } else {
-      // Cualquier otro error, asumimos que el correo no existe
       correoValido.value = false
       errores.correocuenta = 'No se encontró una cuenta con ese correo'
     }
+  } catch (error) {
+    console.error('Error verificando correo:', error)
+    correoValido.value = null
   } finally {
     validandoCorreo.value = false
   }

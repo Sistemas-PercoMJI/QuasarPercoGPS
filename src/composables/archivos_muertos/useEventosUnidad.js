@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore'
-import { useGeocoding } from './useGeocoding' //  Importar geocoding
+import { useGeocoding } from '../useGeocoding' //  Importar geocoding
 
 export function useEventosUnidad() {
   const loading = ref(false)
@@ -328,8 +328,7 @@ export function useEventosUnidad() {
   // ========================================
 
   const generarMapaEstatico = (lat, lng, color) => {
-    const accessToken =
-      'pk.eyJ1IjoiY29uY2F6ZWQiLCJhIjoiY200MnE0cnNkMGduNzJrczhtZzh4c2JiNSJ9.3x7HwvZNxr4Tsr6KGLCWeg'
+    const accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
     const pinColor = color === 'green' ? '4CAF50' : color === 'red' ? 'F44336' : '00BCD4'
 

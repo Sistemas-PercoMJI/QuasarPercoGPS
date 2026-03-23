@@ -5,6 +5,7 @@ import { db } from 'src/firebase/firebaseConfig'
 import { useReportesEventos } from './useReportesEventos'
 import { useReportesTrayectos } from './useReportesTrayectos'
 import { useReportesHoras } from './useReportesHoras'
+import { useMultiTenancy } from './useMultiTenancy'
 
 /**
  * ============================================
@@ -15,6 +16,8 @@ import { useReportesHoras } from './useReportesHoras'
 export function useReportes() {
   const loading = ref(false)
   const error = ref(null)
+
+  const { crearQueryConEmpresa } = useMultiTenancy()
 
   // Composables especializados
   const reportesEventos = useReportesEventos()
@@ -132,13 +135,9 @@ export function useReportes() {
    */
   const obtenerUnidades = async () => {
     try {
-      const unidadesRef = collection(db, 'Unidades')
-      const snapshot = await getDocs(unidadesRef)
-
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad') // ← CAMBIO
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     } catch (err) {
       console.error('Error al obtener unidades:', err)
       throw err
@@ -160,13 +159,9 @@ export function useReportes() {
    */
   const obtenerConductores = async () => {
     try {
-      const conductoresRef = collection(db, 'Conductores')
-      const snapshot = await getDocs(conductoresRef)
-
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor') // ← CAMBIO
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     } catch (err) {
       console.error('Error al obtener conductores:', err)
       throw err

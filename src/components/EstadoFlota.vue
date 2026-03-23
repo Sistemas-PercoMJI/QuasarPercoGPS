@@ -362,6 +362,20 @@
                   <q-icon name="route" size="18px" color="primary" />
                   <span>Historial de viajes</span>
                   <q-badge color="primary" :label="trayectosFiltradosPorHora.length" />
+
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    :icon="refrescandoTrayectos ? 'hourglass_empty' : 'refresh'"
+                    :color="refrescandoTrayectos ? 'grey-5' : 'grey-6'"
+                    :disable="refrescandoTrayectos"
+                    @click="cargarTrayectosDia(false)"
+                    class="q-ml-auto"
+                  >
+                    <q-tooltip>Actualizar trayectos</q-tooltip>
+                  </q-btn>
                 </div>
 
                 <div class="timeline-list">
@@ -369,6 +383,7 @@
                     v-for="trayecto in trayectosFiltradosPorHora"
                     :key="trayecto.id"
                     class="trayecto-card-compact"
+                    :class="{ 'trayecto-activo': trayectoActivoId === trayecto.id }"
                     @click="mostrarRutaEnMapa(trayecto)"
                     style="cursor: pointer"
                   >
@@ -399,14 +414,14 @@
                         <span class="stat-valor">{{ trayecto.distancia }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="speed" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadMax }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionInicio">
+                        <q-icon name="trip_origin" size="14px" color="green" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionInicio }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="trending_flat" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadPromedio }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionFin">
+                        <q-icon name="place" size="14px" color="red" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionFin }}</span>
                       </div>
                     </div>
                   </div>
@@ -625,7 +640,12 @@ const { estadoCompartido: estadoEventBus } = useEventBus()
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
 
+const trayectoActivoId = ref(null)
+
 const $q = useQuasar()
+
+const refrescandoTrayectos = ref(false)
+let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
 const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
@@ -938,10 +958,13 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
   }
 }
 
-const cargarTrayectosDia = async () => {
+const cargarTrayectosDia = async (silencioso = false) => {
+  trayectoActivoId.value = null
   if (!vehiculoSeleccionado.value) return
 
-  loadingHistorial.value = true
+  if (!silencioso) loadingHistorial.value = true
+  else refrescandoTrayectos.value = true
+
   try {
     const resultado = await obtenerTrayectosDia(
       vehiculoSeleccionado.value.id,
@@ -955,6 +978,28 @@ const cargarTrayectosDia = async () => {
     resumenDia.value = null
   } finally {
     loadingHistorial.value = false
+    refrescandoTrayectos.value = false
+  }
+}
+
+const iniciarAutoRefresh = () => {
+  detenerAutoRefresh()
+  intervalRefreshTrayectos = setInterval(
+    async () => {
+      const esHoy = fechaSeleccionada.value.toDateString() === new Date().toDateString()
+      const unidadActual = vehiculos.value.find((v) => v.id === vehiculoSeleccionado.value?.id)
+      if (esHoy && unidadActual?.ignicion && tabActual.value === 'hoy') {
+        await cargarTrayectosDia(true)
+      }
+    },
+    2 * 60 * 1000,
+  )
+}
+
+const detenerAutoRefresh = () => {
+  if (intervalRefreshTrayectos) {
+    clearInterval(intervalRefreshTrayectos)
+    intervalRefreshTrayectos = null
   }
 }
 
@@ -1002,6 +1047,8 @@ const resetearFiltroEventos = () => {
 
 // Mostrar ruta en mapa (trayectos)
 const mostrarRutaEnMapa = (trayecto) => {
+  trayectoActivoId.value = trayecto.id //
+
   const trayectoConColor = {
     ...trayecto,
     color: trayecto.color || '#00E5FF',
@@ -1011,7 +1058,6 @@ const mostrarRutaEnMapa = (trayecto) => {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
 
-  //  Activar botón de limpiar
   hayElementosEnMapa.value = true
 }
 
@@ -1350,6 +1396,8 @@ watch(fechaSeleccionadaEventos, (nuevaFecha) => {
 watch(tabActual, () => {
   // Limpiar mapa al cambiar de tab
   limpiarTodoDelMapa()
+  iniciarAutoRefresh()
+  detenerAutoRefresh()
 })
 
 watch(
@@ -1382,6 +1430,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   detenerEscucha()
+  detenerAutoRefresh()
 
   // Limpiar todo del mapa
   if (window.limpiarRuta) {
@@ -2077,6 +2126,12 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
+.trayecto-activo {
+  background: #e3f2fd !important;
+  border-left-color: #1565c0 !important;
+  box-shadow: 0 4px 16px rgba(21, 101, 192, 0.25) !important;
+}
+
 /* ============================================ */
 /* === FILTRO DE HORAS === */
 /* ============================================ */
@@ -2686,5 +2741,22 @@ onUnmounted(() => {
 .fade-scale-btn-leave-to {
   opacity: 0;
   transform: scale(0.7) translateY(20px);
+}
+
+.stat-item-full {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+.stat-valor-dir {
+  color: #424242;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 </style>

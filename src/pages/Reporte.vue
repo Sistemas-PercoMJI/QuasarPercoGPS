@@ -1489,6 +1489,8 @@ const generarExcel = async () => {
       horarioFin: horarioFin.value,
       remarcarHorasExtra: remarcarHorasExtra.value,
       diasLaborables: diasLaborablesSeleccionados.value,
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // ← AGREGAR
+      mostrarMapaZona: mostrarMapaZona.value,
     }
 
     let blob, filename
@@ -2026,5 +2028,28 @@ watch(eventos, () => {
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+}
+
+/* Día de hoy - círculo perfecto sobre el botón de 30x30 */
+:deep(.q-date__today) {
+  border: 2px solid #bb0000 !important;
+  border-radius: 50% !important;
+  background: rgba(187, 0, 0, 0.08) !important;
+}
+
+/* Número negro por defecto */
+:deep(.q-date__today .q-btn__content span) {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Cuando está seleccionado (rango) - fondo rojo, texto blanco */
+:deep(.q-date__today.bg-primary) {
+  background: #bb0000 !important;
+  border-color: #bb0000 !important;
+}
+
+:deep(.q-date__today.bg-primary .q-btn__content span) {
+  color: #ffffff !important;
 }
 </style>

@@ -23,8 +23,7 @@ export function useSimuladorUnidades() {
     lngMax: -116.88,
   }
 
-  const MAPBOX_TOKEN =
-    'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKE
 
   const ESTADOS = {
     MOVIMIENTO: 'movimiento',

@@ -215,7 +215,16 @@
                   <q-tooltip>Iniciar tutorial guiado</q-tooltip>
                 </q-btn>
                 <q-space />
-                <q-btn flat label="Cerrar" style="color: #bb0000" v-close-popup />
+                <q-btn
+                  flat
+                  label="Soporte"
+                  style="color: #bb0000"
+                  icon="headset_mic"
+                  v-close-popup
+                  @click="abrirSoporte"
+                >
+                  <q-tooltip>Enviar ticket de soporte técnico</q-tooltip>
+                </q-btn>
               </q-card-actions>
             </q-card>
           </q-menu>
@@ -487,6 +496,9 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="soporteDialogOpen" @show="inicializarForm" @hide="resetear">
+      <SoporteTecnicoPanel @close="soporteDialogOpen = false" />
+    </q-dialog>
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -515,6 +527,10 @@ import { useUnidadesFirebase } from 'src/composables/useUnidadesFirebase'
 import { useTutorial } from 'src/composables/useTutorial'
 import mapboxgl from 'mapbox-gl'
 import { LOCALIZACIONES_INTERNAS } from 'src/data/localizaciones.js'
+import SoporteTecnicoPanel from 'src/components/SoporteTecnicoPanel.vue'
+import { useSoporteTecnico } from 'src/composables/useSoporteTecnico'
+
+import { useNotificacionesEventos } from 'src/composables/useNotificacionesEventos'
 
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
@@ -527,6 +543,7 @@ const userId = ref(auth.currentUser?.uid || '')
 const { cargarUsuarioActual, idEmpresaActual } = useMultiTenancy()
 
 const mapaDragging = ref(false)
+const soporteDialogOpen = ref(false)
 
 //  LÍNEA DE SEGURIDAD - ASEGURA QUE EL ESTADO EXISTA
 if (!estadoCompartido.value) {
@@ -570,6 +587,9 @@ const geozonasCargadas = ref(false)
 const pois = ref([])
 const geozonas = ref([])
 const itemParaGeozonas = ref(null)
+const { inicializarForm, resetear } = useSoporteTecnico()
+
+const { iniciarEscucha, detenerEscucha } = useNotificacionesEventos()
 
 // AGREGAR ESTA FUNCIÓN en tu <script setup> de MainLayout.vue
 
@@ -594,6 +614,9 @@ function abrirEventosConUbicacion(data) {
   setTimeout(() => {
     eventosDrawerOpen.value = true
   }, 350)
+}
+function abrirSoporte() {
+  soporteDialogOpen.value = true
 }
 
 // Función para cargar datos de conductores si no están cargados
@@ -1146,18 +1169,18 @@ onMounted(() => {
         console.error(' Error cargando usuario:', error)
       }
     }
+
+    await iniciarEscucha()
   })
   window.addEventListener('cerrarTodosDialogs', () => {
     cerrarTodosLosDialogs()
   })
 
+  document.addEventListener('click', handleClickOutside)
+
   window.setMapaDragging = (valor) => {
     mapaDragging.value = valor
   }
-})
-
-onUnmounted(() => {
-  window.removeEventListener('cerrarTodosDialogs', () => {})
 })
 
 onUnmounted(() => {
@@ -1169,7 +1192,12 @@ onUnmounted(() => {
   if (timeoutBusqueda) {
     clearTimeout(timeoutBusqueda)
   }
+
+  window.removeEventListener('cerrarTodosDialogs', () => {})
+
+  detenerEscucha()
 })
+
 function handleClickOutside(event) {
   const searchContainer = document.querySelector('.search-container')
   const sugerenciasContainer = document.querySelector('.sugerencias-container')
