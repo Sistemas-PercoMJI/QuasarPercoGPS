@@ -195,6 +195,8 @@ const {
   resetear,
   recargarConfiguracion,
   reconstruirEstadoDesdeFirebase,
+  yaReconstruido, // ← agregar
+  resetearEstadoReconstruido, // ← agregar
 } = useEventDetection()
 
 const marcadoresPOIs = ref([])
@@ -275,18 +277,14 @@ watch(
   },
   { deep: false, immediate: false },
 )
-let estadoReconstruido = false
 
 watch(
   unidadesActivas,
   async (nuevasUnidades) => {
     if (!nuevasUnidades || nuevasUnidades.length === 0) return
-    if (estadoReconstruido) return
-
-    estadoReconstruido = true
+    if (yaReconstruido()) return
 
     const unidadesIds = nuevasUnidades.map((u) => u.unidadId || u.id).filter(Boolean)
-
     console.log('Reconstruyendo estado con IDs:', unidadesIds)
     await reconstruirEstadoDesdeFirebase(unidadesIds)
     console.log('✅ Estado reconstruido desde watch')
@@ -294,7 +292,6 @@ watch(
   },
   { immediate: false },
 )
-
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -2316,6 +2313,7 @@ onUnmounted(() => {
   detenerEvaluacionEventos()
   limpiarMarcadoresUnidades()
   resetear()
+  resetearEstadoReconstruido()
 
   if (window._resizeHandler) {
     window.removeEventListener('resize', window._resizeHandler)

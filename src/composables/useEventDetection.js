@@ -25,6 +25,7 @@ const salidasEnCurso = ref(new Map())
 //  NUEVO: Throttle para tracking (evita llamadas duplicadas rápidas)
 const ultimoTrackingPorUnidad = ref(new Map())
 const TRACKING_THROTTLE_MS = 2000 // 2 segundos
+let estadoReconstruido = false
 
 // Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
@@ -756,5 +757,13 @@ export function useEventDetection() {
     eventosEnCurso,
     ubicacionesTrackeadas,
     reconstruirEstadoDesdeFirebase,
+    resetearEstadoReconstruido: () => {
+      estadoReconstruido = false
+    },
+    yaReconstruido: () => {
+      if (estadoReconstruido) return true
+      estadoReconstruido = true
+      return false
+    },
   }
 }
