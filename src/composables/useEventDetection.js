@@ -26,6 +26,7 @@ const salidasEnCurso = ref(new Map())
 const ultimoTrackingPorUnidad = ref(new Map())
 const TRACKING_THROTTLE_MS = 2000 // 2 segundos
 let estadoReconstruido = false
+let reconstruyendo = false
 
 // Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
@@ -172,6 +173,7 @@ export function useEventDetection() {
    * Solo se ejecuta para ubicaciones que tienen eventos configurados
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
+    if (reconstruyendo) return
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
     const estadoActual = estadoUbicaciones.value.get(claveUbicacion)
 
@@ -627,8 +629,11 @@ export function useEventDetection() {
   }
 
   async function reconstruirEstadoDesdeFirebase(unidadesIds) {
-    if (!unidadesIds || unidadesIds.length === 0) return
-
+    reconstruyendo = true
+    if (!unidadesIds || unidadesIds.length === 0) {
+      reconstruyendo = false
+      return
+    }
     const hoy = new Date().toISOString().split('T')[0]
 
     for (const unidadId of unidadesIds) {
@@ -683,6 +688,7 @@ export function useEventDetection() {
         console.warn(`Error reconstruyendo estado para unidad ${unidadId}:`, err)
       }
     }
+    reconstruyendo = false // ← agregar al final
   }
 
   /**
