@@ -1097,6 +1097,10 @@ const dibujarTodosEnMapa = async () => {
 
   mapaAPI = mapPage._mapaAPI
 
+  if (!mapaAPI.map.loaded()) {
+    await new Promise((resolve) => mapaAPI.map.once('load', resolve))
+  }
+
   try {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
