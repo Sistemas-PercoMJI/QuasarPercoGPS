@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore'
-import { useGeocoding } from './useGeocoding' //  Importar geocoding
+import { useGeocoding } from '../useGeocoding' //  Importar geocoding
 
 export function useEventosUnidad() {
   const loading = ref(false)
