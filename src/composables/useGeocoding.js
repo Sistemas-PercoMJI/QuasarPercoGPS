@@ -1,10 +1,7 @@
 // src/composables/useGeocoding.js
 import { ref } from 'vue'
 
-const MAPBOX_TOKEN =
-  import.meta.env.VITE_MAPBOX_TOKEN ||
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
-
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // Cache global para evitar llamadas repetidas
 const cacheGeocodificacion = ref({})
 

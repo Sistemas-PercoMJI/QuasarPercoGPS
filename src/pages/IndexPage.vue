@@ -169,8 +169,7 @@ import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
 
 //import { Notify } from 'quasar'
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const geozonasCacheCompleto = ref([])
 const previewSatelite = `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/-116.95,32.50,13,0/160x100@2x?access_token=${MAPBOX_TOKEN}`
 const previewCalles = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/-116.95,32.50,13,0/160x100@2x?access_token=${MAPBOX_TOKEN}`

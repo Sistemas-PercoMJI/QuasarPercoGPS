@@ -186,7 +186,14 @@ export function useEventDetection() {
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
+    const estadoActual = estadoUbicaciones.value.get(claveUbicacion)
 
+    // Solo loguear cuando está dentro, para no llenar la consola
+    if (estadoActual === 'dentro') {
+      console.log(
+        `🔄 Evaluando ${unidad.id}-${ubicacion.nombre} | estaDentro:${estaDentro} | estado:${estadoActual}`,
+      )
+    }
     //  THROTTLE: Evitar procesamiento duplicado rápido
     const ahora = Date.now()
     const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0

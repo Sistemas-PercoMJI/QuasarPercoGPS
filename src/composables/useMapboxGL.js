@@ -59,8 +59,7 @@ const ESTILOS_MAPA = {
 let popupGlobalActivo = null
 
 //  Tu API key de Mapbox
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
 //  OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
 const THROTTLE_MS = 200 //  200ms = 5 actualizaciones/segundo (antes era 300ms)
@@ -1783,8 +1782,7 @@ export function useMapboxGL() {
         delete window._mapMoveEndHandler
       }
 
-      mapboxgl.accessToken =
-        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
       map.value = new mapboxgl.Map({
         container: containerId,
