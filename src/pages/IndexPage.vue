@@ -1098,9 +1098,14 @@ const dibujarTodosEnMapa = async () => {
   mapaAPI = mapPage._mapaAPI
 
   if (!mapaAPI.map.loaded()) {
-    await new Promise((resolve) => mapaAPI.map.once('load', resolve))
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 3000) // máximo 3 segundos
+      mapaAPI.map.once('load', () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
   }
-
   try {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
