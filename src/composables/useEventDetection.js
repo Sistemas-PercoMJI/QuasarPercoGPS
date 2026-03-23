@@ -42,24 +42,16 @@ export function useEventDetection() {
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
-    pois.forEach((poi) => {
-      poisMapeados.value.set(poi.id, poi)
-    })
+    pois.forEach((poi) => poisMapeados.value.set(poi.id, poi))
 
     geozonasMapeadas.value.clear()
-    geozonas.forEach((geozona) => {
-      geozonasMapeadas.value.set(geozona.id, geozona)
-    })
+    geozonas.forEach((geozona) => geozonasMapeadas.value.set(geozona.id, geozona))
 
-    //  NUEVO: Construir mapa de ubicaciones a trackear
     ubicacionesTrackeadas.value.clear()
-
     eventosActivos.value.forEach((evento) => {
       if (!evento.condiciones) return
-
       evento.condiciones.forEach((condicion) => {
         const key = `${condicion.tipo}-${condicion.ubicacionId}`
-
         if (!ubicacionesTrackeadas.value.has(key)) {
           ubicacionesTrackeadas.value.set(key, {
             tipo: condicion.tipo,
@@ -69,26 +61,20 @@ export function useEventDetection() {
             eventos: [],
           })
         }
-
         const tracking = ubicacionesTrackeadas.value.get(key)
-
-        if (condicion.activacion === 'Entrada') {
-          tracking.tieneEventoEntrada = true
-        }
-        if (condicion.activacion === 'Salida') {
-          tracking.tieneEventoSalida = true
-        }
-
-        if (!tracking.eventos.includes(evento.id)) {
-          tracking.eventos.push(evento.id)
-        }
+        if (condicion.activacion === 'Entrada') tracking.tieneEventoEntrada = true
+        if (condicion.activacion === 'Salida') tracking.tieneEventoSalida = true
+        if (!tracking.eventos.includes(evento.id)) tracking.eventos.push(evento.id)
       })
     })
 
     eventosDisparados.value.clear()
-    estadoUbicaciones.value.clear()
-    eventosEnCurso.value.clear()
-    salidasEnCurso.value.clear()
+    // ← SOLO limpiar estadoUbicaciones si NO hay estado reconstruido
+    if (!estadoReconstruido) {
+      estadoUbicaciones.value.clear()
+      eventosEnCurso.value.clear()
+      salidasEnCurso.value.clear()
+    }
   }
 
   /**
