@@ -17,6 +17,13 @@ export function useNotifications() {
     const ahora = Date.now()
     const expiraEn = ahora + 5 * 60 * 1000 // 5 minutos
 
+    setTimeout(
+      () => {
+        marcarComoLeida(id)
+      },
+      24 * 60 * 60 * 1000,
+    )
+
     //  GENERAR MAPA SI HAY UBICACIÓN
     let mapImage = null
     let mapUrl = null
@@ -41,6 +48,7 @@ export function useNotifications() {
 
     const nuevaNotificacion = {
       id,
+      leida: notificacionData.yaLeida || false,
       type: notificacionData.type || 'info',
       title: notificacionData.title || 'Notificación',
       message: notificacionData.message || '',
@@ -51,9 +59,18 @@ export function useNotifications() {
       accion: notificacionData.accion || '',
       timestamp: ahora,
       expiraEn,
-      leida: false,
       mapImage, //  Imagen del mapa en base64
       mapUrl, //  URL del mapa para abrir en nueva pestaña
+    }
+
+    if (!nuevaNotificacion.leida) {
+      // 🆕
+      setTimeout(
+        () => {
+          marcarComoLeida(id)
+        },
+        24 * 60 * 60 * 1000,
+      )
     }
 
     notifications.value.unshift(nuevaNotificacion)

@@ -74,12 +74,9 @@ export function useTrayectosDiarios() {
           const lat = coord.lat || coord.latitude
           const lng = coord.lng || coord.longitude || coord.lon
           const timestamp = coord.timestamp || coord.time
+          // 🆕 Ignorar timestamps con Z (son del buffer del servidor)
+          if (timestamp && timestamp.endsWith('Z')) return false
           return lat && lng && timestamp
-        })
-        .filter((coord) => {
-          // 👈 NUEVO: descartar puntos de serverTime (buffer Ruptela)
-          const ts = coord.timestamp || coord.time || ''
-          return !/\.\d{3}Z$/.test(ts)
         })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
@@ -125,88 +122,46 @@ export function useTrayectosDiarios() {
   const agruparEnViajes = (coordenadas) => {
     if (!coordenadas || coordenadas.length === 0) return []
 
-    const tieneAlgunFalse = coordenadas.some((c) => c.ignicion === false || c.ignicion === 'false')
+    const coordenadasLimpias = coordenadas.filter((c) => {
+      const ignicionFalse = c.ignicion === false || c.ignicion === 'false'
+      if (ignicionFalse && c.velocidad > 0) return false
+      return true
+    })
 
     const viajes = []
     let viajeActual = []
 
-    for (let i = 0; i < coordenadas.length; i++) {
-      const punto = coordenadas[i]
+    for (let i = 0; i < coordenadasLimpias.length; i++) {
+      const punto = coordenadasLimpias[i]
       const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
-      if (tieneAlgunFalse) {
-        if (ignicion) {
-          // Ver si hay un gap grande con el punto anterior
-          if (viajeActual.length > 0) {
-            const ultimo = viajeActual[viajeActual.length - 1]
-            const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-            if (gap >= 2 * 60 * 1000) {
-              // Antes de cerrar, quitar puntos false del final
-              while (
-                viajeActual.length > 0 &&
-                (viajeActual[viajeActual.length - 1].ignicion === false ||
-                  viajeActual[viajeActual.length - 1].ignicion === 'false')
-              ) {
-                viajeActual.pop()
-              }
-              if (viajeActual.length >= 2) viajes.push(viajeActual)
-              viajeActual = []
-            }
-          }
-          viajeActual.push(punto)
-        } else {
-          // ignicion false: solo agregar, no cerrar todavía
-          viajeActual.push(punto)
-
-          // Cerrar si el siguiente punto true tiene gap >= 2 min
-          const siguiente = coordenadas[i + 1]
-          const siguienteIgnicion = siguiente?.ignicion === true || siguiente?.ignicion === 'true'
-
-          if (!siguiente) {
-            // Fin del array: cerrar quitando false del final
-            while (
-              viajeActual.length > 0 &&
-              (viajeActual[viajeActual.length - 1].ignicion === false ||
-                viajeActual[viajeActual.length - 1].ignicion === 'false')
-            ) {
-              viajeActual.pop()
-            }
-            if (viajeActual.length >= 2) viajes.push(viajeActual)
-            viajeActual = []
-          } else if (siguienteIgnicion) {
-            const gap =
-              new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
-            if (gap >= 2 * 60 * 1000) {
-              // Gap suficiente: cerrar viaje quitando false del final
-              while (
-                viajeActual.length > 0 &&
-                (viajeActual[viajeActual.length - 1].ignicion === false ||
-                  viajeActual[viajeActual.length - 1].ignicion === 'false')
-              ) {
-                viajeActual.pop()
-              }
-              if (viajeActual.length >= 2) viajes.push(viajeActual)
-              viajeActual = []
-            }
-          }
-        }
-      } else {
-        // Fallback: solo gaps de tiempo
-        if (viajeActual.length > 0) {
-          const ultimo = viajeActual[viajeActual.length - 1]
-          const gap = new Date(punto.timestamp).getTime() - new Date(ultimo.timestamp).getTime()
-          if (gap >= 2 * 60 * 1000) {
-            if (viajeActual.length >= 2) viajes.push(viajeActual)
-            viajeActual = []
-          }
-        }
+      if (ignicion) {
         viajeActual.push(punto)
+      } else {
+        // ignicion false — buscar el siguiente ping
+        const siguiente = coordenadasLimpias[i + 1]
+
+        if (!siguiente) {
+          // Fin del array, cerrar viaje
+          if (viajeActual.length >= 2) viajes.push(viajeActual)
+          viajeActual = []
+        } else {
+          const siguienteIgnicion = siguiente.ignicion === true || siguiente.ignicion === 'true'
+          const gap = new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
+
+          if (!siguienteIgnicion || gap >= 2 * 60 * 1000) {
+            // Siguiente también es false, O hay gap >= 2 min → confirmar fin de viaje
+            if (viajeActual.length >= 2) viajes.push(viajeActual)
+            viajeActual = []
+          }
+          // Si el siguiente es true con gap < 2 min → fue un apagón momentáneo, continuar viaje
+        }
       }
     }
 
     if (viajeActual.length >= 2) viajes.push(viajeActual)
 
-    return viajes.filter((viaje) => viaje.some((p) => p.ignicion === true || p.ignicion === 'true'))
+    return viajes
   }
 
   /**
@@ -268,6 +223,16 @@ export function useTrayectosDiarios() {
         }
       })
       .filter(Boolean)
+      .filter((t) => {
+        // Filtrar trayectos donde la distancia es menor a 0.5 km
+        // y la duración es mayor a 10 minutos (estaba parado)
+        const duracionMs =
+          new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
+        const duracionMin = duracionMs / 60000
+
+        if (t.distancia < 0.5 && duracionMin > 10) return false
+        return true
+      })
   }
 
   /**
@@ -312,21 +277,39 @@ export function useTrayectosDiarios() {
       // Generar resumen
       const resumen = await generarResumenDesdeData(data, trayectos)
 
+      const trayectosMapeados = trayectos.map((t, index) => ({
+        id: `trayecto_${fechaStr}_${index}`,
+        titulo: `Viaje ${index + 1}`,
+        horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
+        horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
+        duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
+        distancia: `${t.distancia.toFixed(2)} km`,
+        coordenadas: t.coordenadas,
+        icono: 'navigation',
+        color: 'green',
+        direccionInicio: null,
+        direccionFin: null,
+        inicio: t.inicio,
+        fin: t.fin,
+      }))
+
+      const trayectosConDirecciones = await Promise.all(
+        trayectosMapeados.map(async (t) => {
+          const [dirInicio, dirFin] = await Promise.all([
+            obtenerDireccion({ lat: t.inicio.lat, lng: t.inicio.lng }),
+            obtenerDireccion({ lat: t.fin.lat, lng: t.fin.lng }),
+          ])
+          return {
+            ...t,
+            direccionInicio: dirInicio,
+            direccionFin: dirFin,
+          }
+        }),
+      )
+
       return {
         existenDatos: true,
-        trayectos: trayectos.map((t, index) => ({
-          id: `trayecto_${fechaStr}_${index}`,
-          titulo: `Viaje ${index + 1}`,
-          horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
-          horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
-          duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
-          distancia: `${t.distancia.toFixed(2)} km`,
-          velocidadMax: `${Math.round(t.velocidadMax)} km/h`,
-          velocidadPromedio: `${Math.round(t.velocidadPromedio)} km/h`,
-          coordenadas: t.coordenadas,
-          icono: 'navigation',
-          color: 'green',
-        })),
+        trayectos: trayectosConDirecciones,
         resumen,
       }
     } catch (err) {

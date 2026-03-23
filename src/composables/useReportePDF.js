@@ -1374,15 +1374,26 @@ export function useReportePDF() {
                   doc.addPage()
                   yPos = 20
                 }
-                doc.setFontSize(8)
-                doc.setFont(undefined, 'normal')
-                doc.setTextColor(180, 0, 0)
-                doc.text('✖ = Pérdida de señal', 26, yPos)
-                yPos += 5
-                doc.setTextColor(0, 150, 0)
-                doc.text('★ = Reconexión de señal', 26, yPos)
-                yPos += 8
+                doc.setFillColor(180, 0, 0)
+                doc.circle(24, yPos - 1.5, 3, 'F')
+                doc.setTextColor(255, 255, 255)
+                doc.setFontSize(6)
+                doc.text('X', 22.8, yPos)
                 doc.setTextColor(0, 0, 0)
+                doc.setFontSize(9)
+                doc.text('= Pérdida de señal', 29, yPos)
+                yPos += 6
+
+                // Ícono reconexión de señal
+                doc.setFillColor(0, 150, 0)
+                doc.circle(24, yPos - 1.5, 3, 'F')
+                doc.setTextColor(255, 255, 255)
+                doc.setFontSize(6)
+                doc.text('*', 23, yPos)
+                doc.setTextColor(0, 0, 0)
+                doc.setFontSize(9)
+                doc.text('= Reconexión de señal', 29, yPos)
+                yPos += 8
               }
             }
           } catch (error) {
@@ -1991,15 +2002,26 @@ export function useReportePDF() {
                     doc.addPage()
                     yPos = 20
                   }
-                  doc.setFontSize(8)
-                  doc.setFont(undefined, 'normal')
-                  doc.setTextColor(180, 0, 0)
-                  doc.text('✖ = Pérdida de señal', 26, yPos)
-                  yPos += 5
-                  doc.setTextColor(0, 150, 0)
-                  doc.text('★ = Reconexión de señal', 26, yPos)
-                  yPos += 8
+                  doc.setFillColor(180, 0, 0)
+                  doc.circle(24, yPos - 1.5, 3, 'F')
+                  doc.setTextColor(255, 255, 255)
+                  doc.setFontSize(6)
+                  doc.text('X', 22.8, yPos)
                   doc.setTextColor(0, 0, 0)
+                  doc.setFontSize(9)
+                  doc.text('= Pérdida de señal', 29, yPos)
+                  yPos += 6
+
+                  // Ícono reconexión de señal
+                  doc.setFillColor(0, 150, 0)
+                  doc.circle(24, yPos - 1.5, 3, 'F')
+                  doc.setTextColor(255, 255, 255)
+                  doc.setFontSize(6)
+                  doc.text('*', 23, yPos)
+                  doc.setTextColor(0, 0, 0)
+                  doc.setFontSize(9)
+                  doc.text('= Reconexión de señal', 29, yPos)
+                  yPos += 8
                 }
               }
             } catch (error) {
@@ -2309,15 +2331,26 @@ export function useReportePDF() {
                     doc.addPage()
                     yPos = 20
                   }
-                  doc.setFontSize(8)
-                  doc.setFont(undefined, 'normal')
-                  doc.setTextColor(180, 0, 0)
-                  doc.text('✖ = Pérdida de señal', 26, yPos)
-                  yPos += 5
-                  doc.setTextColor(0, 150, 0)
-                  doc.text('★ = Reconexión de señal', 26, yPos)
-                  yPos += 8
+                  doc.setFillColor(180, 0, 0)
+                  doc.circle(24, yPos - 1.5, 3, 'F')
+                  doc.setTextColor(255, 255, 255)
+                  doc.setFontSize(6)
+                  doc.text('X', 22.8, yPos)
                   doc.setTextColor(0, 0, 0)
+                  doc.setFontSize(9)
+                  doc.text('= Pérdida de señal', 29, yPos)
+                  yPos += 6
+
+                  // Ícono reconexión de señal
+                  doc.setFillColor(0, 150, 0)
+                  doc.circle(24, yPos - 1.5, 3, 'F')
+                  doc.setTextColor(255, 255, 255)
+                  doc.setFontSize(6)
+                  doc.text('*', 23, yPos)
+                  doc.setTextColor(0, 0, 0)
+                  doc.setFontSize(9)
+                  doc.text('= Reconexión de señal', 29, yPos)
+                  yPos += 8
                 }
               }
             } catch (error) {
@@ -2489,15 +2522,26 @@ export function useReportePDF() {
                   doc.addPage()
                   yPos = 20
                 }
-                doc.setFontSize(8)
-                doc.setFont(undefined, 'normal')
-                doc.setTextColor(180, 0, 0)
-                doc.text('✖ = Pérdida de señal', 26, yPos)
-                yPos += 5
-                doc.setTextColor(0, 150, 0)
-                doc.text('★ = Reconexión de señal', 26, yPos)
-                yPos += 8
+                doc.setFillColor(180, 0, 0)
+                doc.circle(24, yPos - 1.5, 3, 'F')
+                doc.setTextColor(255, 255, 255)
+                doc.setFontSize(6)
+                doc.text('X', 22.8, yPos)
                 doc.setTextColor(0, 0, 0)
+                doc.setFontSize(9)
+                doc.text('= Pérdida de señal', 29, yPos)
+                yPos += 6
+
+                // Ícono reconexión de señal
+                doc.setFillColor(0, 150, 0)
+                doc.circle(24, yPos - 1.5, 3, 'F')
+                doc.setTextColor(255, 255, 255)
+                doc.setFontSize(6)
+                doc.text('*', 23, yPos)
+                doc.setTextColor(0, 0, 0)
+                doc.setFontSize(9)
+                doc.text('= Reconexión de señal', 29, yPos)
+                yPos += 8
               }
             }
           } catch (error) {

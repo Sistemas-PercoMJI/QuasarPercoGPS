@@ -7,8 +7,7 @@
  * CONFIGURACIÓN
  * ============================================
  */
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const MAPBOX_STYLE = 'streets-v12' // streets-v12, satellite-v9, outdoors-v12, etc.
 const MAP_WIDTH = 1200
 const MAP_HEIGHT = 800

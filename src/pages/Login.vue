@@ -1,6 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -12,8 +13,13 @@ const $q = useQuasar()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const correoGuardado = ref(null)
 const { cargarUsuarioActual } = useMultiTenancy()
 
+onMounted(() => {
+  const ultimo = localStorage.getItem('ultimo_correo_login')
+  if (ultimo) correoGuardado.value = ultimo
+})
 const login = async () => {
   // Validar campos
   if (!email.value || !password.value) {
@@ -30,7 +36,7 @@ const login = async () => {
     // Intentar login con Firebase
     const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
     await cargarUsuarioActual()
-
+    localStorage.setItem('ultimo_correo_login', email.value)
     // Login exitoso
     console.log('Usuario logueado:', userCredential.user)
 
@@ -66,6 +72,10 @@ const login = async () => {
     loading.value = false
   }
 }
+const descartarCorreoGuardado = () => {
+  correoGuardado.value = null
+  localStorage.removeItem('ultimo_correo_login')
+}
 </script>
 
 <template>
@@ -82,6 +92,25 @@ const login = async () => {
             <div class="text-subtitle2 text-grey-7">Sistema de Rastreo Vehicular</div>
           </q-card-section>
 
+          <q-card-section v-if="correoGuardado && !email" class="q-px-lg q-pt-none q-pb-none">
+            <div class="text-caption text-grey-6 q-mb-xs">Continuar como:</div>
+            <q-chip
+              clickable
+              icon="account_circle"
+              color="grey-2"
+              text-color="grey-8"
+              class="full-width chip-cuenta"
+              @click="email = correoGuardado"
+            >
+              {{ correoGuardado }}
+              <q-icon
+                name="close"
+                size="14px"
+                class="q-ml-auto cursor-pointer"
+                @click.stop="descartarCorreoGuardado"
+              />
+            </q-chip>
+          </q-card-section>
           <!-- Formulario -->
           <q-card-section class="q-px-lg q-pt-md">
             <q-input
@@ -269,5 +298,12 @@ const login = async () => {
   .text-h4 {
     font-size: 1.8rem !important;
   }
+}
+
+.chip-cuenta {
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  border: 1px solid #e0e0e0 !important;
+  justify-content: flex-start !important;
 }
 </style>

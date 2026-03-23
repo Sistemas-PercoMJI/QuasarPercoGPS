@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { useNotifications } from './useNotifications'
 import { useRutaDiaria } from './useRutaDiaria'
 import { useEventoDiario } from './useEventoDiario'
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { db } from 'src/firebase/firebaseConfig'
 
 // Estado del sistema de detección
 const eventosActivos = ref([])
@@ -35,6 +37,7 @@ export function useEventDetection() {
    * NUEVO: Construye mapa de ubicaciones que tienen eventos (para trackear solo esas)
    */
   function inicializar(eventos, pois, geozonas) {
+    console.trace('⚠️ inicializar() llamado - estadoUbicaciones será limpiado')
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
@@ -183,7 +186,14 @@ export function useEventDetection() {
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
+    const estadoActual = estadoUbicaciones.value.get(claveUbicacion)
 
+    // Solo loguear cuando está dentro, para no llenar la consola
+    if (estadoActual === 'dentro') {
+      console.log(
+        `🔄 Evaluando ${unidad.id}-${ubicacion.nombre} | estaDentro:${estaDentro} | estado:${estadoActual}`,
+      )
+    }
     //  THROTTLE: Evitar procesamiento duplicado rápido
     const ahora = Date.now()
     const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0
@@ -200,6 +210,10 @@ export function useEventDetection() {
     // ENTRADA DETECTADA
     // ========================================
     if (estaDentro && estadoAnterior !== 'dentro') {
+      console.warn(
+        `⚠️ ENTRADA DISPARADA - unidad:${unidad.id} ubicacion:${ubicacion.nombre} estadoAnterior=${estadoAnterior} timestamp:${new Date().toISOString()}`,
+      )
+
       estadoUbicaciones.value.set(claveUbicacion, 'dentro')
 
       const nombreConductor = (() => {
@@ -625,6 +639,65 @@ export function useEventDetection() {
     })
   }
 
+  async function reconstruirEstadoDesdeFirebase(unidadesIds) {
+    if (!unidadesIds || unidadesIds.length === 0) return
+
+    const hoy = new Date().toISOString().split('T')[0]
+
+    for (const unidadId of unidadesIds) {
+      try {
+        const eventosRef = collection(db, 'Unidades', unidadId, 'RutaDiaria', hoy, 'EventoDiario')
+
+        // Obtener todos los eventos de hoy ordenados por timestamp
+        const q = query(eventosRef, orderBy('Timestamp', 'desc'), limit(100))
+        const snapshot = await getDocs(q)
+
+        if (snapshot.empty) continue
+
+        const eventos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
+        // Para cada ubicación, buscar si hay una entrada sin FinEvento
+        // (agrupamos por ubicacionId para encontrar el último evento de cada una)
+        const ultimoPorUbicacion = {}
+
+        // Iterar en orden cronológico (de más viejo a más nuevo)
+        eventos.reverse().forEach((evento) => {
+          const ubicacionId = evento.ubicacionId
+          if (!ubicacionId) return
+          ultimoPorUbicacion[ubicacionId] = evento
+        })
+
+        // Reconstruir estado
+        Object.entries(ultimoPorUbicacion).forEach(([ubicacionId, ultimoEvento]) => {
+          const tipoUbicacion = ultimoEvento.tipoUbicacion || 'Geozona'
+          const claveUbicacion = `${unidadId}-${tipoUbicacion}-${ubicacionId}`
+
+          if (ultimoEvento.TipoEvento === 'Entrada' && ultimoEvento.FinEvento === null) {
+            // Unidad sigue dentro
+            estadoUbicaciones.value.set(claveUbicacion, 'dentro')
+
+            // También reconstruir eventosEnCurso para que la salida funcione bien
+            const claveEntrada = `${unidadId}-${ubicacionId}`
+            eventosEnCurso.value.set(claveEntrada, {
+              idEvento: ultimoEvento.id,
+              idRutaDiaria: hoy,
+              timestampEntrada: ultimoEvento.Timestamp?.toDate?.()?.getTime() || Date.now(),
+              ubicacionNombre: ultimoEvento.GeozonaNombre || ultimoEvento.PoiNombre || '',
+              ubicacionId: ubicacionId,
+            })
+
+            console.log(`↩️ Estado reconstruido: ${unidadId} DENTRO de ${ubicacionId}`)
+          } else if (ultimoEvento.TipoEvento === 'Salida') {
+            // Unidad está fuera
+            estadoUbicaciones.value.set(claveUbicacion, 'fuera')
+          }
+        })
+      } catch (err) {
+        console.warn(`Error reconstruyendo estado para unidad ${unidadId}:`, err)
+      }
+    }
+  }
+
   /**
    * Resetea el sistema de detección
    */
@@ -682,5 +755,6 @@ export function useEventDetection() {
     ubicacionActual,
     eventosEnCurso,
     ubicacionesTrackeadas,
+    reconstruirEstadoDesdeFirebase,
   }
 }
