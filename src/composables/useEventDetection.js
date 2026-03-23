@@ -40,6 +40,7 @@ export function useEventDetection() {
    */
   function inicializar(eventos, pois, geozonas) {
     console.trace('⚠️ inicializar() llamado - estadoUbicaciones será limpiado')
+    reconstruyendo = true
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
@@ -76,6 +77,7 @@ export function useEventDetection() {
       eventosEnCurso.value.clear()
       salidasEnCurso.value.clear()
     }
+    reconstruyendo = false
   }
 
   /**
