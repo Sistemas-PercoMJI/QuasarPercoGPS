@@ -284,10 +284,15 @@ watch(
     if (!nuevasUnidades || nuevasUnidades.length === 0) return
     if (yaReconstruido()) return
 
+    // Pausar evaluación mientras reconstruimos
+    detenerEvaluacionEventos()
+
     const unidadesIds = nuevasUnidades.map((u) => u.unidadId || u.id).filter(Boolean)
     console.log('Reconstruyendo estado con IDs:', unidadesIds)
     await reconstruirEstadoDesdeFirebase(unidadesIds)
     console.log('✅ Estado reconstruido desde watch')
+
+    // Iniciar evaluación DESPUÉS de reconstruir
     iniciarEvaluacionContinuaEventos()
   },
   { immediate: false },
