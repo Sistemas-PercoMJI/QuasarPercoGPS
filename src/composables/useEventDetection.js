@@ -37,6 +37,7 @@ export function useEventDetection() {
    * NUEVO: Construye mapa de ubicaciones que tienen eventos (para trackear solo esas)
    */
   function inicializar(eventos, pois, geozonas) {
+    console.trace('⚠️ inicializar() llamado - estadoUbicaciones será limpiado')
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
