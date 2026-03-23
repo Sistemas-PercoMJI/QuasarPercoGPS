@@ -72,11 +72,7 @@ export function useEventDetection() {
 
     eventosDisparados.value.clear()
     // ← SOLO limpiar estadoUbicaciones si NO hay estado reconstruido
-    if (!estadoReconstruido) {
-      estadoUbicaciones.value.clear()
-      eventosEnCurso.value.clear()
-      salidasEnCurso.value.clear()
-    }
+
     reconstruyendo = false
   }
 
