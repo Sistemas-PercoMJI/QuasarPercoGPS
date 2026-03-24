@@ -25,6 +25,8 @@ const salidasEnCurso = ref(new Map())
 //  NUEVO: Throttle para tracking (evita llamadas duplicadas rápidas)
 const ultimoTrackingPorUnidad = ref(new Map())
 const TRACKING_THROTTLE_MS = 2000 // 2 segundos
+let estadoReconstruido = false
+let reconstruyendo = false
 
 // Integración con notificaciones y Firebase
 const { agregarNotificacion } = useNotifications()
@@ -38,27 +40,20 @@ export function useEventDetection() {
    */
   function inicializar(eventos, pois, geozonas) {
     console.trace('⚠️ inicializar() llamado - estadoUbicaciones será limpiado')
+    reconstruyendo = true
     eventosActivos.value = eventos.filter((e) => e.activo)
 
     poisMapeados.value.clear()
-    pois.forEach((poi) => {
-      poisMapeados.value.set(poi.id, poi)
-    })
+    pois.forEach((poi) => poisMapeados.value.set(poi.id, poi))
 
     geozonasMapeadas.value.clear()
-    geozonas.forEach((geozona) => {
-      geozonasMapeadas.value.set(geozona.id, geozona)
-    })
+    geozonas.forEach((geozona) => geozonasMapeadas.value.set(geozona.id, geozona))
 
-    //  NUEVO: Construir mapa de ubicaciones a trackear
     ubicacionesTrackeadas.value.clear()
-
     eventosActivos.value.forEach((evento) => {
       if (!evento.condiciones) return
-
       evento.condiciones.forEach((condicion) => {
         const key = `${condicion.tipo}-${condicion.ubicacionId}`
-
         if (!ubicacionesTrackeadas.value.has(key)) {
           ubicacionesTrackeadas.value.set(key, {
             tipo: condicion.tipo,
@@ -68,26 +63,17 @@ export function useEventDetection() {
             eventos: [],
           })
         }
-
         const tracking = ubicacionesTrackeadas.value.get(key)
-
-        if (condicion.activacion === 'Entrada') {
-          tracking.tieneEventoEntrada = true
-        }
-        if (condicion.activacion === 'Salida') {
-          tracking.tieneEventoSalida = true
-        }
-
-        if (!tracking.eventos.includes(evento.id)) {
-          tracking.eventos.push(evento.id)
-        }
+        if (condicion.activacion === 'Entrada') tracking.tieneEventoEntrada = true
+        if (condicion.activacion === 'Salida') tracking.tieneEventoSalida = true
+        if (!tracking.eventos.includes(evento.id)) tracking.eventos.push(evento.id)
       })
     })
 
     eventosDisparados.value.clear()
-    estadoUbicaciones.value.clear()
-    eventosEnCurso.value.clear()
-    salidasEnCurso.value.clear()
+    // ← SOLO limpiar estadoUbicaciones si NO hay estado reconstruido
+
+    reconstruyendo = false
   }
 
   /**
@@ -185,6 +171,7 @@ export function useEventDetection() {
    * Solo se ejecuta para ubicaciones que tienen eventos configurados
    */
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
+    if (reconstruyendo) return
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
     const estadoActual = estadoUbicaciones.value.get(claveUbicacion)
 
@@ -640,8 +627,11 @@ export function useEventDetection() {
   }
 
   async function reconstruirEstadoDesdeFirebase(unidadesIds) {
-    if (!unidadesIds || unidadesIds.length === 0) return
-
+    reconstruyendo = true
+    if (!unidadesIds || unidadesIds.length === 0) {
+      reconstruyendo = false
+      return
+    }
     const hoy = new Date().toISOString().split('T')[0]
 
     for (const unidadId of unidadesIds) {
@@ -696,6 +686,7 @@ export function useEventDetection() {
         console.warn(`Error reconstruyendo estado para unidad ${unidadId}:`, err)
       }
     }
+    reconstruyendo = false // ← agregar al final
   }
 
   /**
@@ -756,5 +747,13 @@ export function useEventDetection() {
     eventosEnCurso,
     ubicacionesTrackeadas,
     reconstruirEstadoDesdeFirebase,
+    resetearEstadoReconstruido: () => {
+      estadoReconstruido = false
+    },
+    yaReconstruido: () => {
+      if (estadoReconstruido) return true
+      estadoReconstruido = true
+      return false
+    },
   }
 }

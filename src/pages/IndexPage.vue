@@ -195,6 +195,8 @@ const {
   resetear,
   recargarConfiguracion,
   reconstruirEstadoDesdeFirebase,
+  yaReconstruido, // ← agregar
+  resetearEstadoReconstruido, // ← agregar
 } = useEventDetection()
 
 const marcadoresPOIs = ref([])
@@ -275,26 +277,26 @@ watch(
   },
   { deep: false, immediate: false },
 )
-let estadoReconstruido = false
 
 watch(
   unidadesActivas,
   async (nuevasUnidades) => {
     if (!nuevasUnidades || nuevasUnidades.length === 0) return
-    if (estadoReconstruido) return
+    if (yaReconstruido()) return
 
-    estadoReconstruido = true
+    // Pausar evaluación mientras reconstruimos
+    detenerEvaluacionEventos()
 
     const unidadesIds = nuevasUnidades.map((u) => u.unidadId || u.id).filter(Boolean)
-
     console.log('Reconstruyendo estado con IDs:', unidadesIds)
     await reconstruirEstadoDesdeFirebase(unidadesIds)
     console.log('✅ Estado reconstruido desde watch')
+
+    // Iniciar evaluación DESPUÉS de reconstruir
     iniciarEvaluacionContinuaEventos()
   },
   { immediate: false },
 )
-
 function iniciarEvaluacionContinuaEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
@@ -313,6 +315,7 @@ function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
     intervaloEvaluacionEventos = null
+    console.log('🛑 Evaluación detenida')
   }
 }
 
@@ -1094,6 +1097,15 @@ const dibujarTodosEnMapa = async () => {
 
   mapaAPI = mapPage._mapaAPI
 
+  if (!mapaAPI.map.loaded()) {
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 3000) // máximo 3 segundos
+      mapaAPI.map.once('load', () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+  }
   try {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
@@ -2316,6 +2328,7 @@ onUnmounted(() => {
   detenerEvaluacionEventos()
   limpiarMarcadoresUnidades()
   resetear()
+  resetearEstadoReconstruido()
 
   if (window._resizeHandler) {
     window.removeEventListener('resize', window._resizeHandler)
