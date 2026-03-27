@@ -263,6 +263,27 @@ export function useEventos(userId) {
       }
     }
   }
+  const contarEventosPorUbicacion = async (ubicacionId, tipo) => {
+    try {
+      const eventosSnapshot = await getDocs(eventosRef)
+      let cantidad = 0
+
+      eventosSnapshot.forEach((doc) => {
+        const evento = doc.data()
+        if (evento.condiciones && Array.isArray(evento.condiciones)) {
+          const tieneUbicacion = evento.condiciones.some(
+            (condicion) => condicion.ubicacionId === ubicacionId && condicion.tipo === tipo,
+          )
+          if (tieneUbicacion) cantidad++
+        }
+      })
+
+      return cantidad
+    } catch (err) {
+      console.error('Error al contar eventos:', err)
+      return 0
+    }
+  }
 
   //  MODIFICAR el return para incluir la nueva función:
   return {
@@ -275,5 +296,6 @@ export function useEventos(userId) {
     toggleEvento,
     duplicarEvento,
     eliminarEventosPorUbicacion,
+    contarEventosPorUbicacion,
   }
 }
