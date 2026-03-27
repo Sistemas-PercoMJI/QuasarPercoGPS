@@ -242,6 +242,7 @@ export function useGeozonas(userId) {
         userId: userId,
         IdEmpresaUsuario: empresas,
         puntos: puntos,
+        nombre: geozonaData.nombre || '',
         eventos: [],
       },
       { merge: true },

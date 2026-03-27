@@ -158,6 +158,7 @@ export function usePOIs(userId) {
         IdEmpresaUsuario: empresas,
         coordenadas: poiData.coordenadas || { lat: 0, lng: 0 },
         radio: poiData.radio || 100,
+        nombre: poiData.nombre || '',
         eventos: [],
       },
       { merge: true },
