@@ -12,6 +12,7 @@ import {
   query,
   orderBy,
   setDoc,
+  getDoc,
 } from 'firebase/firestore'
 
 export function useEventos(userId) {
@@ -38,7 +39,7 @@ export function useEventos(userId) {
       await updateDoc(docRef, {
         id: docRef.id,
       })
-
+      await sincronizarEventoEnUbicaciones(docRef.id, eventoData, 'agregar')
       return docRef.id
     } catch (err) {
       error.value = err.message
@@ -87,6 +88,7 @@ export function useEventos(userId) {
         ...eventoData,
         updatedAt: serverTimestamp(),
       })
+      await sincronizarEventoEnUbicaciones(eventoId, eventoData, 'agregar')
     } catch (err) {
       error.value = err.message
       console.error(' Error al actualizar evento:', err)
@@ -103,7 +105,17 @@ export function useEventos(userId) {
 
     try {
       const eventoDoc = doc(db, 'Usuarios', userId, 'Eventos', eventoId)
+
+      // Leer antes de eliminar
+      const eventoSnap = await getDoc(eventoDoc)
+      const eventoData = eventoSnap.exists() ? eventoSnap.data() : null
+
       await deleteDoc(eventoDoc)
+
+      // Sincronizar después de eliminar
+      if (eventoData) {
+        await sincronizarEventoEnUbicaciones(eventoId, eventoData, 'eliminar')
+      }
     } catch (err) {
       error.value = err.message
       console.error(' Error al eliminar evento:', err)
@@ -124,6 +136,10 @@ export function useEventos(userId) {
         activo,
         updatedAt: serverTimestamp(),
       })
+      const eventoSnap = await getDoc(eventoDoc)
+      if (eventoSnap.exists()) {
+        await sincronizarEventoEnUbicaciones(eventoId, { ...eventoSnap.data(), activo }, 'agregar')
+      }
     } catch (err) {
       error.value = err.message
       console.error(' Error al cambiar estado del evento:', err)
@@ -208,6 +224,43 @@ export function useEventos(userId) {
       throw err
     } finally {
       loading.value = false
+    }
+  }
+  // Sincronizar evento con UbicacionesGlobal
+  const sincronizarEventoEnUbicaciones = async (eventoId, eventoData, accion) => {
+    if (!eventoData.condiciones || eventoData.condiciones.length === 0) return
+
+    // Obtener ubicaciones únicas que referencia este evento
+    const ubicacionesIds = [...new Set(eventoData.condiciones.map((c) => c.ubicacionId))]
+
+    for (const ubicacionId of ubicacionesIds) {
+      const ubicacionRef = doc(db, 'UbicacionesGlobal', ubicacionId)
+      const ubicacionDoc = await getDoc(ubicacionRef)
+
+      if (!ubicacionDoc.exists()) continue
+
+      const eventosActuales = ubicacionDoc.data().eventos || []
+
+      if (accion === 'agregar') {
+        // Quitar versión anterior si existe y agregar la nueva
+        const eventoFiltrado = eventosActuales.filter((e) => e.eventoId !== eventoId)
+        const nuevoEvento = {
+          eventoId,
+          activo: eventoData.activo ?? true,
+          nombre: eventoData.nombre || '',
+          activacionAlerta: eventoData.activacionAlerta || 'Cada vez',
+          aplicacion: eventoData.aplicacion || 'siempre',
+          horaInicio: eventoData.horaInicio || null,
+          horaFin: eventoData.horaFin || null,
+          diasSemana: eventoData.diasSemana || [],
+          condiciones: eventoData.condiciones || [],
+          operadoresLogicos: eventoData.operadoresLogicos || [],
+        }
+        await updateDoc(ubicacionRef, { eventos: [...eventoFiltrado, nuevoEvento] })
+      } else if (accion === 'eliminar') {
+        const eventoFiltrado = eventosActuales.filter((e) => e.eventoId !== eventoId)
+        await updateDoc(ubicacionRef, { eventos: eventoFiltrado })
+      }
     }
   }
 
