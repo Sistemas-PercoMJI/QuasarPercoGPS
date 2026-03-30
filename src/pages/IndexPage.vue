@@ -191,11 +191,11 @@ const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 const { abrirGeozonasConPOI } = useEventBus()
 const {
   inicializar,
-  evaluarEventosParaUnidadesSimulacion,
+  // evaluarEventosParaUnidadesSimulacion,
   resetear,
   recargarConfiguracion,
-  reconstruirEstadoDesdeFirebase,
-  yaReconstruido, // ← agregar
+  //reconstruirEstadoDesdeFirebase,
+  //yaReconstruido, // ← agregar
   resetearEstadoReconstruido, // ← agregar
 } = useEventDetection()
 
@@ -277,39 +277,6 @@ watch(
   },
   { deep: false, immediate: false },
 )
-
-watch(
-  unidadesActivas,
-  async (nuevasUnidades) => {
-    if (!nuevasUnidades || nuevasUnidades.length === 0) return
-    if (yaReconstruido()) return
-
-    // Pausar evaluación mientras reconstruimos
-    detenerEvaluacionEventos()
-
-    const unidadesIds = nuevasUnidades.map((u) => u.unidadId || u.id).filter(Boolean)
-    console.log('Reconstruyendo estado con IDs:', unidadesIds)
-    await reconstruirEstadoDesdeFirebase(unidadesIds)
-    console.log('✅ Estado reconstruido desde watch')
-
-    // Iniciar evaluación DESPUÉS de reconstruir
-    iniciarEvaluacionContinuaEventos()
-  },
-  { immediate: false },
-)
-function iniciarEvaluacionContinuaEventos() {
-  if (intervaloEvaluacionEventos) {
-    clearInterval(intervaloEvaluacionEventos)
-  }
-
-  intervaloEvaluacionEventos = setInterval(() => {
-    const unidadesParaEvaluar = window._unidadesTrackeadas || unidadesActivas.value
-
-    if (unidadesParaEvaluar && unidadesParaEvaluar.length > 0) {
-      evaluarEventosParaUnidadesSimulacion(unidadesParaEvaluar)
-    }
-  }, 10000)
-}
 
 function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
@@ -2240,8 +2207,8 @@ onMounted(async () => {
       geozonas,
     )
 
-    detenerEvaluacionEventos()
-    iniciarEvaluacionContinuaEventos()
+    // detenerEvaluacionEventos()
+    // iniciarEvaluacionContinuaEventos()
 
     await nextTick()
     if (unidadesActivas.value?.length > 0) {
