@@ -210,7 +210,7 @@ export function useReportesEventos() {
                 const data = doc.data()
 
                 //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
-                const duracionSegundos = data.DuracionDentro || null
+                const duracionSegundos = data.DuracionSegundos ?? data.DuracionDentro ?? null
 
                 // Formatear duración como HH:MM:SS si existe
                 let duracionFormateada = null
