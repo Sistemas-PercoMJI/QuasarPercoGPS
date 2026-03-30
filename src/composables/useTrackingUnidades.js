@@ -5,6 +5,8 @@ import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeocoding } from 'src/composables/useGeocoding'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { db } from 'src/firebase/firebaseConfig'
 
 // Variables globales
 let unsubscribeGlobal = null
@@ -13,6 +15,8 @@ const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
+const unidadesValidasGlobal = ref(new Set()) // IDs con IMEI válido
+let unsubscribeUnidades = null
 
 export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
@@ -22,12 +26,17 @@ export function useTrackingUnidades() {
     if (!idEmpresaActual.value) return []
 
     return unidadesRaw.filter((unidad) => {
+      // Filtro empresa (existente)
       const empresaDeUnidad = unidad.IdEmpresaConductor || unidad.IdEmpresaUnidad
       if (!empresaDeUnidad) return false
-
-      return Array.isArray(idEmpresaActual.value)
+      const pasaEmpresa = Array.isArray(idEmpresaActual.value)
         ? idEmpresaActual.value.includes(empresaDeUnidad)
         : empresaDeUnidad === idEmpresaActual.value
+      if (!pasaEmpresa) return false
+
+      // 🆕 Filtro IMEI: solo mostrar unidades con IMEI válido en Firestore
+      const unidadId = unidad.unidadId || unidad.id
+      return unidadesValidasGlobal.value.has(unidadId)
     })
   }
 
@@ -36,7 +45,25 @@ export function useTrackingUnidades() {
    */
   const { obtenerDireccion } = useGeocoding()
 
+  const iniciarListenerUnidades = () => {
+    if (unsubscribeUnidades) return // ya escuchando
+
+    const unidadesRef = collection(db, 'Unidades')
+
+    unsubscribeUnidades = onSnapshot(unidadesRef, (snapshot) => {
+      const idsValidos = new Set()
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const imei = data.imei?.toString().trim()
+        if (imei && imei.length === 15) {
+          idsValidos.add(doc.id)
+        }
+      })
+      unidadesValidasGlobal.value = idsValidos
+    })
+  }
   const iniciarTracking = () => {
+    iniciarListenerUnidades()
     if (trackingIniciado) {
       return
     }
@@ -145,7 +172,7 @@ export function useTrackingUnidades() {
 
   //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
   watch(
-    [idEmpresaActual, unidadesRawGlobal],
+    [idEmpresaActual, unidadesRawGlobal, unidadesValidasGlobal],
     () => {
       if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
         const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
@@ -165,6 +192,14 @@ export function useTrackingUnidades() {
       unidadesRawGlobal.value = []
       unidadesActivasGlobal.value = []
     }
+
+    // 🆕 Limpiar listener de Firestore
+    if (unsubscribeUnidades) {
+      unsubscribeUnidades()
+      unsubscribeUnidades = null
+    }
+
+    unidadesValidasGlobal.value = new Set()
   }
 
   const evaluarEventosParaTodasLasUnidades = async () => {
