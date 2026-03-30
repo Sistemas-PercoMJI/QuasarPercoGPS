@@ -959,7 +959,7 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
 }
 
 const cargarTrayectosDia = async (silencioso = false) => {
-  trayectoActivoId.value = null
+  // NO limpiar trayectoActivoId aquí — necesitamos saber cuál redibujar
   if (!vehiculoSeleccionado.value) return
 
   if (!silencioso) loadingHistorial.value = true
@@ -972,6 +972,17 @@ const cargarTrayectosDia = async (silencioso = false) => {
     )
     trayectosDia.value = resultado.trayectos
     resumenDia.value = resultado.resumen
+
+    // Si hay un trayecto activo en el mapa, redibujar con datos frescos
+    if (trayectoActivoId.value && window.dibujarRutaTrayecto) {
+      const trayectoActualizado = resultado.trayectos.find((t) => t.id === trayectoActivoId.value)
+      if (trayectoActualizado) {
+        window.dibujarRutaTrayecto(
+          { ...trayectoActualizado, color: trayectoActualizado.color || '#00E5FF' },
+          props.vehiculo,
+        )
+      }
+    }
   } catch (err) {
     console.error('Error cargando trayectos:', err)
     trayectosDia.value = []
@@ -1381,6 +1392,7 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
 // Watcher para cambio de fecha de trayectos
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
+    trayectoActivoId.value = null // ← solo al cambiar fecha se limpia el activo
     cargarTrayectosDia()
   }
 })

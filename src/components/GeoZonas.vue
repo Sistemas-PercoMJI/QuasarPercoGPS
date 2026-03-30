@@ -1547,7 +1547,9 @@ const {
 } = useGeozonas(userId.value)
 
 //  NUEVO: Cargar eventos para mostrar badges
-const { obtenerEventos, eliminarEventosPorUbicacion } = useEventos(userId.value)
+const { obtenerEventos, eliminarEventosPorUbicacion, contarEventosPorUbicacion } = useEventos(
+  userId.value,
+)
 const { obtenerGrupos, crearGrupo } = useGruposGeozonas(userId.value)
 const eventosActivos = ref([])
 
@@ -2333,8 +2335,8 @@ const eliminarItem = async () => {
   const tipo = itemMenu.value.tipo === 'poi' ? 'POI' : 'Geozona'
 
   try {
-    // 🔍 Buscar eventos asociados
-    const { cantidad: eventosEncontrados } = await eliminarEventosPorUbicacion(ubicacionId, tipo)
+    // 🔍 Solo CONTAR eventos, sin borrarlos
+    const eventosEncontrados = await contarEventosPorUbicacion(ubicacionId, tipo)
 
     //  Crear mensaje para window.confirm
     let mensaje = `¿Estás seguro de eliminar "${ubicacionNombre}"?`
@@ -2352,9 +2354,10 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
     //  Mostrar confirmación
     const confirmacion = window.confirm(mensaje)
 
-    if (!confirmacion) {
-      return
-    }
+    if (!confirmacion) return
+
+    // ← AHORA sí borrar eventos (después del confirm)
+    await eliminarEventosPorUbicacion(ubicacionId, tipo)
 
     //  Eliminar de Firebase
     if (itemMenu.value.tipo === 'poi') {
@@ -2379,14 +2382,11 @@ Al eliminar "${ubicacionNombre}", también se eliminarán todos sus eventos.
 
     menuContextualVisible.value = false
 
-    //  IMPORTANTE: Actualizar eventos y redibujar
     await nextTick()
 
-    // Recargar eventos desde Firebase
     const eventosActualizados = await obtenerEventos()
     eventosActivos.value = eventosActualizados.filter((e) => e.activo)
 
-    // Redibujar mapa completo
     redibujarMapa()
   } catch (err) {
     console.error(' Error al eliminar:', err)

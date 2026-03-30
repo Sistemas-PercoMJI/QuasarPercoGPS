@@ -4,11 +4,13 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   deleteDoc,
   query,
   orderBy,
+  setDoc,
 } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 
@@ -142,6 +144,8 @@ export function useGeozonas(userId) {
       }
 
       const docRef = await addDoc(collection(db, 'Usuarios', userId, 'Geozonas'), dataConUsuario)
+      const empresas = await obtenerEmpresasUsuario()
+      await sincronizarUbicacionGlobal(docRef.id, dataConUsuario, empresas)
 
       const nuevaGeozona = {
         ...dataConUsuario,
@@ -175,6 +179,8 @@ export function useGeozonas(userId) {
 
       const geozonaRef = doc(db, 'Usuarios', userId, 'Geozonas', id)
       await updateDoc(geozonaRef, geozonaData)
+      const empresas = await obtenerEmpresasUsuario()
+      await sincronizarUbicacionGlobal(id, geozonaData, empresas)
 
       // Actualizar la geozona en el array local
       const index = geozonas.value.findIndex((g) => g.id === id)
@@ -203,7 +209,7 @@ export function useGeozonas(userId) {
 
     try {
       await deleteDoc(doc(db, 'Usuarios', userId, 'Geozonas', id))
-
+      await deleteDoc(doc(db, 'UbicacionesGlobal', id))
       geozonas.value = geozonas.value.filter((g) => g.id !== id)
 
       return true
@@ -215,7 +221,33 @@ export function useGeozonas(userId) {
       loading.value = false
     }
   }
+  // Obtener IdEmpresaUsuario del usuario
+  const obtenerEmpresasUsuario = async () => {
+    try {
+      const userDoc = await getDoc(doc(db, 'Usuarios', userId))
+      return userDoc.exists() ? userDoc.data().IdEmpresaUsuario || [] : []
+    } catch {
+      return []
+    }
+  }
 
+  // Sincronizar geozona con UbicacionesGlobal
+  const sincronizarUbicacionGlobal = async (id, geozonaData, empresas) => {
+    const puntos = (geozonaData.puntos || []).map((p) => ({ lat: p.lat, lng: p.lng }))
+    await setDoc(
+      doc(db, 'UbicacionesGlobal', id),
+      {
+        ubicacionId: id,
+        tipo: 'Geozona',
+        userId: userId,
+        IdEmpresaUsuario: empresas,
+        puntos: puntos,
+        nombre: geozonaData.nombre || '',
+        eventos: [],
+      },
+      { merge: true },
+    ) // merge: true para no borrar los eventos si ya existen
+  }
   //  NUEVA: Función para migrar geozonas existentes (ejecutar una sola vez)
   const migrarGeozonasExistentes = async () => {
     try {

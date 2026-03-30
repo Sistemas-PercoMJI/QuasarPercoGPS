@@ -31,14 +31,22 @@ export function useNotificacionesEventos() {
       tipoUbicacion,
       accion: esEntrada ? 'Entrada' : 'Salida',
       // 🆕 Siempre pasar ubicacion para generar mapa
-      ubicacion: evento.Coordenadas
-        ? {
-            lat: evento.Coordenadas.lat,
-            lng: evento.Coordenadas.lng,
-            nombre: nombreUbicacion,
-            tipo: tipoUbicacion,
-          }
-        : null,
+      ubicacion:
+        evento.lat && evento.lng
+          ? {
+              lat: evento.lat,
+              lng: evento.lng,
+              nombre: nombreUbicacion,
+              tipo: tipoUbicacion,
+            }
+          : evento.Coordenadas
+            ? {
+                lat: evento.Coordenadas.lat,
+                lng: evento.Coordenadas.lng,
+                nombre: nombreUbicacion,
+                tipo: tipoUbicacion,
+              }
+            : null,
     }
   }
 
