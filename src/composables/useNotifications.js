@@ -57,7 +57,7 @@ export function useNotifications() {
       ubicacionNombre: notificacionData.ubicacionNombre || '',
       tipoUbicacion: notificacionData.tipoUbicacion || '',
       accion: notificacionData.accion || '',
-      timestamp: ahora,
+      timestamp: notificacionData.timestamp || ahora,
       expiraEn,
       mapImage, //  Imagen del mapa en base64
       mapUrl, //  URL del mapa para abrir en nueva pestaña
