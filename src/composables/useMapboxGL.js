@@ -426,13 +426,6 @@ export function useMapboxGL() {
 
   // POPUP OPTIMIZADO - Versión más ligera
   const crearPopupUnidad = (unidad) => {
-    console.log('🔑 Ignicion:', unidad.unidadNombre, '| ignicion:', unidad.ignicion)
-    console.log(
-      '🗺️ crearPopupUnidad:',
-      unidad.unidadNombre,
-      '| direccionTexto:',
-      unidad.direccionTexto,
-    )
     //  DETECTAR INACTIVIDAD (solo las variables que usamos)
     const { esInactivo, minutosInactivo } = obtenerColorPorTiempo(unidad)
 
