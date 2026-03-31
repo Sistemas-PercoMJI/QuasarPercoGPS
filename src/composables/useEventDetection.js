@@ -173,15 +173,7 @@ export function useEventDetection() {
   async function gestionarTrackingAutomatico(unidad, ubicacion, tipo, estaDentro, tracking) {
     if (reconstruyendo) return
     const claveUbicacion = `${unidad.id}-${tipo}-${ubicacion.id}`
-    const estadoActual = estadoUbicaciones.value.get(claveUbicacion)
 
-    // Solo loguear cuando está dentro, para no llenar la consola
-    if (estadoActual === 'dentro') {
-      console.log(
-        `🔄 Evaluando ${unidad.id}-${ubicacion.nombre} | estaDentro:${estaDentro} | estado:${estadoActual}`,
-      )
-    }
-    //  THROTTLE: Evitar procesamiento duplicado rápido
     const ahora = Date.now()
     const ultimaEjecucion = ultimoTrackingPorUnidad.value.get(claveUbicacion) || 0
 
@@ -234,14 +226,6 @@ export function useEventDetection() {
           // Calcular duración FUERA
           const duracionFueraMilisegundos = Date.now() - salidaPrevia.timestampSalida
           const duracionFueraSegundos = Math.floor(duracionFueraMilisegundos / 1000)
-          const duracionFueraFinal = Math.max(0, duracionFueraSegundos)
-
-          const formatearDuracion = (segundos) => {
-            const horas = Math.floor(segundos / 3600)
-            const minutos = Math.floor((segundos % 3600) / 60)
-            const segs = segundos % 60
-            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
-          }
 
           try {
             // Actualizar el evento de SALIDA con duración fuera
@@ -251,8 +235,6 @@ export function useEventDetection() {
               salidaPrevia.idEvento,
               duracionFueraSegundos,
             )
-
-            console.log(` Duración FUERA actualizada: ${formatearDuracion(duracionFueraFinal)}`)
           } catch (err) {
             console.error(' Error actualizando duración fuera:', err)
           }
@@ -336,13 +318,6 @@ export function useEventDetection() {
         const duracionDentroSegundos = Math.floor(duracionDentroMilisegundos / 1000)
         const duracionDentroFinal = Math.max(0, duracionDentroSegundos)
 
-        const formatearDuracion = (segundos) => {
-          const horas = Math.floor(segundos / 3600)
-          const minutos = Math.floor((segundos % 3600) / 60)
-          const segs = segundos % 60
-          return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segs).padStart(2, '0')}`
-        }
-
         try {
           const idRutaDiaria = eventoEntrada.idRutaDiaria
 
@@ -358,8 +333,6 @@ export function useEventDetection() {
             eventoEntrada.idEvento,
             duracionDentroFinal,
           )
-
-          console.log(` Duración DENTRO actualizada: ${formatearDuracion(duracionDentroFinal)}`)
 
           //  PASO 2: Registrar evento de SALIDA
           await iniciarOActualizarRutaDiaria(unidad.id, {
@@ -675,8 +648,6 @@ export function useEventDetection() {
               ubicacionNombre: ultimoEvento.GeozonaNombre || ultimoEvento.PoiNombre || '',
               ubicacionId: ubicacionId,
             })
-
-            console.log(`↩️ Estado reconstruido: ${unidadId} DENTRO de ${ubicacionId}`)
           } else if (ultimoEvento.TipoEvento === 'Salida') {
             // Unidad está fuera
             estadoUbicaciones.value.set(claveUbicacion, 'fuera')
