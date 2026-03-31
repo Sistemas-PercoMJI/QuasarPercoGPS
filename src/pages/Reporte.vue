@@ -1313,19 +1313,6 @@ const generarReporte = async () => {
 
     //  GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (datosReales.eventosAgrupados) {
-        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
-          console.log(
-            ` ${nombre}:`,
-            trayectos.map((t) => ({
-              unidad: t.unidadNombre,
-              placa: t.Placa,
-              todasLasPropiedades: Object.keys(t),
-            })),
-          )
-        })
-      }
-
       pdfResult = await generarPDFTrayectos(config, datosReales)
     } else if (tipoInformeSeleccionado.value === 'eventos') {
       pdfResult = generarPDFEventos(config, datosReales)
