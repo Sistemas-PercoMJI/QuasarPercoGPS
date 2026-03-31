@@ -1194,9 +1194,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
   }
 
-  function actualizarMarcadorConCirculo(lat, lng, nombre, direccion, radio) {
+  function actualizarMarcadorConCirculo() {
     if (!map.value) return
-    console.log(` Marcador y círculo actualizados: ${nombre} (${radio}m)`)
   }
 
   //  MODO SELECCIÓN SIMPLE (POI)
@@ -1333,9 +1332,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
   }
 
-  const confirmarCirculoTemporal = (nombre) => {
+  const confirmarCirculoTemporal = () => {
     if (circuloTemporal.value && ubicacionSeleccionada.value) {
-      console.log(` Círculo confirmado: ${nombre}`, ubicacionSeleccionada.value)
       limpiarCirculoTemporal()
     }
   }
@@ -1535,9 +1533,8 @@ export function useMapboxGL() {
     }
   }
 
-  const confirmarPoligonoTemporal = (nombre) => {
+  const confirmarPoligonoTemporal = () => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
-      console.log(`Polígono confirmado: ${nombre}`, puntosPoligono.value)
       limpiarPoligonoTemporal()
     }
   }
@@ -2091,25 +2088,18 @@ export function useMapboxGL() {
         desactivarModoSeleccion,
         getUbicacionSeleccionada: () => ubicacionSeleccionada.value,
         limpiarMarcadorTemporal,
-        confirmarMarcadorTemporal: (nombre) => {
+        confirmarMarcadorTemporal: () => {
           if (ubicacionSeleccionada.value) {
-            console.log(` Marcador confirmado: ${nombre}`)
             limpiarMarcadorTemporal()
           }
         },
-        actualizarMarcador: (_lat, _lng, nombre) => {
-          console.log(`Actualizando marcador: ${nombre}`)
-        },
-        eliminarMarcadorPorCoordenadas: (lat, lng) => {
-          console.log(`Eliminando marcador en: ${lat}, ${lng}`)
-        },
+        actualizarMarcador: () => {},
+        eliminarMarcadorPorCoordenadas: () => {},
         activarModoSeleccionGeozonaCircular,
         limpiarCirculoTemporal,
         confirmarCirculoTemporal,
         actualizarCirculo,
-        eliminarCirculo: (id) => {
-          console.log(`Eliminando círculo con ID: ${id}`)
-        },
+        eliminarCirculo: () => {},
         activarModoSeleccionGeozonaPoligonal,
         getPuntosSeleccionados: () => puntosPoligono.value,
         isPoligonoFinalizado: () => poligonoFinalizado.value,
@@ -2119,9 +2109,7 @@ export function useMapboxGL() {
         actualizarPoligono,
         actualizarPoligonoTemporal,
         actualizarColorPoligonoTemporal,
-        eliminarPoligono: (id) => {
-          console.log(`Eliminando polígono con ID: ${id}`)
-        },
+        eliminarPoligono: () => {},
         crearCirculoTemporalPOI,
         actualizarRadioCirculoTemporal,
         limpiarCirculoTemporalPOI,
@@ -2307,25 +2295,18 @@ export function useMapboxGL() {
     desactivarModoSeleccion,
     getUbicacionSeleccionada: () => ubicacionSeleccionada.value,
     limpiarMarcadorTemporal,
-    confirmarMarcadorTemporal: (nombre) => {
+    confirmarMarcadorTemporal: () => {
       if (ubicacionSeleccionada.value) {
-        console.log(`Marcador confirmado: ${nombre}`)
         limpiarMarcadorTemporal()
       }
     },
-    actualizarMarcador: (_lat, _lng, nombre) => {
-      console.log(`Actualizando marcador: ${nombre}`)
-    },
-    eliminarMarcadorPorCoordenadas: (lat, lng) => {
-      console.log(`Eliminando marcador en: ${lat}, ${lng}`)
-    },
+    actualizarMarcador: () => {},
+    eliminarMarcadorPorCoordenadas: () => {},
     activarModoSeleccionGeozonaCircular,
     limpiarCirculoTemporal,
     confirmarCirculoTemporal,
     actualizarCirculo,
-    eliminarCirculo: (id) => {
-      console.log(`Eliminando círculo con ID: ${id}`)
-    },
+    eliminarCirculo: () => {},
     activarModoSeleccionGeozonaPoligonal,
     getPuntosSeleccionados: () => puntosPoligono.value,
     isPoligonoFinalizado: () => poligonoFinalizado.value,
@@ -2334,9 +2315,7 @@ export function useMapboxGL() {
     confirmarPoligonoTemporal,
     actualizarPoligono,
     actualizarPoligonoTemporal,
-    eliminarPoligono: (id) => {
-      console.log(`Eliminando polígono con ID: ${id}`)
-    },
+    eliminarPoligono: () => {},
     crearCirculoTemporalPOI,
     actualizarRadioCirculoTemporal,
     limpiarCirculoTemporalPOI,

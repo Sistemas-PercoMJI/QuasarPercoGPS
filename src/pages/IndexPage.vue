@@ -1238,7 +1238,9 @@ const limpiarCapasDelMapa = () => {
     marcadoresPOIs.value = []
   }
   const layersToRemove = [
-    'pois-combined',
+    'pois-circles', // 🆕 layer correcto
+    'pois-symbols', // 🆕 layer correcto
+    'geozonas-symbols', // 🆕 faltaba este
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined-fill',
     'geozonas-poligonales-combined-outline',
@@ -1248,6 +1250,7 @@ const limpiarCapasDelMapa = () => {
     'pois-combined',
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined',
+    'geozonas-symbols', // 🆕 faltaba este
   ]
 
   layersToRemove.forEach((layerId) => {
