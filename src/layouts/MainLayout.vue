@@ -1164,7 +1164,6 @@ onMounted(() => {
       try {
         // Cargar datos del usuario y su empresa
         await cargarUsuarioActual()
-        console.log(' Empresa cargada:', idEmpresaActual.value)
       } catch (error) {
         console.error(' Error cargando usuario:', error)
       }
