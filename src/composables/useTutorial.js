@@ -207,7 +207,7 @@ export function useTutorial(
           abrirEventos,
           cerrarEventos,
           pasosEventos,
-          '.eventos-container',
+          '.eventos-drawer-compact',
           9,
         )
         return
@@ -1112,7 +1112,57 @@ export function useTutorial(
       },
     },
   ]
-  const pasosEventos = []
+  const pasosEventos = [
+    {
+      element: '.eventos-drawer-compact .drawer-header',
+      popover: {
+        title: 'Sistema de Eventos',
+        description:
+          'Aquí configuras alertas automáticas que se disparan cuando un vehículo entra o sale de una geozona o punto de interés.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.stats-grid',
+      popover: {
+        title: 'Estado de tus Eventos',
+        description: 'Visualiza cuántos eventos tienes activos e inactivos en tiempo real.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.acciones-row',
+      popover: {
+        title: 'Crear y Buscar Eventos',
+        description:
+          'Usa el botón "Nuevo" para crear un evento, o el buscador para encontrar uno existente rápidamente.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.filtro-compact',
+      popover: {
+        title: 'Filtrar Eventos',
+        description:
+          'Filtra la lista para ver todos los eventos, solo los activos o solo los inactivos.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.lista-scroll-compact',
+      popover: {
+        title: 'Lista de Eventos',
+        description:
+          'Cada evento muestra su nombre, ubicación asociada y un toggle para activarlo o desactivarlo. Usa el menú ⋮ para editar, duplicar o eliminar.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+  ]
 
   return {
     iniciarTutorial,
