@@ -1578,6 +1578,32 @@ async function buscarGeozonas(termino) {
 // 8. ACTUALIZAR LA FUNCIÓN procesarResultado
 // ============================================
 function procesarResultado(resultado) {
+  // Helper: asegura que el mapa esté listo antes de ejecutar la acción
+  async function ejecutarConMapa(accion) {
+    const mapPage = document.getElementById('map-page')
+
+    if (!mapPage?._mapaAPI?.map) {
+      // Navegar al dashboard primero
+      await router.push('/dashboard')
+      // Esperar a que el mapa monte
+      await new Promise((resolve) => {
+        const intervalo = setInterval(() => {
+          const mp = document.getElementById('map-page')
+          if (mp?._mapaAPI?.map) {
+            clearInterval(intervalo)
+            resolve()
+          }
+        }, 100)
+        // Timeout de seguridad (3 segundos)
+        setTimeout(() => {
+          clearInterval(intervalo)
+          resolve()
+        }, 3000)
+      })
+    }
+
+    accion()
+  }
   const mapPage = document.getElementById('map-page')
   if (mapPage?._mapaAPI) {
     mapPage._mapaAPI.cerrarPopupGlobal?.()
@@ -1590,13 +1616,16 @@ function procesarResultado(resultado) {
   // Acción según el tipo
   if (resultado.tipo === 'direccion') {
     if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng, 15, resultado.nombre, resultado.detalle)
-      $q.notify({
-        message: ` Mostrando: ${resultado.nombre}`,
-        color: 'positive',
-        icon: 'place',
-        position: 'top',
-        timeout: 3000,
+      // ← condición correcta
+      ejecutarConMapa(() => {
+        centrarMapaEn(resultado.lat, resultado.lng, 15, resultado.nombre, resultado.detalle)
+        $q.notify({
+          message: `Mostrando: ${resultado.nombre}`,
+          color: 'positive',
+          icon: 'place',
+          position: 'top',
+          timeout: 3000,
+        })
       })
     } else {
       console.error('Coordenadas inválidas:', resultado)
@@ -1608,36 +1637,25 @@ function procesarResultado(resultado) {
       })
     }
   } else if (resultado.tipo === 'vehiculo') {
-    // Primero abrir el panel (comportamiento original)
-    estadoFlotaDrawerOpen.value = true
-
-    // Luego intentar centrar en el marcador
-    const unidadId = resultado.datosUnidad?.id
-    if (unidadId !== undefined && unidadId !== null) {
-      // const unidadKey = `unidad_${unidadId}`
-
-      // Pequeño delay para que el panel no interfiera con el flyTo
-      setTimeout(() => {
-        const mapPage = document.getElementById('map-page')
-        const mapaAPI = mapPage?._mapaAPI
-
-        if (mapaAPI?.centrarEnUnidad) {
-          mapaAPI.centrarEnUnidad(String(unidadId)) // sin el prefijo unidad_
-        }
-      }, 300)
-    }
-
-    $q.notify({
-      message: `Vehículo: ${resultado.nombre}`,
-      color: 'positive',
-      icon: 'directions_car',
-      position: 'top',
+    ejecutarConMapa(() => {
+      // ← notify solo aquí adentro
+      estadoFlotaDrawerOpen.value = true
+      const unidadId = resultado.datosUnidad?.id
+      if (unidadId != null) {
+        setTimeout(() => {
+          document.getElementById('map-page')?._mapaAPI?.centrarEnUnidad?.(String(unidadId))
+        }, 300)
+      }
+      $q.notify({
+        message: `Vehículo: ${resultado.nombre}`,
+        color: 'positive',
+        icon: 'directions_car',
+        position: 'top',
+      })
     })
+    // ← sin notify duplicado aquí
   } else if (resultado.tipo === 'conductor') {
-    // Abrir el drawer de conductores
     conductoresDrawerOpen.value = true
-
-    // Guardar la información del conductor seleccionado usando el estado compartido
     estadoCompartido.value.abrirConductoresConConductor = {
       conductor: {
         id: resultado.conductorId,
@@ -1645,7 +1663,6 @@ function procesarResultado(resultado) {
       },
       timestamp: Date.now(),
     }
-
     $q.notify({
       message: `Conductor: ${resultado.nombre}`,
       color: 'positive',
@@ -1654,37 +1671,38 @@ function procesarResultado(resultado) {
     })
   } else if (resultado.tipo === 'poi') {
     if (resultado.lat && resultado.lng) {
-      centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
-      setTimeout(() => {
-        window.abrirPopupPOI?.(resultado.poiId)
-      }, 1600)
-
-      itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
-      cerrarTodosLosDialogs()
-      itemParaGeozonas.value = null
-      setTimeout(() => {
-        geozonaDrawerOpen.value = true
+      ejecutarConMapa(() => {
+        centrarMapaEn(resultado.lat, resultado.lng, 18, resultado.nombre, resultado.detalle)
         setTimeout(() => {
-          itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
-        }, 300)
-      }, 100)
+          window.abrirPopupPOI?.(resultado.poiId)
+        }, 1600)
+        cerrarTodosLosDialogs()
+        itemParaGeozonas.value = null
+        setTimeout(() => {
+          geozonaDrawerOpen.value = true
+          setTimeout(() => {
+            itemParaGeozonas.value = { id: resultado.poiId, tipo: 'poi' }
+          }, 300)
+        }, 100)
+      })
     }
   } else if (resultado.tipo === 'geozona') {
     if (resultado.lat && resultado.lng) {
-      const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
-      centrarMapaEn(resultado.lat, resultado.lng, zoom, resultado.nombre, resultado.detalle)
-      setTimeout(() => {
-        window.abrirPopupGeozona?.(resultado.geozonaId)
-      }, 1600)
-
-      cerrarTodosLosDialogs()
-      itemParaGeozonas.value = null // ← reset primero
-      setTimeout(() => {
-        geozonaDrawerOpen.value = true
+      ejecutarConMapa(() => {
+        const zoom = resultado.tipoGeozona === 'circular' ? 15 : 14
+        centrarMapaEn(resultado.lat, resultado.lng, zoom, resultado.nombre, resultado.detalle)
         setTimeout(() => {
-          itemParaGeozonas.value = { id: resultado.geozonaId, tipo: 'geozona' }
-        }, 300) // ← esperar a que el componente monte
-      }, 100)
+          window.abrirPopupGeozona?.(resultado.geozonaId)
+        }, 1600)
+        cerrarTodosLosDialogs()
+        itemParaGeozonas.value = null
+        setTimeout(() => {
+          geozonaDrawerOpen.value = true
+          setTimeout(() => {
+            itemParaGeozonas.value = { id: resultado.geozonaId, tipo: 'geozona' }
+          }, 300)
+        }, 100)
+      })
     }
   }
 }
