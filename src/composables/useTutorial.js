@@ -1114,7 +1114,7 @@ export function useTutorial(
   ]
   const pasosEventos = [
     {
-      element: '.eventos-drawer-compact .drawer-header',
+      element: '.eventos-drawer-compact',
       popover: {
         title: 'Sistema de Eventos',
         description:
