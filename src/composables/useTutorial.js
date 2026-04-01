@@ -167,13 +167,30 @@ export function useTutorial(
       const totalPasos = driverObj.getConfig().steps?.length || 0
       // ── ESTADO DE FLOTA (paso 5) ──
       if (pasoActual === 5 && totalPasos === 16) {
-        ejecutarTutorialComponente(
-          abrirEstadoFlota,
-          cerrarEstadoFlota,
-          pasosEstadoFlota,
-          '.estados-grid',
-          6,
-        )
+        const fasesEstadoFlota = [
+          {
+            selectorEspera: '.compact-grid',
+            pasos: pasosEstadoFlota,
+            onFaseTerminada: async () => {
+              // Clic en el botón > del primer vehículo
+              await esperarElemento('.btn-detalles')
+              await new Promise((r) => setTimeout(r, 200))
+              const btnDetalle = document.querySelector('.btn-detalles')
+              if (btnDetalle) {
+                btnDetalle.click()
+              }
+              // Esperar a que monte la vista de detalles
+              await esperarElemento('.vista-detalles')
+              await new Promise((r) => setTimeout(r, 800))
+            },
+          },
+          {
+            selectorEspera: '.tabs-vehiculo',
+            pasos: pasosDetalleVehiculo, // ← definir abajo
+          },
+        ]
+
+        ejecutarTutorialConFases(abrirEstadoFlota, cerrarEstadoFlota, fasesEstadoFlota, 6)
         return
       }
 
@@ -717,7 +734,71 @@ export function useTutorial(
       }, 300)
     }
   }
+  async function ejecutarTutorialConFases(abrirFn, cerrarFn, fases, stepDashboardContinuar) {
+    const destroyActual = driverObj.destroy.bind(driverObj)
+    try {
+      destroyActual()
+    } catch (e) {
+      console.log('No se pudo destruir driver actual (probablemente no estaba activo):', e)
+    }
 
+    abrirFn()
+
+    const ejecutarFase = async (indiceFase) => {
+      const fase = fases[indiceFase]
+      const esUltimaFase = indiceFase === fases.length - 1
+
+      // Esperar elemento de la fase
+      const elemento = await esperarElemento(fase.selectorEspera)
+      if (!elemento) {
+        console.warn(
+          `[Tutorial] Elemento "${fase.selectorEspera}" no encontrado, saltando fase ${indiceFase}`,
+        )
+        if (esUltimaFase) {
+          cerrarFn()
+          setTimeout(() => {
+            driverObj.setSteps(pasosDashboard)
+            driverObj.drive(stepDashboardContinuar)
+            configurarListeners()
+          }, 300)
+        } else {
+          await ejecutarFase(indiceFase + 1)
+        }
+        return
+      }
+
+      await new Promise((r) => setTimeout(r, 400))
+
+      driverObj.setSteps(fase.pasos)
+      driverObj.drive()
+      configurarListeners()
+
+      // Sobrescribir destroy para interceptar el fin de la fase
+      const destroyFase = driverObj.destroy.bind(driverObj)
+      driverObj.destroy = async () => {
+        limpiarListeners()
+        destroyFase()
+
+        if (esUltimaFase) {
+          // Fin del tutorial del componente → cerrar y continuar dashboard
+          cerrarFn()
+          setTimeout(() => {
+            driverObj.setSteps(pasosDashboard)
+            driverObj.drive(stepDashboardContinuar)
+            configurarListeners()
+          }, 400)
+        } else {
+          // Hay más fases → ejecutar transición y siguiente fase
+          if (fase.onFaseTerminada) {
+            await fase.onFaseTerminada()
+          }
+          await ejecutarFase(indiceFase + 1)
+        }
+      }
+    }
+
+    await ejecutarFase(0)
+  }
   function iniciarTutorialReportes(forzarAnterior = false) {
     const step = localStorage.getItem('mj_tutorial_step')
     if (step === 'reportes' || step === 'reportes-anterior' || forzarAnterior) {
@@ -1007,11 +1088,53 @@ export function useTutorial(
         align: 'start',
       },
     },
+    {
+      element: '.acciones-section',
+      popover: {
+        title: 'Ver detalles de la flota',
+        description:
+          'Al dar click en el botón de detalles ">", se mostrarán sus detalles completos.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+  ]
+  const pasosDetalleVehiculo = [
+    {
+      element: '.acciones-section',
+      popover: {
+        title: 'Información del Vehículo',
+        description:
+          'Aquí tienes 3 tabs: Resumen con la ubicación y estado actual, Hoy con el historial de trayectos del día, y Notificaciones con los eventos registrados.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.info-card.ubicacion-card',
+      popover: {
+        title: 'Ubicación Actual',
+        description:
+          'Muestra la dirección geocodificada y coordenadas exactas del vehículo en tiempo real.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.detalles-grid',
+      popover: {
+        title: 'Estado y Estadísticas',
+        description:
+          'Estado actual del vehículo, tiempo de conducción del día, última sincronización GPS y fecha/hora del último dato recibido.',
+        side: 'right',
+        align: 'start',
+      },
+    },
   ]
 
   const pasosConductores = [
     {
-      element: '.conductores-drawer', // ← el wrapper principal, siempre existe
+      element: '.conductores-drawer',
       popover: {
         title: 'Gestión de Conductores',
         description:
@@ -1020,6 +1143,17 @@ export function useTutorial(
         align: 'start',
       },
     },
+    {
+      //editando para agregar la carpeta denuevo grupo
+      element: '.nuevoGrupo-btn',
+      popover: {
+        title: 'Creación de Grupos',
+        description: 'Aquí se crean nuevos grupos para organizar a los conductores.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+
     {
       element: '.conductores-drawer .search-input',
       popover: {

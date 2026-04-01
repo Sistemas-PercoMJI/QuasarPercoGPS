@@ -33,7 +33,10 @@
     </div>
 
     <!-- Botones de acción -->
-    <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
+    <div
+      class="nuevoGrupo-btn q-pa-sm q-px-md"
+      style="display: flex; justify-content: flex-end; gap: 4px"
+    >
       <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
         <q-tooltip>Crear grupo</q-tooltip>
       </q-btn>
