@@ -183,7 +183,7 @@ export function useTutorial(
           abrirConductores,
           cerrarConductores,
           pasosConductores,
-          '.conductores-header',
+          '.conductores-drawer',
           7,
         )
         return
@@ -1009,7 +1009,47 @@ export function useTutorial(
     },
   ]
 
-  const pasosConductores = []
+  const pasosConductores = [
+    {
+      element: '.conductores-drawer', // ← el wrapper principal, siempre existe
+      popover: {
+        title: 'Gestión de Conductores',
+        description:
+          'Aquí administras todos los conductores de tu flota. Puedes crear grupos, buscar conductores y gestionar su información.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.conductores-drawer .search-input',
+      popover: {
+        title: 'Buscar Conductor',
+        description: 'Busca rápidamente cualquier conductor por nombre o teléfono.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.grupos-lista',
+      popover: {
+        title: 'Grupos de Conductores',
+        description:
+          'Organiza tus conductores en grupos. El grupo "Conductores con unidad" muestra todos los que tienen vehículo asignado.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.conductor-card',
+      popover: {
+        title: 'Lista de Conductores',
+        description:
+          'Cada tarjeta muestra el nombre, empresa y unidad asignada. Haz clic para ver su información completa: licencia, seguro, tarjeta de circulación y placas.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+  ]
   const pasosGeozonas = []
   const pasosEventos = []
 
