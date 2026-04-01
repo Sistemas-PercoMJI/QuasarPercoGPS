@@ -195,7 +195,7 @@ export function useTutorial(
           abrirGeozonas,
           cerrarGeozonas,
           pasosGeozonas,
-          '.geozonas-list',
+          '.geozonas-drawer',
           8,
         )
         return
@@ -1050,7 +1050,68 @@ export function useTutorial(
       },
     },
   ]
-  const pasosGeozonas = []
+  const pasosGeozonas = [
+    {
+      element: '.geozonas-drawer .drawer-header',
+      popover: {
+        title: 'Geozonas y Puntos de Interés',
+        description:
+          'Aquí administras todas tus ubicaciones importantes: geozonas para definir áreas y puntos de interés para marcar lugares específicos.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.modern-tabs',
+      popover: {
+        title: 'Vistas disponibles',
+        description:
+          'Cambia entre la vista de Geozonas y la vista de Puntos de Interés usando estas pestañas.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.stats-cards',
+      popover: {
+        title: 'Estadísticas',
+        description:
+          'Aquí ves el total de geozonas o POIs registrados y cuántos grupos tienes creados.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.geozonas-drawer .modern-search',
+      popover: {
+        title: 'Buscar Ubicaciones',
+        description:
+          'Busca rápidamente cualquier geozona o punto de interés por nombre o dirección.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.geozonas-drawer .crear-grupo-btn',
+      popover: {
+        title: 'Crear Grupo',
+        description:
+          'Organiza tus ubicaciones en grupos con colores personalizados para identificarlos fácilmente en el mapa.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.lista-scroll',
+      popover: {
+        title: 'Lista de Ubicaciones',
+        description:
+          'Cada tarjeta muestra el nombre y detalles de la ubicación. Haz clic para seleccionarla, doble clic para centrar el mapa en ella, o usa el menú ⋮ para editar, ver en mapa o eliminar.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+  ]
   const pasosEventos = []
 
   return {
