@@ -43,7 +43,7 @@
       </div>
 
       <!-- Búsqueda -->
-      <div class="search-container">
+      <div class="search-container-flota">
         <q-input
           v-model="busqueda"
           outlined
@@ -1658,7 +1658,7 @@ onUnmounted(() => {
 /* ============================================ */
 /* === BÚSQUEDA === */
 /* ============================================ */
-.search-container {
+.search-container-flota {
   padding: 0 20px 16px 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;

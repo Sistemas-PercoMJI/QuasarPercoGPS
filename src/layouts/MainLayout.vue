@@ -534,7 +534,32 @@ import { useNotificacionesEventos } from 'src/composables/useNotificacionesEvent
 
 //const { iniciarTutorial } = useTutorial()
 const router = useRouter()
-const { iniciarTutorial } = useTutorial(router)
+const { iniciarTutorial } = useTutorial(router, {
+  abrirEstadoFlota: () => {
+    estadoFlotaDrawerOpen.value = true
+  },
+  cerrarEstadoFlota: () => {
+    estadoFlotaDrawerOpen.value = false
+  },
+  abrirConductores: () => {
+    conductoresDrawerOpen.value = true
+  },
+  cerrarConductores: () => {
+    conductoresDrawerOpen.value = false
+  },
+  abrirGeozonas: () => {
+    geozonaDrawerOpen.value = true
+  },
+  cerrarGeozonas: () => {
+    geozonaDrawerOpen.value = false
+  },
+  abrirEventos: () => {
+    eventosDrawerOpen.value = true
+  },
+  cerrarEventos: () => {
+    eventosDrawerOpen.value = false
+  },
+})
 
 const $q = useQuasar()
 const { estadoCompartido } = useEventBus()

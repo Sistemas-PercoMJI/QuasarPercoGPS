@@ -2,7 +2,19 @@
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
-export function useTutorial(router) {
+export function useTutorial(
+  router,
+  {
+    abrirEstadoFlota,
+    cerrarEstadoFlota,
+    abrirConductores,
+    cerrarConductores,
+    abrirGeozonas,
+    cerrarGeozonas,
+    abrirEventos,
+    cerrarEventos,
+  } = {},
+) {
   // eslint-disable-next-line no-unused-vars
   let pasoAnterior = -1
   let destroyOriginal = null
@@ -153,7 +165,53 @@ export function useTutorial(router) {
     onNextClick: () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
+      // ── ESTADO DE FLOTA (paso 5) ──
+      if (pasoActual === 5 && totalPasos === 16) {
+        ejecutarTutorialComponente(
+          abrirEstadoFlota,
+          cerrarEstadoFlota,
+          pasosEstadoFlota,
+          '.estados-grid',
+          6,
+        )
+        return
+      }
 
+      // ── CONDUCTORES (paso 6) ──
+      if (pasoActual === 6 && totalPasos === 16) {
+        ejecutarTutorialComponente(
+          abrirConductores,
+          cerrarConductores,
+          pasosConductores,
+          '.conductores-header',
+          7,
+        )
+        return
+      }
+
+      // ── GEOZONAS (paso 7) ──
+      if (pasoActual === 7 && totalPasos === 16) {
+        ejecutarTutorialComponente(
+          abrirGeozonas,
+          cerrarGeozonas,
+          pasosGeozonas,
+          '.geozonas-list',
+          8,
+        )
+        return
+      }
+
+      // ── EVENTOS (paso 8) ──
+      if (pasoActual === 8 && totalPasos === 16) {
+        ejecutarTutorialComponente(
+          abrirEventos,
+          cerrarEventos,
+          pasosEventos,
+          '.eventos-container',
+          9,
+        )
+        return
+      }
       //  NAVEGACIÓN A REPORTES CON LIMPIEZA FORZADA
       if (pasoActual === 9 && totalPasos === 16 && !yaNavegamosAReportes) {
         yaNavegamosAReportes = true
@@ -829,6 +887,131 @@ export function useTutorial(router) {
     limpiarListeners()
     driverObj.destroy()
   }
+
+  async function esperarElemento(selector, timeout = 3000) {
+    return new Promise((resolve) => {
+      const el = document.querySelector(selector)
+      if (el) return resolve(el)
+
+      const observer = new MutationObserver(() => {
+        const found = document.querySelector(selector)
+        if (found) {
+          observer.disconnect()
+          resolve(found)
+        }
+      })
+
+      observer.observe(document.body, { childList: true, subtree: true })
+
+      setTimeout(() => {
+        observer.disconnect()
+        resolve(null)
+      }, timeout)
+    })
+  }
+
+  async function ejecutarTutorialComponente(
+    abrirFn,
+    cerrarFn,
+    pasos,
+    selectorPrimerElemento,
+    stepDashboardContinuar,
+  ) {
+    // Guardar destroy original antes de sobreescribir
+    const destroyActual = driverObj.destroy.bind(driverObj)
+
+    // Detener driver actual sin trigger de onDestroyStarted
+    try {
+      destroyActual()
+    } catch (e) {
+      console.warn('Error deteniendo driver actual:', e)
+    }
+
+    // Abrir dialog
+    abrirFn()
+
+    // Esperar elemento
+    const elemento = await esperarElemento(selectorPrimerElemento)
+
+    if (!elemento) {
+      console.warn(`[Tutorial] Elemento "${selectorPrimerElemento}" no encontrado, saltando...`)
+      cerrarFn()
+      setTimeout(() => {
+        driverObj.setSteps(pasosDashboard)
+        driverObj.drive(stepDashboardContinuar)
+        configurarListeners()
+      }, 300)
+      return
+    }
+
+    await new Promise((r) => setTimeout(r, 400))
+
+    // Correr pasos del componente
+    driverObj.setSteps(pasos)
+    driverObj.drive()
+    configurarListeners()
+
+    // Al terminar los pasos del componente → cerrar y continuar en dashboard
+    const destroyComponente = driverObj.destroy.bind(driverObj)
+    driverObj.destroy = () => {
+      limpiarListeners()
+      destroyComponente()
+      cerrarFn()
+
+      setTimeout(() => {
+        driverObj.setSteps(pasosDashboard)
+        driverObj.drive(stepDashboardContinuar)
+        configurarListeners()
+      }, 400)
+    }
+  }
+
+  const pasosEstadoFlota = [
+    {
+      element: '.compact-grid',
+      popover: {
+        title: 'Filtros de Estado',
+        description:
+          'Filtra tu flota por estado: Todos, En movimiento, Detenido o Inactivo. El número indica cuántas unidades hay en cada estado.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.search-container-flota',
+      popover: {
+        title: 'Buscar Vehículo',
+        description:
+          'Busca rápidamente cualquier vehículo por nombre, ubicación o conductor asignado.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.tabla-header',
+      popover: {
+        title: 'Lista de Vehículos',
+        description:
+          'Aquí ves todas las unidades con su estado, ubicación y conductor. Haz clic en una unidad para centrar el mapa, o en la flecha → para ver sus detalles completos.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.vehiculos-scroll-area',
+      popover: {
+        title: 'Unidades de la Flota',
+        description:
+          'Cada tarjeta muestra el estado actual, velocidad, ubicación geocodificada y conductor asignado en tiempo real.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+  ]
+
+  const pasosConductores = []
+  const pasosGeozonas = []
+  const pasosEventos = []
 
   return {
     iniciarTutorial,
