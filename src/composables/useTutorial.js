@@ -24,6 +24,7 @@ export function useTutorial(
   let keyPressHandler = null
   let confirmHandler = null
   let yaCambioAHistorial = false
+  let onNextOverrideFase = null
 
   const driverObj = driver({
     showProgress: true,
@@ -162,9 +163,14 @@ export function useTutorial(
       // Para cualquier otro caso, permitir el retroceso normal
       driverObj.movePrevious()
     },
-    onNextClick: () => {
+    onNextClick: async () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
+
+      if (onNextOverrideFase) {
+        const handled = await onNextOverrideFase(pasoActual)
+        if (handled) return
+      }
       // ── ESTADO DE FLOTA (paso 5) ──
       if (pasoActual === 5 && totalPasos === 16) {
         const fasesEstadoFlota = [
@@ -172,21 +178,44 @@ export function useTutorial(
             selectorEspera: '.compact-grid',
             pasos: pasosEstadoFlota,
             onFaseTerminada: async () => {
-              // Clic en el botón > del primer vehículo
               await esperarElemento('.btn-detalles')
               await new Promise((r) => setTimeout(r, 200))
               const btnDetalle = document.querySelector('.btn-detalles')
-              if (btnDetalle) {
-                btnDetalle.click()
-              }
-              // Esperar a que monte la vista de detalles
+              if (btnDetalle) btnDetalle.click()
               await esperarElemento('.vista-detalles')
               await new Promise((r) => setTimeout(r, 800))
             },
           },
           {
             selectorEspera: '.tabs-vehiculo',
-            pasos: pasosDetalleVehiculo, // ← definir abajo
+            pasos: pasosDetalleVehiculo,
+            onNextOverride: async (pasoActual) => {
+              // Al terminar el paso 2 (detalles-grid) → click tab Hoy
+              if (pasoActual === 2) {
+                const tabHoy = document.querySelectorAll('.tabs-vehiculo .q-tab')[1]
+                if (tabHoy) tabHoy.click()
+
+                // Esperar a que carguen los datos
+                await esperarElemento('.resumen-dia-card', 5000)
+                await new Promise((r) => setTimeout(r, 600))
+                driverObj.moveNext()
+                return true // indica que ya manejamos el next
+              }
+
+              // Al terminar el paso 6 (timeline) → click tab Notificaciones
+              if (pasoActual === 6) {
+                const tabNotif = document.querySelectorAll('.tabs-vehiculo .q-tab')[2]
+                if (tabNotif) tabNotif.click()
+
+                // Esperar a que aparezca el filtro de eventos
+                await esperarElemento('.filtro-horas-card', 5000)
+                await new Promise((r) => setTimeout(r, 600))
+                driverObj.moveNext()
+                return true
+              }
+
+              return false // dejar que el flujo normal maneje el resto
+            },
           },
         ]
 
@@ -771,12 +800,14 @@ export function useTutorial(
 
       driverObj.setSteps(fase.pasos)
       driverObj.drive()
+      onNextOverrideFase = fase.onNextOverride || null
       configurarListeners()
 
       // Sobrescribir destroy para interceptar el fin de la fase
       const destroyFase = driverObj.destroy.bind(driverObj)
       driverObj.destroy = async () => {
         limpiarListeners()
+        onNextOverrideFase = null
         destroyFase()
 
         if (esUltimaFase) {
@@ -1126,6 +1157,77 @@ export function useTutorial(
         title: 'Estado y Estadísticas',
         description:
           'Estado actual del vehículo, tiempo de conducción del día, última sincronización GPS y fecha/hora del último dato recibido.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.filtro-dia-card',
+      popover: {
+        title: 'Selector de Día',
+        description: 'Navega entre días usando las flechas. Por default muestra el día de hoy.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.resumen-dia-card',
+      popover: {
+        title: 'Resumen del Día',
+        description:
+          'Muestra la ubicación de inicio y fin, duración total de trabajo, kilómetros recorridos y número de viajes realizados en el día.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.filtro-horas-card',
+      popover: {
+        title: 'Filtro por Hora',
+        description:
+          'Filtra los trayectos por rango de horas. Útil para ver solo los viajes de un turno específico.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.timeline-section-compact',
+      popover: {
+        title: 'Historial de Viajes',
+        description:
+          'Lista de todos los trayectos del día. Haz clic en cualquiera para verlo dibujado en el mapa con su ruta completa.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+
+    // ── TAB NOTIFICACIONES ──
+    {
+      element: '.filtro-dia-card',
+      popover: {
+        title: 'Selector de Día',
+        description:
+          'Igual que en Hoy, puedes navegar entre días para ver los eventos de cualquier fecha.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.filtro-horas-card',
+      popover: {
+        title: 'Filtros de Eventos',
+        description:
+          'Filtra por tipo de evento: Entradas, Salidas o Todos. También puedes acotar el rango de horas para ver solo los eventos que te interesan.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
+      element: '.eventos-container',
+      popover: {
+        title: 'Lista de Eventos',
+        description:
+          'Cada tarjeta muestra el tipo de evento, hora, ubicación geocodificada y conductor. Haz clic en una para verla en el mapa.',
         side: 'right',
         align: 'start',
       },
