@@ -1203,7 +1203,7 @@ export function useTutorial(
 
     // ── TAB NOTIFICACIONES ──
     {
-      element: '.filtro-dia-card',
+      element: '.filtro-dia-eventos',
       popover: {
         title: 'Selector de Día',
         description:
@@ -1213,7 +1213,7 @@ export function useTutorial(
       },
     },
     {
-      element: '.filtro-horas-card',
+      element: '.filtro-horas-eventos',
       popover: {
         title: 'Filtros de Eventos',
         description:

@@ -244,7 +244,7 @@
             <!-- Tab Hoy -->
             <q-tab-panel name="hoy" class="tab-panel-padding">
               <!-- Selector de fecha -->
-              <div class="filtro-dia-card">
+              <div class="filtro-dia-card filtro-dia-hoy">
                 <q-btn flat dense round icon="chevron_left" size="sm" @click="cambiarDia(-1)" />
                 <div class="dia-actual">
                   <div class="dia-label">
@@ -324,7 +324,7 @@
               </div>
 
               <!--  Filtro por rango de horas -->
-              <div class="filtro-horas-card">
+              <div class="filtro-horas-card filtro-horas-hoy">
                 <div class="filtro-horas-header">
                   <q-icon name="schedule" size="20px" color="primary" />
                   <span class="filtro-horas-titulo">Filtrar por hora</span>
@@ -439,7 +439,7 @@
             <!-- Tab Notificaciones -->
             <q-tab-panel name="notificaciones" class="tab-panel-padding">
               <!--  Selector de fecha (igual que en tab "hoy") -->
-              <div class="filtro-dia-card">
+              <div class="filtro-dia-card filtro-dia-eventos">
                 <q-btn
                   flat
                   dense
@@ -474,7 +474,7 @@
               </div>
 
               <!--  Filtro por tipo de evento -->
-              <div class="filtro-horas-card">
+              <div class="filtro-horas-card filtro-horas-eventos">
                 <div class="filtro-horas-header">
                   <q-icon name="filter_list" size="20px" color="primary" />
                   <span class="filtro-horas-titulo">Filtrar eventos</span>
