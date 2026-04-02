@@ -262,6 +262,27 @@ export function useTutorial(
           pasosConductores,
           '.conductores-drawer',
           7,
+          async (pasoActual) => {
+            // Abrir dialog al terminar paso del botón
+            if (pasoActual === 1) {
+              const btn = document.querySelector('.nuevoGrupo-btn .q-btn')
+              if (btn) btn.click()
+
+              await esperarElemento('.dialog-nuevo-grupo', 3000)
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.moveNext()
+              return true
+            }
+            if (pasoActual === 5) {
+              const btnCancelar = document.querySelector('.acciones-nuevo-grupo .q-btn')
+              if (btnCancelar) btnCancelar.click()
+
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.moveNext()
+              return true
+            }
+            return false
+          },
         )
         return
       }
@@ -1078,6 +1099,7 @@ export function useTutorial(
     pasos,
     selectorPrimerElemento,
     stepDashboardContinuar,
+    onNextOverride = null,
   ) {
     // Guardar destroy original antes de sobreescribir
     const destroyActual = driverObj.destroy.bind(driverObj)
@@ -1113,10 +1135,13 @@ export function useTutorial(
     driverObj.drive()
     configurarListeners()
 
+    onNextOverrideFase = onNextOverride
+
     // Al terminar los pasos del componente → cerrar y continuar en dashboard
     const destroyComponente = driverObj.destroy.bind(driverObj)
     driverObj.destroy = () => {
       limpiarListeners()
+      onNextOverrideFase = null
       destroyComponente()
       cerrarFn()
 
@@ -1296,13 +1321,53 @@ export function useTutorial(
       },
     },
     {
-      //editando para agregar la carpeta denuevo grupo
       element: '.nuevoGrupo-btn',
       popover: {
         title: 'Creación de Grupos',
-        description: 'Aquí se crean nuevos grupos para organizar a los conductores.',
+        description:
+          'Haz clic aquí para crear un nuevo grupo de conductores. Al dar Siguiente abriremos el formulario.',
         side: 'right',
         align: 'start',
+      },
+    },
+    // ── Pasos dentro del dialog ──
+    {
+      element: '.input-nombre-grupo',
+      popover: {
+        title: 'Nombre del Grupo',
+        description: 'Escribe el nombre que identificará a este grupo de conductores.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.buscador-conductores-grupo',
+      popover: {
+        title: 'Buscar Conductor',
+        description:
+          'Filtra la lista para encontrar rápidamente al conductor que quieres agregar al grupo.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.lista-conductores-grupo',
+      popover: {
+        title: 'Seleccionar Conductores',
+        description:
+          'Marca los conductores que formarán parte de este grupo. Puedes seleccionar varios a la vez.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.acciones-nuevo-grupo',
+      popover: {
+        title: 'Crear o Cancelar',
+        description:
+          'Una vez seleccionados los conductores, haz clic en Crear para guardar el grupo, o Cancelar para descartar los cambios.',
+        side: 'top',
+        align: 'end',
       },
     },
 

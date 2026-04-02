@@ -1115,7 +1115,7 @@
 
     <!-- Dialog: Nuevo Grupo -->
     <q-dialog v-model="dialogNuevoGrupo" position="standard">
-      <q-card style="min-width: 500px; max-width: 90vw">
+      <q-card style="min-width: 500px; max-width: 90vw" class="dialog-nuevo-grupo">
         <q-card-section>
           <div class="text-h6">{{ modoEdicion ? 'Editar grupo' : 'Nuevo grupo' }}</div>
         </q-card-section>
@@ -1126,6 +1126,7 @@
             outlined
             dense
             autofocus
+            class="input-nombre-grupo"
             :rules="[(val) => !!val || 'El nombre es requerido']"
           />
           <div class="q-mt-md">
@@ -1135,11 +1136,11 @@
               outlined
               dense
               placeholder="Buscar conductor..."
-              class="q-mb-sm"
+              class="buscador-conductores-grupo q-mb-sm"
             >
               <template v-slot:prepend><q-icon name="search" /></template>
             </q-input>
-            <q-scroll-area style="height: 300px" class="bordered">
+            <q-scroll-area style="height: 300px" class="bordered lista-conductores-grupo">
               <q-list>
                 <q-item
                   v-for="conductor in conductoresDisponiblesParaGrupo"
@@ -1176,7 +1177,7 @@
             </div>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="acciones-nuevo-grupo">
           <q-btn flat label="Cancelar" color="grey" v-close-popup />
           <q-btn
             flat
