@@ -199,7 +199,13 @@
       </q-scroll-area>
 
       <!-- Botón flotante para agregar POI -->
-      <q-btn fab color="primary" icon="add" class="floating-btn" @click="dialogNuevoPOI = true">
+      <q-btn
+        fab
+        color="primary"
+        icon="add"
+        class="floating-btn floating-btn-poi"
+        @click="dialogNuevoPOI = true"
+      >
         <q-tooltip>Nuevo Punto de Interés</q-tooltip>
       </q-btn>
     </div>
@@ -387,7 +393,7 @@
         fab
         color="primary"
         icon="add"
-        class="floating-btn"
+        class="floating-btn floating-btn-geozona"
         @click="abrirDialogGeozonaPoligonal"
       >
         <q-tooltip>Nueva Geozona</q-tooltip>
@@ -818,7 +824,7 @@
     </transition>
     <!-- Dialog: Nueva Geozona -->
     <q-dialog v-model="dialogNuevaGeozona" persistent>
-      <q-card style="min-width: 400px; max-width: 500px">
+      <q-card style="min-width: 400px; max-width: 500px" class="dialog-nueva-geozona">
         <q-card-section class="bg-secondary text-white">
           <div class="row items-center">
             <q-icon name="layers" size="32px" class="q-mr-md" />
@@ -853,7 +859,7 @@
                   outlined
                   dense
                   placeholder="Ej: Zona Norte, Almacén Central..."
-                  class="field-input"
+                  class="field-input input-nombre-geozona"
                 >
                   <template v-slot:prepend
                     ><q-icon name="label" color="grey-5" size="18px"
@@ -873,7 +879,7 @@
                   dense
                   emit-value
                   map-options
-                  class="field-input"
+                  class="field-input select-grupo-geozona"
                 >
                   <template v-slot:prepend
                     ><q-icon name="folder" color="grey-5" size="18px"
@@ -886,7 +892,7 @@
                 <label class="field-label"
                   ><q-icon name="palette" size="14px" class="q-mr-xs" />Color de la geozona</label
                 >
-                <div class="color-palette-compact">
+                <div class="color-palette-compact color-palette-geozona">
                   <div
                     v-for="color in paletaColores"
                     :key="color.valor"
@@ -931,7 +937,7 @@
                 <label class="field-label">Puntos del polígono</label>
                 <div
                   v-if="!nuevaGeozona.puntos || nuevaGeozona.puntos.length === 0"
-                  class="map-action-btn"
+                  class="map-action-btn map-selector-geozona"
                   @click="activarSeleccionGeozonaPoligonal"
                 >
                   <div class="map-action-icon">
@@ -994,7 +1000,7 @@
                   type="textarea"
                   rows="2"
                   placeholder="Instrucciones, referencias..."
-                  class="field-input"
+                  class="field-input notas-geozona"
                 >
                   <template v-slot:prepend
                     ><q-icon name="sticky_note_2" color="grey-5" size="18px"
@@ -1025,7 +1031,7 @@
               </q-dialog>
             </q-card-section>
 
-            <q-card-actions align="right" class="q-px-lg q-pb-lg">
+            <q-card-actions align="right" class="q-px-lg q-pb-lg acciones-geozona">
               <q-btn
                 flat
                 label="Cancelar"

@@ -25,6 +25,7 @@ export function useTutorial(
   let confirmHandler = null
   let yaCambioAHistorial = false
   let onNextOverrideFase = null
+  let viniendoDeComponente = false
 
   const driverObj = driver({
     showProgress: true,
@@ -166,7 +167,7 @@ export function useTutorial(
     onNextClick: async () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
-
+      console.log('onNextClick llamado:', pasoActual)
       if (onNextOverrideFase) {
         const handled = await onNextOverrideFase(pasoActual)
         if (handled) return
@@ -295,12 +296,41 @@ export function useTutorial(
           pasosGeozonas,
           '.geozonas-drawer',
           8,
+          async (pasoActual) => {
+            // Abrir dialog al terminar paso del FAB (paso 6)
+            if (pasoActual === 6) {
+              const fab = document.querySelector('.floating-btn-geozona')
+              if (fab) fab.click()
+
+              await esperarElemento('.dialog-nueva-geozona', 3000)
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.moveNext()
+              return true
+            }
+
+            // Cerrar dialog al terminar pasos internos (paso 12)
+            if (pasoActual === 12) {
+              const btnCancelar = document.querySelector('.acciones-geozona .q-btn')
+              if (btnCancelar) btnCancelar.click()
+
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.destroy() // ← en lugar de moveNext()
+              return true
+            }
+
+            return false
+          },
         )
         return
       }
 
       // ── EVENTOS (paso 8) ──
       if (pasoActual === 8 && totalPasos === 16) {
+        if (viniendoDeComponente) {
+          viniendoDeComponente = false // ← resetear aquí, no con timeout
+          driverObj.moveNext()
+          return
+        }
         ejecutarTutorialComponente(
           abrirEventos,
           cerrarEventos,
@@ -1146,6 +1176,10 @@ export function useTutorial(
       cerrarFn()
 
       setTimeout(() => {
+        document.querySelectorAll('.driver-popover').forEach((el) => {
+          if (el && el.parentNode) el.parentNode.removeChild(el)
+        })
+        viniendoDeComponente = true
         driverObj.setSteps(pasosDashboard)
         driverObj.drive(stepDashboardContinuar)
         configurarListeners()
@@ -1406,8 +1440,7 @@ export function useTutorial(
       element: '.geozonas-drawer .drawer-header',
       popover: {
         title: 'Geozonas y Puntos de Interés',
-        description:
-          'Aquí administras todas tus ubicaciones importantes: geozonas para definir áreas y puntos de interés para marcar lugares específicos.',
+        description: 'Aquí administras todas tus ubicaciones importantes.',
         side: 'right',
         align: 'start',
       },
@@ -1416,8 +1449,7 @@ export function useTutorial(
       element: '.modern-tabs',
       popover: {
         title: 'Vistas disponibles',
-        description:
-          'Cambia entre la vista de Geozonas y la vista de Puntos de Interés usando estas pestañas.',
+        description: 'Cambia entre la vista de Geozonas y la vista de Puntos de Interés.',
         side: 'bottom',
         align: 'start',
       },
@@ -1426,8 +1458,7 @@ export function useTutorial(
       element: '.stats-cards',
       popover: {
         title: 'Estadísticas',
-        description:
-          'Aquí ves el total de geozonas o POIs registrados y cuántos grupos tienes creados.',
+        description: 'Total de geozonas o POIs registrados y cuántos grupos tienes.',
         side: 'bottom',
         align: 'start',
       },
@@ -1436,8 +1467,7 @@ export function useTutorial(
       element: '.geozonas-drawer .modern-search',
       popover: {
         title: 'Buscar Ubicaciones',
-        description:
-          'Busca rápidamente cualquier geozona o punto de interés por nombre o dirección.',
+        description: 'Busca cualquier geozona o punto de interés por nombre o dirección.',
         side: 'right',
         align: 'start',
       },
@@ -1446,8 +1476,7 @@ export function useTutorial(
       element: '.geozonas-drawer .crear-grupo-btn',
       popover: {
         title: 'Crear Grupo',
-        description:
-          'Organiza tus ubicaciones en grupos con colores personalizados para identificarlos fácilmente en el mapa.',
+        description: 'Organiza tus ubicaciones en grupos con colores personalizados.',
         side: 'right',
         align: 'start',
       },
@@ -1457,9 +1486,77 @@ export function useTutorial(
       popover: {
         title: 'Lista de Ubicaciones',
         description:
-          'Cada tarjeta muestra el nombre y detalles de la ubicación. Haz clic para seleccionarla, doble clic para centrar el mapa en ella, o usa el menú ⋮ para editar, ver en mapa o eliminar.',
+          'Cada tarjeta muestra el nombre y detalles. Haz clic para seleccionar, doble clic para centrar el mapa, o usa el menú ⋮ para más opciones.',
         side: 'right',
         align: 'start',
+      },
+    },
+    {
+      element: '.floating-btn-geozona',
+      popover: {
+        title: 'Nueva Geozona',
+        description:
+          'Haz clic aquí para crear una nueva geozona. Al dar Siguiente abriremos el formulario.',
+        side: 'left',
+        align: 'start',
+      },
+    },
+    // ── Pasos dentro del dialog ──
+    {
+      element: '.input-nombre-geozona',
+      popover: {
+        title: 'Nombre de la Zona',
+        description: 'Escribe el nombre que identificará a esta geozona.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.select-grupo-geozona',
+      popover: {
+        title: 'Grupo',
+        description:
+          'Asigna la geozona a un grupo para organizarla. El color se hereda automáticamente del grupo.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.color-palette-geozona',
+      popover: {
+        title: 'Color de la Geozona',
+        description: 'Elige el color con el que se dibujará esta geozona en el mapa.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.map-selector-geozona',
+      popover: {
+        title: 'Seleccionar en el Mapa',
+        description:
+          'Haz clic aquí para ir al mapa y definir los vértices del polígono de la geozona.',
+        side: 'bottom',
+        align: 'start',
+      },
+    },
+    {
+      element: '.notas-geozona',
+      popover: {
+        title: 'Notas',
+        description: 'Campo opcional para agregar instrucciones o referencias sobre esta geozona.',
+        side: 'top',
+        align: 'start',
+      },
+    },
+    {
+      element: '.acciones-geozona',
+      popover: {
+        title: 'Guardar o Cancelar',
+        description:
+          'Una vez definidos los puntos del polígono y el nombre, haz clic en Guardar para crear la geozona.',
+        side: 'top',
+        align: 'end',
       },
     },
   ]
