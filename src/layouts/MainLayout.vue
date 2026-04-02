@@ -402,18 +402,6 @@
     </q-dialog>
 
     <!-- Dialog EstadoFlota shi ya quedo -->
-    <q-dialog
-      v-model="estadoFlotaDrawerOpen"
-      position="left"
-      seamless
-      class="component-dialog"
-      @show="onDialogShow"
-      @hide="onDialogHide"
-    >
-      <q-card class="component-card">
-        <EstadoFlota @close="cerrarEstadoFlota" />
-      </q-card>
-    </q-dialog>
 
     <!-- Dialog Conductores -->
     <q-dialog
