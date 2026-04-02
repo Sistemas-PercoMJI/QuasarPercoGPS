@@ -1120,7 +1120,7 @@ export function useTutorial(
       },
     },
     {
-      element: '.acciones-section',
+      element: '.btn-detalles',
       popover: {
         title: 'Ver detalles de la flota',
         description:
