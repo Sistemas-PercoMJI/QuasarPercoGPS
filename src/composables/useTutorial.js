@@ -231,6 +231,19 @@ export function useTutorial(
                 driverObj.moveNext()
                 return true
               }
+              if (pasoActual === 8) {
+                const tieneEventos = document.querySelector('.eventos-container')
+
+                const pasos = driverObj.getConfig().steps
+                pasos[9].element = tieneEventos ? '.eventos-container' : '.empty-state'
+                if (!tieneEventos) {
+                  pasos[9].popover.description =
+                    'Aquí aparecerán los eventos del día cuando el vehículo haya registrado entradas o salidas de geozonas.'
+                }
+
+                driverObj.moveNext()
+                return true
+              }
 
               return false
             },
