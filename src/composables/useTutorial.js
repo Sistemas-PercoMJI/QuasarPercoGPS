@@ -192,25 +192,39 @@ export function useTutorial(
             selectorEspera: '.tabs-vehiculo',
             pasos: pasosDetalleVehiculo,
             onNextOverride: async (pasoActual) => {
-              // Al terminar el paso 2 (detalles-grid) → click tab Hoy
+              // Al terminar resumen (paso 2) → click tab Hoy
               if (pasoActual === 2) {
                 const tabHoy = document.querySelectorAll('.tabs-vehiculo .q-tab')[1]
                 if (tabHoy) tabHoy.click()
 
-                // Esperar a que carguen los datos
                 await esperarElemento('.resumen-dia-card', 5000)
                 await new Promise((r) => setTimeout(r, 600))
                 driverObj.moveNext()
-                return true // indica que ya manejamos el next
+                return true
               }
 
-              // Al terminar el paso 6 (timeline) → click tab Notificaciones
+              // Justo antes del timeline (paso 5) → ajustar selector según lo que exista
+              if (pasoActual === 5) {
+                const tieneTimeline = document.querySelector('.timeline-section-compact')
+
+                // Modificar directamente sin setSteps
+                const pasos = driverObj.getConfig().steps
+                pasos[6].element = tieneTimeline ? '.timeline-section-compact' : '.empty-state'
+                if (!tieneTimeline) {
+                  pasos[6].popover.description =
+                    'Aquí aparecerán los trayectos del día cuando el vehículo haya realizado viajes. Haz clic en cualquiera para verlo en el mapa.'
+                }
+
+                driverObj.moveNext()
+                return true
+              }
+
+              // Al terminar timeline (paso 6) → click tab Notificaciones
               if (pasoActual === 6) {
                 const tabNotif = document.querySelectorAll('.tabs-vehiculo .q-tab')[2]
                 if (tabNotif) tabNotif.click()
 
-                // Esperar a que aparezca el filtro de eventos
-                await esperarElemento('.filtro-horas-card', 5000)
+                await esperarElemento('.filtro-dia-eventos', 5000)
                 await new Promise((r) => setTimeout(r, 600))
                 const scrollArea = document.querySelector('.tab-content-scroll .scroll')
                 if (scrollArea) scrollArea.scrollTop = 0
@@ -218,7 +232,7 @@ export function useTutorial(
                 return true
               }
 
-              return false // dejar que el flujo normal maneje el resto
+              return false
             },
           },
         ]
@@ -802,7 +816,23 @@ export function useTutorial(
 
       await new Promise((r) => setTimeout(r, 400))
 
-      driverObj.setSteps(fase.pasos)
+      const pasosAjustados = fase.pasos.map((paso, index) => {
+        if (index === 6) {
+          const tieneTimeline = document.querySelector('.timeline-section-compact')
+          return {
+            ...paso,
+            element: tieneTimeline ? '.timeline-section-compact' : '.empty-state',
+            popover: {
+              ...paso.popover,
+              description: tieneTimeline
+                ? paso.popover.description
+                : 'Aquí aparecerán los trayectos del día cuando el vehículo haya realizado viajes. Haz clic en cualquiera para verlo en el mapa.',
+            },
+          }
+        }
+        return paso
+      })
+      driverObj.setSteps(pasosAjustados)
       driverObj.drive()
       onNextOverrideFase = fase.onNextOverride || null
       setTimeout(() => {
