@@ -210,6 +210,8 @@ export function useTutorial(
                 // Esperar a que aparezca el filtro de eventos
                 await esperarElemento('.filtro-horas-card', 5000)
                 await new Promise((r) => setTimeout(r, 600))
+                const scrollArea = document.querySelector('.tab-content-scroll .scroll')
+                if (scrollArea) scrollArea.scrollTop = 0
                 driverObj.moveNext()
                 return true
               }
