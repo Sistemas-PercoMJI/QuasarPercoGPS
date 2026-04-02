@@ -184,6 +184,8 @@ export function useTutorial(
               if (btnDetalle) btnDetalle.click()
               await esperarElemento('.vista-detalles')
               await new Promise((r) => setTimeout(r, 800))
+              await esperarElemento('.tabs-vehiculo')
+              await new Promise((r) => setTimeout(r, 300))
             },
           },
           {
@@ -803,6 +805,9 @@ export function useTutorial(
       driverObj.setSteps(fase.pasos)
       driverObj.drive()
       onNextOverrideFase = fase.onNextOverride || null
+      setTimeout(() => {
+        if (driverObj.isActive()) driverObj.refresh()
+      }, 200)
       configurarListeners()
 
       // Sobrescribir destroy para interceptar el fin de la fase
@@ -1134,7 +1139,7 @@ export function useTutorial(
   ]
   const pasosDetalleVehiculo = [
     {
-      element: '.acciones-section',
+      element: '.tabs-vehiculo',
       popover: {
         title: 'Información del Vehículo',
         description:
