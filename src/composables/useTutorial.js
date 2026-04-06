@@ -338,6 +338,30 @@ export function useTutorial(
           pasosEventos,
           '.eventos-drawer-compact',
           9,
+          async (pasoActual) => {
+            // Abrir dialog al terminar paso del btn-nuevo (paso 5)
+            if (pasoActual === 5) {
+              const btn = document.querySelector('.btn-nuevo')
+              if (btn) btn.click()
+
+              await esperarElemento('.dialog-evento-moderno', 3000)
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.moveNext()
+              return true
+            }
+
+            // Cerrar dialog al terminar pasos internos (paso 10)
+            if (pasoActual === 10) {
+              const btnCancelar = document.querySelector('.footer-acciones-evento .q-btn')
+              if (btnCancelar) btnCancelar.click()
+
+              await new Promise((r) => setTimeout(r, 400))
+              driverObj.destroy()
+              return true
+            }
+
+            return false
+          },
         )
         return
       }
@@ -1609,6 +1633,68 @@ export function useTutorial(
           'Cada evento muestra su nombre, ubicación asociada y un toggle para activarlo o desactivarlo. Usa el menú ⋮ para editar, duplicar o eliminar.',
         side: 'right',
         align: 'start',
+      },
+    },
+
+    {
+      element: '.btn-nuevo',
+      popover: {
+        title: 'Crear Nuevo Evento',
+        description:
+          'Haz clic aquí para crear un nuevo evento. Al dar Siguiente abriremos el formulario.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    //Pasos para el formulario de creación de eventos
+    {
+      element: '.seccion-info-basica',
+      popover: {
+        title: 'Información Básica',
+        description:
+          'Escribe el nombre del evento y una descripción opcional para identificarlo fácilmente.',
+        side: 'left',
+        align: 'start',
+      },
+    },
+    {
+      element: '.seccion-condiciones',
+      popover: {
+        title: 'Condiciones de Activación',
+        description:
+          'Define cuándo se activa el evento: elige el tipo de ubicación (POI o Geozona), si es por Entrada o Salida, y selecciona la ubicación específica.',
+        side: 'left',
+        align: 'start',
+      },
+    },
+    {
+      element: '.btn-agregar-condicion',
+      popover: {
+        title: 'Agregar Condiciones',
+        description:
+          'Puedes agregar múltiples condiciones y combinarlas con Y (todas deben cumplirse) o O (basta con una).',
+        side: 'top',
+        align: 'start',
+      },
+    },
+    {
+      element: '.seccion-opciones-alerta',
+      popover: {
+        title: 'Opciones de Alerta',
+        description:
+          'Configura con qué frecuencia se dispara la alerta y si aplica siempre o solo en días y horarios específicos.',
+        side: 'left',
+        align: 'start',
+      },
+    },
+    {
+      element: '.footer-acciones-evento',
+      popover: {
+        title: 'Guardar o Cancelar',
+        description:
+          'Una vez configurado el evento, haz clic en Guardar Evento para crearlo, o Cancelar para descartar los cambios.',
+        side: 'top',
+        align: 'end',
       },
     },
   ]
