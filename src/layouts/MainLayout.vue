@@ -540,6 +540,9 @@ const { iniciarTutorial } = useTutorial(router, {
   cerrarEventos: () => {
     eventosDrawerOpen.value = false
   },
+  cerrarTodos: () => {
+    cerrarTodosLosDialogs()
+  },
 })
 
 const $q = useQuasar()

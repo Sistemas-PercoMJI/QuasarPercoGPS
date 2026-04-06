@@ -13,6 +13,7 @@ export function useTutorial(
     cerrarGeozonas,
     abrirEventos,
     cerrarEventos,
+    cerrarTodos,
   } = {},
 ) {
   // eslint-disable-next-line no-unused-vars
@@ -847,6 +848,7 @@ export function useTutorial(
 
   //  MODIFICAR LA FUNCIÓN iniciarTutorial()
   function iniciarTutorial() {
+    if (cerrarTodos) cerrarTodos()
     pasoAnterior = -1
     navegacionProgramada = null
     yaNavegamosAReportes = false
