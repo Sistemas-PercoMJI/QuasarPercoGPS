@@ -26,6 +26,7 @@ export function useTutorial(
   let confirmHandler = null
   let yaCambioAHistorial = false
   let onNextOverrideFase = null
+  let saliendo = false
   // let viniendoDeComponente = false
 
   const driverObj = driver({
@@ -481,6 +482,8 @@ export function useTutorial(
       driverObj.moveNext()
     },
     onDestroyStarted: () => {
+      console.log('onDestroyStarted, saliendo antes:', saliendo)
+
       if (navegacionProgramada) {
         const accion = navegacionProgramada
         navegacionProgramada = null
@@ -499,15 +502,23 @@ export function useTutorial(
         return
       }
 
-      if (!driverObj.hasNextStep() || confirm('¿Seguro que quieres salir del tutorial?')) {
+      if (driverObj.hasNextStep()) {
+        if (confirm('¿Seguro que quieres salir del tutorial?')) {
+          saliendo = true
+          localStorage.removeItem('mj_tutorial_step')
+          navegacionProgramada = null
+          yaNavegamosAReportes = false
+          isTransitioning = false
+          limpiarListeners()
+          driverObj.destroy()
+        }
+      } else {
+        // Fin natural, dejar que el destroy sobreescrito maneje
         localStorage.removeItem('mj_tutorial_step')
         navegacionProgramada = null
         yaNavegamosAReportes = false
         isTransitioning = false
-
-        //  LIMPIAR LISTENERS ANTES DE DESTRUIR
         limpiarListeners()
-
         driverObj.destroy()
       }
     },
@@ -948,6 +959,15 @@ export function useTutorial(
       // Sobrescribir destroy para interceptar el fin de la fase
       const destroyFase = driverObj.destroy.bind(driverObj)
       driverObj.destroy = async () => {
+        console.log('destroy FASE ejecutado, saliendo:', saliendo)
+        if (saliendo) {
+          saliendo = false
+          limpiarListeners()
+          onNextOverrideFase = null
+          destroyFase()
+          cerrarFn()
+          return
+        }
         limpiarListeners()
         onNextOverrideFase = null
         destroyFase()
@@ -1123,6 +1143,7 @@ export function useTutorial(
     }
 
     driverObj.destroy = () => {
+      console.log('destroy LISTENERS ejecutado, saliendo:', saliendo)
       limpiarListeners()
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
@@ -1211,6 +1232,15 @@ export function useTutorial(
     // Al terminar los pasos del componente → cerrar y continuar en dashboard
     const destroyComponente = driverObj.destroy.bind(driverObj)
     driverObj.destroy = () => {
+      console.log('destroy COMPONENTE ejecutado, saliendo:', saliendo)
+      if (saliendo) {
+        saliendo = false
+        limpiarListeners()
+        onNextOverrideFase = null
+        destroyComponente()
+        cerrarFn()
+        return
+      }
       limpiarListeners()
       onNextOverrideFase = null
       destroyComponente()
