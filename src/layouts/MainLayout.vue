@@ -23,14 +23,7 @@
 
             <template v-slot:append>
               <q-btn v-if="busqueda" flat dense round icon="close" @click="limpiarBusqueda" />
-              <q-btn
-                flat
-                dense
-                round
-                icon="tune"
-                @click="mostrarFiltros = !mostrarFiltros"
-                id="filtros-panel"
-              >
+              <q-btn flat dense round icon="tune" @click="toggleFiltrosPanel" id="filtros-panel">
                 <q-tooltip>Filtros</q-tooltip>
               </q-btn>
             </template>
@@ -632,6 +625,13 @@ function abrirSoporte() {
   soporteDialogOpen.value = true
 }
 
+function toggleFiltrosPanel() {
+  mostrarFiltros.value = !mostrarFiltros.value
+  if (mostrarFiltros.value) {
+    mostrarSugerencias.value = false // ✅ cerrar sugerencias al abrir filtros
+  }
+}
+
 // Función para cargar datos de conductores si no están cargados
 const cargarDatosConductores = async () => {
   if (!conductoresCargados.value) {
@@ -1212,13 +1212,14 @@ onUnmounted(() => {
 
 function handleClickOutside(event) {
   const searchContainer = document.querySelector('.search-container')
-  const sugerenciasContainer = document.querySelector('.sugerencias-container')
+  // const sugerenciasContainer = document.querySelector('.sugerencias-container')
 
-  if (!searchContainer || !sugerenciasContainer) return
+  if (!searchContainer) return
 
   // Si el clic fue fuera del contenedor de búsqueda y sugerencias
-  if (!searchContainer.contains(event.target) && !sugerenciasContainer.contains(event.target)) {
+  if (!searchContainer.contains(event.target)) {
     mostrarSugerencias.value = false
+    mostrarFiltros.value = false
   }
 }
 
