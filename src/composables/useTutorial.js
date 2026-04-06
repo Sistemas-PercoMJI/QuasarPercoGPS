@@ -25,7 +25,7 @@ export function useTutorial(
   let confirmHandler = null
   let yaCambioAHistorial = false
   let onNextOverrideFase = null
-  let viniendoDeComponente = false
+  // let viniendoDeComponente = false
 
   const driverObj = driver({
     showProgress: true,
@@ -327,11 +327,11 @@ export function useTutorial(
 
       // ── EVENTOS (paso 8) ──
       if (pasoActual === 8 && totalPasos === 16) {
-        if (viniendoDeComponente) {
+        /* if (viniendoDeComponente) {
           viniendoDeComponente = false // ← resetear aquí, no con timeout
           //  driverObj.moveNext()
           return
-        }
+        }*/
         ejecutarTutorialComponente(
           abrirEventos,
           cerrarEventos,
@@ -1180,7 +1180,7 @@ export function useTutorial(
         document.querySelectorAll('.driver-popover').forEach((el) => {
           if (el && el.parentNode) el.parentNode.removeChild(el)
         })
-        viniendoDeComponente = true
+        // viniendoDeComponente = true
         driverObj.setSteps(pasosDashboard)
         driverObj.drive(stepDashboardContinuar)
         configurarListeners()
