@@ -210,7 +210,7 @@ export function useReportesEventos() {
                 const data = doc.data()
 
                 //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
-                const duracionSegundos = data.DuracionDentro || null
+                const duracionSegundos = data.DuracionSegundos ?? data.DuracionDentro ?? null
 
                 // Formatear duración como HH:MM:SS si existe
                 let duracionFormateada = null
@@ -288,9 +288,11 @@ export function useReportesEventos() {
       // Filtrar por tipos de evento si se especificaron
       let eventosFiltrados = todosLosEventos
       if (filtroEventos && filtroEventos.length > 0) {
-        eventosFiltrados = todosLosEventos.filter((evento) =>
-          filtroEventos.includes(evento.eventoNombre),
-        )
+        if (!filtroEventos.includes('Todos los eventos')) {
+          eventosFiltrados = todosLosEventos.filter((evento) =>
+            filtroEventos.includes(evento.eventoNombre),
+          )
+        }
       }
 
       const eventosProcesados = await procesarEventosParaPDF(eventosFiltrados)

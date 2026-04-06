@@ -225,7 +225,7 @@ const { obtenerDireccion } = useGeocoding()
 
 const {
   conductores,
-  unidades,
+
   gruposConductores,
   obtenerGruposConductores,
   obtenerConductores,
@@ -282,7 +282,6 @@ function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
     clearInterval(intervaloEvaluacionEventos)
     intervaloEvaluacionEventos = null
-    console.log('🛑 Evaluación detenida')
   }
 }
 
@@ -1238,7 +1237,9 @@ const limpiarCapasDelMapa = () => {
     marcadoresPOIs.value = []
   }
   const layersToRemove = [
-    'pois-combined',
+    'pois-circles', // 🆕 layer correcto
+    'pois-symbols', // 🆕 layer correcto
+    'geozonas-symbols', // 🆕 faltaba este
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined-fill',
     'geozonas-poligonales-combined-outline',
@@ -1248,6 +1249,7 @@ const limpiarCapasDelMapa = () => {
     'pois-combined',
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined',
+    'geozonas-symbols', // 🆕 faltaba este
   ]
 
   layersToRemove.forEach((layerId) => {
@@ -1856,7 +1858,6 @@ onMounted(async () => {
 
   try {
     await obtenerUnidades()
-    console.log(`${unidades.value.length} unidades cargadas`)
   } catch (error) {
     console.error('Error al cargar unidades:', error)
   }
@@ -1944,9 +1945,7 @@ onMounted(async () => {
       }
     }
 
-    window.addEventListener('empresa-cambiada', async (event) => {
-      console.log('Empresa cambiada:', event.detail.empresas)
-
+    window.addEventListener('empresa-cambiada', async () => {
       /*// Solo notificar, NO recargar
       Notify.create({
         type: 'info',
@@ -1955,7 +1954,6 @@ onMounted(async () => {
         icon: 'business',
         timeout: 2000,
       })*/
-
       // NO hacer: window.location.reload()
     })
 

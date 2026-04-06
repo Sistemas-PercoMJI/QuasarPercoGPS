@@ -877,27 +877,16 @@ const cargarOpcionesSelector = async () => {
 }
 
 const cargarEventosDisponibles = async () => {
-  if (!userId.value) {
-    console.warn(' No hay userId para cargar eventos')
-    return
-  }
-
   loadingEventos.value = true
-
   try {
-    // Obtener instancia de useEventos con el userId actual
     const { obtenerEventos } = useEventos(userId.value)
-
-    // Obtener todos los eventos del usuario
     const eventosDelUsuario = await obtenerEventos()
 
-    // Extraer solo los nombres de los eventos para el selector
-    listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
+    listaEventosDisponibles.value = [
+      'Todos los eventos',
+      ...eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean),
+    ]
     eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
-
-    if (listaEventosDisponibles.value.length === 0) {
-      console.warn(' No se encontraron eventos activos')
-    }
   } catch (error) {
     console.error(' Error al cargar eventos desde Firebase:', error)
     listaEventosDisponibles.value = []
@@ -1163,9 +1152,10 @@ const obtenerDatosReporte = async () => {
   // Filtrar por eventos si aplica
   let datosFiltrados = datosInforme
   if (tipoInforme === 'eventos' && eventos.value.length > 0) {
-    datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
+    if (!eventos.value.includes('Todos los eventos')) {
+      datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
+    }
   }
-
   // Agrupar datos
   if (tipoInforme === 'eventos') {
     //  PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
@@ -1313,19 +1303,6 @@ const generarReporte = async () => {
 
     //  GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (datosReales.eventosAgrupados) {
-        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
-          console.log(
-            ` ${nombre}:`,
-            trayectos.map((t) => ({
-              unidad: t.unidadNombre,
-              placa: t.Placa,
-              todasLasPropiedades: Object.keys(t),
-            })),
-          )
-        })
-      }
-
       pdfResult = await generarPDFTrayectos(config, datosReales)
     } else if (tipoInformeSeleccionado.value === 'eventos') {
       pdfResult = generarPDFEventos(config, datosReales)

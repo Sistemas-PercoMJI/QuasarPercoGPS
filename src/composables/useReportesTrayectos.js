@@ -120,16 +120,11 @@ export function useReportesTrayectos() {
               const tieneIgnicion = coordenadas.some(
                 (c) => c.ignicion !== null && c.ignicion !== undefined,
               )
-              console.log(
-                `📍 ${unidadId}/${fecha}: ${coordenadas.length} coords, tieneIgnicion: ${tieneIgnicion}`,
-              )
 
               // 🆕 Dividir por ignición si hay datos, sino usar todo como un viaje
               const gruposCoords = tieneIgnicion
                 ? detectarViajesPorIgnicion(coordenadas)
                 : [coordenadas]
-
-              console.log(`🚗 Viajes detectados: ${gruposCoords.length}`)
 
               const odometroInicio = parseFloat(data.odometro_inicio) || 0
               const odometroFin = parseFloat(data.odometro_fin) || 0

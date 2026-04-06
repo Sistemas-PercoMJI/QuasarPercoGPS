@@ -128,6 +128,7 @@ export function useNotificacionesEventos() {
               const esNuevo = ahora - tsEvento < 30 * 1000
 
               const notifData = eventoANotificacion(evento, unidadNombre)
+              notifData.timestamp = evento.Timestamp?.toDate?.()?.getTime?.() || Date.now() // 🆕
 
               // Solo marcar como leído si es histórico
               if (!esNuevo) {

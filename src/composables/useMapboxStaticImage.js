@@ -151,10 +151,6 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100, protegi
     muestreadas.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     simplificadas = muestreadas
   }
-
-  const reduccion = ((1 - simplificadas.length / coordenadas.length) * 100).toFixed(1)
-  console.log(`   ${coordenadas.length} → ${simplificadas.length} puntos (${reduccion}% reducción)`)
-
   return simplificadas
 }
 
@@ -238,25 +234,7 @@ function prepararDatosTrayectos(registros) {
         maxPuntosPorViaje,
         indicesProtegidos,
       )
-      console.log('pinsConexion detectados:', pinsConexion.length, pinsConexion)
-      console.log('indicesProtegidos:', [...indicesProtegidos])
-      console.log('coords totales antes de simplificar:', coordenadasOrdenadas.length)
-      console.log('coords después de simplificar:', coordenadasSimplificadas.length)
-      // Verificar si los puntos del gap quedaron incluidos
-      const pin1 = coordenadasSimplificadas.find((c) => c.lat === 32.4918866)
-      const pin2 = coordenadasSimplificadas.find((c) => c.lat === 32.4942583)
-      const pin3 = coordenadasSimplificadas.find((c) => c.lat === 32.49688)
-      const pin4 = coordenadasSimplificadas.find((c) => c.lat === 32.497755)
-      console.log(
-        'pin1 en simplificadas:',
-        !!pin1,
-        'pin2:',
-        !!pin2,
-        'pin3:',
-        !!pin3,
-        'pin4:',
-        !!pin4,
-      )
+
       return {
         vehiculoId: registro.idUnidad || registro.vehiculoId,
         vehiculoNombre: `${registro.unidadNombre || 'Sin nombre'} - Viaje ${index + 1}`,
@@ -372,17 +350,12 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     }
   })
 
-  /*overlays.forEach((overlay, i) => {
-    console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
-  })*/
-
   // Construir URL
   const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
   const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
-  console.log('URL length:', url.length)
   if (url.length > 8000) {
     console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
   }
