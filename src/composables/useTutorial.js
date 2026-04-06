@@ -54,6 +54,14 @@ export function useTutorial(
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
 
+      if (pasoActual === 8 && totalPasos === 13) {
+        // Cerrar el select si está abierto
+        const select = document.querySelector('.select-grupo-geozona')
+        if (select) select.blur()
+
+        driverObj.movePrevious()
+        return
+      }
       //  NUEVO: SI ESTAMOS EN DASHBOARD PASO 10 Y RETROCEDEMOS, IR A REPORTES
       if (pasoActual === 10 && totalPasos === 16 && yaNavegamosAReportes) {
         // Guardar flag para que iniciarTutorialReportes sepa que viene de "Anterior"
@@ -308,7 +316,13 @@ export function useTutorial(
               driverObj.moveNext()
               return true
             }
+            if (pasoActual === 7) {
+              const input = document.querySelector('.input-nombre-geozona')
+              if (input) input.blur()
 
+              driverObj.moveNext()
+              return true
+            }
             // Cerrar dialog al terminar pasos internos (paso 12)
             if (pasoActual === 12) {
               const btnCancelar = document.querySelector('.acciones-geozona .q-btn')
