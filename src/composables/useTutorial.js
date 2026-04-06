@@ -167,7 +167,8 @@ export function useTutorial(
     onNextClick: async () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
-      console.log('onNextClick llamado:', pasoActual)
+      console.log('onNextClick llamado:', pasoActual, 'totalPasos:', totalPasos)
+      // console.log('onNextClick llamado:', pasoActual)
       if (onNextOverrideFase) {
         const handled = await onNextOverrideFase(pasoActual)
         if (handled) return
@@ -328,7 +329,7 @@ export function useTutorial(
       if (pasoActual === 8 && totalPasos === 16) {
         if (viniendoDeComponente) {
           viniendoDeComponente = false // ← resetear aquí, no con timeout
-          driverObj.moveNext()
+          //  driverObj.moveNext()
           return
         }
         ejecutarTutorialComponente(
