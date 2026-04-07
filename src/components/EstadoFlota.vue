@@ -625,6 +625,8 @@ import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTi
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
 import { useEventBus } from 'src/composables/useEventBus.js'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 // ==================== COMPOSABLES ====================
 const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
@@ -1057,7 +1059,7 @@ const resetearFiltroEventos = () => {
 }
 
 // Mostrar ruta en mapa (trayectos)
-const mostrarRutaEnMapa = (trayecto) => {
+const mostrarRutaEnMapa = async (trayecto) => {
   trayectoActivoId.value = trayecto.id //
 
   const trayectoConColor = {
@@ -1065,6 +1067,26 @@ const mostrarRutaEnMapa = (trayecto) => {
     color: trayecto.color || '#00E5FF',
   }
 
+  const mapPage = document.getElementById('map-page')
+  const mapaDisponible = mapPage?._mapaAPI?.map
+
+  if (!mapaDisponible) {
+    // Navegar al dashboard y esperar a que el mapa esté listo
+    await router.push('/')
+    await new Promise((resolve) => {
+      const intervalo = setInterval(() => {
+        const mp = document.getElementById('map-page')
+        if (mp?._mapaAPI?.map) {
+          clearInterval(intervalo)
+          resolve()
+        }
+      }, 100)
+      setTimeout(() => {
+        clearInterval(intervalo)
+        resolve()
+      }, 3000)
+    })
+  }
   if (window.dibujarRutaTrayecto) {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
