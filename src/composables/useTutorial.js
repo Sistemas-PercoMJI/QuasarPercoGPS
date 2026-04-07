@@ -177,7 +177,7 @@ export function useTutorial(
     onNextClick: async () => {
       const pasoActual = driverObj.getActiveIndex()
       const totalPasos = driverObj.getConfig().steps?.length || 0
-      console.log('onNextClick llamado:', pasoActual, 'totalPasos:', totalPasos)
+
       // console.log('onNextClick llamado:', pasoActual)
       if (onNextOverrideFase) {
         const handled = await onNextOverrideFase(pasoActual)
@@ -482,8 +482,6 @@ export function useTutorial(
       driverObj.moveNext()
     },
     onDestroyStarted: () => {
-      console.log('onDestroyStarted, saliendo antes:', saliendo)
-
       if (navegacionProgramada) {
         const accion = navegacionProgramada
         navegacionProgramada = null
@@ -959,7 +957,6 @@ export function useTutorial(
       // Sobrescribir destroy para interceptar el fin de la fase
       const destroyFase = driverObj.destroy.bind(driverObj)
       driverObj.destroy = async () => {
-        console.log('destroy FASE ejecutado, saliendo:', saliendo)
         if (saliendo) {
           saliendo = false
           limpiarListeners()
@@ -1143,7 +1140,6 @@ export function useTutorial(
     }
 
     driverObj.destroy = () => {
-      console.log('destroy LISTENERS ejecutado, saliendo:', saliendo)
       limpiarListeners()
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
@@ -1232,7 +1228,6 @@ export function useTutorial(
     // Al terminar los pasos del componente → cerrar y continuar en dashboard
     const destroyComponente = driverObj.destroy.bind(driverObj)
     driverObj.destroy = () => {
-      console.log('destroy COMPONENTE ejecutado, saliendo:', saliendo)
       if (saliendo) {
         saliendo = false
         limpiarListeners()
