@@ -41,6 +41,33 @@ const COLORES_TRAYECTOS = [
  * @param {Object} lineEnd - Punto final de la línea {lat, lng}
  * @returns {Number} Distancia perpendicular
  */
+
+function encodePolyline(coordenadas) {
+  let output = ''
+  let prevLat = 0
+  let prevLng = 0
+
+  for (const coord of coordenadas) {
+    const lat = Math.round(coord.lat * 1e5)
+    const lng = Math.round(coord.lng * 1e5)
+
+    let dLat = lat - prevLat
+    let dLng = lng - prevLng
+    prevLat = lat
+    prevLng = lng
+
+    for (const value of [dLat, dLng]) {
+      let v = value < 0 ? ~(value << 1) : value << 1
+      while (v >= 0x20) {
+        output += String.fromCharCode((0x20 | (v & 0x1f)) + 63)
+        v >>= 5
+      }
+      output += String.fromCharCode(v + 63)
+    }
+  }
+  return output
+}
+
 function distanciaPerpendicularPunto(point, lineStart, lineEnd) {
   const { lat: x0, lng: y0 } = point
   const { lat: x1, lng: y1 } = lineStart
@@ -287,22 +314,9 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     }
 
     // 1. GeoJSON LineString (en lugar de path)
-    const geojson = {
-      type: 'Feature',
-      properties: {
-        stroke: `#${color}`,
-        'stroke-width': 3,
-        'stroke-opacity': 1,
-      },
-      geometry: {
-        type: 'LineString',
-        coordinates: coordenadas.map((c) => [c.lng, c.lat]),
-      },
-    }
 
-    const geojsonStr = encodeURIComponent(JSON.stringify(geojson))
-
-    overlays.push(`geojson(${geojsonStr})`)
+    const polyline = encodePolyline(coordenadas)
+    overlays.push(`path-3+${color}-1(${polyline})`)
 
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
@@ -355,7 +369,8 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   const overlaysStr = overlays.join(',')
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
+  const overlaysEncoded = encodeURIComponent(overlaysStr)
+  const url = `${baseURL}/${overlaysEncoded}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
   if (url.length > 8000) {
     console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
   }
