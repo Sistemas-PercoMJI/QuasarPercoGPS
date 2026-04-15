@@ -2078,12 +2078,12 @@ onMounted(async () => {
               })
             } else {
               console.error('Conductor no encontrado')
-              /*$q.notify({
+              $q.notify({
                 type: 'negative',
                 message: 'No se encontró el conductor',
                 icon: 'error',
                 position: 'top',
-              })*/
+              })
             }
           })
         }
