@@ -2454,7 +2454,7 @@ watch(
     window.dispatchEvent(
       new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: nuevosIds } }),
     )
-    actualizarFiltroUnidades(filtroMapaActivo.value, nuevosIds)
+    actualizarFiltroUnidades(filtroMapaActivo.value, nuevosIds, 'conductores')
   },
   { immediate: true },
 )
