@@ -1240,74 +1240,89 @@ export function useReportePDF() {
         // ========================================
         // MAPA DEL TRAYECTO (si está activo)
         // ========================================
+        // ========================================
+        // MAPAS POR DÍA (si está activo)
+        // ========================================
         if (config.mostrarMapaTrayecto && trayectos.length > 0) {
-          try {
-            // Crear una nueva página específica para el mapa
-            doc.addPage('a4', 'landscape')
+          // Agrupar trayectos por fecha
+          const trayectosPorDia = {}
+          trayectos.forEach((t) => {
+            const fecha =
+              t.fecha ||
+              (t.horaInicioTrabajo
+                ? t.horaInicioTrabajo.split(' ')[0]
+                : t.inicioTimestamp
+                  ? new Date(t.inicioTimestamp).toLocaleDateString('es-MX')
+                  : 'Sin fecha')
+            if (!trayectosPorDia[fecha]) trayectosPorDia[fecha] = []
+            trayectosPorDia[fecha].push(t)
+          })
 
-            // Empezar desde arriba en esta nueva página
-            yPos = 20
+          for (const [fecha, trayectosDia] of Object.entries(trayectosPorDia)) {
+            try {
+              const trayectosParaMapa = prepararDatosTrayectos(trayectosDia)
+              if (!trayectosParaMapa.length || !trayectosParaMapa[0].coordenadas.length) continue
 
-            doc.setFontSize(12)
-            doc.setFont(undefined, 'bold')
-            doc.setTextColor(0, 0, 0)
-            doc.text(`Mapa de Trayecto - ${nombreEntidad}`, 20, yPos)
-            yPos += 10
+              doc.addPage('a4', 'landscape')
+              yPos = 20
 
-            // Preparar trayectos para el mapa
-            const trayectosParaMapa = prepararDatosTrayectos(trayectos)
+              // Título del mapa
+              doc.setFontSize(12)
+              doc.setFont(undefined, 'bold')
+              doc.setTextColor(0, 0, 0)
+              doc.text(`Mapa de Trayecto - ${nombreEntidad}`, 20, yPos)
+              yPos += 6
 
-            if (trayectosParaMapa.length > 0 && trayectosParaMapa[0].coordenadas.length > 0) {
-              const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, {
-                width: 1200,
-                height: 800,
-                padding: 50,
-                mostrarMarcadores: true,
-              })
-
-              const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
-
-              // Ajustar dimensiones del mapa
-              const pageWidth = doc.internal.pageSize.getWidth()
-              const pageHeight = doc.internal.pageSize.getHeight()
-              const margin = 14
-
-              // Calcular dimensiones del mapa para que quepa bien
-              const availableWidth = pageWidth - margin * 2
-              const availableHeight = pageHeight - yPos - 40 // 40px para info y leyenda
-
-              // Mantener relación de aspecto
-              const aspectRatio = 1200 / 800 // 1.5
-              let mapWidth = availableWidth
-              let mapHeight = mapWidth / aspectRatio
-
-              // Si es muy alto, ajustar por altura
-              if (mapHeight > availableHeight) {
-                mapHeight = availableHeight
-                mapWidth = mapHeight * aspectRatio
+              // Subtítulo con fecha formateada
+              let fechaFormateada = fecha
+              try {
+                const partes = fecha.includes('/') ? fecha.split('/') : null
+                if (partes && partes.length === 3) {
+                  const [d, m, a] =
+                    parseInt(partes[0]) > 31
+                      ? [partes[2], partes[1], partes[0]] // YYYY/MM/DD
+                      : [partes[0], partes[1], partes[2]] // DD/MM/YYYY
+                  fechaFormateada = new Date(a, m - 1, d).toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                  fechaFormateada =
+                    fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1)
+                }
+              } catch (e) {
+                console.error('Error generando mapa:', e)
               }
 
-              // Centrar horizontalmente
-              const mapX = (pageWidth - mapWidth) / 2
+              doc.setFontSize(10)
+              doc.setFont(undefined, 'normal')
+              doc.setTextColor(100, 100, 100)
+              doc.text(fechaFormateada, 20, yPos)
+              yPos += 10
 
-              // Posicionar el mapa
+              const urlMapa = generarURLMapaTrayectos(trayectosParaMapa, { padding: 50 })
+              if (!urlMapa) continue
+              const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+              if (!imagenBase64) continue // ← guard nuevo
+              const pageWidthMapa = doc.internal.pageSize.getWidth()
+              const pageHeightMapa = doc.internal.pageSize.getHeight()
+              const margin = 14
+              const availableWidthMapa = pageWidthMapa - margin * 2
+              const availableHeightMapa = pageHeightMapa - yPos - 40
+              const aspectRatio = 1200 / 800
+              let mapWidth = availableWidthMapa
+              let mapHeight = mapWidth / aspectRatio
+              if (mapHeight > availableHeightMapa) {
+                mapHeight = availableHeightMapa
+                mapWidth = mapHeight * aspectRatio
+              }
+              const mapX = (pageWidthMapa - mapWidth) / 2
+
               doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
               yPos += mapHeight + 10
 
-              // Info del mapa
-              doc.setFontSize(10)
-              doc.setFont(undefined, 'normal')
-              const placaDisplay =
-                primerTrayecto.Placa ||
-                primerTrayecto.placa ||
-                primerTrayecto.unidadPlaca ||
-                'Sin placa'
-
-              doc.text(`Placa: ${placaDisplay}`, 20, yPos)
-              yPos += 6
-              // doc.text(`Total de puntos GPS: ${trayectosParaMapa[0].coordenadas.length}`, 20, yPos)
-              yPos += 10
-
+              // Leyenda
               const COLORES_LEYENDA = [
                 [231, 76, 60],
                 [41, 128, 185],
@@ -1318,26 +1333,24 @@ export function useReportePDF() {
                 [211, 84, 0],
                 [44, 62, 80],
               ]
+              const pageHeightLeyenda = doc.internal.pageSize.getHeight()
               doc.setFontSize(9)
               doc.setFont(undefined, 'normal')
               doc.setTextColor(0, 0, 0)
 
-              const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+              const formatearHora = (timestamp) => {
+                if (!timestamp) return 'N/A'
+                const f = timestamp instanceof Date ? timestamp : new Date(timestamp)
+                return f.toLocaleTimeString('es-MX', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })
+              }
 
               trayectosParaMapa.forEach((trayecto, idx) => {
-                const trayectoRaw = trayectos[idx]
+                const trayectoRaw = trayectosDia[idx]
                 const rgb = COLORES_LEYENDA[idx % COLORES_LEYENDA.length]
-
-                const formatearHora = (timestamp) => {
-                  if (!timestamp) return 'N/A'
-                  const fecha = timestamp instanceof Date ? timestamp : new Date(timestamp)
-                  return fecha.toLocaleTimeString('es-MX', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  })
-                }
-
                 const horaInicio = formatearHora(
                   trayectoRaw?.horaInicioTrabajo || trayectoRaw?.inicioTimestamp,
                 )
@@ -1347,12 +1360,10 @@ export function useReportePDF() {
                 const ubicacionInicio = trayectoRaw?.ubicacionInicio || 'N/A'
                 const ubicacionFin = trayectoRaw?.ubicacionFin || 'N/A'
 
-                // Salto de página si no cabe
                 if (yPos > pageHeightLeyenda - 20) {
                   doc.addPage()
                   yPos = 20
                 }
-
                 doc.setFillColor(rgb[0], rgb[1], rgb[2])
                 doc.circle(22, yPos - 1.5, 2, 'F')
                 doc.text(`Inicio ${idx + 1}: ${horaInicio} - ${ubicacionInicio}`, 26, yPos)
@@ -1362,12 +1373,12 @@ export function useReportePDF() {
                   doc.addPage()
                   yPos = 20
                 }
-
                 doc.setFillColor(rgb[0], rgb[1], rgb[2])
                 doc.rect(20, yPos - 3, 4, 4, 'F')
                 doc.text(`Fin ${idx + 1}: ${horaFin} - ${ubicacionFin}`, 26, yPos)
                 yPos += 8
               })
+
               const todosLosPins = trayectosParaMapa.flatMap((t) => t.pinsConexion || [])
               if (todosLosPins.length > 0) {
                 if (yPos > pageHeightLeyenda - 20) {
@@ -1384,7 +1395,10 @@ export function useReportePDF() {
                 doc.text('= Pérdida de señal', 29, yPos)
                 yPos += 6
 
-                // Ícono reconexión de señal
+                if (yPos > pageHeightLeyenda - 20) {
+                  doc.addPage()
+                  yPos = 20
+                }
                 doc.setFillColor(0, 150, 0)
                 doc.circle(24, yPos - 1.5, 3, 'F')
                 doc.setTextColor(255, 255, 255)
@@ -1395,9 +1409,9 @@ export function useReportePDF() {
                 doc.text('= Reconexión de señal', 29, yPos)
                 yPos += 8
               }
+            } catch (error) {
+              console.error(`Error generando mapa del día ${fecha}:`, error)
             }
-          } catch (error) {
-            console.error('Error generando mapa:', error)
           }
         }
       }
