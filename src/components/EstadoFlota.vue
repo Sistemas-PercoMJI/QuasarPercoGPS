@@ -59,213 +59,22 @@
           </template>
         </q-input>
       </div>
-      <!-- ===== GRUPOS DE UNIDADES ===== -->
-      <div class="grupos-unidades-section q-px-md q-pb-sm">
-        <div class="grupos-section-header q-mb-xs">
-          <span class="text-caption text-grey-7">GRUPOS DE UNIDADES</span>
-          <q-btn
-            flat
-            dense
-            round
-            icon="create_new_folder"
-            size="sm"
-            color="primary"
-            @click="abrirDialogNuevoGrupo"
-          >
-            <q-tooltip>Crear grupo</q-tooltip>
-          </q-btn>
-        </div>
-
-        <q-list dense bordered class="rounded-borders">
-          <!-- Item especial: Todas las unidades -->
-          <q-item
-            clickable
-            v-ripple
-            @click="seleccionarGrupoFiltro({ id: '__todas__' })"
-            :active="grupoSeleccionadoId === '__todas__' || grupoSeleccionadoId === null"
-            class="grupo-unidad-item"
-          >
-            <q-item-section avatar>
-              <q-avatar
-                :color="
-                  grupoSeleccionadoId === '__todas__' || grupoSeleccionadoId === null
-                    ? 'primary'
-                    : 'blue-grey-5'
-                "
-                text-color="white"
-                size="32px"
-              >
-                <q-icon name="directions_car" size="16px" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="text-weight-medium">Todas las unidades</q-item-label>
-              <q-item-label caption class="text-grey-7">
-                <q-icon name="directions_car" size="14px" class="q-mr-xs" />
-                {{ unidadesFiltradas.length }} unidades
-              </q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <!-- Grupos creados por el usuario -->
-          <q-item
-            v-for="grupo in gruposUnidades"
-            :key="grupo.id"
-            clickable
-            v-ripple
-            @click="seleccionarGrupoFiltro(grupo)"
-            :active="grupoSeleccionadoId === grupo.id"
-            class="grupo-unidad-item"
-          >
-            <q-item-section avatar>
-              <q-avatar
-                :color="grupoSeleccionadoId === grupo.id ? 'primary' : 'blue-grey-5'"
-                text-color="white"
-                size="32px"
-              >
-                <q-icon name="folder" size="16px" />
-              </q-avatar>
-            </q-item-section>
-
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
-              <q-item-label caption class="text-grey-7">
-                <q-icon name="directions_car" size="14px" class="q-mr-xs" />
-                {{ grupo.UnidadesIds?.length || 0 }} unidades
-              </q-item-label>
-            </q-item-section>
-
-            <q-item-section side>
-              <q-btn
-                flat
-                dense
-                round
-                icon="more_vert"
-                size="sm"
-                color="grey-7"
-                class="btn-menu-grupo-unidad"
-                @click.stop="grupoMenuActual = grupo"
-              >
-                <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
-                  <q-list dense style="min-width: 180px" class="rounded-borders">
-                    <q-item clickable v-close-popup @click="editarGrupoUnidad">
-                      <q-item-section avatar>
-                        <q-icon name="edit" size="sm" color="black" />
-                      </q-item-section>
-                      <q-item-section>Editar grupo</q-item-section>
-                    </q-item>
-                    <q-separator spaced inset />
-                    <q-item clickable v-close-popup @click="confirmarEliminarGrupoUnidad">
-                      <q-item-section avatar>
-                        <q-icon name="delete" size="sm" color="negative" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-negative">Eliminar grupo</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
-            </q-item-section>
-          </q-item>
-
-          <!-- Sin grupos -->
-          <q-item v-if="gruposUnidades.length === 0">
-            <q-item-section class="text-center text-grey-5 text-caption q-py-sm">
-              Sin grupos creados aún
-            </q-item-section>
-          </q-item>
-        </q-list>
+      <!-- ===== TABS DE FILTRO ===== -->
+      <div class="q-px-md q-pb-sm">
+        <q-tabs
+          v-model="tabFiltroUnidades"
+          dense
+          class="text-grey"
+          active-color="primary"
+          indicator-color="primary"
+          align="left"
+          no-caps
+        >
+          <q-tab name="todas" label="Todas" icon="directions_car" />
+          <q-tab name="con_conductor" label="Con conductor" icon="person" />
+          <q-tab name="sin_conductor" label="Sin conductor" icon="person_off" />
+        </q-tabs>
       </div>
-
-      <!-- Dialog: Crear/Editar grupo de unidades -->
-      <q-dialog v-model="dialogGrupoUnidades" position="standard">
-        <q-card style="min-width: 500px; max-width: 90vw">
-          <q-card-section>
-            <div class="text-h6">
-              {{ modoEdicionGrupo ? 'Editar grupo' : 'Nuevo grupo de unidades' }}
-            </div>
-          </q-card-section>
-
-          <q-card-section class="q-pt-none">
-            <q-input
-              v-model="nuevoGrupoNombre"
-              label="Nombre del grupo"
-              outlined
-              dense
-              autofocus
-              :rules="[(val) => !!val || 'El nombre es requerido']"
-            />
-
-            <div class="q-mt-md">
-              <div class="text-subtitle2 q-mb-sm">Seleccionar unidades</div>
-              <q-input
-                v-model="busquedaUnidadesGrupo"
-                outlined
-                dense
-                placeholder="Buscar unidad..."
-                class="q-mb-sm"
-              >
-                <template v-slot:prepend><q-icon name="search" /></template>
-              </q-input>
-
-              <q-scroll-area style="height: 300px" class="bordered">
-                <q-list>
-                  <q-item
-                    v-for="unidad in unidadesDisponiblesParaGrupo"
-                    :key="unidad.id"
-                    tag="label"
-                    v-ripple
-                  >
-                    <q-item-section avatar>
-                      <q-checkbox
-                        :model-value="unidadesSeleccionadasGrupo.includes(unidad.id)"
-                        @update:model-value="toggleUnidadGrupo(unidad.id)"
-                      />
-                    </q-item-section>
-                    <q-item-section avatar>
-                      <q-avatar
-                        :style="{ backgroundColor: getColorHex(getColorEstado(unidad.estado)) }"
-                        text-color="white"
-                        size="32px"
-                      >
-                        <q-icon :name="getIconoEstado(unidad.estado)" size="16px" />
-                      </q-avatar>
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label>{{ unidad.nombre }}</q-item-label>
-                      <q-item-label caption>{{ unidad.IdEmpresaUnidad }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-
-                  <div
-                    v-if="unidadesDisponiblesParaGrupo.length === 0"
-                    class="q-pa-md text-center text-grey-6"
-                  >
-                    No hay unidades disponibles
-                  </div>
-                </q-list>
-              </q-scroll-area>
-
-              <div class="q-mt-sm text-caption text-grey-7">
-                {{ unidadesSeleccionadasGrupo.length }} unidad(es) seleccionada(s)
-              </div>
-            </div>
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn flat label="Cancelar" color="grey" v-close-popup />
-            <q-btn
-              flat
-              :label="modoEdicionGrupo ? 'Guardar' : 'Crear'"
-              color="primary"
-              :disable="!nuevoGrupoNombre"
-              :loading="guardandoGrupo"
-              @click="guardarGrupoUnidades"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
       <!-- Header de tabla -->
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
@@ -280,7 +89,7 @@
             :key="vehiculo.id"
             clickable
             v-ripple
-            @click="seleccionarVehiculoParaMapa(vehiculo)"
+            @click="onClickVehiculo(vehiculo)"
             class="vehiculo-item"
           >
             <q-item-section avatar>
@@ -847,29 +656,29 @@ const { obtenerDireccion } = useGeocoding()
 const { estadoCompartido: estadoEventBus, actualizarFiltroUnidades } = useEventBus()
 
 const {
-  gruposUnidades,
+  // gruposUnidades,
   obtenerGrupos,
   escucharGrupos,
-  crearGrupo,
-  actualizarGrupo: actualizarGrupoUnidad,
-  eliminarGrupo: eliminarGrupoUnidad,
+  //crearGrupo,
+  //actualizarGrupo:,// actualizarGrupoUnidad,
+  //eliminarGrupo: //eliminarGrupoUnidad,
 } = useGruposUnidades()
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
-
+const tabFiltroUnidades = ref('todas')
 const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
 
 const refrescandoTrayectos = ref(false)
 const grupoSeleccionadoId = ref(null)
-const dialogGrupoUnidades = ref(false)
-const nuevoGrupoNombre = ref('')
-const busquedaUnidadesGrupo = ref('')
-const unidadesSeleccionadasGrupo = ref([])
-const modoEdicionGrupo = ref(false)
-const grupoMenuActual = ref(null)
-const guardandoGrupo = ref(false)
+//const dialogGrupoUnidades = ref(false)
+//const nuevoGrupoNombre = ref('')
+//const busquedaUnidadesGrupo = ref('')
+//const unidadesSeleccionadasGrupo = ref([])
+//const modoEdicionGrupo = ref(false)
+//const grupoMenuActual = ref(null)
+//const guardandoGrupo = ref(false)
 let unsubscribeGruposUnidades = null
 let intervalRefreshTrayectos = null
 
@@ -1041,13 +850,11 @@ const estadosVehiculos = computed(() => {
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
-  // Aplicar filtro por grupo de conductores si esta activo
-  if (
-    estadoEventBus.value.filtroUnidadesActivo &&
-    estadoEventBus.value.idsUnidadesFiltradas !== null
-  ) {
-    const idsFiltrados = estadoEventBus.value.idsUnidadesFiltradas
-    resultado = resultado.filter((v) => idsFiltrados.includes(v.id))
+  // Filtro por tab
+  if (tabFiltroUnidades.value === 'con_conductor') {
+    resultado = resultado.filter((v) => v.conductor !== 'Sin conductor')
+  } else if (tabFiltroUnidades.value === 'sin_conductor') {
+    resultado = resultado.filter((v) => v.conductor === 'Sin conductor')
   }
 
   // Filtro por estado (comportamiento existente)
@@ -1055,7 +862,7 @@ const vehiculosFiltrados = computed(() => {
     resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
-  // Filtro por busqueda (comportamiento existente)
+  // Filtro por búsqueda (comportamiento existente)
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1171,21 +978,6 @@ const eventosFiltrados = computed(() => {
   }
 
   return resultado
-})
-const unidadesDisponiblesParaGrupo = computed(() => {
-  let lista = unidadesFiltradas.value.map((u) => ({
-    id: u.id,
-    nombre: u.unidadNombre,
-    estado: u.estado,
-    IdEmpresaUnidad: u.IdEmpresaUnidad,
-  }))
-
-  if (busquedaUnidadesGrupo.value) {
-    const b = busquedaUnidadesGrupo.value.toLowerCase()
-    lista = lista.filter((u) => u.nombre?.toLowerCase().includes(b))
-  }
-
-  return lista
 })
 
 const cargarEstadisticasVehiculo = async (unidadId) => {
@@ -1332,7 +1124,50 @@ const mostrarRutaEnMapa = async (trayecto) => {
 
   hayElementosEnMapa.value = true
 }
+const onClickVehiculo = (vehiculo) => {
+  if (tabFiltroUnidades.value === 'todas') {
+    seleccionarVehiculoParaMapa(vehiculo)
+    return
+  }
 
+  // Para con_conductor y sin_conductor: volar al mapa
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage?._mapaAPI?.map) {
+    $q.notify({ type: 'warning', message: 'Mapa no disponible', icon: 'warning' })
+    return
+  }
+
+  const { lat, lng } = vehiculo.ubicacionCoords || {}
+  if (!lat || !lng) {
+    $q.notify({ type: 'warning', message: 'Unidad sin ubicación GPS', icon: 'gps_not_fixed' })
+    return
+  }
+
+  mapPage._mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  setTimeout(() => {
+    if (mapPage._mapaAPI.centrarEnUnidad) {
+      mapPage._mapaAPI.centrarEnUnidad(vehiculo.id)
+    }
+  }, 1600)
+
+  $q.notify({
+    type: 'positive',
+    message: vehiculo.nombre,
+    caption:
+      tabFiltroUnidades.value === 'con_conductor'
+        ? `Conductor: ${vehiculo.conductor}`
+        : 'Sin conductor asignado',
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
+}
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
     console.warn(' Evento sin coordenadas')
@@ -1525,108 +1360,11 @@ const obtenerConductorDeEvento = (unidadId) => {
 
 // ── Grupos de unidades ──────────────────────────────────────────────
 
-function seleccionarGrupoFiltro(grupo) {
-  if (grupo.id === '__todas__') {
-    grupoSeleccionadoId.value = '__todas__'
-    actualizarFiltroUnidades(false, null, null)
-    // ← Disparar evento al mapa
-    window.dispatchEvent(
-      new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }),
-    )
-    return
-  }
-
-  if (grupoSeleccionadoId.value === grupo.id) {
-    grupoSeleccionadoId.value = '__todas__'
-    actualizarFiltroUnidades(false, null, null)
-    window.dispatchEvent(
-      new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }),
-    )
-    return
-  }
-
-  grupoSeleccionadoId.value = grupo.id
-  actualizarFiltroUnidades(true, grupo.UnidadesIds || [], 'unidades')
-  // ← Disparar evento al mapa con los IDs del grupo
-  window.dispatchEvent(
-    new CustomEvent('filtrar-unidades-mapa', {
-      detail: { idsUnidades: grupo.UnidadesIds || [] },
-    }),
-  )
-}
-
 function limpiarFiltroGrupo() {
   grupoSeleccionadoId.value = null
   actualizarFiltroUnidades(false, null, null)
   // ← Disparar evento al mapa
   window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }))
-}
-
-function abrirDialogNuevoGrupo() {
-  modoEdicionGrupo.value = false
-  nuevoGrupoNombre.value = ''
-  unidadesSeleccionadasGrupo.value = []
-  busquedaUnidadesGrupo.value = ''
-  dialogGrupoUnidades.value = true
-}
-
-function toggleUnidadGrupo(unidadId) {
-  const idx = unidadesSeleccionadasGrupo.value.indexOf(unidadId)
-  if (idx > -1) unidadesSeleccionadasGrupo.value.splice(idx, 1)
-  else unidadesSeleccionadasGrupo.value.push(unidadId)
-}
-
-function editarGrupoUnidad() {
-  if (!grupoMenuActual.value) return
-  modoEdicionGrupo.value = true
-  nuevoGrupoNombre.value = grupoMenuActual.value.Nombre
-  unidadesSeleccionadasGrupo.value = [...(grupoMenuActual.value.UnidadesIds || [])]
-  busquedaUnidadesGrupo.value = ''
-  dialogGrupoUnidades.value = true
-}
-
-async function confirmarEliminarGrupoUnidad() {
-  if (!grupoMenuActual.value) return
-  try {
-    if (grupoSeleccionadoId.value === grupoMenuActual.value.id) {
-      limpiarFiltroGrupo()
-    }
-    await eliminarGrupoUnidad(grupoMenuActual.value.id)
-    $q.notify({ type: 'positive', message: 'Grupo eliminado', icon: 'check_circle' })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: 'Error: ' + error.message, icon: 'error' })
-  }
-}
-
-async function guardarGrupoUnidades() {
-  if (!nuevoGrupoNombre.value) return
-  guardandoGrupo.value = true
-  try {
-    if (modoEdicionGrupo.value && grupoMenuActual.value) {
-      await actualizarGrupoUnidad(grupoMenuActual.value.id, {
-        Nombre: nuevoGrupoNombre.value,
-        UnidadesIds: unidadesSeleccionadasGrupo.value,
-      })
-      // Si este grupo tiene el filtro activo, actualizar los ids en tiempo real
-      if (grupoSeleccionadoId.value === grupoMenuActual.value.id) {
-        actualizarFiltroUnidades(true, unidadesSeleccionadasGrupo.value, 'unidades')
-        window.dispatchEvent(
-          new CustomEvent('filtrar-unidades-mapa', {
-            detail: { idsUnidades: unidadesSeleccionadasGrupo.value },
-          }),
-        )
-      }
-      $q.notify({ type: 'positive', message: 'Grupo actualizado', icon: 'check_circle' })
-    } else {
-      await crearGrupo(nuevoGrupoNombre.value, unidadesSeleccionadasGrupo.value)
-      $q.notify({ type: 'positive', message: 'Grupo creado', icon: 'check_circle' })
-    }
-    dialogGrupoUnidades.value = false
-  } catch (error) {
-    $q.notify({ type: 'negative', message: 'Error: ' + error.message, icon: 'error' })
-  } finally {
-    guardandoGrupo.value = false
-  }
 }
 
 const cerrarDrawer = () => {
@@ -2043,7 +1781,7 @@ onUnmounted(() => {
 /* === BÚSQUEDA === */
 /* ============================================ */
 .search-container-flota {
-  padding: 0 20px 16px 20px;
+  padding: 12px 20px 16px 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
 }

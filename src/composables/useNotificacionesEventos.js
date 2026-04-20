@@ -4,6 +4,7 @@ import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, onSnapshot, getDocs, orderBy } from 'firebase/firestore'
 import { useNotifications } from './useNotifications'
 import { useMultiTenancy } from './useMultiTenancy'
+import { auth } from 'src/firebase/firebaseConfig'
 
 const listeners = [] // Guardar referencias para limpiar
 const eventosYaProcesados = new Set() // Evitar duplicados
@@ -93,6 +94,8 @@ export function useNotificacionesEventos() {
     if (unidadesSnap.empty) return
 
     const fechaHoy = obtenerFechaHoy()
+    const currentUserId = auth.currentUser?.uid
+    if (!currentUserId) return
 
     // Por cada unidad, escuchar EventoDiario del día actual
     unidadesSnap.forEach((unidadDoc) => {
@@ -117,7 +120,7 @@ export function useNotificacionesEventos() {
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const evento = { id: change.doc.id, ...change.doc.data() }
-
+              if (evento.userId && evento.userId !== currentUserId) return
               // Evitar duplicados
               if (eventosYaProcesados.has(evento.id)) return
               eventosYaProcesados.add(evento.id)

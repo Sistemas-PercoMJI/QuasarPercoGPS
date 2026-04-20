@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { collection, getDocs, getFirestore, doc, getDoc } from 'firebase/firestore'
 import { useGeocoding } from './useGeocoding'
+import { auth } from 'src/firebase/firebaseConfig'
 
 const db = getFirestore()
 
@@ -208,7 +209,7 @@ export function useReportesEventos() {
             if (!snapshot.empty) {
               snapshot.forEach((doc) => {
                 const data = doc.data()
-
+                if (data.userId && data.userId !== auth.currentUser?.uid) return
                 //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
                 const duracionSegundos = data.DuracionSegundos ?? data.DuracionDentro ?? null
 

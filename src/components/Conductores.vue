@@ -61,84 +61,107 @@
       class="grupos-lista q-px-md q-pb-sm"
       v-if="tab === 'grupos' && gruposConductores.length > 0"
     >
-      <div class="text-caption text-grey-7 q-mb-xs">GRUPOS</div>
-      <q-list dense bordered class="rounded-borders">
-        <q-item
-          v-for="grupo in gruposConEspeciales"
-          :key="grupo.id"
-          clickable
-          v-ripple
-          @click="filtrarPorGrupo(grupo)"
-          :active="grupoSeleccionado === grupo.id"
-          class="group-item"
+      <div
+        class="text-caption text-grey-7 q-mb-xs"
+        style="display: flex; align-items: center; justify-content: space-between"
+      >
+        <span>GRUPOS</span>
+        <q-btn
+          flat
+          dense
+          round
+          :icon="gruposColapsados ? 'expand_more' : 'expand_less'"
+          size="sm"
+          color="grey-6"
+          @click="gruposColapsados = !gruposColapsados"
         >
-          <q-item-section avatar>
-            <q-avatar
-              :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
-              text-color="white"
-              size="32px"
-            >
-              <q-icon :name="grupo.icono || 'folder'" size="16px" />
-            </q-avatar>
-          </q-item-section>
+          <q-tooltip>{{ gruposColapsados ? 'Mostrar grupos' : 'Ocultar grupos' }}</q-tooltip>
+        </q-btn>
+      </div>
+      <q-slide-transition>
+        <q-list v-if="!gruposColapsados" dense bordered class="rounded-borders">
+          <q-item
+            v-for="grupo in gruposConEspeciales"
+            :key="grupo.id"
+            clickable
+            v-ripple
+            @click="filtrarPorGrupo(grupo)"
+            :active="grupoSeleccionado === grupo.id"
+            class="group-item"
+          >
+            <q-item-section avatar>
+              <q-avatar
+                :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
+                text-color="white"
+                size="32px"
+              >
+                <q-icon :name="grupo.icono || 'folder'" size="16px" />
+              </q-avatar>
+            </q-item-section>
 
-          <q-item-section>
-            <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
-            <q-item-label caption class="text-grey-7">
-              <q-icon
-                :name="grupo.esGrupoEspecial ? 'directions_car' : 'person'"
-                size="14px"
-                class="q-mr-xs"
-              />
-              {{
-                grupo.id === '__todos__'
-                  ? `${conductores.length} conductores`
-                  : grupo.esGrupoEspecial && grupo.cantidadUnidades
-                    ? `${grupo.cantidadUnidades} unidades`
-                    : !grupo.esGrupoEspecial
-                      ? `${contarConductoresPorGrupo(grupo.id)} conductores`
-                      : ''
-              }}
-            </q-item-label>
-          </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
+              <q-item-label caption class="text-grey-7">
+                <q-icon
+                  :name="grupo.esGrupoEspecial ? 'directions_car' : 'person'"
+                  size="14px"
+                  class="q-mr-xs"
+                />
+                {{
+                  grupo.id === '__todos__'
+                    ? `${conductores.length} conductores`
+                    : grupo.esGrupoEspecial && grupo.cantidadUnidades
+                      ? `${grupo.cantidadUnidades} unidades`
+                      : !grupo.esGrupoEspecial
+                        ? `${contarConductoresPorGrupo(grupo.id)} conductores`
+                        : ''
+                }}
+              </q-item-label>
+            </q-item-section>
 
-          <q-item-section side>
-            <q-btn
-              flat
-              dense
-              round
-              icon="more_vert"
-              size="sm"
-              color="grey-7"
-              class="btn-menu-hover"
-              @click.stop="mostrarMenuGrupo($event, grupo)"
-            >
-              <q-tooltip>Opciones del grupo</q-tooltip>
-              <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
-                <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
-                  <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
-                    <q-item-section avatar
-                      ><q-icon name="edit" size="sm" color="black"
-                    /></q-item-section>
-                    <q-item-section><q-item-label>Editar grupo</q-item-label></q-item-section>
-                  </q-item>
-                  <q-separator spaced inset />
-                  <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
-                    <q-item-section avatar
-                      ><q-icon name="delete" size="sm" color="negative"
-                    /></q-item-section>
-                    <q-item-section
-                      ><q-item-label class="text-negative"
-                        >Eliminar grupo</q-item-label
-                      ></q-item-section
+            <q-item-section side>
+              <q-btn
+                flat
+                dense
+                round
+                icon="more_vert"
+                size="sm"
+                color="grey-7"
+                class="btn-menu-hover"
+                @click.stop="mostrarMenuGrupo($event, grupo)"
+              >
+                <q-tooltip>Opciones del grupo</q-tooltip>
+                <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+                  <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+                    <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
+                      <q-item-section avatar
+                        ><q-icon name="edit" size="sm" color="black"
+                      /></q-item-section>
+                      <q-item-section><q-item-label>Editar grupo</q-item-label></q-item-section>
+                    </q-item>
+                    <q-separator spaced inset />
+                    <q-item
+                      clickable
+                      v-close-popup
+                      @click="confirmarEliminarGrupo"
+                      class="menu-item"
                     >
-                  </q-item>
-                </q-list>
-              </q-menu>
-            </q-btn>
-          </q-item-section>
-        </q-item>
-      </q-list>
+                      <q-item-section avatar
+                        ><q-icon name="delete" size="sm" color="negative"
+                      /></q-item-section>
+                      <q-item-section
+                        ><q-item-label class="text-negative"
+                          >Eliminar grupo</q-item-label
+                        ></q-item-section
+                      >
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-slide-transition>
     </div>
 
     <!-- Lista de conductores -->
@@ -1352,7 +1375,7 @@ let unsubscribeConductores = null
 let unsubscribeGrupos = null
 
 const nuevoGrupo = ref({ Nombre: '', ConductoresIds: [] })
-
+const gruposColapsados = ref(false)
 // ─── Helpers fecha ────────────────────────────────────────────────────────────
 function toDate(val) {
   if (!val) return null
@@ -1498,38 +1521,7 @@ const conductoresFiltrados = computed(() => {
 
 // ─── Grupos con especiales ────────────────────────────────────────────────────
 const gruposConEspeciales = computed(() => {
-  const grupos = []
-
-  grupos.push({
-    id: '__todos__',
-    Nombre: 'Conductores con unidad',
-    ConductoresIds: [],
-    esGrupoEspecial: true,
-    icono: 'groups',
-    cantidadTotal: conductores.value.length,
-  })
-
-  grupos.push(...gruposConductores.value)
-
-  const unidadesSinConductor = unidades.value.filter((u) => {
-    if (u.ConductorAsignado) return false
-    return Array.isArray(idEmpresaActual.value)
-      ? idEmpresaActual.value.includes(u.IdEmpresaUnidad)
-      : u.IdEmpresaUnidad === idEmpresaActual.value
-  })
-
-  if (unidadesSinConductor.length > 0) {
-    grupos.push({
-      id: '__sin_conductor__',
-      Nombre: 'Conductores sin unidad',
-      ConductoresIds: [],
-      esGrupoEspecial: true,
-      icono: 'directions_car',
-      cantidadUnidades: unidadesSinConductor.length,
-    })
-  }
-
-  return grupos
+  return [...gruposConductores.value]
 })
 
 // ─── Conductores disponibles para grupo ──────────────────────────────────────
@@ -2492,9 +2484,11 @@ onMounted(async () => {
 
       if (grupoGuardado) {
         const grupoExiste = gruposConEspeciales.value.find((g) => g.id === grupoGuardado)
-        grupoSeleccionado.value = grupoExiste ? grupoGuardado : '__todos__'
+        grupoSeleccionado.value = grupoExiste
+          ? grupoGuardado
+          : gruposConEspeciales.value[0]?.id || null
       } else {
-        grupoSeleccionado.value = '__todos__'
+        grupoSeleccionado.value = gruposConEspeciales.value[0]?.id || null
       }
 
       if (filtroGuardado !== null) filtroMapaActivo.value = filtroGuardado === 'true'
