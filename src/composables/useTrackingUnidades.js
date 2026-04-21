@@ -119,30 +119,45 @@ export function useTrackingUnidades() {
             unidadesRawGlobal.value = todasLasUnidades
 
             // Geocodificar las que no tienen direccion
-            todasLasUnidades.forEach(async (unidad, index) => {
-              if (!unidad.direccionTexto && unidad.ubicacion) {
-                try {
-                  const direccion = await obtenerDireccion({
-                    lat: unidad.ubicacion.lat,
-                    lng: unidad.ubicacion.lng,
-                  })
-                  // Mutar el array reactivo directamente para disparar reactividad
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: direccion,
+            const geocodificarPendientes = async (unidades) => {
+              const actualizaciones = await Promise.all(
+                unidades.map(async (unidad, index) => {
+                  if (!unidad.direccionTexto && unidad.ubicacion) {
+                    try {
+                      const direccion = await obtenerDireccion({
+                        lat: unidad.ubicacion.lat,
+                        lng: unidad.ubicacion.lng,
+                      })
+                      return { index, direccionTexto: direccion }
+                    } catch (e) {
+                      console.warn(e)
+                      return {
+                        index,
+                        direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}`,
+                      }
                     }
                   }
-                } catch (e) {
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)},${e.message}`,
-                    }
+                  return null
+                }),
+              )
+
+              const nuevasUnidades = [...unidadesRawGlobal.value]
+              let huboCambios = false
+              actualizaciones.forEach((act) => {
+                if (act && nuevasUnidades[act.index]) {
+                  nuevasUnidades[act.index] = {
+                    ...nuevasUnidades[act.index],
+                    direccionTexto: act.direccionTexto,
                   }
+                  huboCambios = true
                 }
+              })
+              if (huboCambios) {
+                unidadesRawGlobal.value = nuevasUnidades
               }
-            })
+            }
+
+            geocodificarPendientes(todasLasUnidades)
 
             //  Aplicar filtrado
             const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)

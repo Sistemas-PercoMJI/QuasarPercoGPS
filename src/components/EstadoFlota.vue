@@ -640,7 +640,7 @@ import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTi
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
 import { useEventBus } from 'src/composables/useEventBus.js'
-import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
+//import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
@@ -655,14 +655,14 @@ const { obtenerDireccion } = useGeocoding()
 
 const { estadoCompartido: estadoEventBus, actualizarFiltroUnidades } = useEventBus()
 
-const {
+/*const {
   // gruposUnidades,
   obtenerGrupos,
-  escucharGrupos,
+  //escucharGrupos,
   //crearGrupo,
   //actualizarGrupo:,// actualizarGrupoUnidad,
   //eliminarGrupo: //eliminarGrupoUnidad,
-} = useGruposUnidades()
+} = useGruposUnidades()*/
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
 const tabFiltroUnidades = ref('todas')
@@ -679,7 +679,7 @@ const grupoSeleccionadoId = ref(null)
 //const modoEdicionGrupo = ref(false)
 //const grupoMenuActual = ref(null)
 //const guardandoGrupo = ref(false)
-let unsubscribeGruposUnidades = null
+//let unsubscribeGruposUnidades = null
 let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
@@ -1363,8 +1363,14 @@ const obtenerConductorDeEvento = (unidadId) => {
 function limpiarFiltroGrupo() {
   grupoSeleccionadoId.value = null
   actualizarFiltroUnidades(false, null, null)
-  // ← Disparar evento al mapa
   window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }))
+
+  // ← agregar esto
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
 }
 
 const cerrarDrawer = () => {
@@ -1516,6 +1522,22 @@ watch(tabActual, () => {
   iniciarAutoRefresh()
   detenerAutoRefresh()
 })
+watch(tabFiltroUnidades, (nuevoTab) => {
+  // ← agregar al inicio del watcher
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
+
+  if (nuevoTab === 'todas') {
+    limpiarFiltroGrupo()
+  } else {
+    const ids = vehiculosFiltrados.value.map((v) => v.id)
+    actualizarFiltroUnidades(true, ids, 'estadoFlota')
+    window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: ids } }))
+  }
+})
 
 watch(
   eventosUnidad,
@@ -1541,20 +1563,20 @@ watch(
 
 onMounted(async () => {
   await cargarUsuarioActual()
-
+  limpiarFiltroGrupo()
   if (!idEmpresaActual.value) {
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
-      await obtenerGrupos()
-      unsubscribeGruposUnidades = escucharGrupos()
+      // await obtenerGrupos()
+      //unsubscribeGruposUnidades = escucharGrupos()
       grupoSeleccionadoId.value = '__todas__'
     }, 1000)
   } else {
     await cargarConductoresFirebase()
     iniciarTracking()
-    await obtenerGrupos()
-    unsubscribeGruposUnidades = escucharGrupos()
+    //  await obtenerGrupos()
+    // unsubscribeGruposUnidades = escucharGrupos()
     grupoSeleccionadoId.value = '__todas__'
   }
 })
@@ -1575,7 +1597,7 @@ onUnmounted(() => {
 
   hayElementosEnMapa.value = false
 
-  if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
+  //if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
   limpiarFiltroGrupo()
 })
 </script>
