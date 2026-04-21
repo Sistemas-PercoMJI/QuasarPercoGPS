@@ -276,16 +276,6 @@ export function useReportesEventos() {
         }
       }
 
-      //  SI NO HAY EVENTOS REALES, GENERAR SIMULADOS
-      if (todosLosEventos.length === 0) {
-        for (let i = 0; i < unidadesNombres.length; i++) {
-          const nombre = unidadesNombres[i]
-          const id = unidadesIds[i]
-          const eventosSimulados = generarEventosSimulados(nombre, id, fechaInicio, fechaFin)
-          todosLosEventos.push(...eventosSimulados)
-        }
-      }
-
       // Filtrar por tipos de evento si se especificaron
       let eventosFiltrados = todosLosEventos
       if (filtroEventos && filtroEventos.length > 0) {
@@ -301,24 +291,7 @@ export function useReportesEventos() {
     } catch (err) {
       console.error('Error al obtener eventos:', err)
       error.value = err.message
-
-      // En caso de error, generar datos simulados como fallback
-
-      const eventosFallback = []
-      const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
-
-      for (let i = 0; i < unidadesNombres.length; i++) {
-        const eventosSimulados = generarEventosSimulados(
-          unidadesNombres[i],
-          unidadesIds[i],
-          fechaInicio,
-          fechaFin,
-        )
-        eventosFallback.push(...eventosSimulados)
-      }
-
-      const eventosFallbackProcesados = await procesarEventosParaPDF(eventosFallback)
-      return eventosFallbackProcesados
+      return []
     } finally {
       loading.value = false
     }
