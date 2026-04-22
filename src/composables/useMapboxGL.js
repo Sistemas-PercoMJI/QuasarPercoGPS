@@ -125,18 +125,12 @@ function obtenerFilaTiempoParado(unidad) {
     // Usar unidad.timestamp si existe, sino Date.now()
     const desdeReal = unidad.timestamp ? unidad.timestamp : Date.now()
     tiemposParado.set(unidadId, { desde: desdeReal, tipo: tipoActual })
-    console.log(
-      `[TIMER] Nueva entrada ${unidadId} desde=${new Date(desdeReal).toLocaleTimeString()} tipo=${tipoActual}`,
-    )
   } else if (entradaExistente.tipo !== tipoActual) {
     tiemposParado.set(unidadId, { desde: entradaExistente.desde, tipo: tipoActual })
   }
 
   const registrado = tiemposParado.get(unidadId)
   const segundosTranscurridos = Math.floor((Date.now() - registrado.desde) / 1000)
-  console.log(
-    `[TIMER] ${unidadId} segundos=${segundosTranscurridos} desde=${new Date(registrado.desde).toLocaleTimeString()}`,
-  )
 
   const esApagado = registrado.tipo === 'apagado'
   const color = esApagado ? '#F44336' : '#FF9800'
