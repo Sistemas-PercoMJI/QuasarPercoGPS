@@ -72,6 +72,10 @@ let ultimaActualizacion = 0
 //  Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
 
+// CONTADORES DE TIEMPO PARADO/APAGADO
+// { unidadId -> { desde: timestamp (ms), tipo: 'detenido' | 'apagado' } }
+const tiemposParado = new Map()
+
 //  COLORES ESTANDARIZADOS (coinciden con EstadoFlota.vue)
 const COLORES_ESTADO = {
   movimiento: '#4CAF50', // Verde
@@ -79,19 +83,83 @@ const COLORES_ESTADO = {
   inactivo: '#607D8B', // Gris azulado
 }
 
-function formatearTiempo(minutos) {
-  if (minutos < 1) {
-    return 'menos de 1 minuto'
-  } else if (minutos < 60) {
-    return `${minutos} minuto${minutos > 1 ? 's' : ''}`
-  } else if (minutos < 1440) {
-    const horas = Math.floor(minutos / 60)
-    return `${horas} hora${horas > 1 ? 's' : ''}`
+function formatearTiempo(segundos) {
+  if (segundos < 60) {
+    return `${segundos} seg`
+  } else if (segundos < 3600) {
+    const mins = Math.floor(segundos / 60)
+    const segs = segundos % 60
+    return segs > 0 ? `${mins}m ${segs}s` : `${mins}m`
+  } else if (segundos < 86400) {
+    const horas = Math.floor(segundos / 3600)
+    const mins = Math.floor((segundos % 3600) / 60)
+    return mins > 0 ? `${horas}h ${mins}m` : `${horas}h`
   } else {
-    const dias = Math.floor(minutos / 1440)
-    return `${dias} día${dias > 1 ? 's' : ''}`
+    const dias = Math.floor(segundos / 86400)
+    const horas = Math.floor((segundos % 86400) / 3600)
+    return horas > 0 ? `${dias}d ${horas}h` : `${dias}d`
   }
 }
+
+/**
+ * Devuelve el HTML de la fila de tiempo parado/apagado para el popup.
+ * Retorna '' si la unidad está en movimiento.
+ */
+function obtenerFilaTiempoParado(unidad) {
+  const unidadId = unidad.unidadId || unidad.id
+  const velocidad = unidad.velocidad ?? 0
+
+  if (velocidad > 0) {
+    const entradaExistente = tiemposParado.get(unidadId)
+    if (entradaExistente?._intervalo) clearInterval(entradaExistente._intervalo)
+    tiemposParado.delete(unidadId)
+    return ''
+  }
+
+  // ── REGISTRAR AQUÍ DIRECTAMENTE (no depender del forEach) ──
+  const tipoActual = unidad.ignicion === false ? 'apagado' : 'detenido'
+  const entradaExistente = tiemposParado.get(unidadId)
+
+  if (!entradaExistente) {
+    // PROBLEMA: no tenemos timestamp real de cuando se detuvo.
+    // Usar unidad.timestamp si existe, sino Date.now()
+    const desdeReal = unidad.timestamp ? unidad.timestamp : Date.now()
+    tiemposParado.set(unidadId, { desde: desdeReal, tipo: tipoActual })
+    console.log(
+      `[TIMER] Nueva entrada ${unidadId} desde=${new Date(desdeReal).toLocaleTimeString()} tipo=${tipoActual}`,
+    )
+  } else if (entradaExistente.tipo !== tipoActual) {
+    tiemposParado.set(unidadId, { desde: entradaExistente.desde, tipo: tipoActual })
+  }
+
+  const registrado = tiemposParado.get(unidadId)
+  const segundosTranscurridos = Math.floor((Date.now() - registrado.desde) / 1000)
+  console.log(
+    `[TIMER] ${unidadId} segundos=${segundosTranscurridos} desde=${new Date(registrado.desde).toLocaleTimeString()}`,
+  )
+
+  const esApagado = registrado.tipo === 'apagado'
+  const color = esApagado ? '#F44336' : '#FF9800'
+  const icono = esApagado
+    ? `<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>`
+    : `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`
+  const label = esApagado ? 'Apagada hace:' : 'Detenida hace:'
+
+  return `
+    <div class="popup-section popup-tiempo-parado" style="background:#fff8f0; border-radius:6px; padding:6px 8px; margin-bottom:4px;">
+      <span class="label" style="display:flex; align-items:center; gap:4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" style="flex-shrink:0">
+          ${icono}
+        </svg>
+        ${label}
+      </span>
+      <span class="value popup-tiempo-valor" data-unidad-id="${unidadId}" style="color:${color}; font-weight:bold; font-size:13px;">
+        ${formatearTiempo(segundosTranscurridos)}
+      </span>
+    </div>
+  `
+}
+
 function obtenerColorPorTiempo(unidad) {
   const TIEMPO_INACTIVIDAD_MAX = 2 * 60 * 1000 // 2 minutos
   const ahora = Date.now()
@@ -637,6 +705,7 @@ export function useMapboxGL() {
     </div>
 
     <!-- CUERPO (OCULTO POR DEFECTO) -->
+    ${obtenerFilaTiempoParado(unidad)}
     <div class="unidad-popup-body">
       <div class="popup-section">
         <span class="label">Estado:</span>
@@ -773,6 +842,35 @@ export function useMapboxGL() {
                   })
                 }
               }
+              const unidadId2 = unidad.unidadId || unidad.id
+              const entry = tiemposParado.get(unidadId2)
+              if (entry) {
+                // Limpiar intervalo previo SIN EXCEPCIÓN
+                if (entry._intervalo) {
+                  clearInterval(entry._intervalo)
+                  delete entry._intervalo
+                }
+                // Actualizar inmediatamente antes de arrancar el intervalo
+                const elInicial = popup
+                  .getElement()
+                  ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+                if (elInicial) {
+                  elInicial.textContent = formatearTiempo(
+                    Math.floor((Date.now() - entry.desde) / 1000),
+                  )
+                }
+                entry._intervalo = setInterval(() => {
+                  const el = popup
+                    .getElement()
+                    ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+                  if (!el) {
+                    clearInterval(entry._intervalo)
+                    delete entry._intervalo
+                    return
+                  }
+                  el.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+                }, 1000)
+              }
             })
 
             const element = crearIconoUnidad(unidad)
@@ -870,12 +968,53 @@ export function useMapboxGL() {
                       }
                     })
                   }
+                  // ── NUEVO: actualizar tiempo parado/apagado en DOM ──
+                  const tiempoEl = popupEl.querySelector(
+                    `.popup-tiempo-valor[data-unidad-id="${unidadId}"]`,
+                  )
+                  if (tiempoEl) {
+                    const velocidad = unidad.velocidad ?? 0
+                    if (velocidad > 0) {
+                      // Se movió → quitar la fila entera
+                      const filaEl = tiempoEl.closest('.popup-tiempo-parado')
+                      if (filaEl) filaEl.remove()
+                    } else {
+                      const entrada = tiemposParado.get(unidadId)
+                      if (entrada) {
+                        const mins = Math.floor((Date.now() - entrada.desde) / 60000)
+                        tiempoEl.textContent = formatearTiempo(mins)
+                        const esApagado = unidad.ignicion === false
+                        tiempoEl.style.color = esApagado ? '#F44336' : '#FF9800'
+                        // Actualizar label
+                        const labelEl = tiempoEl
+                          .closest('.popup-tiempo-parado')
+                          ?.querySelector('.label')
+                        if (labelEl) {
+                          const svg = labelEl.querySelector('svg')
+                          const texto = esApagado ? 'Apagada hace:' : 'Detenida hace:'
+                          if (svg) {
+                            svg.style.fill = esApagado ? '#F44336' : '#FF9800'
+                            svg.innerHTML = esApagado
+                              ? `<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>`
+                              : `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`
+                          }
+                          labelEl.lastChild.textContent = ` ${texto}`
+                        }
+                      }
+                    }
+                  }
                 }
               } else if (popup.isOpen()) {
-                // Solo si está abierto y hubo otro cambio menor, actualizar completo pero preservar estado
                 const popupContent = popup.getElement()
                 const oldContainer = popupContent?.querySelector(`#popup-unidad-${unidadId}`)
                 const wasExpanded = oldContainer?.classList.contains('expanded') || false
+
+                // Limpiar intervalo ANTES de setHTML
+                const entryAntes = tiemposParado.get(unidadId)
+                if (entryAntes?._intervalo) {
+                  clearInterval(entryAntes._intervalo)
+                  delete entryAntes._intervalo
+                }
 
                 popup.setHTML(crearPopupUnidad(unidad))
 
@@ -884,6 +1023,25 @@ export function useMapboxGL() {
                     .getElement()
                     ?.querySelector(`#popup-unidad-${unidadId}`)
                   if (newContainer) newContainer.classList.add('expanded')
+                }
+
+                // Re-arrancar intervalo después del setHTML
+                const entryDespues = tiemposParado.get(unidadId)
+                if (entryDespues) {
+                  if (entryDespues._intervalo) clearInterval(entryDespues._intervalo)
+                  entryDespues._intervalo = setInterval(() => {
+                    const el = popup
+                      .getElement()
+                      ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId}"]`)
+                    if (!el) {
+                      clearInterval(entryDespues._intervalo)
+                      delete entryDespues._intervalo
+                      return
+                    }
+                    el.textContent = formatearTiempo(
+                      Math.floor((Date.now() - entryDespues.desde) / 1000),
+                    )
+                  }, 1000)
                 }
               }
             }
@@ -936,6 +1094,33 @@ export function useMapboxGL() {
                 }
               })
             }
+          }
+          const unidadId2 = unidad.unidadId || unidad.id
+          const entry = tiemposParado.get(unidadId2)
+          if (entry) {
+            // Limpiar intervalo previo SIN EXCEPCIÓN
+            if (entry._intervalo) {
+              clearInterval(entry._intervalo)
+              delete entry._intervalo
+            }
+            // Actualizar inmediatamente antes de arrancar el intervalo
+            const elInicial = popup
+              .getElement()
+              ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+            if (elInicial) {
+              elInicial.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+            }
+            entry._intervalo = setInterval(() => {
+              const el = popup
+                .getElement()
+                ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+              if (!el) {
+                clearInterval(entry._intervalo)
+                delete entry._intervalo
+                return
+              }
+              el.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+            }, 1000)
           }
         })
 
@@ -1035,15 +1220,15 @@ export function useMapboxGL() {
       })
     }
   }
+
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
-
     Object.values(marcadoresUnidades.value).forEach((marcador) => {
       marcador.remove()
     })
-
     marcadoresUnidades.value = {}
     ultimasPosiciones.clear()
+    tiemposParado.clear() // ← AGREGAR
     pendingUnidades = null
     pendingUpdate = false
   }
@@ -2187,6 +2372,10 @@ export function useMapboxGL() {
 
   const cleanup = () => {
     limpiarMarcadoresUnidades()
+    tiemposParado.forEach((entry) => {
+      if (entry._intervalo) clearInterval(entry._intervalo)
+    })
+    tiemposParado.clear()
     ultimasPosiciones.clear()
     cerrarPopupGlobal()
 

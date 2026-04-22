@@ -59,7 +59,22 @@
           </template>
         </q-input>
       </div>
-
+      <!-- ===== TABS DE FILTRO ===== -->
+      <div class="q-px-md q-pb-sm filtro-conductor-tabs">
+        <q-tabs
+          v-model="tabFiltroUnidades"
+          dense
+          class="text-grey"
+          active-color="primary"
+          indicator-color="primary"
+          align="left"
+          no-caps
+        >
+          <q-tab name="todas" label="Todas" icon="directions_car" />
+          <q-tab name="con_conductor" label="Con conductor" icon="person" />
+          <q-tab name="sin_conductor" label="Sin conductor" icon="person_off" />
+        </q-tabs>
+      </div>
       <!-- Header de tabla -->
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
@@ -74,7 +89,7 @@
             :key="vehiculo.id"
             clickable
             v-ripple
-            @click="seleccionarVehiculoParaMapa(vehiculo)"
+            @click="onClickVehiculo(vehiculo)"
             class="vehiculo-item"
           >
             <q-item-section avatar>
@@ -625,6 +640,9 @@ import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTi
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
 import { useEventBus } from 'src/composables/useEventBus.js'
+//import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 // ==================== COMPOSABLES ====================
 const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
@@ -635,16 +653,33 @@ const { obtenerTrayectosDia } = useTrayectosDiarios()
 //  Agregar composable de geocoding
 const { obtenerDireccion } = useGeocoding()
 
-const { estadoCompartido: estadoEventBus } = useEventBus()
+const { estadoCompartido: estadoEventBus, actualizarFiltroUnidades } = useEventBus()
 
+/*const {
+  // gruposUnidades,
+  obtenerGrupos,
+  //escucharGrupos,
+  //crearGrupo,
+  //actualizarGrupo:,// actualizarGrupoUnidad,
+  //eliminarGrupo: //eliminarGrupoUnidad,
+} = useGruposUnidades()*/
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
-
+const tabFiltroUnidades = ref('todas')
 const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
 
 const refrescandoTrayectos = ref(false)
+const grupoSeleccionadoId = ref(null)
+//const dialogGrupoUnidades = ref(false)
+//const nuevoGrupoNombre = ref('')
+//const busquedaUnidadesGrupo = ref('')
+//const unidadesSeleccionadasGrupo = ref([])
+//const modoEdicionGrupo = ref(false)
+//const grupoMenuActual = ref(null)
+//const guardandoGrupo = ref(false)
+//let unsubscribeGruposUnidades = null
 let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
@@ -815,13 +850,11 @@ const estadosVehiculos = computed(() => {
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
-  // Aplicar filtro por grupo de conductores si esta activo
-  if (
-    estadoEventBus.value.filtroUnidadesActivo &&
-    estadoEventBus.value.idsUnidadesFiltradas !== null
-  ) {
-    const idsFiltrados = estadoEventBus.value.idsUnidadesFiltradas
-    resultado = resultado.filter((v) => idsFiltrados.includes(v.id))
+  // Filtro por tab
+  if (tabFiltroUnidades.value === 'con_conductor') {
+    resultado = resultado.filter((v) => v.conductor !== 'Sin conductor')
+  } else if (tabFiltroUnidades.value === 'sin_conductor') {
+    resultado = resultado.filter((v) => v.conductor === 'Sin conductor')
   }
 
   // Filtro por estado (comportamiento existente)
@@ -829,7 +862,7 @@ const vehiculosFiltrados = computed(() => {
     resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
-  // Filtro por busqueda (comportamiento existente)
+  // Filtro por búsqueda (comportamiento existente)
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -1057,7 +1090,7 @@ const resetearFiltroEventos = () => {
 }
 
 // Mostrar ruta en mapa (trayectos)
-const mostrarRutaEnMapa = (trayecto) => {
+const mostrarRutaEnMapa = async (trayecto) => {
   trayectoActivoId.value = trayecto.id //
 
   const trayectoConColor = {
@@ -1065,13 +1098,76 @@ const mostrarRutaEnMapa = (trayecto) => {
     color: trayecto.color || '#00E5FF',
   }
 
+  const mapPage = document.getElementById('map-page')
+  const mapaDisponible = mapPage?._mapaAPI?.map
+
+  if (!mapaDisponible) {
+    // Navegar al dashboard y esperar a que el mapa esté listo
+    await router.push('/')
+    await new Promise((resolve) => {
+      const intervalo = setInterval(() => {
+        const mp = document.getElementById('map-page')
+        if (mp?._mapaAPI?.map) {
+          clearInterval(intervalo)
+          resolve()
+        }
+      }, 100)
+      setTimeout(() => {
+        clearInterval(intervalo)
+        resolve()
+      }, 3000)
+    })
+  }
   if (window.dibujarRutaTrayecto) {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
 
   hayElementosEnMapa.value = true
 }
+const onClickVehiculo = (vehiculo) => {
+  if (tabFiltroUnidades.value === 'todas') {
+    seleccionarVehiculoParaMapa(vehiculo)
+    return
+  }
 
+  // Para con_conductor y sin_conductor: volar al mapa
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage?._mapaAPI?.map) {
+    $q.notify({ type: 'warning', message: 'Mapa no disponible', icon: 'warning' })
+    return
+  }
+
+  const { lat, lng } = vehiculo.ubicacionCoords || {}
+  if (!lat || !lng) {
+    $q.notify({ type: 'warning', message: 'Unidad sin ubicación GPS', icon: 'gps_not_fixed' })
+    return
+  }
+
+  mapPage._mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 1500,
+    essential: true,
+  })
+
+  setTimeout(() => {
+    if (mapPage._mapaAPI.centrarEnUnidad) {
+      mapPage._mapaAPI.centrarEnUnidad(vehiculo.id)
+    }
+  }, 1600)
+
+  $q.notify({
+    type: 'positive',
+    message: vehiculo.nombre,
+    caption:
+      tabFiltroUnidades.value === 'con_conductor'
+        ? `Conductor: ${vehiculo.conductor}`
+        : 'Sin conductor asignado',
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
+}
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
     console.warn(' Evento sin coordenadas')
@@ -1262,6 +1358,21 @@ const obtenerConductorDeEvento = (unidadId) => {
   return null
 }*/
 
+// ── Grupos de unidades ──────────────────────────────────────────────
+
+function limpiarFiltroGrupo() {
+  grupoSeleccionadoId.value = null
+  actualizarFiltroUnidades(false, null, null)
+  window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }))
+
+  // ← agregar esto
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
+}
+
 const cerrarDrawer = () => {
   // Limpiar todo del mapa antes de cerrar
   if (window.limpiarRuta) {
@@ -1411,6 +1522,22 @@ watch(tabActual, () => {
   iniciarAutoRefresh()
   detenerAutoRefresh()
 })
+watch(tabFiltroUnidades, (nuevoTab) => {
+  // ← agregar al inicio del watcher
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
+
+  if (nuevoTab === 'todas') {
+    limpiarFiltroGrupo()
+  } else {
+    const ids = vehiculosFiltrados.value.map((v) => v.id)
+    actualizarFiltroUnidades(true, ids, 'estadoFlota')
+    window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: ids } }))
+  }
+})
 
 watch(
   eventosUnidad,
@@ -1423,20 +1550,34 @@ watch(
   },
   { immediate: true },
 )
-
+// Si conductores activa su filtro, resetear selección de grupos de unidades
+watch(
+  () => estadoEventBus.value.filtroFuente,
+  (fuente) => {
+    if (fuente === 'conductores') {
+      grupoSeleccionadoId.value = null
+    }
+  },
+)
 // ==================== LIFECYCLE ====================
 
 onMounted(async () => {
   await cargarUsuarioActual()
-
+  limpiarFiltroGrupo()
   if (!idEmpresaActual.value) {
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
+      // await obtenerGrupos()
+      //unsubscribeGruposUnidades = escucharGrupos()
+      grupoSeleccionadoId.value = '__todas__'
     }, 1000)
   } else {
     await cargarConductoresFirebase()
     iniciarTracking()
+    //  await obtenerGrupos()
+    // unsubscribeGruposUnidades = escucharGrupos()
+    grupoSeleccionadoId.value = '__todas__'
   }
 })
 
@@ -1455,6 +1596,9 @@ onUnmounted(() => {
   }
 
   hayElementosEnMapa.value = false
+
+  //if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
+  limpiarFiltroGrupo()
 })
 </script>
 
@@ -1659,7 +1803,7 @@ onUnmounted(() => {
 /* === BÚSQUEDA === */
 /* ============================================ */
 .search-container-flota {
-  padding: 0 20px 16px 20px;
+  padding: 12px 20px 16px 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
 }
@@ -2770,5 +2914,65 @@ onUnmounted(() => {
   line-height: 1.3;
   white-space: normal;
   word-break: break-word;
+}
+
+/* ============================================ */
+/* === GRUPOS DE UNIDADES === */
+/* ============================================ */
+.grupos-unidades-section {
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding-top: 8px;
+}
+
+.grupos-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grupo-unidad-item {
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: visible;
+}
+
+.grupo-unidad-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
+  transition: width 0.3s ease;
+}
+
+.grupo-unidad-item:hover {
+  background-color: #e3f2fd;
+  transform: translateX(4px);
+}
+
+.grupo-unidad-item:hover::before,
+.grupo-unidad-item.q-item--active::before {
+  width: 4px;
+}
+
+.grupo-unidad-item.q-item--active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+}
+
+.btn-menu-grupo-unidad {
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.btn-menu-grupo-unidad:hover {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>

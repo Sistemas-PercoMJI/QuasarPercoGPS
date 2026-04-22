@@ -815,15 +815,15 @@ const cargarOpcionesSelector = async () => {
     switch (reportarPor.value) {
       case 'Unidades': {
         const unidades = await obtenerUnidades()
-        //  Guardar mapeo de nombre -> ID
         window.unidadesMap = {}
+        window.unidadesPlacaMap = {} // ← AGREGAR
         unidades.forEach((u) => {
           const nombre = u.Unidad || u.id
           window.unidadesMap[nombre] = u.id
+          window.unidadesPlacaMap[nombre] = u.Placa || nombre // ← AGREGAR
         })
         opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
         opcionesSelectorFiltradas.value = opcionesSelector.value
-
         break
       }
 
@@ -1273,6 +1273,49 @@ const obtenerDatosReporte = async () => {
   }
 }
 
+const generarNombreArchivo = (extension) => {
+  // Identificador(es)
+  let identificador
+  if (reportarPor.value === 'Unidades') {
+    const placas = elementosSeleccionados.value.map(
+      (nombre) => window.unidadesPlacaMap?.[nombre] || nombre,
+    )
+    if (placas.length === 1) {
+      identificador = placas[0]
+    } else if (placas.length <= 3) {
+      identificador = placas.join('-')
+    } else {
+      identificador = `${placas.length}Unidades`
+    }
+  } else {
+    // Conductores u otros: sanitizar nombre
+    const nombres = elementosSeleccionados.value.map((n) =>
+      n.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, ''),
+    )
+    if (nombres.length === 1) {
+      identificador = nombres[0]
+    } else if (nombres.length <= 3) {
+      identificador = nombres.join('-')
+    } else {
+      identificador = `${nombres.length}Conductores`
+    }
+  }
+
+  // Tipo de informe
+  const tipoMap = {
+    trayectos: 'Trayectos',
+    eventos: 'Eventos',
+    horas_trabajo: 'HorasTrabajo',
+  }
+  const tipo = tipoMap[tipoInformeSeleccionado.value] || 'Reporte'
+
+  // Fecha de creación (hoy)
+  const hoy = new Date()
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+
+  return `${identificador}_${tipo}_${fecha}.${extension}`
+}
+
 const generarReporte = async () => {
   if (!validarFormulario()) return
   guardarColumnasActuales()
@@ -1399,7 +1442,7 @@ const generarReporte = async () => {
     const url = window.URL.createObjectURL(pdfResult.blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = pdfResult.filename
+    link.download = generarNombreArchivo('pdf')
     link.click()
     window.URL.revokeObjectURL(url)
 
@@ -1479,16 +1522,24 @@ const generarExcel = async () => {
     //  DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       const { generarExcelHorasTrabajo } = useReporteExcel()
-      const resultado = await generarExcelHorasTrabajo(config, datosReales)
+      const resultado = await generarExcelHorasTrabajo(
+        config,
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'eventos') {
-      const resultado = await generarExcelEventos(config, datosReales)
+      const resultado = await generarExcelEventos(config, datosReales, generarNombreArchivo('xlsx'))
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'trayectos') {
       const { generarExcelTrayectos } = useReporteExcel()
-      const resultado = await generarExcelTrayectos(config, datosReales)
+      const resultado = await generarExcelTrayectos(
+        config,
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
       blob = resultado.blob
       filename = resultado.filename
     } else {

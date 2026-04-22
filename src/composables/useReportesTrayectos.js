@@ -254,9 +254,11 @@ export function useReportesTrayectos() {
 
   const enriquecerConDatosUnidades = async (trayectos) => {
     try {
-      if (trayectos.length > 0 && trayectos[0]._simulado) {
-        return trayectos
-      }
+      // Normalizar si viene como objeto { trayectos: [...] }
+      const listaTrayectos = Array.isArray(trayectos) ? trayectos : trayectos?.trayectos || []
+
+      if (listaTrayectos.length === 0) return []
+      if (listaTrayectos[0]._simulado) return listaTrayectos
 
       const unidadesRef = collection(db, 'Unidades')
       const unidadesSnapshot = await getDocs(unidadesRef)
@@ -270,7 +272,7 @@ export function useReportesTrayectos() {
         }
       })
 
-      const trayectosEnriquecidos = trayectos.map((trayecto) => {
+      return listaTrayectos.map((trayecto) => {
         const unidadInfo = unidadesMap[trayecto.idUnidad]
         return {
           ...trayecto,
@@ -278,11 +280,9 @@ export function useReportesTrayectos() {
           Placa: unidadInfo?.placa || trayecto.Placa || 'Sin placa',
         }
       })
-
-      return trayectosEnriquecidos
     } catch (err) {
       console.error('Error al enriquecer unidades:', err)
-      return trayectos
+      return Array.isArray(trayectos) ? trayectos : []
     }
   }
 
@@ -324,34 +324,34 @@ function formatearFecha(fecha) {
  * Un viaje empieza con ignicion: true y termina con ignicion: false.
  */
 function detectarViajesPorIgnicion(coordenadas) {
+  const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+  const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true)
+
+  // Sin ignición cableada pero con movimiento real → segmentar por velocidad
+  if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+    return detectarViajesPorVelocidad(coordenadas)
+  }
+
+  // Lógica normal por ignición
   const viajes = []
   let viajeActual = []
-  let enViaje = false // 🆕 solo empezar cuando hay ignicion: true
+  let enViaje = false
 
   for (const coord of coordenadas) {
     if (coord.ignicion === true) {
       enViaje = true
       viajeActual.push(coord)
     } else if (coord.ignicion === false && enViaje) {
-      // Solo cerrar si estábamos en un viaje real
       viajeActual.push(coord)
-      if (viajeActual.length > 1) {
-        viajes.push([...viajeActual])
-      }
+      if (viajeActual.length > 1) viajes.push([...viajeActual])
       viajeActual = []
       enViaje = false
     }
-    // Si ignicion: false y !enViaje → ignorar (dispositivo parado)
   }
 
-  // Viaje sin cerrar (ignición aún ON)
-  if (viajeActual.length > 1) {
-    viajes.push(viajeActual)
-  }
+  if (viajeActual.length > 1) viajes.push(viajeActual)
 
-  if (viajes.length === 0 && coordenadas.length > 0) {
-    return [coordenadas]
-  }
+  if (viajes.length === 0 && coordenadas.length > 0) return [coordenadas]
 
   return viajes
 }
@@ -371,4 +371,38 @@ function calcularDistanciaHaversine(coord1, coord2) {
       Math.sin(dLng / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
+}
+function detectarViajesPorVelocidad(coordenadas) {
+  const UMBRAL_KMH = 7
+  const GAP_DETENCION_MS = 5 * 60 * 1000 // 5 minutos detenido = fin de viaje
+
+  const viajes = []
+  let viajeActual = []
+
+  for (let i = 0; i < coordenadas.length; i++) {
+    const c = coordenadas[i]
+    const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
+
+    if (enMovimiento) {
+      viajeActual.push(c)
+    } else if (viajeActual.length > 0) {
+      const ultimoMovimiento = viajeActual[viajeActual.length - 1]
+      const tiempoDetenido = new Date(c.timestamp) - new Date(ultimoMovimiento.timestamp)
+
+      if (tiempoDetenido >= GAP_DETENCION_MS) {
+        // Detenido suficiente tiempo → cerrar viaje
+        viajeActual.push(c)
+        if (viajeActual.length >= 2) viajes.push([...viajeActual])
+        viajeActual = []
+      } else {
+        // Desaceleración momentánea (semáforo, tope) → mantener en viaje
+        viajeActual.push(c)
+      }
+    }
+  }
+
+  // Cerrar viaje que quedó abierto al final
+  if (viajeActual.length >= 2) viajes.push(viajeActual)
+
+  return viajes.length > 0 ? viajes : [coordenadas]
 }

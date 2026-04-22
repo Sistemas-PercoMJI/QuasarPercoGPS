@@ -41,6 +41,33 @@ const COLORES_TRAYECTOS = [
  * @param {Object} lineEnd - Punto final de la línea {lat, lng}
  * @returns {Number} Distancia perpendicular
  */
+
+function encodePolyline(coordenadas) {
+  let output = ''
+  let prevLat = 0
+  let prevLng = 0
+
+  for (const coord of coordenadas) {
+    const lat = Math.round(coord.lat * 1e5)
+    const lng = Math.round(coord.lng * 1e5)
+
+    let dLat = lat - prevLat
+    let dLng = lng - prevLng
+    prevLat = lat
+    prevLng = lng
+
+    for (const value of [dLat, dLng]) {
+      let v = value < 0 ? ~(value << 1) : value << 1
+      while (v >= 0x20) {
+        output += String.fromCharCode((0x20 | (v & 0x1f)) + 63)
+        v >>= 5
+      }
+      output += String.fromCharCode(v + 63)
+    }
+  }
+  return output
+}
+
 function distanciaPerpendicularPunto(point, lineStart, lineEnd) {
   const { lat: x0, lng: y0 } = point
   const { lat: x1, lng: y1 } = lineStart
@@ -261,7 +288,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
   const { mostrarPins = true } = config
 
-  const padding = config.padding ?? 60
+  //const padding = config.padding ?? 60
 
   // Construir overlays (paths + pins)
   const overlays = []
@@ -287,22 +314,9 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     }
 
     // 1. GeoJSON LineString (en lugar de path)
-    const geojson = {
-      type: 'Feature',
-      properties: {
-        stroke: `#${color}`,
-        'stroke-width': 3,
-        'stroke-opacity': 1,
-      },
-      geometry: {
-        type: 'LineString',
-        coordinates: coordenadas.map((c) => [c.lng, c.lat]),
-      },
-    }
 
-    const geojsonStr = encodeURIComponent(JSON.stringify(geojson))
-
-    overlays.push(`geojson(${geojsonStr})`)
+    const polyline = encodePolyline(coordenadas)
+    overlays.push(`path-3+${color}-1(${polyline})`)
 
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
@@ -316,30 +330,9 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     // Pin de fin (cuadrado del mismo color)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
-      overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
+      overlays.push(`pin-s-marker+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
     if (trayecto.pinsConexion && trayecto.pinsConexion.length > 0) {
-      for (let i = 0; i < trayecto.pinsConexion.length - 1; i += 2) {
-        const pinPerdida = trayecto.pinsConexion[i]
-        const pinReconexion = trayecto.pinsConexion[i + 1]
-
-        const geojsonGap = {
-          type: 'Feature',
-          properties: {
-            stroke: '#ff0000',
-            'stroke-width': 2,
-            'stroke-opacity': 0.6,
-          },
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [pinPerdida.lng, pinPerdida.lat],
-              [pinReconexion.lng, pinReconexion.lat],
-            ],
-          },
-        }
-        overlays.push(`geojson(${encodeURIComponent(JSON.stringify(geojsonGap))})`)
-      }
       trayecto.pinsConexion.forEach((pin) => {
         if (pin.tipo === 'perdida') {
           overlays.push(`pin-s-cross+ff0000(${pin.lng.toFixed(6)},${pin.lat.toFixed(6)})`)
@@ -351,27 +344,34 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   })
 
   // Construir URL
+  // Después - reemplaza todo eso con esto
   const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
   const overlaysStr = overlays.join(',')
+  const overlaysEncoded = encodeURIComponent(overlaysStr)
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/auto/${dimensions}?padding=${padding}&access_token=${MAPBOX_TOKEN}`
-  if (url.length > 8000) {
-    console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
-  }
-  if (url.length > 7999) {
-    console.warn('URL muy larga, reduciendo puntos...')
-    const trayectosReducidos = trayectos.map((t) => {
-      const paso = Math.ceil(t.coordenadas.length / Math.floor(t.coordenadas.length * 0.6))
-      const reducidas = [t.coordenadas[0]]
-      for (let i = paso; i < t.coordenadas.length - 1; i += paso) {
-        reducidas.push(t.coordenadas[i])
-      }
-      reducidas.push(t.coordenadas[t.coordenadas.length - 1])
-      return { ...t, coordenadas: reducidas }
-    })
-    return generarURLMapaTrayectos(trayectosReducidos, config)
-  }
+  // Calcular bbox manual en lugar de usar auto
+  const todasCoords = trayectos.flatMap((t) => t.coordenadas)
+  const lats = todasCoords.map((c) => c.lat)
+  const lngs = todasCoords.map((c) => c.lng)
+
+  const minLat = Math.min(...lats)
+  const maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs)
+  const maxLng = Math.max(...lngs)
+
+  const margenLat = (maxLat - minLat) * 0.1 || 0.01
+  const margenLng = (maxLng - minLng) * 0.1 || 0.01
+
+  const bbox = [
+    (minLng - margenLng).toFixed(6),
+    (minLat - margenLat).toFixed(6),
+    (maxLng + margenLng).toFixed(6),
+    (maxLat + margenLat).toFixed(6),
+  ].join(',')
+
+  const url = `${baseURL}/${overlaysEncoded}/[${bbox}]/${dimensions}?access_token=${MAPBOX_TOKEN}`
+
   return url
 }
 

@@ -149,7 +149,7 @@ export function useReporteExcel() {
    * @param {Object} config - Configuración del reporte
    * @param {Object} datosReales - Datos obtenidos de Firebase
    */
-  const generarExcelEventos = async (config, datosReales) => {
+  const generarExcelEventos = async (config, datosReales, filenameOverride = null) => {
     const workbook = new ExcelJS.Workbook()
     workbook.creator = 'MJ GPS'
     workbook.created = new Date()
@@ -616,7 +616,7 @@ export function useReporteExcel() {
     })
 
     const fecha = new Date().toISOString().split('T')[0]
-    const filename = `Informe_Eventos_${fecha}.xlsx`
+    const filename = filenameOverride || `Informe_Eventos_${fecha}.xlsx` // ← CAMBIO
 
     //  Descargar automáticamente
     const url = window.URL.createObjectURL(blob)
@@ -706,7 +706,7 @@ export function useReporteExcel() {
     }
   }
 
-  const generarExcelHorasTrabajo = async (config, datosReales) => {
+  const generarExcelHorasTrabajo = async (config, datosReales, filenameOverride = null) => {
     const workbook = new ExcelJS.Workbook()
     workbook.creator = 'MJ GPS'
     workbook.created = new Date()
@@ -1364,7 +1364,7 @@ export function useReporteExcel() {
     })
 
     const fecha = new Date().toISOString().split('T')[0]
-    const filename = `Informe_Horas_Trabajo_${fecha}.xlsx`
+    const filename = filenameOverride || `Informe_Horas_Trabajo_${fecha}.xlsx`
 
     // Descargar automáticamente
     const url = window.URL.createObjectURL(blob)
@@ -1380,7 +1380,7 @@ export function useReporteExcel() {
     }
   }
 
-  const generarExcelTrayectos = async (config, datosReales) => {
+  const generarExcelTrayectos = async (config, datosReales, filenameOverride = null) => {
     const workbook = new ExcelJS.Workbook()
     workbook.creator = 'MJ GPS'
     workbook.created = new Date()
@@ -1682,7 +1682,7 @@ export function useReporteExcel() {
     })
 
     const fecha = new Date().toISOString().split('T')[0]
-    const filename = `Informe_Trayectos_${fecha}.xlsx`
+    const filename = filenameOverride || `Informe_Trayectos_${fecha}.xlsx`
 
     // Descargar automáticamente
     const url = window.URL.createObjectURL(blob)

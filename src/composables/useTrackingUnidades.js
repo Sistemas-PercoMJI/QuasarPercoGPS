@@ -10,6 +10,8 @@ import { db } from 'src/firebase/firebaseConfig'
 
 // Variables globales
 let unsubscribeGlobal = null
+let throttleTimer = null // ← agregar aquí
+const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
 const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
 const loadingGlobal = ref(false)
@@ -119,35 +121,55 @@ export function useTrackingUnidades() {
             unidadesRawGlobal.value = todasLasUnidades
 
             // Geocodificar las que no tienen direccion
-            todasLasUnidades.forEach(async (unidad, index) => {
-              if (!unidad.direccionTexto && unidad.ubicacion) {
-                try {
-                  const direccion = await obtenerDireccion({
-                    lat: unidad.ubicacion.lat,
-                    lng: unidad.ubicacion.lng,
-                  })
-                  // Mutar el array reactivo directamente para disparar reactividad
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: direccion,
+            const geocodificarPendientes = async (unidades) => {
+              const actualizaciones = await Promise.all(
+                unidades.map(async (unidad, index) => {
+                  if (!unidad.direccionTexto && unidad.ubicacion) {
+                    try {
+                      const direccion = await obtenerDireccion({
+                        lat: unidad.ubicacion.lat,
+                        lng: unidad.ubicacion.lng,
+                      })
+                      return { index, direccionTexto: direccion }
+                    } catch (e) {
+                      console.warn(e)
+                      return {
+                        index,
+                        direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}`,
+                      }
                     }
                   }
-                } catch (e) {
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)},${e.message}`,
-                    }
+                  return null
+                }),
+              )
+
+              const nuevasUnidades = [...unidadesRawGlobal.value]
+              let huboCambios = false
+              actualizaciones.forEach((act) => {
+                if (act && nuevasUnidades[act.index]) {
+                  nuevasUnidades[act.index] = {
+                    ...nuevasUnidades[act.index],
+                    direccionTexto: act.direccionTexto,
                   }
+                  huboCambios = true
                 }
+              })
+              if (huboCambios) {
+                unidadesRawGlobal.value = nuevasUnidades
               }
-            })
+            }
+
+            geocodificarPendientes(todasLasUnidades)
 
             //  Aplicar filtrado
-            const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-            unidadesActivasGlobal.value = unidadesFiltradas
-            window._unidadesTrackeadas = unidadesFiltradas
+            if (!throttleTimer) {
+              throttleTimer = setTimeout(() => {
+                const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+                unidadesActivasGlobal.value = unidadesFiltradas
+                window._unidadesTrackeadas = unidadesFiltradas
+                throttleTimer = null
+              }, THROTTLE_MS)
+            }
           } else {
             unidadesRawGlobal.value = []
             unidadesActivasGlobal.value = []
@@ -171,19 +193,18 @@ export function useTrackingUnidades() {
   }
 
   //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
-  watch(
-    [idEmpresaActual, unidadesRawGlobal, unidadesValidasGlobal],
-    () => {
-      if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
-        const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-        unidadesActivasGlobal.value = unidadesFiltradas
-        window._unidadesTrackeadas = unidadesFiltradas
-      }
-    },
-    { deep: true },
-  )
-
+  watch(idEmpresaActual, () => {
+    if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
+      const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+      unidadesActivasGlobal.value = unidadesFiltradas
+      window._unidadesTrackeadas = unidadesFiltradas
+    }
+  })
   const detenerTrackingManual = () => {
+    if (throttleTimer) {
+      clearTimeout(throttleTimer)
+      throttleTimer = null
+    }
     if (unsubscribeGlobal) {
       const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
       off(unidadesRef)
