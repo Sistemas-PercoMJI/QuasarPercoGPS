@@ -1270,6 +1270,16 @@ export function useTutorial(
       },
     },
     {
+      element: '.filtro-conductor-tabs',
+      popover: {
+        title: 'Filtro por Conductor',
+        description:
+          'Filtra la lista por asignación: ve todas las unidades, solo las que tienen conductor asignado, o las que están sin conductor.',
+        side: 'right',
+        align: 'start',
+      },
+    },
+    {
       element: '.tabla-header',
       popover: {
         title: 'Lista de Vehículos',

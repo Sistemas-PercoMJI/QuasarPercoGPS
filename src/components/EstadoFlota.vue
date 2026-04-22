@@ -60,7 +60,7 @@
         </q-input>
       </div>
       <!-- ===== TABS DE FILTRO ===== -->
-      <div class="q-px-md q-pb-sm">
+      <div class="q-px-md q-pb-sm filtro-conductor-tabs">
         <q-tabs
           v-model="tabFiltroUnidades"
           dense
