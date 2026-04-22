@@ -558,7 +558,7 @@ export function useTutorial(
       }
     },
   })
-
+  const destroyNativo = driverObj.destroy.bind(driverObj)
   const pasosDashboard = [
     {
       element: '#map-page',
@@ -896,7 +896,7 @@ export function useTutorial(
     }
   }
   async function ejecutarTutorialConFases(abrirFn, cerrarFn, fases, stepDashboardContinuar) {
-    const destroyActual = driverObj.destroy.bind(driverObj)
+    const destroyActual = destroyNativo
     try {
       destroyActual()
     } catch (e) {
@@ -955,7 +955,7 @@ export function useTutorial(
       configurarListeners()
 
       // Sobrescribir destroy para interceptar el fin de la fase
-      const destroyFase = driverObj.destroy.bind(driverObj)
+      const destroyFase = destroyNativo
       driverObj.destroy = async () => {
         if (saliendo) {
           saliendo = false
@@ -1134,18 +1134,13 @@ export function useTutorial(
     }
 
     document.addEventListener('keydown', keyPressHandler, true)
-
-    if (!destroyOriginal) {
-      destroyOriginal = driverObj.destroy.bind(driverObj)
-    }
-
     driverObj.destroy = () => {
       limpiarListeners()
       localStorage.removeItem('mj_tutorial_step')
       navegacionProgramada = null
       yaNavegamosAReportes = false
       isTransitioning = false
-      destroyOriginal()
+      destroyNativo() // ← el original real, nunca cambia
     }
   }
 
@@ -1190,7 +1185,7 @@ export function useTutorial(
     onNextOverride = null,
   ) {
     // Guardar destroy original antes de sobreescribir
-    const destroyActual = driverObj.destroy.bind(driverObj)
+    const destroyActual = destroyNativo
 
     // Detener driver actual sin trigger de onDestroyStarted
     try {
