@@ -244,36 +244,31 @@ let popupGlobalActivo = null
 
 let ultimoHashUnidades = ''
 
+let watchThrottle = null
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) return
+    if (watchThrottle) return // ← agregar esto
 
-    if (!nuevasUnidades || nuevasUnidades.length === 0) {
-      limpiarMarcadoresUnidades()
-      return
-    }
-
-    const mapElement = document.querySelector('.mapboxgl-map')
-    if (mapElement) {
-      const isZooming = mapElement.classList.contains('mapboxgl-touch-zoom-rotate')
-      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan')
-
-      if (isZooming || isPanning) {
+    watchThrottle = setTimeout(() => {
+      watchThrottle = null
+      if (!nuevasUnidades || nuevasUnidades.length === 0) {
+        limpiarMarcadoresUnidades()
         return
       }
-    }
-
-    const nuevoHash = nuevasUnidades
-      .map(
-        (u) =>
-          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}-${u.ignicion}-${u.velocidad ?? 0}`,
-      )
-      .join('|')
-    if (nuevoHash !== ultimoHashUnidades) {
-      actualizarMarcadoresUnidades(nuevasUnidades)
-      ultimoHashUnidades = nuevoHash
-    }
+      const nuevoHash = nuevasUnidades
+        .map(
+          (u) =>
+            `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}-${u.ignicion}-${u.velocidad ?? 0}`,
+        )
+        .join('|')
+      if (nuevoHash !== ultimoHashUnidades) {
+        actualizarMarcadoresUnidades(nuevasUnidades)
+        ultimoHashUnidades = nuevoHash
+      }
+    }, 2000) // ← actualizar mapa máximo cada 2 segundos
   },
   { deep: false, immediate: false },
 )

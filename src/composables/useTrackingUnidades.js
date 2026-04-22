@@ -10,6 +10,8 @@ import { db } from 'src/firebase/firebaseConfig'
 
 // Variables globales
 let unsubscribeGlobal = null
+let throttleTimer = null // ← agregar aquí
+const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
 const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
 const loadingGlobal = ref(false)
@@ -160,9 +162,14 @@ export function useTrackingUnidades() {
             geocodificarPendientes(todasLasUnidades)
 
             //  Aplicar filtrado
-            const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-            unidadesActivasGlobal.value = unidadesFiltradas
-            window._unidadesTrackeadas = unidadesFiltradas
+            if (!throttleTimer) {
+              throttleTimer = setTimeout(() => {
+                const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+                unidadesActivasGlobal.value = unidadesFiltradas
+                window._unidadesTrackeadas = unidadesFiltradas
+                throttleTimer = null
+              }, THROTTLE_MS)
+            }
           } else {
             unidadesRawGlobal.value = []
             unidadesActivasGlobal.value = []
@@ -186,19 +193,18 @@ export function useTrackingUnidades() {
   }
 
   //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
-  watch(
-    [idEmpresaActual, unidadesRawGlobal, unidadesValidasGlobal],
-    () => {
-      if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
-        const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-        unidadesActivasGlobal.value = unidadesFiltradas
-        window._unidadesTrackeadas = unidadesFiltradas
-      }
-    },
-    { deep: true },
-  )
-
+  watch(idEmpresaActual, () => {
+    if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
+      const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+      unidadesActivasGlobal.value = unidadesFiltradas
+      window._unidadesTrackeadas = unidadesFiltradas
+    }
+  })
   const detenerTrackingManual = () => {
+    if (throttleTimer) {
+      clearTimeout(throttleTimer)
+      throttleTimer = null
+    }
     if (unsubscribeGlobal) {
       const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
       off(unidadesRef)
