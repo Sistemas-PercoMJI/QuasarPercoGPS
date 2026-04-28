@@ -116,33 +116,91 @@ export function useTrayectosDiarios() {
     return coordenadasEnriquecidas
   }
 
-  /**
-   * Analiza coordenadas y genera trayectos (viajes separados por paradas)
-   */
-  const agruparEnViajes = (coordenadas) => {
-    if (!coordenadas || coordenadas.length === 0) return []
-
-    const coordenadasLimpias = coordenadas.filter((c) => {
-      const ignicionFalse = c.ignicion === false || c.ignicion === 'false'
-      if (ignicionFalse && c.velocidad > 0) return false
-      return true
-    })
+  const detectarViajesPorVelocidad = (coordenadas) => {
+    const UMBRAL_KMH = 7
+    const GAP_DETENCION_MS = 2 * 60 * 1000 //  2 minutos
 
     const viajes = []
     let viajeActual = []
+    let inicioParada = null //  timestamp cuando empezó la parada
 
-    for (let i = 0; i < coordenadasLimpias.length; i++) {
-      const punto = coordenadasLimpias[i]
+    for (let i = 0; i < coordenadas.length; i++) {
+      const c = coordenadas[i]
+      const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
+
+      if (enMovimiento) {
+        //  Si venía parado, resetear el contador de parada
+        inicioParada = null
+        viajeActual.push(c)
+      } else {
+        // Está parado
+        if (viajeActual.length === 0) {
+          // Aún no empezó ningún viaje, ignorar
+          continue
+        }
+
+        //  Registrar cuándo empezó la parada
+        if (inicioParada === null) {
+          inicioParada = new Date(c.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          // Parado >= 2 min → cerrar viaje
+          if (viajeActual.length >= 2) viajes.push([...viajeActual])
+          viajeActual = []
+          inicioParada = null
+        } else {
+          // Parada breve (semáforo, tope) → mantener en viaje
+          viajeActual.push(c)
+        }
+      }
+    }
+
+    // Cerrar viaje que quedó abierto
+    if (viajeActual.length >= 2) viajes.push(viajeActual)
+
+    return viajes.length > 0 ? viajes : [coordenadas]
+  }
+
+  /**
+   * Analiza coordenadas y genera trayectos (viajes separados por paradas)
+   */
+  // DESPUÉS
+  const agruparEnViajes = (coordenadas) => {
+    if (!coordenadas || coordenadas.length === 0) return []
+
+    // 🆕 Detectar si hay movimiento real con ignición apagada
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
+
+    // 🆕 Si hay movimiento real pero nunca hubo ignición true → segmentar por velocidad
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      return detectarViajesPorVelocidad(coordenadas)
+    }
+
+    // Lógica original por ignición — pero SIN descartar coords con ignicion:false + velocidad
+    const viajes = []
+    let viajeActual = []
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const punto = coordenadas[i]
       const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
       if (ignicion) {
         viajeActual.push(punto)
       } else {
-        // ignicion false — buscar el siguiente ping
-        const siguiente = coordenadasLimpias[i + 1]
+        // 🆕 Si tiene velocidad real aunque ignición esté apagada, mantener en viaje activo
+        const tieneMovimiento = (punto.velocidad || 0) > 7
+        if (tieneMovimiento && viajeActual.length > 0) {
+          viajeActual.push(punto)
+          continue
+        }
+
+        const siguiente = coordenadas[i + 1]
 
         if (!siguiente) {
-          // Fin del array, cerrar viaje
           if (viajeActual.length >= 2) viajes.push(viajeActual)
           viajeActual = []
         } else {
@@ -150,17 +208,15 @@ export function useTrayectosDiarios() {
           const gap = new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
 
           if (!siguienteIgnicion || gap >= 2 * 60 * 1000) {
-            // Siguiente también es false, O hay gap >= 2 min → confirmar fin de viaje
             if (viajeActual.length >= 2) viajes.push(viajeActual)
             viajeActual = []
           }
-          // Si el siguiente es true con gap < 2 min → fue un apagón momentáneo, continuar viaje
+          // gap < 2 min y siguiente tiene ignición → apagón momentáneo, continuar
         }
       }
     }
 
     if (viajeActual.length >= 2) viajes.push(viajeActual)
-
     return viajes
   }
 
@@ -170,13 +226,10 @@ export function useTrayectosDiarios() {
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    const tieneIgnicion = coordenadas.some(
-      (c) =>
-        c.ignicion === true ||
-        c.ignicion === false ||
-        c.ignicion === 'true' ||
-        c.ignicion === 'false',
-    )
+    // DESPUÉS
+    //  Solo considerar que "tiene ignición" si hay al menos un true
+    // Si solo hay false, tratar como sin ignición cableada
+    const tieneIgnicion = coordenadas.some((c) => c.ignicion === true || c.ignicion === 'true')
 
     let gruposDeViaje = []
 
