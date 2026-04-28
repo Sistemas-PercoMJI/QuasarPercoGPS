@@ -330,7 +330,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
     // Pin de fin (cuadrado del mismo color)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
-      overlays.push(`pin-s-marker+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
+      overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
     if (trayecto.pinsConexion && trayecto.pinsConexion.length > 0) {
       trayecto.pinsConexion.forEach((pin) => {

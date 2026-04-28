@@ -116,33 +116,93 @@ export function useTrayectosDiarios() {
     return coordenadasEnriquecidas
   }
 
-  /**
-   * Analiza coordenadas y genera trayectos (viajes separados por paradas)
-   */
-  const agruparEnViajes = (coordenadas) => {
-    if (!coordenadas || coordenadas.length === 0) return []
-
-    const coordenadasLimpias = coordenadas.filter((c) => {
-      const ignicionFalse = c.ignicion === false || c.ignicion === 'false'
-      if (ignicionFalse && c.velocidad > 0) return false
-      return true
-    })
+  const detectarViajesPorVelocidad = (coordenadas) => {
+    const UMBRAL_KMH = 7
+    const GAP_DETENCION_MS = 5 * 60 * 1000
 
     const viajes = []
     let viajeActual = []
+    let inicioParada = null
+    let indiceUltimoMovimiento = -1 // ✅ rastrear último punto con velocidad
 
-    for (let i = 0; i < coordenadasLimpias.length; i++) {
-      const punto = coordenadasLimpias[i]
+    for (let i = 0; i < coordenadas.length; i++) {
+      const c = coordenadas[i]
+      const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
+
+      if (enMovimiento) {
+        inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length // ✅ posición dentro del viaje actual
+        viajeActual.push(c)
+      } else {
+        if (viajeActual.length === 0) continue
+
+        if (inicioParada === null) {
+          inicioParada = new Date(c.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          // ✅ Cortar en el último punto con movimiento, no en el punto parado
+          const viajeHastaMovimiento = viajeActual.slice(0, indiceUltimoMovimiento + 1)
+          if (viajeHastaMovimiento.length >= 2) viajes.push([...viajeHastaMovimiento])
+          viajeActual = []
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        } else {
+          // Parada breve (semáforo, tope) → mantener en viaje
+          viajeActual.push(c)
+        }
+      }
+    }
+
+    // Cerrar viaje abierto → también cortar en último movimiento
+    if (viajeActual.length >= 2) {
+      const viajeHastaMovimiento =
+        indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+      if (viajeHastaMovimiento.length >= 2) viajes.push(viajeHastaMovimiento)
+    }
+
+    return viajes.length > 0 ? viajes : [coordenadas]
+  }
+
+  /**
+   * Analiza coordenadas y genera trayectos (viajes separados por paradas)
+   */
+  // DESPUÉS
+  const agruparEnViajes = (coordenadas) => {
+    if (!coordenadas || coordenadas.length === 0) return []
+
+    // 🆕 Detectar si hay movimiento real con ignición apagada
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
+
+    // 🆕 Si hay movimiento real pero nunca hubo ignición true → segmentar por velocidad
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      return detectarViajesPorVelocidad(coordenadas)
+    }
+
+    // Lógica original por ignición — pero SIN descartar coords con ignicion:false + velocidad
+    const viajes = []
+    let viajeActual = []
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const punto = coordenadas[i]
       const ignicion = punto.ignicion === true || punto.ignicion === 'true'
 
       if (ignicion) {
         viajeActual.push(punto)
       } else {
-        // ignicion false — buscar el siguiente ping
-        const siguiente = coordenadasLimpias[i + 1]
+        // 🆕 Si tiene velocidad real aunque ignición esté apagada, mantener en viaje activo
+        const tieneMovimiento = (punto.velocidad || 0) > 7
+        if (tieneMovimiento && viajeActual.length > 0) {
+          viajeActual.push(punto)
+          continue
+        }
+
+        const siguiente = coordenadas[i + 1]
 
         if (!siguiente) {
-          // Fin del array, cerrar viaje
           if (viajeActual.length >= 2) viajes.push(viajeActual)
           viajeActual = []
         } else {
@@ -150,17 +210,15 @@ export function useTrayectosDiarios() {
           const gap = new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
 
           if (!siguienteIgnicion || gap >= 2 * 60 * 1000) {
-            // Siguiente también es false, O hay gap >= 2 min → confirmar fin de viaje
             if (viajeActual.length >= 2) viajes.push(viajeActual)
             viajeActual = []
           }
-          // Si el siguiente es true con gap < 2 min → fue un apagón momentáneo, continuar viaje
+          // gap < 2 min y siguiente tiene ignición → apagón momentáneo, continuar
         }
       }
     }
 
     if (viajeActual.length >= 2) viajes.push(viajeActual)
-
     return viajes
   }
 
@@ -170,19 +228,20 @@ export function useTrayectosDiarios() {
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    const tieneIgnicion = coordenadas.some(
-      (c) =>
-        c.ignicion === true ||
-        c.ignicion === false ||
-        c.ignicion === 'true' ||
-        c.ignicion === 'false',
-    )
+    // 🆕 Detectar el caso: hay movimiento real pero nunca hubo ignición true
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
 
     let gruposDeViaje = []
 
-    if (tieneIgnicion) {
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      // 🆕 Sin ignición cableada pero con movimiento → segmentar por velocidad
+      gruposDeViaje = detectarViajesPorVelocidad(coordenadas)
+    } else if (conIgnicionTrue.length > 0) {
+      // Tiene ignición true → lógica original por ignición
       gruposDeViaje = agruparEnViajes(coordenadas)
     } else {
+      // Sin movimiento ni ignición → todo como un grupo
       gruposDeViaje = [coordenadas]
     }
 
@@ -224,12 +283,9 @@ export function useTrayectosDiarios() {
       })
       .filter(Boolean)
       .filter((t) => {
-        // Filtrar trayectos donde la distancia es menor a 0.5 km
-        // y la duración es mayor a 10 minutos (estaba parado)
         const duracionMs =
           new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
         const duracionMin = duracionMs / 60000
-
         if (t.distancia < 0.5 && duracionMin > 10) return false
         return true
       })
