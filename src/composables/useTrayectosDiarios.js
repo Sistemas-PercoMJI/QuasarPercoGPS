@@ -118,7 +118,7 @@ export function useTrayectosDiarios() {
 
   const detectarViajesPorVelocidad = (coordenadas) => {
     const UMBRAL_KMH = 7
-    const GAP_DETENCION_MS = 2 * 60 * 1000 //  2 minutos
+    const GAP_DETENCION_MS = 5 * 60 * 1000
 
     const viajes = []
     let viajeActual = []
