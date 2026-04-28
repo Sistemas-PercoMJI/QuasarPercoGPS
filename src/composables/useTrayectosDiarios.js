@@ -226,16 +226,20 @@ export function useTrayectosDiarios() {
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    // DESPUÉS
-    //  Solo considerar que "tiene ignición" si hay al menos un true
-    // Si solo hay false, tratar como sin ignición cableada
-    const tieneIgnicion = coordenadas.some((c) => c.ignicion === true || c.ignicion === 'true')
+    // 🆕 Detectar el caso: hay movimiento real pero nunca hubo ignición true
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
 
     let gruposDeViaje = []
 
-    if (tieneIgnicion) {
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      // 🆕 Sin ignición cableada pero con movimiento → segmentar por velocidad
+      gruposDeViaje = detectarViajesPorVelocidad(coordenadas)
+    } else if (conIgnicionTrue.length > 0) {
+      // Tiene ignición true → lógica original por ignición
       gruposDeViaje = agruparEnViajes(coordenadas)
     } else {
+      // Sin movimiento ni ignición → todo como un grupo
       gruposDeViaje = [coordenadas]
     }
 
@@ -277,12 +281,9 @@ export function useTrayectosDiarios() {
       })
       .filter(Boolean)
       .filter((t) => {
-        // Filtrar trayectos donde la distancia es menor a 0.5 km
-        // y la duración es mayor a 10 minutos (estaba parado)
         const duracionMs =
           new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
         const duracionMin = duracionMs / 60000
-
         if (t.distancia < 0.5 && duracionMin > 10) return false
         return true
       })
