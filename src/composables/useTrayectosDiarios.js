@@ -122,24 +122,20 @@ export function useTrayectosDiarios() {
 
     const viajes = []
     let viajeActual = []
-    let inicioParada = null //  timestamp cuando empezó la parada
+    let inicioParada = null
+    let indiceUltimoMovimiento = -1 // ✅ rastrear último punto con velocidad
 
     for (let i = 0; i < coordenadas.length; i++) {
       const c = coordenadas[i]
       const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
 
       if (enMovimiento) {
-        //  Si venía parado, resetear el contador de parada
         inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length // ✅ posición dentro del viaje actual
         viajeActual.push(c)
       } else {
-        // Está parado
-        if (viajeActual.length === 0) {
-          // Aún no empezó ningún viaje, ignorar
-          continue
-        }
+        if (viajeActual.length === 0) continue
 
-        //  Registrar cuándo empezó la parada
         if (inicioParada === null) {
           inicioParada = new Date(c.timestamp).getTime()
         }
@@ -147,10 +143,12 @@ export function useTrayectosDiarios() {
         const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
 
         if (tiempoDetenido >= GAP_DETENCION_MS) {
-          // Parado >= 2 min → cerrar viaje
-          if (viajeActual.length >= 2) viajes.push([...viajeActual])
+          // ✅ Cortar en el último punto con movimiento, no en el punto parado
+          const viajeHastaMovimiento = viajeActual.slice(0, indiceUltimoMovimiento + 1)
+          if (viajeHastaMovimiento.length >= 2) viajes.push([...viajeHastaMovimiento])
           viajeActual = []
           inicioParada = null
+          indiceUltimoMovimiento = -1
         } else {
           // Parada breve (semáforo, tope) → mantener en viaje
           viajeActual.push(c)
@@ -158,8 +156,12 @@ export function useTrayectosDiarios() {
       }
     }
 
-    // Cerrar viaje que quedó abierto
-    if (viajeActual.length >= 2) viajes.push(viajeActual)
+    // Cerrar viaje abierto → también cortar en último movimiento
+    if (viajeActual.length >= 2) {
+      const viajeHastaMovimiento =
+        indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+      if (viajeHastaMovimiento.length >= 2) viajes.push(viajeHastaMovimiento)
+    }
 
     return viajes.length > 0 ? viajes : [coordenadas]
   }
