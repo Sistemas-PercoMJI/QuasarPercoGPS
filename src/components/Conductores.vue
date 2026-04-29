@@ -539,7 +539,7 @@
                   <q-select
                     v-model="conductorEditando.UnidadAsignada"
                     :options="opcionesUnidadesFiltradas"
-                    :disable="!puedeEditarUnidad"
+                    :disable="true"
                     outlined
                     dense
                     emit-value
@@ -586,7 +586,7 @@
                         </q-item-section>
                       </q-item>
                     </template>
-                    <template v-slot:append>
+                    <!--  <template v-slot:append>
                       <q-icon
                         v-if="conductorEditando.UnidadAsignada && puedeEditarUnidad"
                         name="close"
@@ -594,8 +594,8 @@
                         class="cursor-pointer"
                       >
                         <q-tooltip>Quitar unidad</q-tooltip>
-                      </q-icon>
-                    </template>
+                      </q-icon> </template
+                    > -->
                   </q-select>
 
                   <!-- Chip informativo si no puede editar -->
