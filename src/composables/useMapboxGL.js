@@ -502,7 +502,7 @@ export function useMapboxGL() {
     const popupId = `popup-unidad-${unidadId}`
 
     const popupContent = `
-  <div id="${popupId}" class="unidad-popup-container ${esInactivo ? 'unidad-inactiva' : ''}">
+  <div id="${popupId}" translate="no" class="unidad-popup-container ${esInactivo ? 'unidad-inactiva' : ''}">
     ${
       esInactivo
         ? `
