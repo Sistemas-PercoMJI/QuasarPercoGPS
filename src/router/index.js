@@ -34,5 +34,13 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
   Router.beforeEach(authGuard)
+  Router.onError((error, to) => {
+    if (
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed')
+    ) {
+      window.location.href = to.fullPath
+    }
+  })
   return Router
 })
