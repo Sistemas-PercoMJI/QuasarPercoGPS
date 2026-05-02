@@ -905,20 +905,34 @@ export function useMapboxGL() {
           } else {
             // Solo cambió posición - mover marcador
             const posAnterior = ultimasPosiciones.get(unidadId)
-            const duracion =
-              unidad.timestamp && posAnterior?.timestamp
-                ? Math.min(Math.max(unidad.timestamp - posAnterior.timestamp, 5000), 60000)
-                : 15000
 
-            animarMarcador(
-              marcadoresUnidades.value[unidadId],
-              unidadId,
+            const distanciaKm = calcularDistanciaKm(
               posAnterior?.lat || lat,
               posAnterior?.lng || lng,
               lat,
               lng,
-              duracion,
             )
+
+            if (distanciaKm > 0.5) {
+              // Salto > 500m → teletransportar sin animación
+              marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
+            } else {
+              // Salto normal → animar
+              const duracion =
+                unidad.timestamp && posAnterior?.timestamp
+                  ? Math.min(Math.max(unidad.timestamp - posAnterior.timestamp, 5000), 60000)
+                  : 15000
+
+              animarMarcador(
+                marcadoresUnidades.value[unidadId],
+                unidadId,
+                posAnterior?.lat || lat,
+                posAnterior?.lng || lng,
+                lat,
+                lng,
+                duracion,
+              )
+            }
 
             // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
@@ -2435,6 +2449,18 @@ export function useMapboxGL() {
     g = Math.floor(g * (1 - porcentaje / 100))
     b = Math.floor(b * (1 - porcentaje / 100))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+  function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
+    const R = 6371
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLng = ((lng2 - lng1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2)
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
   const eliminarMarcadorUnidad = (unidadId) => {
