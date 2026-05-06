@@ -332,30 +332,115 @@ function detectarViajesPorIgnicion(coordenadas) {
     return detectarViajesPorVelocidad(coordenadas)
   }
 
-  // Lógica normal por ignición
+  // 🆕 Lógica híbrida: ignición + timeout por velocidad + tolerancia a apagones breves
+  const UMBRAL_KMH = 7
+  const GAP_DETENCION_MS = 5 * 60 * 1000 // 5 minutos detenido = fin de viaje
+  const GAP_IGNICION_MS = 2 * 60 * 1000 // ✅ 2 minutos de tolerancia para apagones
+
   const viajes = []
   let viajeActual = []
   let enViaje = false
+  let inicioParada = null
+  let indiceUltimoMovimiento = -1
 
-  for (const coord of coordenadas) {
-    if (coord.ignicion === true) {
+  for (let i = 0; i < coordenadas.length; i++) {
+    const coord = coordenadas[i]
+    const enMovimiento = (coord.velocidad || 0) > UMBRAL_KMH
+
+    // Detectar inicio de viaje por ignición
+    if (coord.ignicion === true && !enViaje) {
       enViaje = true
-      viajeActual.push(coord)
-    } else if (coord.ignicion === false && enViaje) {
-      viajeActual.push(coord)
-      if (viajeActual.length > 1) viajes.push([...viajeActual])
       viajeActual = []
-      enViaje = false
+      inicioParada = null
+      indiceUltimoMovimiento = -1
+    }
+
+    if (enViaje) {
+      if (enMovimiento) {
+        // Se está moviendo → reiniciar contador de parada
+        inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length
+        viajeActual.push(coord)
+      } else {
+        // Detenido → verificar timeout
+        if (inicioParada === null) {
+          inicioParada = new Date(coord.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(coord.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          // ✅ Más de 5 min detenido → cerrar viaje en último punto con movimiento
+          const viajeHastaMovimiento =
+            indiceUltimoMovimiento >= 0
+              ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+              : viajeActual
+
+          if (viajeHastaMovimiento.length >= 2) {
+            viajes.push([...viajeHastaMovimiento])
+          }
+
+          viajeActual = []
+          enViaje = false
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        } else {
+          // Parada breve (< 5 min) → mantener en viaje
+          viajeActual.push(coord)
+        }
+      }
+
+      // ✅ Detectar fin de viaje por ignición apagada CON TOLERANCIA
+      if (coord.ignicion === false && enViaje) {
+        // Buscar siguiente punto con ignición true
+        const siguienteIgnicion = coordenadas.slice(i + 1).find((c) => c.ignicion === true)
+
+        let debeCortar = true
+
+        if (siguienteIgnicion) {
+          const gap =
+            new Date(siguienteIgnicion.timestamp).getTime() - new Date(coord.timestamp).getTime()
+
+          // Si el gap es menor a 2 minutos → apagón momentáneo, NO cortar
+          if (gap < GAP_IGNICION_MS) {
+            debeCortar = false
+            viajeActual.push(coord) // Agregar el punto con ignición apagada
+          }
+        }
+
+        if (debeCortar) {
+          // ✅ Cerrar en último punto con movimiento
+          const viajeHastaMovimiento =
+            indiceUltimoMovimiento >= 0
+              ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+              : viajeActual
+
+          if (viajeHastaMovimiento.length >= 2) {
+            viajes.push([...viajeHastaMovimiento])
+          }
+
+          viajeActual = []
+          enViaje = false
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        }
+      }
     }
   }
 
-  if (viajeActual.length > 1) viajes.push(viajeActual)
+  // Cerrar viaje abierto
+  if (viajeActual.length >= 2) {
+    const viajeHastaMovimiento =
+      indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+    if (viajeHastaMovimiento.length >= 2) {
+      viajes.push(viajeHastaMovimiento)
+    }
+  }
 
   if (viajes.length === 0 && coordenadas.length > 0) return [coordenadas]
 
   return viajes
 }
-
 /**
  * 🆕 Calcula distancia en km entre dos coordenadas usando Haversine
  */
