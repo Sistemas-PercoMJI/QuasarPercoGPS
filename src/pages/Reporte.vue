@@ -330,7 +330,9 @@
             <!--  CARD: OPCIONES DE VISUALIZACIÓN -->
             <q-card
               v-if="
-                (tieneOpcion('mostrarMapaTrayecto') || tieneOpcion('mostrarMapaZona')) &&
+                (tieneOpcion('mostrarMapaTrayecto') ||
+                  tieneOpcion('mostrarMapaZona') ||
+                  tieneOpcion('mostrarMapaIgnicion')) &&
                 tipoInformeSeleccionado !== 'eventos'
               "
               flat
@@ -376,6 +378,14 @@
                       v-model="remarcarHorasExtra"
                       label="Remarcar horas fuera de horario laboral"
                     />
+                  </div>
+                </div>
+
+                <!-- Opción de mapa para Ignición Día -->
+                <div v-if="tieneOpcion('mostrarMapaIgnicion')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Opciones del informe</div>
+                  <div class="column q-gutter-sm">
+                    <q-checkbox v-model="mostrarMapaIgnicion" label="Mostrar mapa de igniciones" />
                   </div>
                 </div>
               </q-card-section>
@@ -578,7 +588,8 @@ import { useExcelPreview } from 'src/composables/useExcelPreview'
 //  IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
-const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo } = useReportePDF()
+const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo, generarPDFIgnicionDia } =
+  useReportePDF()
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
@@ -589,6 +600,7 @@ import { useEventos } from 'src/composables/useEventos'
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
+import { useReportesIgnicionDia } from 'src/composables/useReportesIgnicionDia'
 import { useRouter } from 'vue-router'
 import { useTutorial } from 'src/composables/useTutorial'
 
@@ -657,6 +669,7 @@ const mostrarMapaTrayecto = ref(false)
 const mostrarUnidadesMapa = ref(true)
 const mostrarPlacaMapa = ref(true)
 const mostrarMapaZona = ref(false)
+const mostrarMapaIgnicion = ref(false)
 
 // Datos del formulario
 const reportarPor = ref('Unidades')
@@ -789,6 +802,7 @@ const cancelarReporte = () => {
   mostrarResumen.value = false
   opcionesSelector.value = []
   opcionesSelectorFiltradas.value = []
+  mostrarMapaIgnicion.value = false
 
   $q.notify({
     message: 'Formulario reiniciado',
@@ -1143,6 +1157,29 @@ const obtenerDatosReporte = async () => {
       horarioInicio: horarioInicio.value,
       horarioFin: horarioFin.value,
     })
+  } else if (tipoInforme === 'ignicion_dia') {
+    const { obtenerIgnicionesDia } = useReportesIgnicionDia()
+
+    let idsParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      const todosConductores = await obtenerConductores()
+      for (const nombreConductor of unidadesIds) {
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+        if (conductor && conductor.UnidadAsignada) {
+          idsParaBuscar.push(conductor.UnidadAsignada)
+        }
+      }
+      if (idsParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+    } else if (reportarPor.value === 'Unidades') {
+      idsParaBuscar = unidadesIds.map((nombre) => window.unidadesMap?.[nombre] || nombre)
+    } else {
+      idsParaBuscar = unidadesIds
+    }
+
+    datosInforme = await obtenerIgnicionesDia(idsParaBuscar, fechaInicio, fechaFin)
   }
 
   if (!datosInforme || datosInforme.length === 0) {
@@ -1212,7 +1249,12 @@ const obtenerDatosReporte = async () => {
       ),
     ]
   } else if (reportarPor.value === 'Unidades') {
-    elementosConDatos = Object.keys(datosAgrupados)
+    // ── ignicion_dia no usa datosAgrupados ──────────────────────────────────
+    if (tipoInforme === 'ignicion_dia') {
+      elementosConDatos = [...new Set(datosInforme.map((d) => d.unidadNombre).filter(Boolean))]
+    } else {
+      elementosConDatos = Object.keys(datosAgrupados)
+    }
   } else {
     elementosConDatos = Object.keys(datosAgrupados)
   }
@@ -1256,6 +1298,14 @@ const obtenerDatosReporte = async () => {
       stats: stats,
       elementosSinDatos: elementosSinDatos,
       tipoInforme: 'horas_trabajo',
+    }
+  }
+  if (tipoInforme === 'ignicion_dia') {
+    return {
+      registros: datosInforme,
+      totalRegistros: datosInforme.length,
+      tipoInforme: 'ignicion_dia',
+      elementosSinDatos: elementosSinDatos,
     }
   }
 
@@ -1306,6 +1356,7 @@ const generarNombreArchivo = (extension) => {
     trayectos: 'Trayectos',
     eventos: 'Eventos',
     horas_trabajo: 'HorasTrabajo',
+    ignicion_dia: 'IgnicionDia',
   }
   const tipo = tipoMap[tipoInformeSeleccionado.value] || 'Reporte'
 
@@ -1416,6 +1467,12 @@ const generarReporte = async () => {
       }
 
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
+    } else if (tipoInformeSeleccionado.value === 'ignicion_dia') {
+      const configIgnicion = {
+        ...config,
+        mostrarMapaIgnicion: mostrarMapaIgnicion.value,
+      }
+      pdfResult = await generarPDFIgnicionDia(configIgnicion, datosReales)
     }
 
     //  VALIDAR QUE SE GENERÓ EL PDF
@@ -1537,6 +1594,15 @@ const generarExcel = async () => {
       const { generarExcelTrayectos } = useReporteExcel()
       const resultado = await generarExcelTrayectos(
         config,
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'ignicion_dia') {
+      const { generarExcelIgnicionDia } = useReporteExcel()
+      const resultado = await generarExcelIgnicionDia(
+        { ...config, mostrarMapaIgnicion: mostrarMapaIgnicion.value },
         datosReales,
         generarNombreArchivo('xlsx'),
       )
