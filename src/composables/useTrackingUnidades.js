@@ -149,16 +149,6 @@ export function useTrackingUnidades() {
                   const necesitaGeocodificar =
                     !ultimaPos || calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) > 0.5
 
-                  if (necesitaGeocodificar) {
-                    console.log(
-                      '🔴 geocoding unidad:',
-                      unidad.id,
-                      ultimaPos
-                        ? `movió ${(calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) * 1000).toFixed(0)}m`
-                        : 'sin pos previa',
-                    )
-                  }
-
                   if (!necesitaGeocodificar) return null
 
                   try {
