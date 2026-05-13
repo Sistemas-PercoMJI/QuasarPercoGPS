@@ -18,6 +18,8 @@ const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
 const unidadesValidasGlobal = ref(new Set()) // IDs con IMEI válido
+const ultimoGeocoding = new Map() // unidadId -> { lat, lng }
+
 let unsubscribeUnidades = null
 
 export function useTrackingUnidades() {
@@ -64,6 +66,20 @@ export function useTrackingUnidades() {
       unidadesValidasGlobal.value = idsValidos
     })
   }
+
+  const calcularDistanciaKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLng = ((lng2 - lng1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2)
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
   const iniciarTracking = () => {
     iniciarListenerUnidades()
     if (trackingIniciado) {
@@ -124,22 +140,38 @@ export function useTrackingUnidades() {
             const geocodificarPendientes = async (unidades) => {
               const actualizaciones = await Promise.all(
                 unidades.map(async (unidad, index) => {
-                  if (!unidad.direccionTexto && unidad.ubicacion) {
-                    try {
-                      const direccion = await obtenerDireccion({
-                        lat: unidad.ubicacion.lat,
-                        lng: unidad.ubicacion.lng,
-                      })
-                      return { index, direccionTexto: direccion }
-                    } catch (e) {
-                      console.warn(e)
-                      return {
-                        index,
-                        direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}`,
-                      }
+                  if (!unidad.ubicacion) return null
+
+                  const { lat, lng } = unidad.ubicacion
+                  const ultimaPos = ultimoGeocoding.get(unidad.id)
+
+                  // Si no tiene dirección o se movió más de 200 metros, re-geocodificar
+                  const necesitaGeocodificar =
+                    !ultimaPos || calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) > 0.5
+
+                  if (necesitaGeocodificar) {
+                    console.log(
+                      '🔴 geocoding unidad:',
+                      unidad.id,
+                      ultimaPos
+                        ? `movió ${(calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) * 1000).toFixed(0)}m`
+                        : 'sin pos previa',
+                    )
+                  }
+
+                  if (!necesitaGeocodificar) return null
+
+                  try {
+                    const direccion = await obtenerDireccion({ lat, lng })
+                    ultimoGeocoding.set(unidad.id, { lat, lng })
+                    return { index, direccionTexto: direccion }
+                  } catch (e) {
+                    console.warn(e)
+                    return {
+                      index,
+                      direccionTexto: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
                     }
                   }
-                  return null
                 }),
               )
 
@@ -201,6 +233,7 @@ export function useTrackingUnidades() {
     }
   })
   const detenerTrackingManual = () => {
+    ultimoGeocoding.clear()
     if (throttleTimer) {
       clearTimeout(throttleTimer)
       throttleTimer = null
