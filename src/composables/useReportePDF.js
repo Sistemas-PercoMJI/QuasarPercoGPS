@@ -2575,11 +2575,340 @@ export function useReportePDF() {
       filename: filename,
     }
   }
+  const generarPDFIgnicionDia = async (config, datosReales) => {
+    const doc = new jsPDF('landscape')
+    let yPos = 20
+
+    // ========================================
+    // ENCABEZADO DEL DOCUMENTO
+    // ========================================
+    doc.setFontSize(16)
+    doc.setFont(undefined, 'bold')
+    doc.text('Informe de Primera/Última Ignición', 14, yPos)
+    yPos += 10
+
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'normal')
+    doc.text(`Periodo: ${config.rangoFechaFormateado}`, 14, yPos)
+    yPos += 6
+    doc.text(
+      `Generado: ${new Date().toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+      14,
+      yPos,
+    )
+    yPos += 6
+    doc.text(`Reportar por: ${config.reportarPor}`, 14, yPos)
+    yPos += 6
+    doc.text(`Total de registros: ${datosReales.totalRegistros || 0}`, 14, yPos)
+    yPos += 10
+
+    // ========================================
+    // RESUMEN GENERAL (si está activo)
+    // ========================================
+    if (config.mostrarResumen && datosReales.registros?.length > 0) {
+      const registros = datosReales.registros
+
+      const unidadesUnicas = new Set(registros.map((r) => r.unidadNombre)).size
+      const diasConDatos = new Set(registros.map((r) => r.fecha)).size
+
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'bold')
+      doc.text('Resumen del Informe', 14, yPos)
+      yPos += 8
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Concepto', 'Valor']],
+        body: [
+          ['Total de registros', datosReales.totalRegistros],
+          ['Unidades únicas', unidadesUnicas],
+          ['Días con actividad', diasConDatos],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [145, 198, 188] },
+        styles: { fontSize: 9 },
+        columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 40 } },
+      })
+
+      yPos = doc.lastAutoTable.finalY + 10
+    }
+
+    // ========================================
+    // AGRUPAR REGISTROS POR UNIDAD
+    // ========================================
+    const registrosPorUnidad = {}
+    datosReales.registros.forEach((registro) => {
+      const clave =
+        config.reportarPor === 'Conductores'
+          ? registro.conductorNombre || 'Sin conductor'
+          : registro.unidadNombre || 'Sin unidad'
+
+      if (!registrosPorUnidad[clave]) registrosPorUnidad[clave] = []
+      registrosPorUnidad[clave].push(registro)
+    })
+
+    // ========================================
+    // PREPARAR COLUMNAS
+    // ========================================
+    const headers = config.columnasSeleccionadas || [
+      'Fecha',
+      'Unidad',
+      'Placa',
+      'Conductor',
+      'Primera ignición',
+      'Lugar primera ignición',
+      'Última ignición',
+      'Lugar última ignición',
+    ]
+
+    const pageWidth = doc.internal.pageSize.width
+    const availableWidth = pageWidth - 40
+    const columnWidth = availableWidth / headers.length
+    const columnStyles = {}
+    headers.forEach((_, index) => {
+      columnStyles[index] = {
+        cellWidth: columnWidth,
+        overflow: 'linebreak',
+        halign: 'left',
+      }
+    })
+
+    // ========================================
+    // LOOP POR CADA UNIDAD
+    // ========================================
+    const { generarURLMapaIgnicion, descargarImagenMapaBase64 } = useMapboxStaticImage()
+
+    for (const [nombreEntidad, registros] of Object.entries(registrosPorUnidad)) {
+      doc.addPage()
+      yPos = 20
+
+      // ── Header de la entidad ──────────────────────────────────────────────
+      doc.setFontSize(16)
+      doc.setFont(undefined, 'bold')
+      doc.setTextColor(75, 157, 169)
+
+      const headerTitulo =
+        config.reportarPor === 'Unidades'
+          ? `UNIDAD: ${nombreEntidad}`
+          : `CONDUCTOR: ${nombreEntidad}`
+
+      doc.text(headerTitulo, 20, yPos)
+      yPos += 8
+
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'normal')
+      doc.setTextColor(100, 100, 100)
+
+      const primerRegistro = registros[0]
+      if (config.reportarPor === 'Unidades') {
+        const placa = primerRegistro.placa || 'Sin placa'
+        const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
+        doc.text(`Placa: ${placa} | Conductores: ${conductores.join(', ')}`, 20, yPos)
+      } else {
+        const unidades = [...new Set(registros.map((r) => r.unidadNombre).filter(Boolean))]
+        doc.text(`Unidades usadas: ${unidades.join(', ')}`, 20, yPos)
+      }
+      yPos += 6
+
+      doc.setFontSize(9)
+      doc.setFont(undefined, 'italic')
+      doc.text(`Total de días: ${registros.length}`, 20, yPos)
+      yPos += 10
+
+      doc.setDrawColor(200, 200, 200)
+      doc.line(20, yPos, pageWidth - 20, yPos)
+      yPos += 8
+
+      doc.setTextColor(0, 0, 0)
+
+      // ── Tabla de registros ────────────────────────────────────────────────
+      const tableData = registros.map((registro) => {
+        return headers.map((nombreCol) => {
+          const columnaConfig = COLUMNAS_POR_TIPO.ignicion_dia[nombreCol]
+          if (columnaConfig && columnaConfig.obtenerValor) {
+            return columnaConfig.obtenerValor(registro)
+          }
+          return 'N/A'
+        })
+      })
+
+      const headersMultilinea = headers.map((header) => {
+        const palabras = header.split(' ')
+        if (palabras.length > 2) {
+          const mitad = Math.ceil(palabras.length / 2)
+          return palabras.slice(0, mitad).join(' ') + '\n' + palabras.slice(mitad).join(' ')
+        }
+        return header
+      })
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [headersMultilinea],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [145, 198, 188],
+          fontStyle: 'bold',
+          fontSize: 7,
+          minCellHeight: 10,
+          halign: 'center',
+          valign: 'middle',
+        },
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          overflow: 'linebreak',
+        },
+        columnStyles: columnStyles,
+        margin: { left: 20, right: 20 },
+        tableWidth: 'auto',
+      })
+
+      yPos = doc.lastAutoTable.finalY + 10
+
+      // ========================================
+      // MAPAS POR DÍA (si está activo)
+      // ========================================
+      if (config.mostrarMapaIgnicion) {
+        for (const registro of registros) {
+          // Necesitamos ambos puntos para pintar el mapa
+          if (!registro.latPrimera || !registro.latUltima) continue
+
+          try {
+            doc.addPage('a4', 'landscape')
+            yPos = 20
+
+            // Título del mapa
+            doc.setFontSize(12)
+            doc.setFont(undefined, 'bold')
+            doc.setTextColor(0, 0, 0)
+            doc.text(`Mapa de Igniciones - ${nombreEntidad}`, 20, yPos)
+            yPos += 6
+
+            // Fecha formateada
+            const [y, m, d] = registro.fecha.split('-')
+            const fechaObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+            const fechaFormateada = fechaObj.toLocaleDateString('es-ES', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })
+            const fechaTitulo = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1)
+
+            doc.setFontSize(10)
+            doc.setFont(undefined, 'normal')
+            doc.setTextColor(100, 100, 100)
+            doc.text(fechaTitulo, 20, yPos)
+            yPos += 10
+
+            // Generar URL del mapa con dos pins
+            const urlMapa = generarURLMapaIgnicion({
+              latPrimera: registro.latPrimera,
+              lngPrimera: registro.lngPrimera,
+              latUltima: registro.latUltima,
+              lngUltima: registro.lngUltima,
+            })
+
+            if (!urlMapa) continue
+
+            const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+            if (!imagenBase64) continue
+
+            // Dimensiones del mapa
+            const pageWidthMapa = doc.internal.pageSize.getWidth()
+            const pageHeightMapa = doc.internal.pageSize.getHeight()
+            const margin = 14
+            const availableWidthMapa = pageWidthMapa - margin * 2
+            const availableHeightMapa = pageHeightMapa - yPos - 50
+            const aspectRatio = 1200 / 800
+            let mapWidth = availableWidthMapa
+            let mapHeight = mapWidth / aspectRatio
+            if (mapHeight > availableHeightMapa) {
+              mapHeight = availableHeightMapa
+              mapWidth = mapHeight * aspectRatio
+            }
+            const mapX = (pageWidthMapa - mapWidth) / 2
+
+            doc.addImage(imagenBase64, 'PNG', mapX, yPos, mapWidth, mapHeight)
+            yPos += mapHeight + 10
+
+            // ── Leyenda ───────────────────────────────────────────────────
+            const pageHeightLeyenda = doc.internal.pageSize.getHeight()
+            doc.setFontSize(9)
+            doc.setFont(undefined, 'normal')
+            doc.setTextColor(0, 0, 0)
+
+            // Pin verde = primera ignición
+            if (yPos > pageHeightLeyenda - 20) {
+              doc.addPage()
+              yPos = 20
+            }
+            doc.setFillColor(39, 174, 96) // verde
+            doc.circle(22, yPos - 1.5, 2, 'F')
+            doc.text(
+              `Primera ignición: ${registro.horasPrimeraIgnicion} - ${registro.lugarPrimeraIgnicion}`,
+              26,
+              yPos,
+            )
+            yPos += 7
+
+            // Pin rojo = última ignición
+            if (yPos > pageHeightLeyenda - 20) {
+              doc.addPage()
+              yPos = 20
+            }
+            doc.setFillColor(231, 76, 60) // rojo
+            doc.circle(22, yPos - 1.5, 2, 'F')
+            doc.text(
+              `Última ignición: ${registro.horasUltimaIgnicion} - ${registro.lugarUltimaIgnicion}`,
+              26,
+              yPos,
+            )
+            yPos += 10
+          } catch (error) {
+            console.error(`Error generando mapa del día ${registro.fecha}:`, error)
+          }
+        }
+      }
+    }
+
+    // ========================================
+    // ELEMENTOS SIN DATOS
+    // ========================================
+    if (datosReales.elementosSinDatos?.length > 0) {
+      doc.addPage()
+      yPos = 20
+
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'italic')
+      doc.text(`${config.reportarPor} sin datos en el período seleccionado:`, 14, yPos)
+      yPos += 6
+
+      datosReales.elementosSinDatos.forEach((elemento) => {
+        doc.text(`• ${elemento}`, 20, yPos)
+        yPos += 5
+      })
+    }
+
+    const pdfBlob = doc.output('blob')
+    const fecha = new Date().toISOString().split('T')[0]
+    const filename = `Informe_IgnicionDia_${fecha}.pdf`
+
+    return { blob: pdfBlob, filename }
+  }
 
   return {
     generarPDFEventos,
     generarPDFSimple,
     generarPDFTrayectos,
     generarPDFHorasTrabajo, //
+    generarPDFIgnicionDia,
   }
 }

@@ -46,7 +46,6 @@ export function useReportesTrayectos() {
           return lat && lng
         })
         .filter((coord) => {
-          // 👈 AGREGAR ESTO
           const ts = coord.timestamp || coord.time || ''
           return !/\.\d{3}Z$/.test(ts)
         })
@@ -54,8 +53,8 @@ export function useReportesTrayectos() {
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
           timestamp: coord.timestamp || coord.time || null,
-          ignicion: coord.ignicion ?? null, // 🆕
-          velocidad: coord.velocidad || 0, // 🆕
+          ignicion: coord.ignicion ?? null,
+          velocidad: coord.velocidad || 0,
         }))
 
       return coordenadasNormalizadas
@@ -116,12 +115,12 @@ export function useReportesTrayectos() {
                 ]
               }
 
-              // 🆕 Detectar si hay campos ignicion en las coordenadas
+              // Detectar si hay campos ignicion en las coordenadas
               const tieneIgnicion = coordenadas.some(
                 (c) => c.ignicion !== null && c.ignicion !== undefined,
               )
 
-              // 🆕 Dividir por ignición si hay datos, sino usar todo como un viaje
+              // Dividir por ignición si hay datos, sino usar todo como un viaje
               const gruposCoords = tieneIgnicion
                 ? detectarViajesPorIgnicion(coordenadas)
                 : [coordenadas]
@@ -146,7 +145,7 @@ export function useReportesTrayectos() {
                 const duracionMs = inicioTs && finTs ? finTs - inicioTs : 0
                 const duracionHoras = duracionMs / 3600000
 
-                // 🆕 Calcular distancia de este viaje con Haversine
+                // Calcular distancia de este viaje con Haversine
                 let distanciaViaje = 0
                 if (coordsViaje.length >= 2) {
                   for (let j = 1; j < coordsViaje.length; j++) {
@@ -163,14 +162,14 @@ export function useReportesTrayectos() {
                       : distanciaViaje
                     : parseFloat(distanciaViaje.toFixed(2))
 
-                // 🆕 Velocidad máxima del viaje
+                // Velocidad máxima del viaje
                 const velMaximaViaje = Math.max(...coordsViaje.map((c) => c.velocidad || 0))
                 const velMaximaFinal =
                   gruposCoords.length === 1
                     ? parseFloat(data.velocidad_maxima) || velMaximaViaje
                     : velMaximaViaje
 
-                // 🆕 Velocidad promedio del viaje
+                // Velocidad promedio del viaje
                 let velPromedioViaje = 0
                 if (duracionHoras > 0 && distanciaFinal > 0) {
                   velPromedioViaje = distanciaFinal / duracionHoras
@@ -214,7 +213,6 @@ export function useReportesTrayectos() {
                   latitud: inicioCoord.lat,
                   longitud: inicioCoord.lng,
                   _raw: data,
-                  _simulado: false,
                 })
               }
 
@@ -232,8 +230,6 @@ export function useReportesTrayectos() {
           }
         }
       }
-
-      // Si no hay trayectos reales, generar simulados
 
       if (todosTrayectos.length === 0) {
         return { trayectos: [], elementosSinDatos: unidadesNombres }
@@ -258,7 +254,6 @@ export function useReportesTrayectos() {
       const listaTrayectos = Array.isArray(trayectos) ? trayectos : trayectos?.trayectos || []
 
       if (listaTrayectos.length === 0) return []
-      if (listaTrayectos[0]._simulado) return listaTrayectos
 
       const unidadesRef = collection(db, 'Unidades')
       const unidadesSnapshot = await getDocs(unidadesRef)
@@ -291,7 +286,6 @@ export function useReportesTrayectos() {
     error,
     obtenerTrayectos,
     enriquecerConDatosUnidades,
-    //generarTrayectosSimulados,
     descargarCoordenadasDeStorage,
   }
 }
@@ -320,7 +314,7 @@ function formatearFecha(fecha) {
 }
 
 /**
- * 🆕 Divide un array de coordenadas en viajes separados usando el campo ignicion.
+ * Divide un array de coordenadas en viajes separados usando el campo ignicion.
  * Un viaje empieza con ignicion: true y termina con ignicion: false.
  */
 function detectarViajesPorIgnicion(coordenadas) {
@@ -332,24 +326,110 @@ function detectarViajesPorIgnicion(coordenadas) {
     return detectarViajesPorVelocidad(coordenadas)
   }
 
-  // Lógica normal por ignición
+  // Lógica híbrida: ignición + timeout por velocidad + tolerancia a apagones breves
+  const UMBRAL_KMH = 7
+  const GAP_DETENCION_MS = 5 * 60 * 1000 // 5 minutos detenido = fin de viaje
+  const GAP_IGNICION_MS = 2 * 60 * 1000 // 2 minutos de tolerancia para apagones
+
   const viajes = []
   let viajeActual = []
   let enViaje = false
+  let inicioParada = null
+  let indiceUltimoMovimiento = -1
 
-  for (const coord of coordenadas) {
-    if (coord.ignicion === true) {
+  for (let i = 0; i < coordenadas.length; i++) {
+    const coord = coordenadas[i]
+    const enMovimiento = (coord.velocidad || 0) > UMBRAL_KMH
+
+    // Detectar inicio de viaje por ignición
+    if (coord.ignicion === true && !enViaje) {
       enViaje = true
-      viajeActual.push(coord)
-    } else if (coord.ignicion === false && enViaje) {
-      viajeActual.push(coord)
-      if (viajeActual.length > 1) viajes.push([...viajeActual])
       viajeActual = []
-      enViaje = false
+      inicioParada = null
+      indiceUltimoMovimiento = -1
+    }
+
+    if (enViaje) {
+      if (enMovimiento) {
+        // Se está moviendo → reiniciar contador de parada
+        inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length
+        viajeActual.push(coord)
+      } else {
+        // Detenido → verificar timeout
+        if (inicioParada === null) {
+          inicioParada = new Date(coord.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(coord.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          // Más de 5 min detenido → cerrar viaje en último punto con movimiento
+          const viajeHastaMovimiento =
+            indiceUltimoMovimiento >= 0
+              ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+              : viajeActual
+
+          if (viajeHastaMovimiento.length >= 2) {
+            viajes.push([...viajeHastaMovimiento])
+          }
+
+          viajeActual = []
+          enViaje = false
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        } else {
+          // Parada breve (< 5 min) → mantener en viaje
+          viajeActual.push(coord)
+        }
+      }
+
+      // Detectar fin de viaje por ignición apagada CON TOLERANCIA
+      if (coord.ignicion === false && enViaje) {
+        // Buscar siguiente punto con ignición true
+        const siguienteIgnicion = coordenadas.slice(i + 1).find((c) => c.ignicion === true)
+
+        let debeCortar = true
+
+        if (siguienteIgnicion) {
+          const gap =
+            new Date(siguienteIgnicion.timestamp).getTime() - new Date(coord.timestamp).getTime()
+
+          // Si el gap es menor a 2 minutos → apagón momentáneo, NO cortar
+          if (gap < GAP_IGNICION_MS) {
+            debeCortar = false
+            viajeActual.push(coord) // Agregar el punto con ignición apagada
+          }
+        }
+
+        if (debeCortar) {
+          // Cerrar en último punto con movimiento
+          const viajeHastaMovimiento =
+            indiceUltimoMovimiento >= 0
+              ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+              : viajeActual
+
+          if (viajeHastaMovimiento.length >= 2) {
+            viajes.push([...viajeHastaMovimiento])
+          }
+
+          viajeActual = []
+          enViaje = false
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        }
+      }
     }
   }
 
-  if (viajeActual.length > 1) viajes.push(viajeActual)
+  // Cerrar viaje abierto
+  if (viajeActual.length >= 2) {
+    const viajeHastaMovimiento =
+      indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+    if (viajeHastaMovimiento.length >= 2) {
+      viajes.push(viajeHastaMovimiento)
+    }
+  }
 
   if (viajes.length === 0 && coordenadas.length > 0) return [coordenadas]
 
@@ -357,7 +437,7 @@ function detectarViajesPorIgnicion(coordenadas) {
 }
 
 /**
- * 🆕 Calcula distancia en km entre dos coordenadas usando Haversine
+ * Calcula distancia en km entre dos coordenadas usando Haversine
  */
 function calcularDistanciaHaversine(coord1, coord2) {
   const R = 6371
@@ -372,6 +452,7 @@ function calcularDistanciaHaversine(coord1, coord2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
 }
+
 function detectarViajesPorVelocidad(coordenadas) {
   const UMBRAL_KMH = 7
   const GAP_DETENCION_MS = 5 * 60 * 1000
@@ -379,7 +460,7 @@ function detectarViajesPorVelocidad(coordenadas) {
   const viajes = []
   let viajeActual = []
   let inicioParada = null
-  let indiceUltimoMovimiento = -1 // ✅ rastrear último punto con velocidad
+  let indiceUltimoMovimiento = -1
 
   for (let i = 0; i < coordenadas.length; i++) {
     const c = coordenadas[i]
@@ -387,7 +468,7 @@ function detectarViajesPorVelocidad(coordenadas) {
 
     if (enMovimiento) {
       inicioParada = null
-      indiceUltimoMovimiento = viajeActual.length // ✅ posición dentro del viaje actual
+      indiceUltimoMovimiento = viajeActual.length
       viajeActual.push(c)
     } else {
       if (viajeActual.length === 0) continue
@@ -399,7 +480,7 @@ function detectarViajesPorVelocidad(coordenadas) {
       const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
 
       if (tiempoDetenido >= GAP_DETENCION_MS) {
-        // ✅ Cortar en el último punto con movimiento real, no en el punto parado
+        // Cortar en el último punto con movimiento real, no en el punto parado
         const viajeHastaMovimiento = viajeActual.slice(0, indiceUltimoMovimiento + 1)
         if (viajeHastaMovimiento.length >= 2) viajes.push([...viajeHastaMovimiento])
         viajeActual = []

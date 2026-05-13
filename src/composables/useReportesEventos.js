@@ -10,90 +10,6 @@ export function useReportesEventos() {
   const loading = ref(false)
   const error = ref(null)
 
-  /**
-   * Genera eventos simulados para pruebas
-   */
-  const generarEventosSimulados = (unidadNombre, unidadId, fechaInicio, fechaFin) => {
-    const eventos = []
-    const tiposEvento = [
-      'Entrada a geozona',
-      'Salida de geozona',
-      'Exceso de velocidad',
-      'Ralentí prolongado',
-    ]
-
-    const geozonas = [
-      'Zona Industrial',
-      'Centro de Distribución',
-      'Almacén Principal',
-      'Sucursal Norte',
-    ]
-
-    const conductores = [
-      'Perez Lopez Pedro',
-      'García Martínez Juan',
-      'López Hernández María',
-      'Rodríguez Sánchez Carlos',
-    ]
-
-    // Generar entre 5-15 eventos por día
-    const diasEnRango = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)) + 1
-
-    for (let dia = 0; dia < diasEnRango; dia++) {
-      const fecha = new Date(fechaInicio)
-      fecha.setDate(fecha.getDate() + dia)
-
-      const numEventos = Math.floor(Math.random() * 11) + 5 // 5-15 eventos
-
-      for (let i = 0; i < numEventos; i++) {
-        const hora = Math.floor(Math.random() * 14) + 6 // Entre 6 AM y 8 PM
-        const minuto = Math.floor(Math.random() * 60)
-
-        const timestamp = new Date(fecha)
-        timestamp.setHours(hora, minuto, 0, 0)
-
-        const tipoEvento = tiposEvento[Math.floor(Math.random() * tiposEvento.length)]
-        const geozona = geozonas[Math.floor(Math.random() * geozonas.length)]
-        const conductor = conductores[Math.floor(Math.random() * conductores.length)]
-
-        eventos.push({
-          id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          eventoNombre: tipoEvento,
-          tipoEvento: tipoEvento.includes('Entrada')
-            ? 'entrada'
-            : tipoEvento.includes('Salida')
-              ? 'salida'
-              : tipoEvento.includes('Exceso')
-                ? 'velocidad'
-                : 'ralenti',
-          timestamp: timestamp,
-          geozonaNombre: tipoEvento.includes('geozona') ? geozona : 'N/A',
-          conductorNombre: conductor,
-          unidadNombre: unidadNombre,
-          idUnidad: unidadId,
-          coordenadas: {
-            lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
-          },
-          ignicion: true,
-          kilometraje: null,
-          direccion: `Tijuana, Baja California, México`,
-          velocidad: tipoEvento.includes('Exceso')
-            ? Math.floor(Math.random() * 40) + 80
-            : Math.floor(Math.random() * 60) + 20,
-          duracion: tipoEvento.includes('Ralentí') ? Math.floor(Math.random() * 30) + 5 : null,
-          mensaje: tipoEvento,
-          detalles: `Evento ${tipoEvento.toLowerCase()} registrado`,
-        })
-      }
-    }
-
-    // Ordenar por timestamp
-    eventos.sort((a, b) => a.timestamp - b.timestamp)
-
-    return eventos
-  }
-
   const procesarEventosParaPDF = async (eventos) => {
     if (!eventos || eventos.length === 0) {
       return []
@@ -131,7 +47,7 @@ export function useReportesEventos() {
   }
 
   /**
-   * Obtiene eventos reales de Firebase, con fallback a datos simulados
+   * Obtiene eventos reales de Firebase
    */
   const obtenerEventosReales = async (
     unidadesNombres,
@@ -301,6 +217,5 @@ export function useReportesEventos() {
     loading,
     error,
     obtenerEventosReales,
-    generarEventosSimulados,
   }
 }

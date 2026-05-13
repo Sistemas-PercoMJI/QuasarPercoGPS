@@ -375,6 +375,45 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
   return url
 }
 
+function generarURLMapaIgnicion({ latPrimera, lngPrimera, latUltima, lngUltima }) {
+  if (!latPrimera || !lngPrimera || !latUltima || !lngUltima) {
+    console.warn('Coordenadas incompletas para mapa de ignición')
+    return null
+  }
+
+  const overlays = []
+
+  // Pin verde = primera ignición
+  overlays.push(`pin-l+27ae60(${lngPrimera.toFixed(6)},${latPrimera.toFixed(6)})`)
+
+  // Pin rojo = última ignición
+  overlays.push(`pin-l+e74c3c(${lngUltima.toFixed(6)},${latUltima.toFixed(6)})`)
+
+  // Calcular bbox para que ambos puntos entren en el encuadre
+  const minLat = Math.min(latPrimera, latUltima)
+  const maxLat = Math.max(latPrimera, latUltima)
+  const minLng = Math.min(lngPrimera, lngUltima)
+  const maxLng = Math.max(lngPrimera, lngUltima)
+
+  // Margen generoso para que los pins no queden en el borde
+  const margenLat = Math.max((maxLat - minLat) * 0.3, 0.01)
+  const margenLng = Math.max((maxLng - minLng) * 0.3, 0.01)
+
+  const bbox = [
+    (minLng - margenLng).toFixed(6),
+    (minLat - margenLat).toFixed(6),
+    (maxLng + margenLng).toFixed(6),
+    (maxLat + margenLat).toFixed(6),
+  ].join(',')
+
+  const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
+  const overlaysStr = overlays.join(',')
+  const overlaysEncoded = encodeURIComponent(overlaysStr)
+  const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
+
+  return `${baseURL}/${overlaysEncoded}/[${bbox}]/${dimensions}?access_token=${MAPBOX_TOKEN}`
+}
+
 /**
  * Descarga la imagen del mapa y la convierte a Base64
  * Usa Firebase Function como proxy para evitar problemas de CORS
@@ -516,5 +555,6 @@ export function useMapboxStaticImage() {
     generarURLMapaTrayectos,
     descargarImagenMapaBase64,
     generarLeyendaMapa,
+    generarURLMapaIgnicion,
   }
 }

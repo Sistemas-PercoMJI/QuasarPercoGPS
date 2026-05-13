@@ -1698,10 +1698,402 @@ export function useReporteExcel() {
     }
   }
 
+  const generarExcelIgnicionDia = async (config, datosReales, filenameOverride = null) => {
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'MJ GPS'
+    workbook.created = new Date()
+
+    // ========================================
+    // HOJA 1: Información del informe
+    // ========================================
+    const infoSheet = workbook.addWorksheet('Información')
+
+    infoSheet.addRow(['Informe de Primera/Última Ignición'])
+    infoSheet.getCell('A1').font = { bold: true, size: 14 }
+    infoSheet.addRow([])
+    infoSheet.addRow([`Periodo: ${config.rangoFechaFormateado || 'No especificado'}`])
+    infoSheet.addRow([`Reportar por: ${config.reportarPor || 'N/A'}`])
+    infoSheet.addRow([
+      `Generado: ${new Date().toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+    ])
+    infoSheet.addRow([`Total de registros: ${datosReales.totalRegistros || 0}`])
+    infoSheet.addRow([])
+
+    // Resumen general (si está activo)
+    if (config.mostrarResumen && datosReales.registros?.length > 0) {
+      const registros = datosReales.registros
+      const unidadesUnicas = new Set(registros.map((r) => r.unidadNombre)).size
+      const diasConDatos = new Set(registros.map((r) => r.fecha)).size
+
+      infoSheet.addRow(['RESUMEN DEL INFORME'])
+      infoSheet.getCell(`A${infoSheet.rowCount}`).font = { bold: true, size: 12 }
+      infoSheet.addRow([])
+
+      const statsHeaderRow = infoSheet.addRow(['Concepto', 'Valor'])
+      statsHeaderRow.font = { bold: true }
+      statsHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD3D3D3' },
+      }
+
+      infoSheet.addRow(['Total de registros', datosReales.totalRegistros])
+      infoSheet.addRow(['Unidades únicas', unidadesUnicas])
+      infoSheet.addRow(['Días con actividad', diasConDatos])
+      infoSheet.addRow([])
+    }
+
+    // Elementos sin datos
+    if (datosReales.elementosSinDatos?.length > 0) {
+      infoSheet.addRow([`${config.reportarPor} sin datos en el período seleccionado:`])
+      datosReales.elementosSinDatos.forEach((elemento) => {
+        infoSheet.addRow([elemento.toUpperCase()])
+      })
+    }
+
+    infoSheet.getColumn(1).width = 50
+    infoSheet.getColumn(2).width = 20
+
+    // ========================================
+    // HOJA 2: Todos los registros
+    // ========================================
+    const todosSheet = workbook.addWorksheet('Todos los Registros')
+
+    todosSheet.addRow(['TODOS LOS REGISTROS'])
+    todosSheet.getCell('A1').font = { bold: true, size: 12 }
+    todosSheet.addRow([`Total: ${datosReales.registros?.length || 0} registros`])
+    todosSheet.addRow([])
+
+    const headerRowTodos = todosSheet.addRow(config.columnasSeleccionadas)
+    headerRowTodos.font = { bold: true }
+    headerRowTodos.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4A90E2' },
+    }
+    headerRowTodos.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      }
+    })
+
+    if (datosReales.registros?.length > 0) {
+      datosReales.registros.forEach((registro) => {
+        const rowData = config.columnasSeleccionadas.map((nombreCol) => {
+          const columnaConfig = COLUMNAS_POR_TIPO.ignicion_dia[nombreCol]
+          if (columnaConfig && columnaConfig.obtenerValor) {
+            return columnaConfig.obtenerValor(registro)
+          }
+          return 'N/A'
+        })
+
+        const dataRow = todosSheet.addRow(rowData)
+        dataRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+      })
+    } else {
+      const emptyRow = todosSheet.addRow(['No hay registros en el período seleccionado'])
+      emptyRow.getCell(1).alignment = { horizontal: 'center' }
+      emptyRow.getCell(1).font = { italic: true, color: { argb: 'FF999999' } }
+      todosSheet.mergeCells(
+        todosSheet.rowCount,
+        1,
+        todosSheet.rowCount,
+        config.columnasSeleccionadas.length,
+      )
+    }
+
+    // Ajustar anchos
+    config.columnasSeleccionadas.forEach((nombreCol, index) => {
+      const columnaConfig = COLUMNAS_POR_TIPO.ignicion_dia[nombreCol]
+      if (columnaConfig) {
+        todosSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
+      } else {
+        todosSheet.getColumn(index + 1).width = 15
+      }
+    })
+
+    // ========================================
+    // HOJAS 3+: Una por unidad/conductor
+    // ========================================
+    const registrosPorEntidad = {}
+    datosReales.registros.forEach((registro) => {
+      const clave =
+        config.reportarPor === 'Conductores'
+          ? registro.conductorNombre || 'Sin conductor'
+          : registro.unidadNombre || 'Sin unidad'
+
+      if (!registrosPorEntidad[clave]) registrosPorEntidad[clave] = []
+      registrosPorEntidad[clave].push(registro)
+    })
+
+    Object.entries(registrosPorEntidad).forEach(([nombreEntidad, registros]) => {
+      const sheetName = nombreEntidad.substring(0, 30)
+      const detalleSheet = workbook.addWorksheet(sheetName)
+      let currentRow = 1
+
+      // Header de entidad
+      const headerEntidad = detalleSheet.addRow([nombreEntidad.toUpperCase()])
+      headerEntidad.font = { bold: true, size: 14, color: { argb: 'FF2980B9' } }
+      headerEntidad.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE3F2FD' },
+      }
+      detalleSheet.mergeCells(
+        currentRow,
+        1,
+        currentRow,
+        Math.max(config.columnasSeleccionadas.length, 6),
+      )
+      currentRow++
+
+      // Subtítulo
+      const primerRegistro = registros[0]
+      let subtitulo = ''
+      if (config.reportarPor === 'Unidades') {
+        const placa = primerRegistro.placa || 'Sin placa'
+        const conductores = [...new Set(registros.map((r) => r.conductorNombre).filter(Boolean))]
+        subtitulo = `Placa: ${placa} | Conductores: ${conductores.join(', ')}`
+      } else {
+        const unidades = [...new Set(registros.map((r) => r.unidadNombre).filter(Boolean))]
+        subtitulo = `Unidades: ${unidades.join(', ')}`
+      }
+
+      const subtituloRow = detalleSheet.addRow([subtitulo])
+      subtituloRow.font = { size: 9, color: { argb: 'FF646464' } }
+      detalleSheet.mergeCells(
+        currentRow,
+        1,
+        currentRow,
+        Math.max(config.columnasSeleccionadas.length, 6),
+      )
+      currentRow++
+
+      // Stats
+      const statsRow = detalleSheet.addRow([`Total de días: ${registros.length}`])
+      statsRow.font = { size: 9, italic: true, color: { argb: 'FF787878' } }
+      detalleSheet.mergeCells(
+        currentRow,
+        1,
+        currentRow,
+        Math.max(config.columnasSeleccionadas.length, 6),
+      )
+      currentRow++
+
+      detalleSheet.addRow([])
+      currentRow++
+
+      // Headers de columnas
+      const headerRow = detalleSheet.addRow(config.columnasSeleccionadas)
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4CAF50' },
+      }
+      headerRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        }
+      })
+      currentRow++
+
+      // Datos
+      registros.forEach((registro) => {
+        const rowData = config.columnasSeleccionadas.map((nombreCol) => {
+          const columnaConfig = COLUMNAS_POR_TIPO.ignicion_dia[nombreCol]
+          if (columnaConfig && columnaConfig.obtenerValor) {
+            return columnaConfig.obtenerValor(registro)
+          }
+          return 'N/A'
+        })
+
+        const dataRow = detalleSheet.addRow(rowData)
+        dataRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' },
+          }
+        })
+        currentRow++
+      })
+
+      // Ajustar anchos
+      config.columnasSeleccionadas.forEach((nombreCol, index) => {
+        const columnaConfig = COLUMNAS_POR_TIPO.ignicion_dia[nombreCol]
+        if (columnaConfig) {
+          detalleSheet.getColumn(index + 1).width = columnaConfig.ancho / 7
+        } else {
+          detalleSheet.getColumn(index + 1).width = 15
+        }
+      })
+    })
+
+    // ========================================
+    // HOJA DE MAPAS (si está activo)
+    // ========================================
+    if (config.mostrarMapaIgnicion) {
+      const { generarURLMapaIgnicion, descargarImagenMapaBase64 } = useMapboxStaticImage()
+
+      const mapaSheet = workbook.addWorksheet('Mapas')
+      let filaActual = 1
+
+      mapaSheet.addRow(['MAPAS DE IGNICIÓN'])
+      mapaSheet.getCell('A1').font = { bold: true, size: 14 }
+      mapaSheet.addRow([`Generado: ${new Date().toLocaleString('es-MX')}`])
+      mapaSheet.addRow([])
+      filaActual = 4
+
+      for (const [nombreEntidad, registros] of Object.entries(registrosPorEntidad)) {
+        for (const registro of registros) {
+          if (!registro.latPrimera || !registro.latUltima) continue
+
+          try {
+            // Título de la entidad + día
+            const [y, m, d] = registro.fecha.split('-')
+            const fechaFormateada = new Date(
+              parseInt(y),
+              parseInt(m) - 1,
+              parseInt(d),
+            ).toLocaleDateString('es-MX', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })
+
+            const tituloRow = mapaSheet.addRow([
+              `${nombreEntidad.toUpperCase()} — ${fechaFormateada}`,
+            ])
+            tituloRow.font = { bold: true, size: 12, color: { argb: 'FF2980B9' } }
+            tituloRow.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFE3F2FD' },
+            }
+            mapaSheet.mergeCells(filaActual, 1, filaActual, 10)
+            filaActual++
+
+            // Generar imagen
+            const urlMapa = generarURLMapaIgnicion({
+              latPrimera: registro.latPrimera,
+              lngPrimera: registro.lngPrimera,
+              latUltima: registro.latUltima,
+              lngUltima: registro.lngUltima,
+            })
+
+            if (!urlMapa) continue
+
+            const imagenBase64 = await descargarImagenMapaBase64(urlMapa)
+            if (!imagenBase64) continue
+
+            const base64Data = imagenBase64.split(',')[1]
+            const imageId = workbook.addImage({
+              base64: base64Data,
+              extension: 'png',
+            })
+
+            const IMAGEN_COLS = 10
+            const IMAGEN_FILAS = 20
+
+            for (let i = filaActual; i < filaActual + IMAGEN_FILAS; i++) {
+              mapaSheet.getRow(i).height = 20
+            }
+            for (let c = 1; c <= IMAGEN_COLS; c++) {
+              mapaSheet.getColumn(c).width = 12
+            }
+
+            mapaSheet.addImage(imageId, {
+              tl: { col: 0, row: filaActual - 1 },
+              br: { col: IMAGEN_COLS, row: filaActual - 1 + IMAGEN_FILAS },
+              editAs: 'oneCell',
+            })
+
+            filaActual += IMAGEN_FILAS
+
+            // Leyenda
+            const leyendaPrimera = mapaSheet.addRow([
+              '  ● Primera ignición',
+              `${registro.horasPrimeraIgnicion}`,
+              `${registro.lugarPrimeraIgnicion}`,
+            ])
+            leyendaPrimera.getCell(1).font = { bold: true, color: { argb: 'FF27AE60' } }
+            leyendaPrimera.font = { size: 9 }
+            filaActual++
+
+            const leyendaUltima = mapaSheet.addRow([
+              '  ● Última ignición',
+              `${registro.horasUltimaIgnicion}`,
+              `${registro.lugarUltimaIgnicion}`,
+            ])
+            leyendaUltima.getCell(1).font = { bold: true, color: { argb: 'FFE74C3C' } }
+            leyendaUltima.font = { size: 9 }
+            filaActual++
+
+            mapaSheet.addRow([])
+            mapaSheet.addRow([])
+            filaActual += 2
+
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+          } catch (error) {
+            console.error(`Error generando mapa para ${nombreEntidad}/${registro.fecha}:`, error)
+            const errorRow = mapaSheet.addRow([
+              `Error al generar mapa: ${nombreEntidad} - ${registro.fecha}`,
+            ])
+            errorRow.font = { italic: true, color: { argb: 'FFCC0000' } }
+            filaActual++
+          }
+        }
+      }
+    }
+
+    // ========================================
+    // Guardar y descargar
+    // ========================================
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+
+    const fecha = new Date().toISOString().split('T')[0]
+    const filename = filenameOverride || `Informe_IgnicionDia_${fecha}.xlsx`
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+
+    return { blob, filename }
+  }
+
   return {
     generarExcelEventos,
     generarExcelSimple,
     generarExcelHorasTrabajo,
     generarExcelTrayectos,
+    generarExcelIgnicionDia,
   }
 }
