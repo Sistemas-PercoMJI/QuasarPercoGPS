@@ -4,9 +4,7 @@ import { ref, onMounted } from 'vue'
 
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-// eslint-disable-next-line no-unused-vars
 import { auth } from 'src/firebase/firebaseConfig'
-// eslint-disable-next-line no-unused-vars
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 
@@ -36,10 +34,11 @@ const login = async () => {
 
   try {
     // Intentar login con Firebase
-
+    const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
     await cargarUsuarioActual()
     localStorage.setItem('ultimo_correo_login', email.value)
     // Login exitoso
+    console.log('Usuario logueado:', userCredential.user)
 
     $q.notify({
       type: 'positive',
