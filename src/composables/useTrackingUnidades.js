@@ -10,17 +10,91 @@ import { db } from 'src/firebase/firebaseConfig'
 
 // Variables globales
 let unsubscribeGlobal = null
-let throttleTimer = null // ← agregar aquí
+let throttleTimer = null
+let geocodingTimer = null // 🆕 throttle para geocoding
 const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
-const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
+const unidadesRawGlobal = ref([])
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
-const unidadesValidasGlobal = ref(new Set()) // IDs con IMEI válido
+const unidadesValidasGlobal = ref(new Set())
 const ultimoGeocoding = new Map() // unidadId -> { lat, lng }
 
 let unsubscribeUnidades = null
+
+// 🆕 Función movida a nivel de módulo para que el throttle funcione correctamente
+const calcularDistanciaKmGlobal = (lat1, lng1, lat2, lng2) => {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2)
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// 🆕 Función movida a nivel de módulo con throttle de 10 segundos
+const crearGeocodificador = (obtenerDireccion) => {
+  const geocodificarPendientes = async (unidades) => {
+    // Si ya hay un geocoding pendiente, ignorar esta llamada
+    if (geocodingTimer) return
+    console.log(`🔴 geocodificarPendientes llamada, procesando en 10s...`)
+    geocodingTimer = setTimeout(async () => {
+      geocodingTimer = null
+
+      const actualizaciones = await Promise.all(
+        unidades.map(async (unidad) => {
+          if (!unidad.ubicacion) return null
+
+          const { lat, lng } = unidad.ubicacion
+          const ultimaPos = ultimoGeocoding.get(unidad.id)
+
+          const necesitaGeocodificar =
+            !ultimaPos || calcularDistanciaKmGlobal(ultimaPos.lat, ultimaPos.lng, lat, lng) > 0.5
+
+          if (!necesitaGeocodificar) return null
+
+          try {
+            const direccion = await obtenerDireccion({ lat, lng })
+            ultimoGeocoding.set(unidad.id, { lat, lng })
+            return { id: unidad.id, direccionTexto: direccion } // 🆕 usar id en vez de index
+          } catch (e) {
+            console.warn(e)
+            return {
+              id: unidad.id,
+              direccionTexto: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            }
+          }
+        }),
+      )
+
+      const nuevasUnidades = [...unidadesRawGlobal.value]
+      let huboCambios = false
+      actualizaciones.forEach((act) => {
+        if (!act) return
+        // 🆕 buscar por id en vez de index para evitar bug de posición
+        const i = nuevasUnidades.findIndex((u) => u.id === act.id)
+        if (i !== -1) {
+          nuevasUnidades[i] = {
+            ...nuevasUnidades[i],
+            direccionTexto: act.direccionTexto,
+          }
+          huboCambios = true
+        }
+      })
+
+      if (huboCambios) {
+        unidadesRawGlobal.value = nuevasUnidades
+      }
+    }, 10000) // 🆕 esperar 10s antes de procesar el siguiente batch
+  }
+
+  return geocodificarPendientes
+}
 
 export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
@@ -30,7 +104,6 @@ export function useTrackingUnidades() {
     if (!idEmpresaActual.value) return []
 
     return unidadesRaw.filter((unidad) => {
-      // Filtro empresa (existente)
       const empresaDeUnidad = unidad.IdEmpresaConductor || unidad.IdEmpresaUnidad
       if (!empresaDeUnidad) return false
       const pasaEmpresa = Array.isArray(idEmpresaActual.value)
@@ -38,19 +111,18 @@ export function useTrackingUnidades() {
         : empresaDeUnidad === idEmpresaActual.value
       if (!pasaEmpresa) return false
 
-      // 🆕 Filtro IMEI: solo mostrar unidades con IMEI válido en Firestore
       const unidadId = unidad.unidadId || unidad.id
       return unidadesValidasGlobal.value.has(unidadId)
     })
   }
 
-  /**
-   * Inicia el tracking en tiempo real
-   */
   const { obtenerDireccion } = useGeocoding()
 
+  // 🆕 Crear el geocodificador una sola vez con la función obtenerDireccion
+  const geocodificarPendientes = crearGeocodificador(obtenerDireccion)
+
   const iniciarListenerUnidades = () => {
-    if (unsubscribeUnidades) return // ya escuchando
+    if (unsubscribeUnidades) return
 
     const unidadesRef = collection(db, 'Unidades')
 
@@ -67,19 +139,6 @@ export function useTrackingUnidades() {
     })
   }
 
-  const calcularDistanciaKm = (lat1, lng1, lat2, lng2) => {
-    const R = 6371
-    const dLat = ((lat2 - lat1) * Math.PI) / 180
-    const dLng = ((lng2 - lng1) * Math.PI) / 180
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2)
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  }
-
   const iniciarTracking = () => {
     iniciarListenerUnidades()
     if (trackingIniciado) {
@@ -88,7 +147,6 @@ export function useTrackingUnidades() {
 
     if (!idEmpresaActual.value) {
       console.warn(' No se puede iniciar tracking: IdEmpresa no disponible')
-
       setTimeout(() => {
         iniciarTracking()
       }, 1000)
@@ -107,10 +165,8 @@ export function useTrackingUnidades() {
           const data = snapshot.val()
 
           if (data) {
-            //  Guardar TODAS las unidades sin filtrar
             const todasLasUnidades = Object.entries(data)
               .filter(([, value]) => {
-                // Solo validación básica de ubicación
                 const esValida =
                   value &&
                   value.ubicacion &&
@@ -119,7 +175,6 @@ export function useTrackingUnidades() {
                   !isNaN(value.ubicacion.lat) &&
                   !isNaN(value.ubicacion.lng) &&
                   value.unidadNombre
-
                 return esValida
               })
               .map(([key, value]) => ({
@@ -133,57 +188,11 @@ export function useTrackingUnidades() {
                   value.direccionTexto === 'Obteniendo...' ? null : value.direccionTexto,
               }))
 
-            //  Actualizar datos raw
             unidadesRawGlobal.value = todasLasUnidades
 
-            // Geocodificar las que no tienen direccion
-            const geocodificarPendientes = async (unidades) => {
-              const actualizaciones = await Promise.all(
-                unidades.map(async (unidad, index) => {
-                  if (!unidad.ubicacion) return null
-
-                  const { lat, lng } = unidad.ubicacion
-                  const ultimaPos = ultimoGeocoding.get(unidad.id)
-
-                  // Si no tiene dirección o se movió más de 200 metros, re-geocodificar
-                  const necesitaGeocodificar =
-                    !ultimaPos || calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) > 0.5
-
-                  if (!necesitaGeocodificar) return null
-
-                  try {
-                    const direccion = await obtenerDireccion({ lat, lng })
-                    ultimoGeocoding.set(unidad.id, { lat, lng })
-                    return { index, direccionTexto: direccion }
-                  } catch (e) {
-                    console.warn(e)
-                    return {
-                      index,
-                      direccionTexto: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-                    }
-                  }
-                }),
-              )
-
-              const nuevasUnidades = [...unidadesRawGlobal.value]
-              let huboCambios = false
-              actualizaciones.forEach((act) => {
-                if (act && nuevasUnidades[act.index]) {
-                  nuevasUnidades[act.index] = {
-                    ...nuevasUnidades[act.index],
-                    direccionTexto: act.direccionTexto,
-                  }
-                  huboCambios = true
-                }
-              })
-              if (huboCambios) {
-                unidadesRawGlobal.value = nuevasUnidades
-              }
-            }
-
+            // 🆕 Llamar la función que ahora vive a nivel de módulo con throttle
             geocodificarPendientes(todasLasUnidades)
 
-            //  Aplicar filtrado
             if (!throttleTimer) {
               throttleTimer = setTimeout(() => {
                 const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
@@ -214,7 +223,6 @@ export function useTrackingUnidades() {
     }
   }
 
-  //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
   watch(idEmpresaActual, () => {
     if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
       const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
@@ -222,8 +230,15 @@ export function useTrackingUnidades() {
       window._unidadesTrackeadas = unidadesFiltradas
     }
   })
+
   const detenerTrackingManual = () => {
-    ultimoGeocoding.clear()
+    // 🆕 NO limpiar ultimoGeocoding para que el cache sobreviva reinicios
+    // ultimoGeocoding.clear() ← eliminado
+
+    if (geocodingTimer) {
+      clearTimeout(geocodingTimer)
+      geocodingTimer = null
+    }
     if (throttleTimer) {
       clearTimeout(throttleTimer)
       throttleTimer = null
@@ -237,7 +252,6 @@ export function useTrackingUnidades() {
       unidadesActivasGlobal.value = []
     }
 
-    // 🆕 Limpiar listener de Firestore
     if (unsubscribeUnidades) {
       unsubscribeUnidades()
       unsubscribeUnidades = null
