@@ -929,7 +929,7 @@ const dibujarPOIsCombinados = async (pois) => {
           e.originalEvent.stopPropagation()
         }
         const feature = e.features[0]
-        const poi = pois.find((p) => p.id === feature.properties.id)
+        const poi = poisCargados.value.find((p) => p.id === feature.properties.id)
 
         const color = poi.color || '#FF5252'
         const colorHex = color.replace('#', '')

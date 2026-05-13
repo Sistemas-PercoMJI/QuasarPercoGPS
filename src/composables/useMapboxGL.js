@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { useGeocoding } from './useGeocoding'
+const { obtenerDireccion: _obtenerDireccion } = useGeocoding()
 
 const originalWarn = console.warn
 console.warn = function (...args) {
@@ -59,7 +61,6 @@ const ESTILOS_MAPA = {
 let popupGlobalActivo = null
 
 //  Tu API key de Mapbox
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
 //  OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
 const THROTTLE_MS = 200 //  200ms = 5 actualizaciones/segundo (antes era 300ms)
@@ -824,7 +825,7 @@ export function useMapboxGL() {
                 // No tenemos dirección todavía → disparar geocoding ahora
                 const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
                 if (lngLat) {
-                  obtenerDireccion(lngLat.lat, lngLat.lng).then((direccion) => {
+                  _obtenerDireccion({ lat: lngLat.lat, lng: lngLat.lng }).then((direccion) => {
                     const c = ultimasPosiciones.get(unidadId)
                     if (c) c.direccionTexto = direccion
 
@@ -1091,7 +1092,7 @@ export function useMapboxGL() {
             // No tenemos dirección todavía → disparar geocoding ahora
             const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
             if (lngLat) {
-              obtenerDireccion(lngLat.lat, lngLat.lng).then((direccion) => {
+              _obtenerDireccion({ lat: lngLat.lat, lng: lngLat.lng }).then((direccion) => {
                 const c = ultimasPosiciones.get(unidadId)
                 if (c) c.direccionTexto = direccion
 
@@ -1156,7 +1157,7 @@ export function useMapboxGL() {
           .setPopup(popup)
           .addTo(map.value)
         if (!unidad.direccionTexto) {
-          obtenerDireccion(lat, lng).then((direccion) => {
+          _obtenerDireccion({ lat, lng }).then((direccion) => {
             // Guardar en cache para que el popup la tenga al abrirse
             const posCache = ultimasPosiciones.get(unidadId)
             if (posCache) posCache.direccionTexto = direccion
@@ -1419,7 +1420,7 @@ export function useMapboxGL() {
         .setLngLat([lng, lat])
         .addTo(map.value)
 
-      const direccionObtenida = await obtenerDireccion(lat, lng)
+      const direccionObtenida = await _obtenerDireccion({ lat, lng })
       ubicacionSeleccionada.value = {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
@@ -1502,7 +1503,7 @@ export function useMapboxGL() {
 
       circuloTemporal.value = { id: circleId }
 
-      const direccionObtenida = await obtenerDireccion(lat, lng)
+      const direccionObtenida = await _obtenerDireccion({ lat, lng })
       ubicacionSeleccionada.value = {
         tipo: 'circular',
         coordenadas: { lat, lng },
@@ -1822,20 +1823,6 @@ export function useMapboxGL() {
         'line-width': 3,
       },
     })
-  }
-
-  //  OBTENER DIRECCIÓN
-  const obtenerDireccion = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`,
-      )
-      const data = await response.json()
-      return data.features[0]?.place_name || 'Dirección no disponible'
-    } catch (error) {
-      console.error('Error obteniendo dirección:', error)
-      return 'Error al obtener dirección'
-    }
   }
 
   //  CAMBIAR ESTILO DEL MAPA (NUEVO)

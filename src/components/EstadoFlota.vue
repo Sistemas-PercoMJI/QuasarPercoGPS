@@ -905,21 +905,43 @@ const trayectosFiltradosPorHora = computed(() => {
 
 // Después de las refs existentes
 const eventosConDirecciones = ref([])
+const cacheDireccionesEventos = ref({})
+const eventosEnVuelo = new Map()
 
 // Agregar esta función
 const procesarEventosConDirecciones = async (eventos) => {
+  const unidadId = vehiculoSeleccionado.value?.id
+
+  // Asegurar que existe el cache para esta unidad
+  if (!cacheDireccionesEventos.value[unidadId]) {
+    cacheDireccionesEventos.value[unidadId] = {}
+  }
+
   const procesados = await Promise.all(
     eventos.map(async (evento) => {
       const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
 
-      //  Geocodificar dirección si tiene coordenadas
-      let direccionGeocoded = evento.ubicacion || 'Ubicación desconocida'
-      if (evento.coordenadas) {
-        try {
-          direccionGeocoded = await obtenerDireccion(evento.coordenadas)
-        } catch (error) {
-          console.warn('Error geocodificando:', error)
+      let direccionGeocoded = cacheDireccionesEventos.value[unidadId][evento.id]
+
+      if (!direccionGeocoded) {
+        if (eventosEnVuelo.has(evento.id)) {
+          console.log('🟡 EN VUELO evento:', evento.id)
+          direccionGeocoded = await eventosEnVuelo.get(evento.id)
+        } else {
+          console.log('🔴 GEOCODING evento:', evento.id)
+          const promesa = evento.coordenadas
+            ? obtenerDireccion(evento.coordenadas).catch(
+                () => evento.ubicacion || 'Ubicación desconocida',
+              )
+            : Promise.resolve(evento.ubicacion || 'Ubicación desconocida')
+
+          eventosEnVuelo.set(evento.id, promesa)
+          direccionGeocoded = await promesa
+          cacheDireccionesEventos.value[unidadId][evento.id] = direccionGeocoded
+          eventosEnVuelo.delete(evento.id)
         }
+      } else {
+        console.log('🟢 CACHE evento:', evento.id)
       }
 
       return {
@@ -1497,6 +1519,8 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
     estadisticasVehiculo.value = null
     trayectosDia.value = []
     resumenDia.value = null
+
+    eventosEnVuelo.clear()
   }
 })
 
