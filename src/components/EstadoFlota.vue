@@ -925,10 +925,8 @@ const procesarEventosConDirecciones = async (eventos) => {
 
       if (!direccionGeocoded) {
         if (eventosEnVuelo.has(evento.id)) {
-          console.log('🟡 EN VUELO evento:', evento.id)
           direccionGeocoded = await eventosEnVuelo.get(evento.id)
         } else {
-          console.log('🔴 GEOCODING evento:', evento.id)
           const promesa = evento.coordenadas
             ? obtenerDireccion(evento.coordenadas).catch(
                 () => evento.ubicacion || 'Ubicación desconocida',
@@ -940,8 +938,6 @@ const procesarEventosConDirecciones = async (eventos) => {
           cacheDireccionesEventos.value[unidadId][evento.id] = direccionGeocoded
           eventosEnVuelo.delete(evento.id)
         }
-      } else {
-        console.log('🟢 CACHE evento:', evento.id)
       }
 
       return {
