@@ -4,14 +4,12 @@ import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
-import { useGeocoding } from 'src/composables/useGeocoding'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 
 // ── Variables globales a nivel de módulo ──────────────────────────
 let unsubscribeGlobal = null
 let throttleTimer = null
-let geocodingTimer = null
 const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
 const unidadesRawGlobal = ref([])
@@ -19,94 +17,12 @@ const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
 const unidadesValidasGlobal = ref(new Set())
-const ultimoGeocoding = new Map() // unidadId -> { lat, lng }
 let unsubscribeUnidades = null
-
-// 🆕 Referencia a filtrarUnidadesPorEmpresa accesible desde geocodificarPendientes
-let _filtrarUnidadesPorEmpresa = null
-
-// ── Helpers a nivel de módulo ─────────────────────────────────────
-const calcularDistanciaKm = (lat1, lng1, lat2, lng2) => {
-  const R = 6371
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLng = ((lng2 - lng1) * Math.PI) / 180
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2)
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-// 🆕 geocodificarPendientes a nivel de módulo con throttle
-const geocodificarPendientes = (obtenerDireccion) => async (unidades) => {
-  if (geocodingTimer) return
-
-  geocodingTimer = setTimeout(async () => {
-    geocodingTimer = null
-
-    const actualizaciones = await Promise.all(
-      unidades.map(async (unidad) => {
-        if (!unidad.ubicacion) return null
-
-        const { lat, lng } = unidad.ubicacion
-        const ultimaPos = ultimoGeocoding.get(unidad.id)
-
-        const necesitaGeocodificar =
-          !ultimaPos || calcularDistanciaKm(ultimaPos.lat, ultimaPos.lng, lat, lng) > 0.5
-
-        if (!necesitaGeocodificar) return null
-
-        try {
-          const direccion = await obtenerDireccion({ lat, lng })
-          ultimoGeocoding.set(unidad.id, { lat, lng })
-          return { id: unidad.id, direccionTexto: direccion }
-        } catch (e) {
-          console.warn(e)
-          return {
-            id: unidad.id,
-            direccionTexto: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-          }
-        }
-      }),
-    )
-
-    const nuevasUnidades = [...unidadesRawGlobal.value]
-    let huboCambios = false
-
-    actualizaciones.forEach((act) => {
-      if (!act) return
-      const i = nuevasUnidades.findIndex((u) => u.id === act.id)
-      if (i !== -1) {
-        nuevasUnidades[i] = { ...nuevasUnidades[i], direccionTexto: act.direccionTexto }
-        huboCambios = true
-      }
-    })
-
-    if (huboCambios) {
-      unidadesRawGlobal.value = nuevasUnidades
-
-      if (_filtrarUnidadesPorEmpresa) {
-        const filtradas = _filtrarUnidadesPorEmpresa(nuevasUnidades)
-
-        unidadesActivasGlobal.value = filtradas
-        window._unidadesTrackeadas = filtradas
-      } else {
-        console.log('❌ _filtrarUnidadesPorEmpresa es null')
-      }
-    }
-  }, 10000)
-}
 
 // ── Composable ────────────────────────────────────────────────────
 export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   const { idEmpresaActual } = useMultiTenancy()
-  const { obtenerDireccion } = useGeocoding()
-
-  // 🆕 Crear instancia del geocodificador con obtenerDireccion
-  const _geocodificarPendientes = geocodificarPendientes(obtenerDireccion)
 
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
     if (!idEmpresaActual.value) return []
@@ -123,9 +39,6 @@ export function useTrackingUnidades() {
       return unidadesValidasGlobal.value.has(unidadId)
     })
   }
-
-  // 🆕 Guardar referencia para que geocodificarPendientes pueda usarla
-  _filtrarUnidadesPorEmpresa = filtrarUnidadesPorEmpresa
 
   const iniciarListenerUnidades = () => {
     if (unsubscribeUnidades) return
@@ -189,6 +102,7 @@ export function useTrackingUnidades() {
                   lat: value.ubicacion.lat,
                   lng: value.ubicacion.lng,
                   nombre: value.conductorNombre,
+                  // Preservar direccionTexto del forwarder o del valor anterior
                   direccionTexto:
                     value.direccionTexto === 'Obteniendo...'
                       ? unidadExistente?.direccionTexto || null
@@ -197,9 +111,6 @@ export function useTrackingUnidades() {
               })
 
             unidadesRawGlobal.value = todasLasUnidades
-
-            // Geocodificar con throttle
-            _geocodificarPendientes(todasLasUnidades)
 
             // Filtrado con throttle
             if (!throttleTimer) {
@@ -241,11 +152,6 @@ export function useTrackingUnidades() {
   })
 
   const detenerTrackingManual = () => {
-    // NO limpiar ultimoGeocoding — el cache sobrevive reinicios
-    if (geocodingTimer) {
-      clearTimeout(geocodingTimer)
-      geocodingTimer = null
-    }
     if (throttleTimer) {
       clearTimeout(throttleTimer)
       throttleTimer = null
