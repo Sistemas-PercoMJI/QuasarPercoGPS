@@ -4,22 +4,22 @@ import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
-import { useGeocoding } from 'src/composables/useGeocoding'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 
-// Variables globales
+// ── Variables globales a nivel de módulo ──────────────────────────
 let unsubscribeGlobal = null
-let throttleTimer = null // ← agregar aquí
+let throttleTimer = null
 const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
-const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
+const unidadesRawGlobal = ref([])
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
-const unidadesValidasGlobal = ref(new Set()) // IDs con IMEI válido
+const unidadesValidasGlobal = ref(new Set())
 let unsubscribeUnidades = null
 
+// ── Composable ────────────────────────────────────────────────────
 export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   const { idEmpresaActual } = useMultiTenancy()
@@ -28,7 +28,6 @@ export function useTrackingUnidades() {
     if (!idEmpresaActual.value) return []
 
     return unidadesRaw.filter((unidad) => {
-      // Filtro empresa (existente)
       const empresaDeUnidad = unidad.IdEmpresaConductor || unidad.IdEmpresaUnidad
       if (!empresaDeUnidad) return false
       const pasaEmpresa = Array.isArray(idEmpresaActual.value)
@@ -36,22 +35,15 @@ export function useTrackingUnidades() {
         : empresaDeUnidad === idEmpresaActual.value
       if (!pasaEmpresa) return false
 
-      // 🆕 Filtro IMEI: solo mostrar unidades con IMEI válido en Firestore
       const unidadId = unidad.unidadId || unidad.id
       return unidadesValidasGlobal.value.has(unidadId)
     })
   }
 
-  /**
-   * Inicia el tracking en tiempo real
-   */
-  const { obtenerDireccion } = useGeocoding()
-
   const iniciarListenerUnidades = () => {
-    if (unsubscribeUnidades) return // ya escuchando
+    if (unsubscribeUnidades) return
 
     const unidadesRef = collection(db, 'Unidades')
-
     unsubscribeUnidades = onSnapshot(unidadesRef, (snapshot) => {
       const idsValidos = new Set()
       snapshot.docs.forEach((doc) => {
@@ -64,18 +56,14 @@ export function useTrackingUnidades() {
       unidadesValidasGlobal.value = idsValidos
     })
   }
+
   const iniciarTracking = () => {
     iniciarListenerUnidades()
-    if (trackingIniciado) {
-      return
-    }
+    if (trackingIniciado) return
 
     if (!idEmpresaActual.value) {
       console.warn(' No se puede iniciar tracking: IdEmpresa no disponible')
-
-      setTimeout(() => {
-        iniciarTracking()
-      }, 1000)
+      setTimeout(() => iniciarTracking(), 1000)
       return
     }
 
@@ -91,11 +79,9 @@ export function useTrackingUnidades() {
           const data = snapshot.val()
 
           if (data) {
-            //  Guardar TODAS las unidades sin filtrar
             const todasLasUnidades = Object.entries(data)
               .filter(([, value]) => {
-                // Solo validación básica de ubicación
-                const esValida =
+                return (
                   value &&
                   value.ubicacion &&
                   typeof value.ubicacion.lat === 'number' &&
@@ -103,65 +89,30 @@ export function useTrackingUnidades() {
                   !isNaN(value.ubicacion.lat) &&
                   !isNaN(value.ubicacion.lng) &&
                   value.unidadNombre
-
-                return esValida
+                )
               })
-              .map(([key, value]) => ({
-                id: value.unidadId || value.id || key,
-                ...value,
-                timestamp: value.timestamp || Date.now(),
-                lat: value.ubicacion.lat,
-                lng: value.ubicacion.lng,
-                nombre: value.conductorNombre,
-                direccionTexto:
-                  value.direccionTexto === 'Obteniendo...' ? null : value.direccionTexto,
-              }))
+              .map(([key, value]) => {
+                const id = value.unidadId || value.id || key
+                const unidadExistente = unidadesRawGlobal.value.find((u) => u.id === id)
 
-            //  Actualizar datos raw
-            unidadesRawGlobal.value = todasLasUnidades
-
-            // Geocodificar las que no tienen direccion
-            const geocodificarPendientes = async (unidades) => {
-              const actualizaciones = await Promise.all(
-                unidades.map(async (unidad, index) => {
-                  if (!unidad.direccionTexto && unidad.ubicacion) {
-                    try {
-                      const direccion = await obtenerDireccion({
-                        lat: unidad.ubicacion.lat,
-                        lng: unidad.ubicacion.lng,
-                      })
-                      return { index, direccionTexto: direccion }
-                    } catch (e) {
-                      console.warn(e)
-                      return {
-                        index,
-                        direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}`,
-                      }
-                    }
-                  }
-                  return null
-                }),
-              )
-
-              const nuevasUnidades = [...unidadesRawGlobal.value]
-              let huboCambios = false
-              actualizaciones.forEach((act) => {
-                if (act && nuevasUnidades[act.index]) {
-                  nuevasUnidades[act.index] = {
-                    ...nuevasUnidades[act.index],
-                    direccionTexto: act.direccionTexto,
-                  }
-                  huboCambios = true
+                return {
+                  id,
+                  ...value,
+                  timestamp: value.timestamp || Date.now(),
+                  lat: value.ubicacion.lat,
+                  lng: value.ubicacion.lng,
+                  nombre: value.conductorNombre,
+                  // Preservar direccionTexto del forwarder o del valor anterior
+                  direccionTexto:
+                    value.direccionTexto === 'Obteniendo...'
+                      ? unidadExistente?.direccionTexto || null
+                      : value.direccionTexto || unidadExistente?.direccionTexto || null,
                 }
               })
-              if (huboCambios) {
-                unidadesRawGlobal.value = nuevasUnidades
-              }
-            }
 
-            geocodificarPendientes(todasLasUnidades)
+            unidadesRawGlobal.value = todasLasUnidades
 
-            //  Aplicar filtrado
+            // Filtrado con throttle
             if (!throttleTimer) {
               throttleTimer = setTimeout(() => {
                 const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
@@ -192,7 +143,6 @@ export function useTrackingUnidades() {
     }
   }
 
-  //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
   watch(idEmpresaActual, () => {
     if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
       const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
@@ -200,6 +150,7 @@ export function useTrackingUnidades() {
       window._unidadesTrackeadas = unidadesFiltradas
     }
   })
+
   const detenerTrackingManual = () => {
     if (throttleTimer) {
       clearTimeout(throttleTimer)
@@ -213,13 +164,10 @@ export function useTrackingUnidades() {
       unidadesRawGlobal.value = []
       unidadesActivasGlobal.value = []
     }
-
-    // 🆕 Limpiar listener de Firestore
     if (unsubscribeUnidades) {
       unsubscribeUnidades()
       unsubscribeUnidades = null
     }
-
     unidadesValidasGlobal.value = new Set()
   }
 
@@ -238,9 +186,7 @@ export function useTrackingUnidades() {
   }
 
   const unidadesPorEstado = (estado) => {
-    if (estado === 'todos') {
-      return unidadesActivasGlobal.value
-    }
+    if (estado === 'todos') return unidadesActivasGlobal.value
     return unidadesActivasGlobal.value.filter((u) => u.estado === estado)
   }
 
@@ -251,13 +197,9 @@ export function useTrackingUnidades() {
       detenido: 0,
       inactivo: 0,
     }
-
     unidadesActivasGlobal.value.forEach((unidad) => {
-      if (conteo[unidad.estado] !== undefined) {
-        conteo[unidad.estado]++
-      }
+      if (conteo[unidad.estado] !== undefined) conteo[unidad.estado]++
     })
-
     return conteo
   }
 
@@ -266,12 +208,10 @@ export function useTrackingUnidades() {
     const enMovimiento = unidadesActivasGlobal.value.filter((u) => u.estado === 'movimiento').length
     const detenidas = unidadesActivasGlobal.value.filter((u) => u.estado === 'detenido').length
     const inactivas = unidadesActivasGlobal.value.filter((u) => u.estado === 'inactivo').length
-
     const velocidadPromedio =
       total > 0
         ? unidadesActivasGlobal.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total
         : 0
-
     return {
       total,
       enMovimiento,
