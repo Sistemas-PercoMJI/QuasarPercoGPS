@@ -1,5 +1,3 @@
-/* eslint-env serviceworker */
-
 import { clientsClaim } from 'workbox-core'
 import {
   precacheAndRoute,
@@ -7,7 +5,7 @@ import {
   createHandlerBoundToURL,
 } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { CacheFirst, NetworkOnly } from 'workbox-strategies'
+import { CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 self.skipWaiting()
@@ -24,43 +22,14 @@ if (process.env.MODE !== 'ssr' || process.env.PROD) {
   )
 }
 
-//  TRÁFICO: NUNCA cachear - agregar timestamp para burlar caché
+// TILES MAPBOX: Cachear 30 días, excepto tráfico
 registerRoute(
   ({ url }) => {
-    return (
+    const esTile =
       url.hostname === 'api.mapbox.com' &&
-      url.pathname.includes('/v4/') &&
-      url.pathname.includes('.vector.pbf')
-    )
-  },
-  new NetworkOnly({
-    plugins: [
-      {
-        // Agregar timestamp único para burlar caché del navegador
-        requestWillFetch: async ({ request }) => {
-          const url = new URL(request.url)
-          // Agregar timestamp único
-          url.searchParams.set('_t', Date.now())
-
-          return new Request(url.toString(), {
-            method: request.method,
-            headers: request.headers,
-            mode: request.mode,
-            credentials: request.credentials,
-            cache: 'no-store',
-            redirect: request.redirect,
-            referrer: request.referrer,
-          })
-        },
-      },
-    ],
-  }),
-)
-
-// TILES SATELITALES Y CALLES: Cachear 30 días
-registerRoute(
-  ({ url }) => {
-    return url.hostname === 'api.mapbox.com' && url.pathname.includes('/tiles/')
+      (url.pathname.includes('/v4/') || url.pathname.includes('/tiles/'))
+    const esTrafico = url.pathname.includes('mapbox-traffic')
+    return esTile && !esTrafico
   },
   new CacheFirst({
     cacheName: 'mapbox-tiles',

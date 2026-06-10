@@ -45,7 +45,7 @@ let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 let clickHandlerPoligonal = null
 let isZooming = false
-let lastZoomLevel = 0
+//let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
 let idsUnidadesFiltradas = null
@@ -2106,29 +2106,13 @@ export function useMapboxGL() {
 
         Object.values(marcadoresUnidades.value).forEach((marker) => {
           const el = marker.getElement()
-          if (el) {
-            el.style.transition = 'none'
-          }
+          if (el) el.style.transition = 'none'
         })
-
-        //  Ocultar layers combinados (MUCHO más rápido que 181 layers)
-        const layersToHide = [
-          'pois-combined',
-          'geozonas-circulares-combined',
-          'geozonas-poligonales-combined-fill',
-          'geozonas-poligonales-combined-outline',
-        ]
-
-        layersToHide.forEach((layerId) => {
-          if (map.value.getLayer(layerId)) {
-            map.value.setLayoutProperty(layerId, 'visibility', 'none')
-          }
-        })
+        // ← BORRAR todo el bloque layersToHide
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
-
         PanTimeout = setTimeout(() => {
           isPanning = false
 
@@ -2138,36 +2122,20 @@ export function useMapboxGL() {
 
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
-            if (el) {
-              el.style.transition = 'transform 0.3s ease-out'
-            }
+            if (el) el.style.transition = 'transform 0.3s ease-out'
           })
-
-          //  Mostrar layers combinados de nuevo
-          const layersToShow = [
-            'pois-combined',
-            'geozonas-circulares-combined',
-            'geozonas-poligonales-combined-fill',
-            'geozonas-poligonales-combined-outline',
-          ]
-
-          layersToShow.forEach((layerId) => {
-            if (map.value.getLayer(layerId)) {
-              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
-            }
-          })
+          // ← BORRAR todo el bloque layersToShow
 
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
 
           if (map.value) {
-            requestAnimationFrame(() => {
-              map.value.triggerRepaint()
-            })
+            requestAnimationFrame(() => map.value.triggerRepaint())
           }
         }, 50)
       })
+
       map.value.on('click', (e) => {
         if (window._clickEnUnidad) return
         if (!e.originalEvent.target.closest('.custom-marker-unidad')) {
@@ -2175,7 +2143,7 @@ export function useMapboxGL() {
         }
       })
 
-      let zoomTimeout
+      // let zoomTimeout
 
       map.value.on('zoomstart', () => {
         isZooming = true
@@ -2183,29 +2151,13 @@ export function useMapboxGL() {
       })
 
       map.value.on('zoom', () => {
-        clearTimeout(zoomTimeout)
-        const currentZoom = map.value.getZoom()
-        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
-
-        if (zoomDiff > 0.5) {
-          lastZoomLevel = currentZoom
-          if (map.value) {
-            map.value.triggerRepaint()
-          }
-        }
+        // ← VACIAR COMPLETAMENTE, Mapbox maneja el repaint solo
       })
       map.value.on('zoomend', () => {
         isZooming = false
-        clearTimeout(zoomTimeout)
-        //  REDUCIDO DE 150ms A 50ms
-        zoomTimeout = setTimeout(() => {
-          if (map.value) {
-            map.value.triggerRepaint()
-            if (pendingUnidades) {
-              procesarActualizacionMarcadores(pendingUnidades)
-            }
-          }
-        }, 50) //  CAMBIADO DE 150ms A 50ms
+        if (pendingUnidades) {
+          procesarActualizacionMarcadores(pendingUnidades)
+        }
       })
 
       window.addEventListener('filtrar-unidades-mapa', (event) => {
