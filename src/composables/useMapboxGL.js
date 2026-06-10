@@ -1963,7 +1963,7 @@ export function useMapboxGL() {
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 100,
+        maxTileCacheSize: 500,
         minZoom: 5,
         maxZoom: 18,
         //  OPTIMIZACIONES ADICIONALES v2
@@ -2093,6 +2093,7 @@ export function useMapboxGL() {
           },
           labelLayerId,
         )
+        configurarCacheTiles()
       })
 
       map.value.on('movestart', () => {
@@ -2394,6 +2395,11 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     pendingUnidades = null
     pendingUpdate = false
+
+    if (window._tilesFetchOverridden && window._originalFetch) {
+      window.fetch = window._originalFetch
+      window._tilesFetchOverridden = false
+    }
   }
 
   const toggleTrafico = () => {
@@ -2447,6 +2453,51 @@ export function useMapboxGL() {
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2)
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+  const configurarCacheTiles = () => {
+    if (!('caches' in window)) return
+
+    const CACHE_NAME = 'mjgps-tiles-v1'
+    const MAX_ENTRIES = 500
+
+    // Sobrescribir fetch solo para tiles de Mapbox
+    const originalFetch = window.fetch
+    window._tilesFetchOverridden = true
+
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input?.url || ''
+
+      const esTile =
+        (url.includes('api.mapbox.com') || url.includes('tiles.mapbox.com')) &&
+        url.includes('/tiles/')
+
+      if (!esTile) return originalFetch(input, init)
+
+      try {
+        const cache = await caches.open(CACHE_NAME)
+        const cached = await cache.match(url)
+
+        if (cached) return cached
+
+        const response = await originalFetch(input, init)
+
+        if (response.ok) {
+          // Limitar tamaño del caché
+          cache.put(url, response.clone()).then(async () => {
+            const keys = await cache.keys()
+            if (keys.length > MAX_ENTRIES) {
+              // Eliminar los más viejos (FIFO)
+              const toDelete = keys.slice(0, keys.length - MAX_ENTRIES)
+              await Promise.all(toDelete.map((k) => cache.delete(k)))
+            }
+          })
+        }
+
+        return response
+      } catch {
+        return originalFetch(input, init)
+      }
+    }
   }
 
   const eliminarMarcadorUnidad = (unidadId) => {
