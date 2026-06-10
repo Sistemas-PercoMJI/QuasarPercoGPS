@@ -1987,7 +1987,6 @@ export function useMapboxGL() {
           if (resourceType === 'Tile') {
             return {
               url: url,
-              headers: { 'Cache-Control': 'max-age=3600' },
             }
           }
         },
