@@ -245,12 +245,11 @@ let popupGlobalActivo = null
 let ultimoHashUnidades = ''
 
 let watchThrottle = null
-
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) return
-    if (watchThrottle) return // ← agregar esto
+    if (watchThrottle) return
 
     watchThrottle = setTimeout(() => {
       watchThrottle = null
@@ -268,7 +267,7 @@ watch(
         actualizarMarcadoresUnidades(nuevasUnidades)
         ultimoHashUnidades = nuevoHash
       }
-    }, 2000) // ← actualizar mapa máximo cada 2 segundos
+    }, 500) // ← bajar de 2000ms a 500ms
   },
   { deep: false, immediate: false },
 )
@@ -719,7 +718,8 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           'icon-image': ['get', 'iconImage'],
           'icon-size': 0.75,
           'icon-allow-overlap': true,
-          'icon-ignore-placement': false,
+          'icon-ignore-placement': true,
+          'text-field': '',
         },
       })
       mapaAPI.map.on('click', sourceId, (e) => {
@@ -919,7 +919,8 @@ const dibujarPOIsCombinados = async (pois) => {
           'icon-image': ['get', 'iconImage'],
           'icon-size': 0.75,
           'icon-allow-overlap': true,
-          'icon-ignore-placement': false,
+          'icon-ignore-placement': true,
+          'text-field': '',
         },
       })
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
@@ -1877,47 +1878,7 @@ onMounted(async () => {
     })
 
     mapaListo.value = true
-    if (!window._mapListenersRegistered) {
-      window._mapListenersRegistered = true
 
-      let moveStartHandler = () => {
-        const layersToHide = [
-          'pois-symbols',
-          'pois-circles',
-          'geozonas-symbols',
-          'geozonas-circulares-combined',
-          'geozonas-poligonales-combined-fill',
-          'geozonas-poligonales-combined-outline',
-        ]
-
-        layersToHide.forEach((layerId) => {
-          if (mapaAPI.map.getLayer(layerId)) {
-            mapaAPI.map.setLayoutProperty(layerId, 'visibility', 'none')
-          }
-        })
-      }
-
-      let moveEndHandler = () => {
-        setTimeout(() => {
-          const layersToShow = [
-            'pois-symbols',
-            'pois-circles',
-            'geozonas-symbols',
-            'geozonas-circulares-combined',
-            'geozonas-poligonales-combined-fill',
-            'geozonas-poligonales-combined-outline',
-          ]
-
-          layersToShow.forEach((layerId) => {
-            if (mapaAPI.map.getLayer(layerId)) {
-              mapaAPI.map.setLayoutProperty(layerId, 'visibility', 'visible')
-            }
-          })
-        }, 100)
-      }
-      window._mapMoveStartHandler = moveStartHandler
-      window._mapMoveEndHandler = moveEndHandler
-    }
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {
         if (ubicacionData.tipo === 'poi') {
@@ -3693,7 +3654,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   will-change: transform;
   transform: translateZ(0);
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
 }
 
 /* Optimización: Suavizar transiciones de opacidad */
@@ -3707,11 +3667,6 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Cursor durante panning */
 :deep(.mapboxgl-canvas-container.mapboxgl-touch-drag-pan) {
   cursor: grabbing !important;
-}
-
-/* Optimizar rendering del canvas durante movimiento */
-:deep(.mapboxgl-canvas) {
-  will-change: transform;
 }
 
 /* Reducir peso visual de hover effects */
