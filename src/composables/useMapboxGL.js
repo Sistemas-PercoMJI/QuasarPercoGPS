@@ -45,7 +45,7 @@ let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 let clickHandlerPoligonal = null
 let isZooming = false
-//let lastZoomLevel = 0
+let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
 let idsUnidadesFiltradas = null
@@ -181,7 +181,20 @@ const animacionesActivas = new Map()
 function animarMarcador(marcador, unidadId, fromLat, fromLng, toLat, toLng, duracionMs = 10000) {
   if (animacionesActivas.has(unidadId)) {
     cancelAnimationFrame(animacionesActivas.get(unidadId))
+
     animacionesActivas.delete(unidadId)
+  }
+  if (map.value) {
+    const bounds = map.value.getBounds()
+    const enViewport =
+      toLat >= bounds.getSouth() &&
+      toLat <= bounds.getNorth() &&
+      toLng >= bounds.getWest() &&
+      toLng <= bounds.getEast()
+    if (!enViewport) {
+      marcador.setLngLat([toLng, toLat])
+      return
+    }
   }
   const inicio = performance.now()
   function step(ahora) {
@@ -2034,6 +2047,65 @@ export function useMapboxGL() {
             }
           }
         })
+
+        // Agregar fuente de tráfico
+        map.value.addSource('mapbox-traffic', {
+          type: 'vector',
+          url: 'mapbox://mapbox.mapbox-traffic-v1',
+        })
+
+        //  Buscar la primera capa de etiquetas
+        const layers = map.value.getStyle().layers
+        let labelLayerId
+        for (let i = 0; i < layers.length; i++) {
+          if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+            labelLayerId = layers[i].id
+            break
+          }
+        }
+
+        //  Insertar tráfico ANTES de las etiquetas
+        map.value.addLayer(
+          {
+            id: 'traffic',
+            type: 'line',
+            source: 'mapbox-traffic',
+            'source-layer': 'traffic',
+            paint: {
+              'line-width': [
+                'interpolate',
+                ['exponential', 1.5],
+                ['zoom'],
+                10,
+                1,
+                13,
+                2,
+                15,
+                3,
+                18,
+                6,
+                20,
+                10,
+              ],
+              'line-color': [
+                'case',
+                ['==', ['get', 'congestion'], 'low'],
+                '#4CAF50',
+                ['==', ['get', 'congestion'], 'moderate'],
+                '#FF9800',
+                ['==', ['get', 'congestion'], 'heavy'],
+                '#F44336',
+                ['==', ['get', 'congestion'], 'severe'],
+                '#9C27B0',
+                '#888888',
+              ],
+            },
+            layout: {
+              visibility: 'none',
+            },
+          },
+          labelLayerId,
+        )
       })
 
       map.value.on('movestart', () => {
@@ -2042,32 +2114,68 @@ export function useMapboxGL() {
 
         Object.values(marcadoresUnidades.value).forEach((marker) => {
           const el = marker.getElement()
-          if (el) el.style.transition = 'none'
+          if (el) {
+            el.style.transition = 'none'
+          }
         })
-        // ← BORRAR todo el bloque layersToHide
+
+        //  Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        const layersToHide = [
+          'pois-circles', // ← corregido
+          'pois-symbols', // ← agregar
+          'geozonas-symbols', // ← agregar
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (map.value.getLayer(layerId)) {
+            map.value.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
       })
 
       map.value.on('moveend', () => {
         clearTimeout(PanTimeout)
+
         PanTimeout = setTimeout(() => {
           isPanning = false
 
           Object.values(marcadoresUnidades.value).forEach((marker) => {
             const el = marker.getElement()
-            if (el) el.style.transition = 'transform 0.3s ease-out'
+            if (el) {
+              el.style.transition = 'transform 0.3s ease-out'
+            }
           })
-          // ← BORRAR todo el bloque layersToShow
+
+          //  Mostrar layers combinados de nuevo
+          const layersToShow = [
+            'pois-circles',
+            'pois-symbols',
+            'geozonas-symbols',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (map.value.getLayer(layerId)) {
+              map.value.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
 
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
 
           if (map.value) {
-            requestAnimationFrame(() => map.value.triggerRepaint())
+            requestAnimationFrame(() => {
+              map.value.triggerRepaint()
+            })
           }
         }, 50)
       })
-
       map.value.on('click', (e) => {
         if (window._clickEnUnidad) return
         if (!e.originalEvent.target.closest('.custom-marker-unidad')) {
@@ -2075,7 +2183,7 @@ export function useMapboxGL() {
         }
       })
 
-      // let zoomTimeout
+      let zoomTimeout
 
       map.value.on('zoomstart', () => {
         isZooming = true
@@ -2083,13 +2191,29 @@ export function useMapboxGL() {
       })
 
       map.value.on('zoom', () => {
-        // ← VACIAR COMPLETAMENTE, Mapbox maneja el repaint solo
+        clearTimeout(zoomTimeout)
+        const currentZoom = map.value.getZoom()
+        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
+
+        if (zoomDiff > 0.5) {
+          lastZoomLevel = currentZoom
+          if (map.value) {
+            map.value.triggerRepaint()
+          }
+        }
       })
       map.value.on('zoomend', () => {
         isZooming = false
-        if (pendingUnidades) {
-          procesarActualizacionMarcadores(pendingUnidades)
-        }
+        clearTimeout(zoomTimeout)
+        //  REDUCIDO DE 150ms A 50ms
+        zoomTimeout = setTimeout(() => {
+          if (map.value) {
+            map.value.triggerRepaint()
+            if (pendingUnidades) {
+              procesarActualizacionMarcadores(pendingUnidades)
+            }
+          }
+        }, 50) //  CAMBIADO DE 150ms A 50ms
       })
 
       window.addEventListener('filtrar-unidades-mapa', (event) => {
@@ -2279,11 +2403,6 @@ export function useMapboxGL() {
     poligonoFinalizado.value = false
     pendingUnidades = null
     pendingUpdate = false
-
-    if (window._tilesFetchOverridden && window._originalFetch) {
-      window.fetch = window._originalFetch
-      window._tilesFetchOverridden = false
-    }
   }
 
   const toggleTrafico = () => {

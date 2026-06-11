@@ -632,19 +632,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         type: 'circle',
         source: sourceId,
         paint: {
-          'circle-radius': [
-            'interpolate',
-            ['exponential', 2],
-            ['zoom'],
-            0,
-            0,
-            20,
-            [
-              '/',
-              ['get', 'radio'],
-              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
-            ],
-          ],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 8, 17, 20, 20, 60],
           'circle-color': ['get', 'color'],
           'circle-opacity': 0.35,
           'circle-stroke-width': 2,
@@ -892,19 +880,7 @@ const dibujarPOIsCombinados = async (pois) => {
         type: 'circle',
         source: sourceId,
         paint: {
-          'circle-radius': [
-            'interpolate',
-            ['exponential', 2],
-            ['zoom'],
-            0,
-            0,
-            20,
-            [
-              '/',
-              ['get', 'radio'],
-              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
-            ],
-          ],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 8, 17, 20, 20, 60],
           'circle-color': ['get', 'color'],
           'circle-opacity': 0.15,
           'circle-stroke-width': 2,
@@ -2057,7 +2033,16 @@ onMounted(async () => {
         return
       }
 
-      const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
+      const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point, {
+        layers: [
+          'pois-symbols',
+          'pois-circles',
+          'geozonas-symbols',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ],
+      })
       const clickEnCapa = features.some(
         (feature) =>
           feature.layer.id.startsWith('poi-circle-') ||
