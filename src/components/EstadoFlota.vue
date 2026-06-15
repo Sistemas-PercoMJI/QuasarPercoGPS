@@ -1164,7 +1164,7 @@ const onClickVehiculo = (vehiculo) => {
   mapPage._mapaAPI.map.flyTo({
     center: [lng, lat],
     zoom: 17,
-    duration: 1500,
+    duration: 300,
     essential: true,
   })
 
@@ -1325,7 +1325,7 @@ const mostrarEventoEnMapa = async (evento) => {
   map.flyTo({
     center: [lng, lat],
     zoom: 17,
-    duration: 1500,
+    duration: 300,
     essential: true,
   })
 
@@ -1427,7 +1427,7 @@ function seleccionarVehiculoParaMapa(vehiculo) {
     mapPage._mapaAPI.map.flyTo({
       center: [lng, lat],
       zoom: 16,
-      duration: 1000,
+      duration: 300,
       essential: true,
     })
 

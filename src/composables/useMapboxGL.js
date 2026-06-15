@@ -45,7 +45,7 @@ let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 let clickHandlerPoligonal = null
 let isZooming = false
-let lastZoomLevel = 0
+//let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
 let idsUnidadesFiltradas = null
@@ -1969,40 +1969,11 @@ export function useMapboxGL() {
 
       map.value = new mapboxgl.Map({
         container: containerId,
-        style: ESTILOS_MAPA[estiloActual.value], //  Usar estilo del estado
+        style: ESTILOS_MAPA[estiloActual.value],
         center: [center[1], center[0]],
         zoom: zoom,
-        //  OPTIMIZACIONES DE RENDIMIENTO
-        hash: false,
-        preserveDrawingBuffer: false,
-        refreshExpiredTiles: false,
-        maxTileCacheSize: 100,
-        minZoom: 5,
-        maxZoom: 18,
-        //  OPTIMIZACIONES ADICIONALES v2
         fadeDuration: 0,
-        crossSourceCollisions: false,
-        trackResize: false,
-        pitchWithRotate: false,
-        touchPitch: false,
-        //  NUEVAS OPTIMIZACIONES CRÍTICAS
-        renderWorldCopies: false,
         antialias: false,
-        optimizeForTerrain: false,
-        dragRotate: false,
-        touchZoomRotate: false,
-        easing: (t) => {
-          // Curva de easing personalizada (ease-out-cubic)
-          return 1 - Math.pow(1 - t, 3)
-        },
-        transformRequest: (url, resourceType) => {
-          // Cachear tiles agresivamente
-          if (resourceType === 'Tile') {
-            return {
-              url: url,
-            }
-          }
-        },
       })
 
       // Agregar controles de navegación en bottom-right
@@ -2190,25 +2161,12 @@ export function useMapboxGL() {
         pendingUpdate = false
       })
 
-      map.value.on('zoom', () => {
-        clearTimeout(zoomTimeout)
-        const currentZoom = map.value.getZoom()
-        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
-
-        if (zoomDiff > 0.5) {
-          lastZoomLevel = currentZoom
-          if (map.value) {
-            map.value.triggerRepaint()
-          }
-        }
-      })
       map.value.on('zoomend', () => {
         isZooming = false
         clearTimeout(zoomTimeout)
         //  REDUCIDO DE 150ms A 50ms
         zoomTimeout = setTimeout(() => {
           if (map.value) {
-            map.value.triggerRepaint()
             if (pendingUnidades) {
               procesarActualizacionMarcadores(pendingUnidades)
             }

@@ -1261,7 +1261,7 @@ const recentrarEnUsuario = () => {
   mapPage._mapaAPI.map.flyTo({
     center: [coords.lng, coords.lat],
     zoom: 15,
-    duration: 1500,
+    duration: 300,
     essential: true,
   })
 
@@ -1543,7 +1543,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 
     map.fitBounds(bounds, {
       padding: 80,
-      duration: 1000,
+      duration: 300,
       maxZoom: 15,
     })
 
@@ -2077,7 +2077,7 @@ onMounted(async () => {
             mapPage._mapaAPI.map.flyTo({
               center: [longitude, latitude],
               zoom: 14,
-              duration: 2000,
+              duration: 300,
               essential: true,
             })
 
