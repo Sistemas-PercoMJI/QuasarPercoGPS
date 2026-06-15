@@ -245,11 +245,12 @@ let popupGlobalActivo = null
 let ultimoHashUnidades = ''
 
 let watchThrottle = null
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) return
-    if (watchThrottle) return
+    if (watchThrottle) return // ← agregar esto
 
     watchThrottle = setTimeout(() => {
       watchThrottle = null
@@ -267,7 +268,7 @@ watch(
         actualizarMarcadoresUnidades(nuevasUnidades)
         ultimoHashUnidades = nuevoHash
       }
-    }, 500) // ← bajar de 2000ms a 500ms
+    }, 2000) // ← actualizar mapa máximo cada 2 segundos
   },
   { deep: false, immediate: false },
 )
@@ -632,7 +633,19 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         type: 'circle',
         source: sourceId,
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 8, 17, 20, 20, 60],
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            0,
+            0,
+            20,
+            [
+              '/',
+              ['get', 'radio'],
+              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
+            ],
+          ],
           'circle-color': ['get', 'color'],
           'circle-opacity': 0.35,
           'circle-stroke-width': 2,
@@ -706,8 +719,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           'icon-image': ['get', 'iconImage'],
           'icon-size': 0.75,
           'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-          'text-field': '',
+          'icon-ignore-placement': false,
         },
       })
       mapaAPI.map.on('click', sourceId, (e) => {
@@ -880,7 +892,19 @@ const dibujarPOIsCombinados = async (pois) => {
         type: 'circle',
         source: sourceId,
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 8, 17, 20, 20, 60],
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            0,
+            0,
+            20,
+            [
+              '/',
+              ['get', 'radio'],
+              ['/', 0.075, ['cos', ['*', ['get', 'lat'], ['/', Math.PI, 180]]]],
+            ],
+          ],
           'circle-color': ['get', 'color'],
           'circle-opacity': 0.15,
           'circle-stroke-width': 2,
@@ -895,8 +919,7 @@ const dibujarPOIsCombinados = async (pois) => {
           'icon-image': ['get', 'iconImage'],
           'icon-size': 0.75,
           'icon-allow-overlap': true,
-          'icon-ignore-placement': true,
-          'text-field': '',
+          'icon-ignore-placement': false,
         },
       })
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
@@ -1261,7 +1284,7 @@ const recentrarEnUsuario = () => {
   mapPage._mapaAPI.map.flyTo({
     center: [coords.lng, coords.lat],
     zoom: 15,
-    duration: 300,
+    duration: 1500,
     essential: true,
   })
 
@@ -1543,7 +1566,7 @@ const dibujarRutaTrayecto = async (trayecto, vehiculo) => {
 
     map.fitBounds(bounds, {
       padding: 80,
-      duration: 300,
+      duration: 1000,
       maxZoom: 15,
     })
 
@@ -1854,7 +1877,50 @@ onMounted(async () => {
     })
 
     mapaListo.value = true
+    if (!window._mapListenersRegistered) {
+      window._mapListenersRegistered = true
 
+      let moveStartHandler = () => {
+        const layersToHide = [
+          'pois-symbols',
+          'pois-circles',
+          'geozonas-symbols',
+          'geozonas-circulares-combined',
+          'geozonas-poligonales-combined-fill',
+          'geozonas-poligonales-combined-outline',
+        ]
+
+        layersToHide.forEach((layerId) => {
+          if (mapaAPI.map.getLayer(layerId)) {
+            mapaAPI.map.setLayoutProperty(layerId, 'visibility', 'none')
+          }
+        })
+      }
+
+      let moveEndHandler = () => {
+        setTimeout(() => {
+          const layersToShow = [
+            'pois-symbols',
+            'pois-circles',
+            'geozonas-symbols',
+            'geozonas-circulares-combined',
+            'geozonas-poligonales-combined-fill',
+            'geozonas-poligonales-combined-outline',
+          ]
+
+          layersToShow.forEach((layerId) => {
+            if (mapaAPI.map.getLayer(layerId)) {
+              mapaAPI.map.setLayoutProperty(layerId, 'visibility', 'visible')
+            }
+          })
+        }, 100)
+      }
+      window._mapMoveStartHandler = moveStartHandler
+      window._mapMoveEndHandler = moveEndHandler
+
+      mapPage._mapaAPI.map.on('movestart', moveStartHandler)
+      mapPage._mapaAPI.map.on('moveend', moveEndHandler)
+    }
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {
         if (ubicacionData.tipo === 'poi') {
@@ -2033,16 +2099,7 @@ onMounted(async () => {
         return
       }
 
-      const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point, {
-        layers: [
-          'pois-symbols',
-          'pois-circles',
-          'geozonas-symbols',
-          'geozonas-circulares-combined',
-          'geozonas-poligonales-combined-fill',
-          'geozonas-poligonales-combined-outline',
-        ],
-      })
+      const features = mapPage._mapaAPI.map.queryRenderedFeatures(e.point)
       const clickEnCapa = features.some(
         (feature) =>
           feature.layer.id.startsWith('poi-circle-') ||
@@ -2077,7 +2134,7 @@ onMounted(async () => {
             mapPage._mapaAPI.map.flyTo({
               center: [longitude, latitude],
               zoom: 14,
-              duration: 300,
+              duration: 2000,
               essential: true,
             })
 
@@ -3639,6 +3696,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   will-change: transform;
   transform: translateZ(0);
   image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 /* Optimización: Suavizar transiciones de opacidad */
@@ -3652,6 +3710,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Cursor durante panning */
 :deep(.mapboxgl-canvas-container.mapboxgl-touch-drag-pan) {
   cursor: grabbing !important;
+}
+
+/* Optimizar rendering del canvas durante movimiento */
+:deep(.mapboxgl-canvas) {
+  will-change: transform;
 }
 
 /* Reducir peso visual de hover effects */

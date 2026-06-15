@@ -45,7 +45,7 @@ let colorPoligonoTemporal = '#4ECDC4'
 let marcadoresPuntosPoligono = []
 let clickHandlerPoligonal = null
 let isZooming = false
-//let lastZoomLevel = 0
+let lastZoomLevel = 0
 let PanTimeout = null
 let isPanning = false
 let idsUnidadesFiltradas = null
@@ -181,29 +181,15 @@ const animacionesActivas = new Map()
 function animarMarcador(marcador, unidadId, fromLat, fromLng, toLat, toLng, duracionMs = 10000) {
   if (animacionesActivas.has(unidadId)) {
     cancelAnimationFrame(animacionesActivas.get(unidadId))
-
     animacionesActivas.delete(unidadId)
-  }
-  if (map.value) {
-    const bounds = map.value.getBounds()
-    const enViewport =
-      toLat >= bounds.getSouth() &&
-      toLat <= bounds.getNorth() &&
-      toLng >= bounds.getWest() &&
-      toLng <= bounds.getEast()
-    if (!enViewport) {
-      marcador.setLngLat([toLng, toLat])
-      return
-    }
   }
   const inicio = performance.now()
   function step(ahora) {
-    const progreso = Math.min((ahora - inicio) / duracionMs, 1)
-    const t = progreso < 0.5 ? 2 * progreso * progreso : -1 + (4 - 2 * progreso) * progreso
+    const t = Math.min((ahora - inicio) / duracionMs, 1) // ← linear, sin easing
     const lat = fromLat + (toLat - fromLat) * t
     const lng = fromLng + (toLng - fromLng) * t
     marcador.setLngLat([lng, lat])
-    if (progreso < 1) {
+    if (t < 1) {
       animacionesActivas.set(unidadId, requestAnimationFrame(step))
     } else {
       animacionesActivas.delete(unidadId)
@@ -1969,11 +1955,41 @@ export function useMapboxGL() {
 
       map.value = new mapboxgl.Map({
         container: containerId,
-        style: ESTILOS_MAPA[estiloActual.value],
+        style: ESTILOS_MAPA[estiloActual.value], //  Usar estilo del estado
         center: [center[1], center[0]],
         zoom: zoom,
+        //  OPTIMIZACIONES DE RENDIMIENTO
+        hash: false,
+        preserveDrawingBuffer: false,
+        refreshExpiredTiles: false,
+        maxTileCacheSize: 100,
+        minZoom: 5,
+        maxZoom: 18,
+        //  OPTIMIZACIONES ADICIONALES v2
         fadeDuration: 0,
+        crossSourceCollisions: false,
+        trackResize: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        //  NUEVAS OPTIMIZACIONES CRÍTICAS
+        renderWorldCopies: false,
         antialias: false,
+        optimizeForTerrain: false,
+        dragRotate: false,
+        touchZoomRotate: false,
+        easing: (t) => {
+          // Curva de easing personalizada (ease-out-cubic)
+          return 1 - Math.pow(1 - t, 3)
+        },
+        transformRequest: (url, resourceType) => {
+          // Cachear tiles agresivamente
+          if (resourceType === 'Tile') {
+            return {
+              url: url,
+              //headers: { 'Cache-Control': 'max-age=3600' },
+            }
+          }
+        },
       })
 
       // Agregar controles de navegación en bottom-right
@@ -2083,18 +2099,18 @@ export function useMapboxGL() {
         isPanning = true
         pendingUpdate = false
 
-        Object.values(marcadoresUnidades.value).forEach((marker) => {
-          const el = marker.getElement()
-          if (el) {
-            el.style.transition = 'none'
-          }
+        // Cancelar animaciones durante panning
+        animacionesActivas.forEach((rafId) => {
+          cancelAnimationFrame(rafId)
         })
+        animacionesActivas.clear()
 
-        //  Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        // Ocultar marcadores DOM durante panning
+
         const layersToHide = [
-          'pois-circles', // ← corregido
-          'pois-symbols', // ← agregar
-          'geozonas-symbols', // ← agregar
+          'pois-circles',
+          'pois-symbols',
+          'geozonas-symbols',
           'geozonas-circulares-combined',
           'geozonas-poligonales-combined-fill',
           'geozonas-poligonales-combined-outline',
@@ -2113,14 +2129,10 @@ export function useMapboxGL() {
         PanTimeout = setTimeout(() => {
           isPanning = false
 
-          Object.values(marcadoresUnidades.value).forEach((marker) => {
-            const el = marker.getElement()
-            if (el) {
-              el.style.transition = 'transform 0.3s ease-out'
-            }
-          })
+          if (map.value.getCanvas()) {
+            map.value.getCanvas().style.imageRendering = 'crisp-edges'
+          }
 
-          //  Mostrar layers combinados de nuevo
           const layersToShow = [
             'pois-circles',
             'pois-symbols',
@@ -2129,7 +2141,6 @@ export function useMapboxGL() {
             'geozonas-poligonales-combined-fill',
             'geozonas-poligonales-combined-outline',
           ]
-
           layersToShow.forEach((layerId) => {
             if (map.value.getLayer(layerId)) {
               map.value.setLayoutProperty(layerId, 'visibility', 'visible')
@@ -2138,12 +2149,6 @@ export function useMapboxGL() {
 
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
-          }
-
-          if (map.value) {
-            requestAnimationFrame(() => {
-              map.value.triggerRepaint()
-            })
           }
         }, 50)
       })
@@ -2161,6 +2166,18 @@ export function useMapboxGL() {
         pendingUpdate = false
       })
 
+      map.value.on('zoom', () => {
+        clearTimeout(zoomTimeout)
+        const currentZoom = map.value.getZoom()
+        const zoomDiff = Math.abs(currentZoom - lastZoomLevel)
+
+        if (zoomDiff > 0.5) {
+          lastZoomLevel = currentZoom
+          if (map.value) {
+            map.value.triggerRepaint()
+          }
+        }
+      })
       map.value.on('zoomend', () => {
         isZooming = false
         clearTimeout(zoomTimeout)
