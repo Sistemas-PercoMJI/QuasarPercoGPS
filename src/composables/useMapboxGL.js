@@ -1962,7 +1962,7 @@ export function useMapboxGL() {
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 100,
+        maxTileCacheSize: 500,
         minZoom: 5,
         maxZoom: 18,
         //  OPTIMIZACIONES ADICIONALES v2
