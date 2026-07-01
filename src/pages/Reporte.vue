@@ -781,7 +781,7 @@ const onResetearColumnas = () => {
   })
 }
 
-const cancelarReporte = () => {
+const cancelarReporte = async () => {
   tipoInformeSeleccionado.value = null
   reportarPor.value = 'Unidades'
   elementosSeleccionados.value = []
@@ -800,9 +800,10 @@ const cancelarReporte = () => {
   mostrarMapaZona.value = false
   columnasSeleccionadas.value = []
   mostrarResumen.value = false
-  opcionesSelector.value = []
-  opcionesSelectorFiltradas.value = []
   mostrarMapaIgnicion.value = false
+
+  // 👇 en vez de vaciar y dejarlo así, recargamos las opciones
+  await cargarOpcionesSelector()
 
   $q.notify({
     message: 'Formulario reiniciado',
