@@ -128,6 +128,11 @@ export function useReportesTrayectos() {
               const odometroInicio = parseFloat(data.odometro_inicio) || 0
               const odometroFin = parseFloat(data.odometro_fin) || 0
 
+              // 🆕 Acumulador que avanza viaje por viaje dentro del mismo día,
+              // anclado al odómetro real del día (Traccar) o al virtual si no hay dato
+              let kmAcumuladoDelDia =
+                odometroInicio > 0 ? odometroInicio : odometrosPorUnidad[unidadId]
+
               for (const [indexViaje, coordsViaje] of gruposCoords.entries()) {
                 if (coordsViaje.length === 0) continue
 
@@ -180,9 +185,10 @@ export function useReportesTrayectos() {
                     ? parseFloat(data.velocidad_promedio) || velPromedioViaje
                     : parseFloat(velPromedioViaje.toFixed(2))
 
-                // Odómetros
-                const kmInicio = odometroInicio > 0 ? odometroInicio : odometrosPorUnidad[unidadId]
-                const kmFinal = odometroFin > 0 ? odometroFin : kmInicio + distanciaFinal
+                // 🆕 Odómetros — cada viaje arranca justo donde terminó el anterior
+                const kmInicio = kmAcumuladoDelDia
+                const kmFinal = parseFloat((kmInicio + distanciaFinal).toFixed(2))
+                kmAcumuladoDelDia = kmFinal
 
                 todosTrayectos.push({
                   id: gruposCoords.length > 1 ? `${fecha}_viaje_${indexViaje + 1}` : fecha,
@@ -214,6 +220,35 @@ export function useReportesTrayectos() {
                   longitud: inicioCoord.lng,
                   _raw: data,
                 })
+              }
+              // 🆕 Reconciliar el último viaje del día con el odómetro real de Traccar
+              if (odometroFin > 0 && gruposCoords.length > 0) {
+                // Buscar el último trayecto que se agregó para esta unidad/fecha
+                const trayectosDelDia = todosTrayectos.filter(
+                  (t) => t.idUnidad === unidadId && t.fecha === fecha,
+                )
+                const ultimoViajeDelDia = trayectosDelDia[trayectosDelDia.length - 1]
+
+                if (ultimoViajeDelDia && ultimoViajeDelDia.kilometrajeFinal !== odometroFin) {
+                  const diferencia = parseFloat(
+                    (odometroFin - ultimoViajeDelDia.kilometrajeFinal).toFixed(2),
+                  )
+
+                  // Solo ajustar si la diferencia es razonable (evita corregir por errores grandes de datos)
+                  if (Math.abs(diferencia) < 5) {
+                    ultimoViajeDelDia.kilometrajeFinal = odometroFin
+                    ultimoViajeDelDia.kilometrajeRecorrido = parseFloat(
+                      (ultimoViajeDelDia.kilometrajeRecorrido + diferencia).toFixed(2),
+                    )
+                  }
+                }
+              }
+
+              // Actualizar odómetro virtual
+              if (odometroFin > 0) {
+                odometrosPorUnidad[unidadId] = odometroFin
+              } else {
+                odometrosPorUnidad[unidadId] += parseFloat(data.distancia_recorrida_km) || 0
               }
 
               // Actualizar odómetro virtual

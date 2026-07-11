@@ -441,20 +441,9 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeInicio',
     label: 'Kilometraje al inicio',
     obtenerValor: (trayecto) => {
-      //  PRIORIDAD 1: Usar odómetro del hardware si existe
-      if (
-        trayecto.odometroInicio !== null &&
-        trayecto.odometroInicio !== undefined &&
-        trayecto.odometroInicio > 0
-      ) {
-        return `${trayecto.odometroInicio} km`
+      if (trayecto.kilometrajeInicio !== null && trayecto.kilometrajeInicio !== undefined) {
+        return `${trayecto.kilometrajeInicio} km`
       }
-
-      //  PRIORIDAD 2: Usar odómetro virtual como fallback
-      if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
-        return `${trayecto.odometroVirtual} km`
-      }
-
       return 'N/A'
     },
     ancho: 150,
@@ -498,26 +487,9 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeFinal',
     label: 'Kilometraje al final',
     obtenerValor: (trayecto) => {
-      //  PRIORIDAD 1: Usar odómetro del hardware si existe
-      if (
-        trayecto.odometroFin !== null &&
-        trayecto.odometroFin !== undefined &&
-        trayecto.odometroFin > 0
-      ) {
-        return `${trayecto.odometroFin} km`
+      if (trayecto.kilometrajeFinal !== null && trayecto.kilometrajeFinal !== undefined) {
+        return `${trayecto.kilometrajeFinal} km`
       }
-
-      //  PRIORIDAD 2: Calcular con odómetro virtual
-      if (
-        trayecto.odometroVirtual !== null &&
-        trayecto.odometroVirtual !== undefined &&
-        trayecto.kilometrajeRecorrido !== null &&
-        trayecto.kilometrajeRecorrido !== undefined
-      ) {
-        const kmFinal = trayecto.odometroVirtual + trayecto.kilometrajeRecorrido
-        return `${kmFinal.toFixed(2)} km`
-      }
-
       return 'N/A'
     },
     ancho: 150,
