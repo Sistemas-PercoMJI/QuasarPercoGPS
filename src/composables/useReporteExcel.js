@@ -2,6 +2,8 @@
 import ExcelJS from 'exceljs'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 import { useMapboxStaticImage } from './useMapboxStaticImage'
+import { realtimeDb } from 'src/firebase/firebaseConfig'
+import { ref as dbRef, get as dbGet } from 'firebase/database'
 
 async function agregarHojaMapas(workbook, entidades, config, etiqueta = 'Unidad') {
   const { generarURLMapaTrayectos, descargarImagenMapaBase64, prepararDatosTrayectos } =
@@ -142,6 +144,28 @@ async function agregarHojaMapas(workbook, entidades, config, etiqueta = 'Unidad'
       filaActual++
     }
   }
+}
+const obtenerOdometroActualPorUnidad = async (unidadesIds) => {
+  const resultado = {}
+
+  await Promise.all(
+    unidadesIds.map(async (unidadId) => {
+      try {
+        const snap = await dbGet(dbRef(realtimeDb, `unidades_activas/unidad_${unidadId}`))
+        if (snap.exists()) {
+          const data = snap.val()
+          resultado[unidadId] = parseFloat(data.odometro_km) || 0
+        } else {
+          resultado[unidadId] = 0
+        }
+      } catch (err) {
+        console.error(`Error leyendo odómetro RTDB de unidad ${unidadId}:`, err)
+        resultado[unidadId] = 0
+      }
+    }),
+  )
+
+  return resultado
 }
 export function useReporteExcel() {
   /**
@@ -1409,6 +1433,7 @@ export function useReporteExcel() {
     infoSheet.addRow([])
 
     // Resumen general (si está activo)
+    // Resumen general (si está activo)
     if (config.mostrarResumen && datosReales.resumen) {
       infoSheet.addRow(['RESUMEN DEL INFORME'])
       infoSheet.getCell(`A${infoSheet.rowCount}`).font = { bold: true, size: 12 }
@@ -1440,6 +1465,17 @@ export function useReporteExcel() {
       const duracionTotal = Math.floor(totalDuracion / 3600000) // Convertir ms a horas
       const minutosTotal = Math.floor((totalDuracion % 3600000) / 60000)
 
+      // 🆕 Odómetro total de por vida (histórico completo, no solo del período)
+      const idsUnicosParaOdometro = [
+        ...new Set(todosTrayectos.map((t) => t.idUnidad).filter(Boolean)),
+      ]
+      const odometrosActuales = await obtenerOdometroActualPorUnidad(idsUnicosParaOdometro)
+      const kilometrajeTotalUnidades = Object.values(odometrosActuales).reduce(
+        (sum, km) => sum + km,
+        0,
+      )
+      const unidadesUnicasCount = Object.keys(datosReales.eventosAgrupados || {}).length
+
       const statsHeaderRow = infoSheet.addRow(['Concepto', 'Valor'])
       statsHeaderRow.font = { bold: true }
       statsHeaderRow.fill = {
@@ -1449,13 +1485,22 @@ export function useReporteExcel() {
       }
 
       infoSheet.addRow(['Total de trayectos', todosTrayectos.length])
-      infoSheet.addRow(['Kilómetros totales recorridos', `${totalKilometros.toFixed(2)} km`])
+      infoSheet.addRow([
+        'Kilómetros totales recorridos (período)',
+        `${totalKilometros.toFixed(2)} km`,
+      ])
+      infoSheet.addRow([
+        unidadesUnicasCount > 1
+          ? 'Kilometraje total de las unidades (histórico)'
+          : 'Kilometraje total de la unidad (histórico)',
+        `${kilometrajeTotalUnidades.toFixed(2)} km`,
+      ])
       infoSheet.addRow(['Duración total de manejo', `${duracionTotal}h ${minutosTotal}m`])
       infoSheet.addRow(['Velocidad promedio general', `${velocidadPromedioGlobal} km/h`])
       infoSheet.addRow(['Velocidad máxima registrada', `${velocidadMaximaGlobal} km/h`])
       infoSheet.addRow([
         `${config.reportarPor === 'Unidades' ? 'Unidades' : 'Conductores'} únicos`,
-        Object.keys(datosReales.eventosAgrupados || {}).length,
+        unidadesUnicasCount,
       ])
       infoSheet.addRow([])
     }
