@@ -167,6 +167,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
+import { useBloqueoArranque } from 'src/composables/useBloqueoArranque'
 
 //import { Notify } from 'quasar'
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -182,6 +183,13 @@ const {
   actualizarMarcadoresUnidades,
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
+
+const {
+  iniciarListenerConfig,
+  detenerListenerConfig,
+  toggleBloqueoArranque,
+  obtenerConfigBloqueo,
+} = useBloqueoArranque()
 
 const geozonasDibujadas = ref(new Set())
 const poisDibujados = ref(new Set())
@@ -336,6 +344,72 @@ function detenerEvaluacionEventos() {
     })
   }
 }*/
+
+const confirmarYEjecutarBloqueo = (unidadId, accion, btnElement) => {
+  const esBloqueo = accion === 'bloquear'
+  const unidad = unidadesActivas.value.find((u) => (u.unidadId || u.id) === unidadId)
+  const nombreUnidad = unidad?.unidadNombre || unidadId
+
+  $q.dialog({
+    title: esBloqueo ? 'Bloquear arranque' : 'Permitir arranque',
+    message: esBloqueo
+      ? `¿Confirmas bloquear el arranque de <b>${nombreUnidad}</b>?<br><br>Esto impide que el motor encienda. No detiene el vehículo si ya está en movimiento.`
+      : `¿Confirmas permitir el arranque de <b>${nombreUnidad}</b>?`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    color: esBloqueo ? 'negative' : 'positive',
+  }).onOk(async () => {
+    const textoOriginal = btnElement.textContent
+    btnElement.disabled = true
+    btnElement.style.opacity = '0.7'
+    btnElement.style.cursor = 'default'
+    btnElement.textContent = 'Enviando…'
+
+    const resultado = await toggleBloqueoArranque(unidadId, accion)
+
+    if (resultado.ok) {
+      $q.notify({
+        type: 'positive',
+        message: esBloqueo
+          ? 'Arranque bloqueado correctamente'
+          : 'Arranque permitido correctamente',
+        position: 'top',
+        timeout: 2500,
+        icon: esBloqueo ? 'lock' : 'lock_open',
+      })
+
+      const cfg = obtenerConfigBloqueo(unidadId)
+      btnElement.dataset.accion = cfg.bloqueado ? 'desbloquear' : 'bloquear'
+      btnElement.textContent = cfg.bloqueado ? 'Permitir arranque' : 'Bloquear arranque'
+      btnElement.style.background = cfg.bloqueado ? '#4CAF50' : '#F44336'
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+
+      const estadoValueEl = btnElement
+        .closest('.popup-section-bloqueo')
+        ?.querySelector('.popup-section .value')
+      if (estadoValueEl) {
+        estadoValueEl.textContent = cfg.bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+        estadoValueEl.style.color = cfg.bloqueado ? '#F44336' : '#4CAF50'
+      }
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'No se pudo enviar el comando',
+        caption: resultado.error || 'Intenta de nuevo',
+        position: 'top',
+        timeout: 3000,
+        icon: 'error',
+      })
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+      btnElement.textContent = textoOriginal
+    }
+  })
+}
 
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
@@ -1990,7 +2064,7 @@ onMounted(async () => {
     // iniciarEvaluacionContinuaEventos()
 
     iniciarSeguimientoGPS()
-
+    iniciarListenerConfig()
     iniciarTracking()
 
     /* setTimeout(async () => {
@@ -2000,6 +2074,16 @@ onMounted(async () => {
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
         console.warn('Evento sin target válido')
+        return
+      }
+
+      const btnBloqueo = event.target.closest('[data-action="toggle-bloqueo-arranque"]')
+      if (btnBloqueo) {
+        const unidadId = btnBloqueo.dataset.unidadId
+        const accion = btnBloqueo.dataset.accion
+        if (unidadId && accion) {
+          confirmarYEjecutarBloqueo(unidadId, accion, btnBloqueo)
+        }
         return
       }
 
@@ -2287,7 +2371,7 @@ onUnmounted(() => {
   delete window._mapMoveEndHandler
 
   detenerSeguimientoGPS()
-
+  detenerListenerConfig()
   detenerEvaluacionEventos()
   limpiarMarcadoresUnidades()
   resetear()

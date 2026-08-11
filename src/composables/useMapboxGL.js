@@ -3,6 +3,9 @@ import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useGeocoding } from './useGeocoding'
+import { useBloqueoArranque } from './useBloqueoArranque'
+
+const { obtenerConfigBloqueo, estaCargando, puedeControlarBloqueo } = useBloqueoArranque()
 const { obtenerDireccion: _obtenerDireccion } = useGeocoding()
 
 const originalWarn = console.warn
@@ -731,6 +734,48 @@ export function useMapboxGL() {
         <span class="label">Coordenadas:</span>
         <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
       </div>
+
+      ${(() => {
+        const unidadId2 = unidad.unidadId || unidad.id
+        const cfg = obtenerConfigBloqueo(unidadId2)
+
+        if (!cfg.relayInstalado || !puedeControlarBloqueo()) return ''
+
+        const cargando = estaCargando(unidadId2)
+        const bloqueado = cfg.bloqueado
+        const accionSiguiente = bloqueado ? 'desbloquear' : 'bloquear'
+        const textoEstado = bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+        const colorEstado = bloqueado ? '#F44336' : '#4CAF50'
+        const textoBoton = cargando
+          ? 'Enviando…'
+          : bloqueado
+            ? 'Permitir arranque'
+            : 'Bloquear arranque'
+        const colorBoton = bloqueado ? '#4CAF50' : '#F44336'
+
+        return `
+    <div class="popup-section-bloqueo" style="margin-top:10px; padding-top:10px; border-top:1px solid #f3f4f6;">
+      <div class="popup-section">
+        <span class="label">Estado de arranque:</span>
+        <span class="value" style="color:${colorEstado}; font-weight:bold;">${textoEstado}</span>
+      </div>
+      <button
+        class="bloqueo-arranque-btn"
+        data-action="toggle-bloqueo-arranque"
+        data-unidad-id="${unidadId2}"
+        data-accion="${accionSiguiente}"
+        ${cargando ? 'disabled' : ''}
+        style="width:100%; margin-top:6px; padding:10px; background:${colorBoton};
+               color:white; border:none; border-radius:8px; font-weight:600;
+               font-size:13px; cursor:${cargando ? 'default' : 'pointer'};
+               opacity:${cargando ? '0.7' : '1'};"
+      >${textoBoton}</button>
+      <div style="font-size:10px; color:#9ca3af; margin-top:6px; line-height:1.3;">
+        ⚠️ Esto bloquea el arranque del motor. No detiene un vehículo en movimiento.
+      </div>
+    </div>
+  `
+      })()}
 
       <button
         class="details-btn"
