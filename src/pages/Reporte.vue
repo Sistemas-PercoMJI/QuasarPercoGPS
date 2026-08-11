@@ -692,12 +692,26 @@ const selectorEventos = ref(null)
 const rangoFecha = ref(null)
 const rangoFechaTemporal = ref(null)
 
+// 🆕 Convierte YYYY/MM/DD (formato de q-date) a DD/MM/YYYY para mostrar
+const formatearFechaVisual = (fechaStr) => {
+  if (!fechaStr || typeof fechaStr !== 'string') return fechaStr
+  const partes = fechaStr.split('/')
+  if (partes.length !== 3) return fechaStr
+
+  // Detectar si ya viene YYYY/MM/DD (primer bloque de 4 dígitos)
+  if (partes[0].length === 4) {
+    const [anio, mes, dia] = partes
+    return `${dia}/${mes}/${anio}`
+  }
+  return fechaStr // ya viene en otro formato, se deja igual
+}
+
 const rangoFechaFormateado = computed(() => {
   if (!rangoFecha.value) return ''
   if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
-    return `${rangoFecha.value.from} - ${rangoFecha.value.to}`
+    return `${formatearFechaVisual(rangoFecha.value.from)} - ${formatearFechaVisual(rangoFecha.value.to)}`
   }
-  return rangoFecha.value
+  return formatearFechaVisual(rangoFecha.value)
 })
 
 // Historial
@@ -781,7 +795,7 @@ const onResetearColumnas = () => {
   })
 }
 
-const cancelarReporte = () => {
+const cancelarReporte = async () => {
   tipoInformeSeleccionado.value = null
   reportarPor.value = 'Unidades'
   elementosSeleccionados.value = []
@@ -800,9 +814,10 @@ const cancelarReporte = () => {
   mostrarMapaZona.value = false
   columnasSeleccionadas.value = []
   mostrarResumen.value = false
-  opcionesSelector.value = []
-  opcionesSelectorFiltradas.value = []
   mostrarMapaIgnicion.value = false
+
+  // 👇 en vez de vaciar y dejarlo así, recargamos las opciones
+  await cargarOpcionesSelector()
 
   $q.notify({
     message: 'Formulario reiniciado',

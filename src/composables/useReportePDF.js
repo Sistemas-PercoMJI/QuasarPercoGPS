@@ -8,6 +8,8 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { COLUMNAS_POR_TIPO } from './useColumnasReportes'
 import { useSortTimestamp } from './useSortTimestamp'
+import { realtimeDb } from 'src/firebase/firebaseConfig'
+import { ref as dbRef, get as dbGet } from 'firebase/database'
 
 const generarHeaderGrupo = (nombreGrupo, eventos, config, datosReales) => {
   //  Usar la agrupación REAL que se aplicó, no la del selector
@@ -451,6 +453,32 @@ function generarHeaderSubGrupo(nombreSubGrupo, eventos, config) {
   }
 
   return { titulo, subtitulo, stats }
+}
+/**
+ * Lee el odometro_km actual de cada unidad desde Realtime Database
+ * (el valor más reciente que reportó el forwarder, basado en totalDistance de Traccar)
+ */
+const obtenerOdometroActualPorUnidad = async (unidadesIds) => {
+  const resultado = {}
+
+  await Promise.all(
+    unidadesIds.map(async (unidadId) => {
+      try {
+        const snap = await dbGet(dbRef(realtimeDb, `unidades_activas/unidad_${unidadId}`))
+        if (snap.exists()) {
+          const data = snap.val()
+          resultado[unidadId] = parseFloat(data.odometro_km) || 0
+        } else {
+          resultado[unidadId] = 0
+        }
+      } catch (err) {
+        console.error(`Error leyendo odómetro RTDB de unidad ${unidadId}:`, err)
+        resultado[unidadId] = 0
+      }
+    }),
+  )
+
+  return resultado
 }
 
 export function useReportePDF() {
@@ -1067,10 +1095,26 @@ export function useReportePDF() {
         const minutos = Math.round((duracionTotalHoras - horas) * 60)
         const duracionFormateada = `${horas}h ${minutos}m`
 
+        // 🆕 Odómetro total de por vida (histórico completo, no solo del período)
+        const idsUnicosParaOdometro = [
+          ...new Set(trayectosArray.map((t) => t.idUnidad).filter(Boolean)),
+        ]
+        const odometrosActuales = await obtenerOdometroActualPorUnidad(idsUnicosParaOdometro)
+        const kilometrajeTotalUnidades = Object.values(odometrosActuales).reduce(
+          (sum, km) => sum + km,
+          0,
+        )
+
         const resumenData = [
           ['Total de trayectos', totalTrayectos],
           ['Unidades únicas', unidadesUnicas],
-          ['Kilometraje total', `${kilometrajeTotal.toFixed(2)} km`],
+          ['Kilometraje total (período)', `${kilometrajeTotal.toFixed(2)} km`],
+          [
+            unidadesUnicas > 1
+              ? 'Kilometraje total de las unidades (histórico)'
+              : 'Kilometraje total de la unidad (histórico)',
+            `${kilometrajeTotalUnidades.toFixed(2)} km`,
+          ],
           ['Duración total', duracionFormateada],
         ]
 

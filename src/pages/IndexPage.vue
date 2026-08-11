@@ -1917,6 +1917,9 @@ onMounted(async () => {
       }
       window._mapMoveStartHandler = moveStartHandler
       window._mapMoveEndHandler = moveEndHandler
+
+      mapPage._mapaAPI.map.on('movestart', moveStartHandler)
+      mapPage._mapaAPI.map.on('moveend', moveEndHandler)
     }
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {

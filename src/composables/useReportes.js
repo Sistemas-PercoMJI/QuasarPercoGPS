@@ -1,6 +1,6 @@
 // composables/useReportes.js - ACTUALIZADO
 import { ref } from 'vue'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 import { useReportesEventos } from './useReportesEventos'
 import { useReportesTrayectos } from './useReportesTrayectos'
@@ -135,7 +135,27 @@ export function useReportes() {
    */
   const obtenerUnidades = async () => {
     try {
-      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad') // ← CAMBIO
+      const { getIdEmpresaActual } = useMultiTenancy()
+      const idEmpresa = getIdEmpresaActual()
+
+      if (Array.isArray(idEmpresa) && idEmpresa.length > 10) {
+        const chunks = []
+        for (let i = 0; i < idEmpresa.length; i += 10) {
+          chunks.push(idEmpresa.slice(i, i + 10))
+        }
+        const snapshots = await Promise.all(
+          chunks.map((chunk) =>
+            getDocs(query(collection(db, 'Unidades'), where('IdEmpresaUnidad', 'in', chunk))),
+          ),
+        )
+        const docs = []
+        snapshots.forEach((snapshot) =>
+          snapshot.docs.forEach((doc) => docs.push({ id: doc.id, ...doc.data() })),
+        )
+        return docs
+      }
+
+      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad')
       const snapshot = await getDocs(q)
       return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     } catch (err) {

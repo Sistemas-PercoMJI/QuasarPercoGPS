@@ -19,6 +19,21 @@ export function useNotificacionesEventos() {
   }
 
   const eventoANotificacion = (evento, unidadNombre) => {
+    // 🆕 Evento de odómetro: mensaje distinto, sin mapa/ubicación
+    if (evento.TipoEvento === 'Odometro') {
+      return {
+        type: 'info',
+        icon: 'speed',
+        title: 'Odómetro',
+        message: `${unidadNombre} alcanzó ${evento.UmbralAlcanzado?.toLocaleString() || evento.Kilometraje} km`,
+        eventoId: evento.id,
+        ubicacionNombre: '',
+        tipoUbicacion: '',
+        accion: 'Odometro',
+        ubicacion: null,
+      }
+    }
+
     const esEntrada = evento.TipoEvento === 'Entrada'
     const nombreUbicacion = evento.PoiNombre || evento.GeozonaNombre || 'Ubicación'
     const tipoUbicacion = evento.tipoUbicacion || 'POI'
@@ -31,7 +46,6 @@ export function useNotificacionesEventos() {
       ubicacionNombre: nombreUbicacion,
       tipoUbicacion,
       accion: esEntrada ? 'Entrada' : 'Salida',
-      // 🆕 Siempre pasar ubicacion para generar mapa
       ubicacion:
         evento.lat && evento.lng
           ? {
@@ -50,7 +64,6 @@ export function useNotificacionesEventos() {
             : null,
     }
   }
-
   const iniciarEscucha = async () => {
     if (iniciado.value) return
     iniciado.value = true
