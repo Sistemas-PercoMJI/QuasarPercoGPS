@@ -23,8 +23,7 @@ export function useSimuladorUnidades() {
     lngMax: -116.88,
   }
 
-  const MAPBOX_TOKEN =
-    'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKE
 
   const ESTADOS = {
     MOVIMIENTO: 'movimiento',
@@ -356,6 +355,7 @@ export function useSimuladorUnidades() {
             lat: ubicacionInicial.lat,
             lng: ubicacionInicial.lng,
             timestamp: new Date().toISOString(),
+            ignicion: true, // Al iniciar siempre es true (solo entra aqui si estado es MOVIMIENTO)
           },
         })
       } catch (err) {
@@ -480,7 +480,10 @@ export function useSimuladorUnidades() {
         })
 
         // (resto del código de guardar rutas y evaluar eventos sin cambios...)
-        if (nuevoMovimiento.estado === ESTADOS.MOVIMIENTO) {
+        if (
+          nuevoMovimiento.estado === ESTADOS.MOVIMIENTO ||
+          nuevoMovimiento.estado === ESTADOS.INACTIVO
+        ) {
           try {
             await agregarCoordenadaSimple(unidad.id, {
               conductor_id: estadoActual.conductorId,
@@ -490,6 +493,7 @@ export function useSimuladorUnidades() {
                 lat: nuevoMovimiento.ubicacion.lat,
                 lng: nuevoMovimiento.ubicacion.lng,
                 timestamp: new Date().toISOString(),
+                ignicion: nuevoMovimiento.ignicion, // true o false segun estado
               },
             })
           } catch (errRuta) {

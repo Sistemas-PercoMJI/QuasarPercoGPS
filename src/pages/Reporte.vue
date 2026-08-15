@@ -252,13 +252,15 @@
                         label="Hora inicio"
                         mask="time"
                         :rules="['time']"
+                        hint="Formato 24h · ej: 08:00 = 8am, 13:00 = 1pm"
                       >
                         <template v-slot:append>
                           <q-icon name="access_time" class="cursor-pointer">
                             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                               <q-time v-model="horarioInicio" format24h>
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                <div class="row items-center justify-end q-gutter-sm">
+                                  <q-btn v-close-popup label="Cancelar" color="grey-7" flat />
+                                  <q-btn v-close-popup label="Aceptar" color="primary" flat />
                                 </div>
                               </q-time>
                             </q-popup-proxy>
@@ -274,13 +276,15 @@
                         label="Hora fin"
                         mask="time"
                         :rules="['time']"
+                        hint="Formato 24h · ej: 17:00 = 5pm, 20:00 = 8pm"
                       >
                         <template v-slot:append>
                           <q-icon name="access_time" class="cursor-pointer">
                             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                               <q-time v-model="horarioFin" format24h>
-                                <div class="row items-center justify-end">
-                                  <q-btn v-close-popup label="Cerrar" color="primary" flat />
+                                <div class="row items-center justify-end q-gutter-sm">
+                                  <q-btn v-close-popup label="Cancelar" color="grey-7" flat />
+                                  <q-btn v-close-popup label="Aceptar" color="primary" flat />
                                 </div>
                               </q-time>
                             </q-popup-proxy>
@@ -326,7 +330,9 @@
             <!--  CARD: OPCIONES DE VISUALIZACIÓN -->
             <q-card
               v-if="
-                (tieneOpcion('mostrarMapaTrayecto') || tieneOpcion('mostrarMapaZona')) &&
+                (tieneOpcion('mostrarMapaTrayecto') ||
+                  tieneOpcion('mostrarMapaZona') ||
+                  tieneOpcion('mostrarMapaIgnicion')) &&
                 tipoInformeSeleccionado !== 'eventos'
               "
               flat
@@ -372,6 +378,14 @@
                       v-model="remarcarHorasExtra"
                       label="Remarcar horas fuera de horario laboral"
                     />
+                  </div>
+                </div>
+
+                <!-- Opción de mapa para Ignición Día -->
+                <div v-if="tieneOpcion('mostrarMapaIgnicion')" class="q-mb-md">
+                  <div class="text-subtitle2 q-mb-sm">Opciones del informe</div>
+                  <div class="column q-gutter-sm">
+                    <q-checkbox v-model="mostrarMapaIgnicion" label="Mostrar mapa de igniciones" />
                   </div>
                 </div>
               </q-card-section>
@@ -574,7 +588,8 @@ import { useExcelPreview } from 'src/composables/useExcelPreview'
 //  IMPORTS ACTUALIZADOS
 import { useReportes } from 'src/composables/useReportes'
 import { useReportePDF } from 'src/composables/useReportePDF'
-const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo } = useReportePDF()
+const { generarPDFEventos, generarPDFTrayectos, generarPDFHorasTrabajo, generarPDFIgnicionDia } =
+  useReportePDF()
 import { useReporteExcel } from 'src/composables/useReporteExcel'
 import { useReportesStorage } from 'src/composables/useReportesStorage'
 import { useColumnasReportes } from 'src/composables/useColumnasReportes'
@@ -585,6 +600,7 @@ import { useEventos } from 'src/composables/useEventos'
 import { useReportesEventos } from 'src/composables/useReportesEventos'
 import { useReportesTrayectos } from 'src/composables/useReportesTrayectos'
 import { useReportesHorasTrabajo } from 'src/composables/useReportesHorasTrabajo'
+import { useReportesIgnicionDia } from 'src/composables/useReportesIgnicionDia'
 import { useRouter } from 'vue-router'
 import { useTutorial } from 'src/composables/useTutorial'
 
@@ -653,6 +669,7 @@ const mostrarMapaTrayecto = ref(false)
 const mostrarUnidadesMapa = ref(true)
 const mostrarPlacaMapa = ref(true)
 const mostrarMapaZona = ref(false)
+const mostrarMapaIgnicion = ref(false)
 
 // Datos del formulario
 const reportarPor = ref('Unidades')
@@ -675,12 +692,26 @@ const selectorEventos = ref(null)
 const rangoFecha = ref(null)
 const rangoFechaTemporal = ref(null)
 
+// 🆕 Convierte YYYY/MM/DD (formato de q-date) a DD/MM/YYYY para mostrar
+const formatearFechaVisual = (fechaStr) => {
+  if (!fechaStr || typeof fechaStr !== 'string') return fechaStr
+  const partes = fechaStr.split('/')
+  if (partes.length !== 3) return fechaStr
+
+  // Detectar si ya viene YYYY/MM/DD (primer bloque de 4 dígitos)
+  if (partes[0].length === 4) {
+    const [anio, mes, dia] = partes
+    return `${dia}/${mes}/${anio}`
+  }
+  return fechaStr // ya viene en otro formato, se deja igual
+}
+
 const rangoFechaFormateado = computed(() => {
   if (!rangoFecha.value) return ''
   if (typeof rangoFecha.value === 'object' && rangoFecha.value.from && rangoFecha.value.to) {
-    return `${rangoFecha.value.from} - ${rangoFecha.value.to}`
+    return `${formatearFechaVisual(rangoFecha.value.from)} - ${formatearFechaVisual(rangoFecha.value.to)}`
   }
-  return rangoFecha.value
+  return formatearFechaVisual(rangoFecha.value)
 })
 
 // Historial
@@ -764,7 +795,7 @@ const onResetearColumnas = () => {
   })
 }
 
-const cancelarReporte = () => {
+const cancelarReporte = async () => {
   tipoInformeSeleccionado.value = null
   reportarPor.value = 'Unidades'
   elementosSeleccionados.value = []
@@ -783,8 +814,10 @@ const cancelarReporte = () => {
   mostrarMapaZona.value = false
   columnasSeleccionadas.value = []
   mostrarResumen.value = false
-  opcionesSelector.value = []
-  opcionesSelectorFiltradas.value = []
+  mostrarMapaIgnicion.value = false
+
+  // 👇 en vez de vaciar y dejarlo así, recargamos las opciones
+  await cargarOpcionesSelector()
 
   $q.notify({
     message: 'Formulario reiniciado',
@@ -811,15 +844,15 @@ const cargarOpcionesSelector = async () => {
     switch (reportarPor.value) {
       case 'Unidades': {
         const unidades = await obtenerUnidades()
-        //  Guardar mapeo de nombre -> ID
         window.unidadesMap = {}
+        window.unidadesPlacaMap = {} // ← AGREGAR
         unidades.forEach((u) => {
           const nombre = u.Unidad || u.id
           window.unidadesMap[nombre] = u.id
+          window.unidadesPlacaMap[nombre] = u.Placa || nombre // ← AGREGAR
         })
         opcionesSelector.value = unidades.map((u) => u.Unidad || u.id)
         opcionesSelectorFiltradas.value = opcionesSelector.value
-
         break
       }
 
@@ -873,27 +906,16 @@ const cargarOpcionesSelector = async () => {
 }
 
 const cargarEventosDisponibles = async () => {
-  if (!userId.value) {
-    console.warn(' No hay userId para cargar eventos')
-    return
-  }
-
   loadingEventos.value = true
-
   try {
-    // Obtener instancia de useEventos con el userId actual
     const { obtenerEventos } = useEventos(userId.value)
-
-    // Obtener todos los eventos del usuario
     const eventosDelUsuario = await obtenerEventos()
 
-    // Extraer solo los nombres de los eventos para el selector
-    listaEventosDisponibles.value = eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean)
+    listaEventosDisponibles.value = [
+      'Todos los eventos',
+      ...eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean),
+    ]
     eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
-
-    if (listaEventosDisponibles.value.length === 0) {
-      console.warn(' No se encontraron eventos activos')
-    }
   } catch (error) {
     console.error(' Error al cargar eventos desde Firebase:', error)
     listaEventosDisponibles.value = []
@@ -1150,6 +1172,29 @@ const obtenerDatosReporte = async () => {
       horarioInicio: horarioInicio.value,
       horarioFin: horarioFin.value,
     })
+  } else if (tipoInforme === 'ignicion_dia') {
+    const { obtenerIgnicionesDia } = useReportesIgnicionDia()
+
+    let idsParaBuscar = []
+
+    if (reportarPor.value === 'Conductores') {
+      const todosConductores = await obtenerConductores()
+      for (const nombreConductor of unidadesIds) {
+        const conductor = todosConductores.find((c) => c.Nombre === nombreConductor)
+        if (conductor && conductor.UnidadAsignada) {
+          idsParaBuscar.push(conductor.UnidadAsignada)
+        }
+      }
+      if (idsParaBuscar.length === 0) {
+        throw new Error('Los conductores seleccionados no tienen unidades asignadas')
+      }
+    } else if (reportarPor.value === 'Unidades') {
+      idsParaBuscar = unidadesIds.map((nombre) => window.unidadesMap?.[nombre] || nombre)
+    } else {
+      idsParaBuscar = unidadesIds
+    }
+
+    datosInforme = await obtenerIgnicionesDia(idsParaBuscar, fechaInicio, fechaFin)
   }
 
   if (!datosInforme || datosInforme.length === 0) {
@@ -1159,9 +1204,10 @@ const obtenerDatosReporte = async () => {
   // Filtrar por eventos si aplica
   let datosFiltrados = datosInforme
   if (tipoInforme === 'eventos' && eventos.value.length > 0) {
-    datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
+    if (!eventos.value.includes('Todos los eventos')) {
+      datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
+    }
   }
-
   // Agrupar datos
   if (tipoInforme === 'eventos') {
     //  PASO 1: Determinar criterio PRINCIPAL (según "Reportar por")
@@ -1218,7 +1264,12 @@ const obtenerDatosReporte = async () => {
       ),
     ]
   } else if (reportarPor.value === 'Unidades') {
-    elementosConDatos = Object.keys(datosAgrupados)
+    // ── ignicion_dia no usa datosAgrupados ──────────────────────────────────
+    if (tipoInforme === 'ignicion_dia') {
+      elementosConDatos = [...new Set(datosInforme.map((d) => d.unidadNombre).filter(Boolean))]
+    } else {
+      elementosConDatos = Object.keys(datosAgrupados)
+    }
   } else {
     elementosConDatos = Object.keys(datosAgrupados)
   }
@@ -1264,6 +1315,14 @@ const obtenerDatosReporte = async () => {
       tipoInforme: 'horas_trabajo',
     }
   }
+  if (tipoInforme === 'ignicion_dia') {
+    return {
+      registros: datosInforme,
+      totalRegistros: datosInforme.length,
+      tipoInforme: 'ignicion_dia',
+      elementosSinDatos: elementosSinDatos,
+    }
+  }
 
   return {
     eventosAgrupados: datosAgrupados,
@@ -1277,6 +1336,50 @@ const obtenerDatosReporte = async () => {
     tipoInforme: tipoInforme,
     agrupacionReal: criterioPrincipal,
   }
+}
+
+const generarNombreArchivo = (extension) => {
+  // Identificador(es)
+  let identificador
+  if (reportarPor.value === 'Unidades') {
+    const placas = elementosSeleccionados.value.map(
+      (nombre) => window.unidadesPlacaMap?.[nombre] || nombre,
+    )
+    if (placas.length === 1) {
+      identificador = placas[0]
+    } else if (placas.length <= 3) {
+      identificador = placas.join('-')
+    } else {
+      identificador = `${placas.length}Unidades`
+    }
+  } else {
+    // Conductores u otros: sanitizar nombre
+    const nombres = elementosSeleccionados.value.map((n) =>
+      n.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, ''),
+    )
+    if (nombres.length === 1) {
+      identificador = nombres[0]
+    } else if (nombres.length <= 3) {
+      identificador = nombres.join('-')
+    } else {
+      identificador = `${nombres.length}Conductores`
+    }
+  }
+
+  // Tipo de informe
+  const tipoMap = {
+    trayectos: 'Trayectos',
+    eventos: 'Eventos',
+    horas_trabajo: 'HorasTrabajo',
+    ignicion_dia: 'IgnicionDia',
+  }
+  const tipo = tipoMap[tipoInformeSeleccionado.value] || 'Reporte'
+
+  // Fecha de creación (hoy)
+  const hoy = new Date()
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+
+  return `${identificador}_${tipo}_${fecha}.${extension}`
 }
 
 const generarReporte = async () => {
@@ -1309,19 +1412,6 @@ const generarReporte = async () => {
 
     //  GENERAR PDF SEGÚN TIPO
     if (tipoInformeSeleccionado.value === 'trayectos') {
-      if (datosReales.eventosAgrupados) {
-        Object.entries(datosReales.eventosAgrupados).forEach(([nombre, trayectos]) => {
-          console.log(
-            ` ${nombre}:`,
-            trayectos.map((t) => ({
-              unidad: t.unidadNombre,
-              placa: t.Placa,
-              todasLasPropiedades: Object.keys(t),
-            })),
-          )
-        })
-      }
-
       pdfResult = await generarPDFTrayectos(config, datosReales)
     } else if (tipoInformeSeleccionado.value === 'eventos') {
       pdfResult = generarPDFEventos(config, datosReales)
@@ -1392,6 +1482,12 @@ const generarReporte = async () => {
       }
 
       pdfResult = await generarPDFHorasTrabajo(configHoras, datosParaPDF)
+    } else if (tipoInformeSeleccionado.value === 'ignicion_dia') {
+      const configIgnicion = {
+        ...config,
+        mostrarMapaIgnicion: mostrarMapaIgnicion.value,
+      }
+      pdfResult = await generarPDFIgnicionDia(configIgnicion, datosReales)
     }
 
     //  VALIDAR QUE SE GENERÓ EL PDF
@@ -1418,7 +1514,7 @@ const generarReporte = async () => {
     const url = window.URL.createObjectURL(pdfResult.blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = pdfResult.filename
+    link.download = generarNombreArchivo('pdf')
     link.click()
     window.URL.revokeObjectURL(url)
 
@@ -1485,6 +1581,8 @@ const generarExcel = async () => {
       horarioFin: horarioFin.value,
       remarcarHorasExtra: remarcarHorasExtra.value,
       diasLaborables: diasLaborablesSeleccionados.value,
+      mostrarMapaTrayecto: mostrarMapaTrayecto.value, // ← AGREGAR
+      mostrarMapaZona: mostrarMapaZona.value,
     }
 
     let blob, filename
@@ -1496,16 +1594,33 @@ const generarExcel = async () => {
     //  DECIDIR QUÉ FUNCIÓN USAR SEGÚN EL TIPO
     if (tipoInformeSeleccionado.value === 'horas_trabajo') {
       const { generarExcelHorasTrabajo } = useReporteExcel()
-      const resultado = await generarExcelHorasTrabajo(config, datosReales)
+      const resultado = await generarExcelHorasTrabajo(
+        config,
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'eventos') {
-      const resultado = await generarExcelEventos(config, datosReales)
+      const resultado = await generarExcelEventos(config, datosReales, generarNombreArchivo('xlsx'))
       blob = resultado.blob
       filename = resultado.filename
     } else if (tipoInformeSeleccionado.value === 'trayectos') {
       const { generarExcelTrayectos } = useReporteExcel()
-      const resultado = await generarExcelTrayectos(config, datosReales)
+      const resultado = await generarExcelTrayectos(
+        config,
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
+      blob = resultado.blob
+      filename = resultado.filename
+    } else if (tipoInformeSeleccionado.value === 'ignicion_dia') {
+      const { generarExcelIgnicionDia } = useReporteExcel()
+      const resultado = await generarExcelIgnicionDia(
+        { ...config, mostrarMapaIgnicion: mostrarMapaIgnicion.value },
+        datosReales,
+        generarNombreArchivo('xlsx'),
+      )
       blob = resultado.blob
       filename = resultado.filename
     } else {
@@ -1599,7 +1714,7 @@ const cargarHistorialReportes = async () => {
     loading.value = false
   }
 }
-/**
+/**logconsole.log
  *  Abre vista previa según tipo de archivo
  */
 const abrirVistaPrevia = async (reporte) => {
@@ -2022,5 +2137,28 @@ watch(eventos, () => {
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+}
+
+/* Día de hoy - círculo perfecto sobre el botón de 30x30 */
+:deep(.q-date__today) {
+  border: 2px solid #bb0000 !important;
+  border-radius: 50% !important;
+  background: rgba(187, 0, 0, 0.08) !important;
+}
+
+/* Número negro por defecto */
+:deep(.q-date__today .q-btn__content span) {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Cuando está seleccionado (rango) - fondo rojo, texto blanco */
+:deep(.q-date__today.bg-primary) {
+  background: #bb0000 !important;
+  border-color: #bb0000 !important;
+}
+
+:deep(.q-date__today.bg-primary .q-btn__content span) {
+  color: #ffffff !important;
 }
 </style>

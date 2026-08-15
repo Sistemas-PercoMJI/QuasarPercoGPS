@@ -10,6 +10,7 @@ const estadoCompartido = ref({
   abrirConductoresConConductor: null,
   filtroUnidadesActivo: false,
   idsUnidadesFiltradas: null, // null = sin filtro (mostrar todas), [] = filtro activo vacio
+  filtroFuente: null,
 })
 
 export function useEventBus() {
@@ -35,9 +36,10 @@ export function useEventBus() {
   }
 
   // Actualizar el filtro de unidades desde el modulo de conductores
-  const actualizarFiltroUnidades = (activo, ids) => {
+  const actualizarFiltroUnidades = (activo, ids, fuente = null) => {
     estadoCompartido.value.filtroUnidadesActivo = activo
     estadoCompartido.value.idsUnidadesFiltradas = activo ? ids : null
+    estadoCompartido.value.filtroFuente = activo ? fuente : null
   }
 
   const resetAbrirGeozonas = () => {

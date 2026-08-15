@@ -222,7 +222,7 @@
         <div class="evento-body-scroll">
           <q-card-section class="evento-content">
             <!--  Información Básica -->
-            <div class="form-section">
+            <div class="form-section seccion-info-basica">
               <div class="section-header">
                 <q-icon name="edit_note" size="20px" color="primary" />
                 <span class="section-title">Información Básica</span>
@@ -260,7 +260,7 @@
             </div>
 
             <!--  Condiciones de Activación -->
-            <div class="form-section">
+            <div class="form-section seccion-condiciones">
               <div class="section-header">
                 <q-icon name="rule" size="20px" color="orange" />
                 <span class="section-title">Condiciones de Activación</span>
@@ -270,7 +270,7 @@
                 <div
                   v-for="(condicion, index) in nuevoEvento.condiciones"
                   :key="index"
-                  class="condicion-card-modern"
+                  class="condicion-card-modern condicion-card-tutorial"
                 >
                   <div class="condicion-header">
                     <q-chip dense color="primary" text-color="white" size="sm">
@@ -414,13 +414,13 @@
                   label="Agregar otra condición"
                   color="primary"
                   @click="agregarCondicion"
-                  class="add-condicion-btn full-width"
+                  class="add-condicion-btn full-width btn-agregar-condicion"
                 />
               </div>
             </div>
 
             <!--  Opciones de Alerta -->
-            <div class="form-section">
+            <div class="form-section seccion-opciones-alerta">
               <div class="section-header">
                 <q-icon name="notifications_active" size="20px" color="deep-orange" />
                 <span class="section-title">Opciones de Alerta</span>
@@ -537,7 +537,7 @@
         </div>
 
         <!-- Footer con Acciones -->
-        <q-card-actions class="evento-footer">
+        <q-card-actions class="evento-footer footer-acciones-evento">
           <q-btn
             flat
             label="Cancelar"
@@ -917,7 +917,7 @@ function resetearFormulario() {
       },
     ],
     operadoresLogicos: [],
-    activacionAlerta: 'Cada vez',
+    activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
@@ -1008,7 +1008,7 @@ function editarEvento() {
       },
     ],
     operadoresLogicos: eventoMenu.value.operadoresLogicos || [],
-    activacionAlerta: eventoMenu.value.activacionAlerta || 'Cada vez',
+    activacionAlerta: eventoMenu.value.activacionAlerta || 'Al inicio',
     aplicacion: eventoMenu.value.aplicacion || 'siempre',
     diasSemana: eventoMenu.value.diasSemana || [],
     horaInicio: eventoMenu.value.horaInicio || '',
@@ -1117,7 +1117,7 @@ function crearEventoConUbicacionPreseleccionada(data) {
       },
     ],
     operadoresLogicos: ['AND'], // Operador entre las dos condiciones
-    activacionAlerta: 'Cada vez',
+    activacionAlerta: 'Al inicio',
     aplicacion: 'siempre',
     diasSemana: [],
     horaInicio: '',
@@ -2162,8 +2162,8 @@ async function cargarDatos() {
 
 /* Sección de Horario */
 .horario-section {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  border-color: #90caf9;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: #dee2e6;
 }
 
 /* Footer */

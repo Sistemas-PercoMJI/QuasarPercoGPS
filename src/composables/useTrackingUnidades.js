@@ -4,59 +4,66 @@ import { realtimeDb } from 'src/firebase/firebaseConfig'
 import { ref as dbRef, onValue, off } from 'firebase/database'
 import { useEventDetection } from 'src/composables/useEventDetection'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
-import { useGeocoding } from 'src/composables/useGeocoding'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { db } from 'src/firebase/firebaseConfig'
 
-// Variables globales
+// ── Variables globales a nivel de módulo ──────────────────────────
 let unsubscribeGlobal = null
+let throttleTimer = null
+const THROTTLE_MS = 3000
 const unidadesActivasGlobal = ref([])
-const unidadesRawGlobal = ref([]) //  Guardamos los datos sin filtrar
+const unidadesRawGlobal = ref([])
 const loadingGlobal = ref(false)
 const errorGlobal = ref(null)
 let trackingIniciado = false
+const unidadesValidasGlobal = ref(new Set())
+let unsubscribeUnidades = null
 
+// ── Composable ────────────────────────────────────────────────────
 export function useTrackingUnidades() {
   const { evaluarEventosParaUnidadesSimulacion } = useEventDetection()
   const { idEmpresaActual } = useMultiTenancy()
 
   const filtrarUnidadesPorEmpresa = (unidadesRaw) => {
-    if (!idEmpresaActual.value) {
-      console.warn(' No hay IdEmpresa, retornando array vacío')
-      return []
-    }
+    if (!idEmpresaActual.value) return []
 
-    const unidadesFiltradas = unidadesRaw.filter((unidad) => {
-      //  IMPORTANTE: Filtrar por IdEmpresaConductor (no IdEmpresaUnidad)
-      if (!unidad.IdEmpresaConductor) {
-        return false
-      }
+    return unidadesRaw.filter((unidad) => {
+      const empresaDeUnidad = unidad.IdEmpresaConductor || unidad.IdEmpresaUnidad
+      if (!empresaDeUnidad) return false
+      const pasaEmpresa = Array.isArray(idEmpresaActual.value)
+        ? idEmpresaActual.value.includes(empresaDeUnidad)
+        : empresaDeUnidad === idEmpresaActual.value
+      if (!pasaEmpresa) return false
 
-      // Soportar array de empresas
-      const perteneceAMisEmpresas = Array.isArray(idEmpresaActual.value)
-        ? idEmpresaActual.value.includes(unidad.IdEmpresaConductor)
-        : unidad.IdEmpresaConductor === idEmpresaActual.value
-
-      return perteneceAMisEmpresas
+      const unidadId = unidad.unidadId || unidad.id
+      return unidadesValidasGlobal.value.has(unidadId)
     })
-
-    return unidadesFiltradas
   }
 
-  /**
-   * Inicia el tracking en tiempo real
-   */
-  const { obtenerDireccion } = useGeocoding()
+  const iniciarListenerUnidades = () => {
+    if (unsubscribeUnidades) return
+
+    const unidadesRef = collection(db, 'Unidades')
+    unsubscribeUnidades = onSnapshot(unidadesRef, (snapshot) => {
+      const idsValidos = new Set()
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const imei = data.imei?.toString().trim()
+        if (imei && imei.length === 15) {
+          idsValidos.add(doc.id)
+        }
+      })
+      unidadesValidasGlobal.value = idsValidos
+    })
+  }
 
   const iniciarTracking = () => {
-    if (trackingIniciado) {
-      return
-    }
+    iniciarListenerUnidades()
+    if (trackingIniciado) return
 
     if (!idEmpresaActual.value) {
       console.warn(' No se puede iniciar tracking: IdEmpresa no disponible')
-
-      setTimeout(() => {
-        iniciarTracking()
-      }, 1000)
+      setTimeout(() => iniciarTracking(), 1000)
       return
     }
 
@@ -72,66 +79,48 @@ export function useTrackingUnidades() {
           const data = snapshot.val()
 
           if (data) {
-            //  Guardar TODAS las unidades sin filtrar
             const todasLasUnidades = Object.entries(data)
               .filter(([, value]) => {
-                // Solo validación básica de ubicación
-                const esValida =
+                return (
                   value &&
                   value.ubicacion &&
                   typeof value.ubicacion.lat === 'number' &&
                   typeof value.ubicacion.lng === 'number' &&
                   !isNaN(value.ubicacion.lat) &&
                   !isNaN(value.ubicacion.lng) &&
-                  value.conductorNombre &&
                   value.unidadNombre
-
-                return esValida
+                )
               })
-              .map(([key, value]) => ({
-                id: value.unidadId || value.id || key,
-                ...value,
-                timestamp: value.timestamp || Date.now(),
-                lat: value.ubicacion.lat,
-                lng: value.ubicacion.lng,
-                nombre: value.conductorNombre,
-                direccionTexto:
-                  value.direccionTexto === 'Obteniendo...' ? null : value.direccionTexto,
-              }))
+              .map(([key, value]) => {
+                const id = value.unidadId || value.id || key
+                const unidadExistente = unidadesRawGlobal.value.find((u) => u.id === id)
 
-            //  Actualizar datos raw
+                return {
+                  id,
+                  ...value,
+                  timestamp: value.timestamp || Date.now(),
+                  lat: value.ubicacion.lat,
+                  lng: value.ubicacion.lng,
+                  nombre: value.conductorNombre,
+                  // Preservar direccionTexto del forwarder o del valor anterior
+                  direccionTexto:
+                    value.direccionTexto === 'Obteniendo...'
+                      ? unidadExistente?.direccionTexto || null
+                      : value.direccionTexto || unidadExistente?.direccionTexto || null,
+                }
+              })
+
             unidadesRawGlobal.value = todasLasUnidades
 
-            // Geocodificar las que no tienen direccion
-            todasLasUnidades.forEach(async (unidad, index) => {
-              if (!unidad.direccionTexto && unidad.ubicacion) {
-                try {
-                  const direccion = await obtenerDireccion({
-                    lat: unidad.ubicacion.lat,
-                    lng: unidad.ubicacion.lng,
-                  })
-                  // Mutar el array reactivo directamente para disparar reactividad
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: direccion,
-                    }
-                  }
-                } catch (e) {
-                  if (unidadesRawGlobal.value[index]) {
-                    unidadesRawGlobal.value[index] = {
-                      ...unidadesRawGlobal.value[index],
-                      direccionTexto: `${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)},${e.message}`,
-                    }
-                  }
-                }
-              }
-            })
-
-            //  Aplicar filtrado
-            const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-            unidadesActivasGlobal.value = unidadesFiltradas
-            window._unidadesTrackeadas = unidadesFiltradas
+            // Filtrado con throttle
+            if (!throttleTimer) {
+              throttleTimer = setTimeout(() => {
+                const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+                unidadesActivasGlobal.value = unidadesFiltradas
+                window._unidadesTrackeadas = unidadesFiltradas
+                throttleTimer = null
+              }, THROTTLE_MS)
+            }
           } else {
             unidadesRawGlobal.value = []
             unidadesActivasGlobal.value = []
@@ -154,20 +143,19 @@ export function useTrackingUnidades() {
     }
   }
 
-  //  WATCH: Re-filtrar cuando cambie IdEmpresa o los datos raw
-  watch(
-    [idEmpresaActual, unidadesRawGlobal],
-    () => {
-      if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
-        const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
-        unidadesActivasGlobal.value = unidadesFiltradas
-        window._unidadesTrackeadas = unidadesFiltradas
-      }
-    },
-    { deep: true },
-  )
+  watch(idEmpresaActual, () => {
+    if (trackingIniciado && idEmpresaActual.value && unidadesRawGlobal.value.length > 0) {
+      const unidadesFiltradas = filtrarUnidadesPorEmpresa(unidadesRawGlobal.value)
+      unidadesActivasGlobal.value = unidadesFiltradas
+      window._unidadesTrackeadas = unidadesFiltradas
+    }
+  })
 
   const detenerTrackingManual = () => {
+    if (throttleTimer) {
+      clearTimeout(throttleTimer)
+      throttleTimer = null
+    }
     if (unsubscribeGlobal) {
       const unidadesRef = dbRef(realtimeDb, 'unidades_activas')
       off(unidadesRef)
@@ -176,6 +164,11 @@ export function useTrackingUnidades() {
       unidadesRawGlobal.value = []
       unidadesActivasGlobal.value = []
     }
+    if (unsubscribeUnidades) {
+      unsubscribeUnidades()
+      unsubscribeUnidades = null
+    }
+    unidadesValidasGlobal.value = new Set()
   }
 
   const evaluarEventosParaTodasLasUnidades = async () => {
@@ -193,9 +186,7 @@ export function useTrackingUnidades() {
   }
 
   const unidadesPorEstado = (estado) => {
-    if (estado === 'todos') {
-      return unidadesActivasGlobal.value
-    }
+    if (estado === 'todos') return unidadesActivasGlobal.value
     return unidadesActivasGlobal.value.filter((u) => u.estado === estado)
   }
 
@@ -206,13 +197,9 @@ export function useTrackingUnidades() {
       detenido: 0,
       inactivo: 0,
     }
-
     unidadesActivasGlobal.value.forEach((unidad) => {
-      if (conteo[unidad.estado] !== undefined) {
-        conteo[unidad.estado]++
-      }
+      if (conteo[unidad.estado] !== undefined) conteo[unidad.estado]++
     })
-
     return conteo
   }
 
@@ -221,12 +208,10 @@ export function useTrackingUnidades() {
     const enMovimiento = unidadesActivasGlobal.value.filter((u) => u.estado === 'movimiento').length
     const detenidas = unidadesActivasGlobal.value.filter((u) => u.estado === 'detenido').length
     const inactivas = unidadesActivasGlobal.value.filter((u) => u.estado === 'inactivo').length
-
     const velocidadPromedio =
       total > 0
         ? unidadesActivasGlobal.value.reduce((acc, u) => acc + (u.velocidad || 0), 0) / total
         : 0
-
     return {
       total,
       enMovimiento,

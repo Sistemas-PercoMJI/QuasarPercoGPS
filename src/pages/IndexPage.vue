@@ -28,66 +28,17 @@
                 @click="cambiarEstiloDesdeMenu('satellite')"
               >
                 <div class="style-preview">
-                  <svg
-                    width="150"
-                    height="100"
-                    viewBox="0 0 150 100"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <defs>
-                      <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color: #1a3a1a; stop-opacity: 1" />
-                        <stop offset="50%" style="stop-color: #2d5a2d; stop-opacity: 1" />
-                        <stop offset="100%" style="stop-color: #1a3a1a; stop-opacity: 1" />
-                      </linearGradient>
-                      <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color: #1a4d6d; stop-opacity: 1" />
-                        <stop offset="100%" style="stop-color: #0d2a3d; stop-opacity: 1" />
-                      </linearGradient>
-                    </defs>
-                    <rect width="150" height="100" fill="url(#earthGradient)" rx="8" ry="8" />
-                    <path
-                      d="M 0 60 Q 40 55, 80 60 T 150 55 L 150 100 L 0 100 Z"
-                      fill="url(#waterGradient)"
-                      opacity="0.8"
-                    />
-                    <ellipse cx="30" cy="35" rx="25" ry="20" fill="#0d2a1a" opacity="0.6" />
-                    <ellipse cx="90" cy="25" rx="35" ry="25" fill="#0d2a1a" opacity="0.5" />
-                    <ellipse cx="120" cy="45" rx="20" ry="18" fill="#0d2a1a" opacity="0.7" />
-                    <rect x="10" y="70" width="30" height="20" fill="#3d4a2d" opacity="0.5" />
-                    <rect x="60" y="65" width="40" height="25" fill="#3d4a2d" opacity="0.4" />
-                    <line
-                      x1="0"
-                      y1="50"
-                      x2="150"
-                      y2="48"
-                      stroke="#555555"
-                      stroke-width="1.5"
-                      opacity="0.8"
-                    />
-                    <line
-                      x1="45"
-                      y1="0"
-                      x2="48"
-                      y2="100"
-                      stroke="#555555"
-                      stroke-width="1"
-                      opacity="0.6"
-                    />
-                    <line
-                      x1="100"
-                      y1="0"
-                      x2="95"
-                      y2="100"
-                      stroke="#555555"
-                      stroke-width="1"
-                      opacity="0.6"
-                    />
-                    <rect x="42" y="45" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
-                    <rect x="47" y="47" width="3" height="3" fill="#8a8a8a" opacity="0.9" />
-                    <rect x="96" y="72" width="5" height="5" fill="#8a8a8a" opacity="0.9" />
-                    <rect x="102" y="70" width="4" height="4" fill="#8a8a8a" opacity="0.9" />
-                  </svg>
+                  <img
+                    :src="previewSatelite"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                      border-radius: 10px;
+                      border: 1px solid #e5e7eb;
+                    "
+                    loading="lazy"
+                  />
                 </div>
                 <div class="style-info">
                   <div class="style-label">Satélite</div>
@@ -105,150 +56,17 @@
                 @click="cambiarEstiloDesdeMenu('streets')"
               >
                 <div class="style-preview">
-                  <!-- SVG COMPLETO CALLES -->
-                  <svg
-                    width="150"
-                    height="100"
-                    viewBox="0 0 150 100"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <defs>
-                      <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color: #f5f5f0; stop-opacity: 1" />
-                        <stop offset="100%" style="stop-color: #e8e8e0; stop-opacity: 1" />
-                      </linearGradient>
-                    </defs>
-                    <rect width="150" height="100" fill="url(#bgGradient)" rx="8" ry="8" />
-                    <rect x="5" y="10" width="35" height="30" fill="#c8e6c9" opacity="0.8" />
-                    <rect x="110" y="55" width="30" height="35" fill="#c8e6c9" opacity="0.8" />
-                    <rect x="0" y="45" width="150" height="6" fill="#d0d0d0" />
-                    <rect x="55" y="0" width="6" height="100" fill="#d0d0d0" />
-                    <rect x="0" y="75" width="150" height="4" fill="#d0d0d0" />
-                    <rect x="95" y="0" width="4" height="100" fill="#d0d0d0" />
-                    <rect x="25" y="0" width="2" height="100" fill="#e5e5e5" />
-                    <rect x="80" y="0" width="2" height="100" fill="#e5e5e5" />
-                    <rect x="120" y="0" width="2" height="100" fill="#e5e5e5" />
-                    <rect x="0" y="20" width="150" height="2" fill="#e5e5e5" />
-                    <rect x="0" y="65" width="150" height="2" fill="#e5e5e5" />
-                    <rect x="0" y="90" width="150" height="2" fill="#e5e5e5" />
-                    <rect
-                      x="8"
-                      y="52"
-                      width="15"
-                      height="12"
-                      fill="#f5f5f5"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="28"
-                      y="52"
-                      width="20"
-                      height="12"
-                      fill="#ffffff"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="62"
-                      y="12"
-                      width="18"
-                      height="18"
-                      fill="#fafafa"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="85"
-                      y="15"
-                      width="12"
-                      height="15"
-                      fill="#f5f5f5"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="62"
-                      y="52"
-                      width="25"
-                      height="20"
-                      fill="#ffffff"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="100"
-                      y="20"
-                      width="15"
-                      height="22"
-                      fill="#fafafa"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="8"
-                      y="80"
-                      width="20"
-                      height="15"
-                      fill="#f5f5f5"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="35"
-                      y="80"
-                      width="15"
-                      height="15"
-                      fill="#ffffff"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="62"
-                      y="80"
-                      width="18"
-                      height="15"
-                      fill="#fafafa"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <rect
-                      x="100"
-                      y="80"
-                      width="12"
-                      height="15"
-                      fill="#f5f5f5"
-                      stroke="#c0c0c0"
-                      stroke-width="0.5"
-                    />
-                    <line
-                      x1="0"
-                      y1="48"
-                      x2="150"
-                      y2="48"
-                      stroke="white"
-                      stroke-width="0.5"
-                      stroke-dasharray="3,3"
-                      opacity="0.6"
-                    />
-                    <line
-                      x1="58"
-                      y1="0"
-                      x2="58"
-                      y2="100"
-                      stroke="white"
-                      stroke-width="0.5"
-                      stroke-dasharray="3,3"
-                      opacity="0.6"
-                    />
-                    <circle cx="15" cy="20" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="25" cy="18" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="20" cy="28" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="32" cy="25" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="120" cy="65" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="128" cy="70" r="3" fill="#66bb6a" opacity="0.8" />
-                    <circle cx="122" cy="80" r="3" fill="#66bb6a" opacity="0.8" />
-                  </svg>
+                  <img
+                    :src="previewCalles"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                      border-radius: 10px;
+                      border: 1px solid #e5e7eb;
+                    "
+                    loading="lazy"
+                  />
                 </div>
                 <div class="style-info">
                   <div class="style-label">Calles</div>
@@ -349,9 +167,13 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
-//import { Notify } from 'quasar'
+import { useBloqueoArranque } from 'src/composables/useBloqueoArranque'
 
+//import { Notify } from 'quasar'
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const geozonasCacheCompleto = ref([])
+const previewSatelite = `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/-116.95,32.50,13,0/160x100@2x?access_token=${MAPBOX_TOKEN}`
+const previewCalles = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/-116.95,32.50,13,0/160x100@2x?access_token=${MAPBOX_TOKEN}`
 
 const {
   initMap,
@@ -362,13 +184,28 @@ const {
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
 
+const {
+  iniciarListenerConfig,
+  detenerListenerConfig,
+  toggleBloqueoArranque,
+  obtenerConfigBloqueo,
+} = useBloqueoArranque()
+
 const geozonasDibujadas = ref(new Set())
 const poisDibujados = ref(new Set())
 
 const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
 const { abrirGeozonasConPOI } = useEventBus()
-const { inicializar, evaluarEventosParaUnidadesSimulacion, resetear } = useEventDetection()
+const {
+  inicializar,
+  // evaluarEventosParaUnidadesSimulacion,
+  resetear,
+  recargarConfiguracion,
+  //reconstruirEstadoDesdeFirebase,
+  //yaReconstruido, // ← agregar
+  resetearEstadoReconstruido, // ← agregar
+} = useEventDetection()
 
 const marcadoresPOIs = ref([])
 //const marcadoresGeozonas = ref([])
@@ -396,7 +233,7 @@ const { obtenerDireccion } = useGeocoding()
 
 const {
   conductores,
-  unidades,
+
   gruposConductores,
   obtenerGruposConductores,
   obtenerConductores,
@@ -415,53 +252,34 @@ let popupGlobalActivo = null
 
 let ultimoHashUnidades = ''
 
+let watchThrottle = null
+
 watch(
   unidadesActivas,
   (nuevasUnidades) => {
     if (!mapaAPI || !mapaListo.value) return
+    if (watchThrottle) return // ← agregar esto
 
-    if (!nuevasUnidades || nuevasUnidades.length === 0) {
-      limpiarMarcadoresUnidades()
-      return
-    }
-
-    const mapElement = document.querySelector('.mapboxgl-map')
-    if (mapElement) {
-      const isZooming = mapElement.classList.contains('mapboxgl-touch-zoom-rotate')
-      const isPanning = mapElement.classList.contains('mapboxgl-touch-drag-pan')
-
-      if (isZooming || isPanning) {
+    watchThrottle = setTimeout(() => {
+      watchThrottle = null
+      if (!nuevasUnidades || nuevasUnidades.length === 0) {
+        limpiarMarcadoresUnidades()
         return
       }
-    }
-
-    const nuevoHash = nuevasUnidades
-      .map(
-        (u) =>
-          `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}`,
-      )
-      .join('|')
-    if (nuevoHash !== ultimoHashUnidades) {
-      actualizarMarcadoresUnidades(nuevasUnidades)
-      ultimoHashUnidades = nuevoHash
-    }
+      const nuevoHash = nuevasUnidades
+        .map(
+          (u) =>
+            `${u.unidadId}-${u.ubicacion?.lat}-${u.ubicacion?.lng}-${u.estado}-${u.direccionTexto || ''}-${u.ignicion}-${u.velocidad ?? 0}`,
+        )
+        .join('|')
+      if (nuevoHash !== ultimoHashUnidades) {
+        actualizarMarcadoresUnidades(nuevasUnidades)
+        ultimoHashUnidades = nuevoHash
+      }
+    }, 2000) // ← actualizar mapa máximo cada 2 segundos
   },
   { deep: false, immediate: false },
 )
-
-function iniciarEvaluacionContinuaEventos() {
-  if (intervaloEvaluacionEventos) {
-    clearInterval(intervaloEvaluacionEventos)
-  }
-
-  intervaloEvaluacionEventos = setInterval(() => {
-    const unidadesParaEvaluar = window._unidadesTrackeadas || unidadesActivas.value
-
-    if (unidadesParaEvaluar && unidadesParaEvaluar.length > 0) {
-      evaluarEventosParaUnidadesSimulacion(unidadesParaEvaluar)
-    }
-  }, 10000)
-}
 
 function detenerEvaluacionEventos() {
   if (intervaloEvaluacionEventos) {
@@ -526,6 +344,72 @@ function detenerEvaluacionEventos() {
     })
   }
 }*/
+
+const confirmarYEjecutarBloqueo = (unidadId, accion, btnElement) => {
+  const esBloqueo = accion === 'bloquear'
+  const unidad = unidadesActivas.value.find((u) => (u.unidadId || u.id) === unidadId)
+  const nombreUnidad = unidad?.unidadNombre || unidadId
+
+  $q.dialog({
+    title: esBloqueo ? 'Bloquear arranque' : 'Permitir arranque',
+    message: esBloqueo
+      ? `¿Confirmas bloquear el arranque de <b>${nombreUnidad}</b>?<br><br>Esto impide que el motor encienda. No detiene el vehículo si ya está en movimiento.`
+      : `¿Confirmas permitir el arranque de <b>${nombreUnidad}</b>?`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    color: esBloqueo ? 'negative' : 'positive',
+  }).onOk(async () => {
+    const textoOriginal = btnElement.textContent
+    btnElement.disabled = true
+    btnElement.style.opacity = '0.7'
+    btnElement.style.cursor = 'default'
+    btnElement.textContent = 'Enviando…'
+
+    const resultado = await toggleBloqueoArranque(unidadId, accion)
+
+    if (resultado.ok) {
+      $q.notify({
+        type: 'positive',
+        message: esBloqueo
+          ? 'Arranque bloqueado correctamente'
+          : 'Arranque permitido correctamente',
+        position: 'top',
+        timeout: 2500,
+        icon: esBloqueo ? 'lock' : 'lock_open',
+      })
+
+      const cfg = obtenerConfigBloqueo(unidadId)
+      btnElement.dataset.accion = cfg.bloqueado ? 'desbloquear' : 'bloquear'
+      btnElement.textContent = cfg.bloqueado ? 'Permitir arranque' : 'Bloquear arranque'
+      btnElement.style.background = cfg.bloqueado ? '#4CAF50' : '#F44336'
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+
+      const estadoValueEl = btnElement
+        .closest('.popup-section-bloqueo')
+        ?.querySelector('.popup-section .value')
+      if (estadoValueEl) {
+        estadoValueEl.textContent = cfg.bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+        estadoValueEl.style.color = cfg.bloqueado ? '#F44336' : '#4CAF50'
+      }
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'No se pudo enviar el comando',
+        caption: resultado.error || 'Intenta de nuevo',
+        position: 'top',
+        timeout: 3000,
+        icon: 'error',
+      })
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+      btnElement.textContent = textoOriginal
+    }
+  })
+}
 
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
@@ -673,9 +557,7 @@ async function inicializarSistemaDeteccion() {
       obtenerPOIs(),
       obtenerGeozonas(),
     ])
-
     const eventosActivos = eventos.filter((e) => e.activo)
-
     inicializar(eventosActivos, pois, geozonas)
   } catch (error) {
     console.error('Error al inicializar detección:', error)
@@ -915,6 +797,11 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
         },
       })
       mapaAPI.map.on('click', sourceId, (e) => {
+        if (window._clickEnUnidad) return
+        window._clickEnGeozona = true
+        setTimeout(() => {
+          window._clickEnGeozona = false
+        }, 100)
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
@@ -925,6 +812,14 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
 
         if (geozona) {
           mostrarPopupGeozonaConDireccion(geozona, e.lngLat)
+          const color = geozona.color || '#4ECDC4'
+          const colorHex = color.replace('#', '')
+          const r = parseInt(colorHex.substring(0, 2), 16)
+          const g = parseInt(colorHex.substring(2, 4), 16)
+          const b = parseInt(colorHex.substring(4, 6), 16)
+          const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+          const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+          const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
           let direccionesPuntos = []
           if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
             direccionesPuntos = geozona.puntos.map((punto, index) => ({
@@ -936,20 +831,26 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
           }
 
           const popupContent = `
-      <div class="geozona-popup-container">
-        <div class="geozona-popup-header">
-          <div class="header-info">
-            <div class="header-title">${geozona.nombre}</div>
-            <div class="header-divider"></div>
-            <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
-          </div>
-          <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-            <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+    <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${bandColor};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
+      <div class="geozona-popup-header">
+        <div class="header-info">
+          <div class="header-subtitle">${geozona.puntos?.length || 0} puntos definidos</div>
         </div>
-        <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
+        <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="geozona-popup-body-${geozona.id}" class="geozona-popup-body">
           <div class="points-list-container">
             ${direccionesPuntos
               .map(
@@ -959,10 +860,7 @@ const dibujarGeozonasCombinadas = async (geozonas) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Latitud:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Longitud:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -1099,34 +997,44 @@ const dibujarPOIsCombinados = async (pois) => {
         },
       })
       mapaAPI.map.on('click', 'pois-symbols', (e) => {
+        if (window._clickEnUnidad) return
         e.preventDefault()
         if (e.originalEvent) {
           e.originalEvent.stopPropagation()
         }
-
         const feature = e.features[0]
-        const poi = pois.find((p) => p.id === feature.properties.id)
+        const poi = poisCargados.value.find((p) => p.id === feature.properties.id)
+
+        const color = poi.color || '#FF5252'
+        const colorHex = color.replace('#', '')
+        const r = parseInt(colorHex.substring(0, 2), 16)
+        const g = parseInt(colorHex.substring(2, 4), 16)
+        const b = parseInt(colorHex.substring(4, 6), 16)
+        const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+        const textoColor = luminancia < 200 ? '#ffffff' : '#1f2937'
+        const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
 
         if (poi) {
           const popupContent = `
-            <div class="poi-popup-container">
-              <div class="poi-popup-header">
-                <div class="header-info">
-                  <div class="header-title">${poi.nombre}</div>
-
-                </div>
-              </div>
-              <div class="poi-popup-body">
-                <div class="address-info">
-                  <div class="address-icon"></div>
-                  <div class="address-text">${poi.direccion}</div>
-                </div>
-                <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
-                  Ver más detalles
-                </button>
-              </div>
+          <div class="poi-popup-container">
+            <div class="poi-color-band" style="background: ${bandColor};">
+              <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <span class="poi-band-nombre" style="color: ${textoColor};">${poi.nombre}</span>
             </div>
-          `
+            <div class="poi-popup-body">
+              <div class="address-info">
+                <div class="address-text">${poi.direccion}</div>
+              </div>
+              <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
+                Ver más detalles
+              </button>
+            </div>
+          </div>
+                  `
 
           if (popupGlobalActivo) {
             popupGlobalActivo.remove()
@@ -1151,6 +1059,14 @@ const dibujarPOIsCombinados = async (pois) => {
 
       mapaAPI.map.on('mouseleave', 'pois-symbols', () => {
         mapaAPI.map.getCanvas().style.cursor = ''
+      })
+
+      mapaAPI.map.on('movestart', () => {
+        if (window.setMapaDragging) window.setMapaDragging(true)
+      })
+
+      mapaAPI.map.on('moveend', () => {
+        if (window.setMapaDragging) window.setMapaDragging(false)
       })
     }
   }
@@ -1216,6 +1132,15 @@ const dibujarTodosEnMapa = async () => {
 
   mapaAPI = mapPage._mapaAPI
 
+  if (!mapaAPI.map.loaded()) {
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 3000) // máximo 3 segundos
+      mapaAPI.map.once('load', () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+  }
   try {
     const pois = await obtenerPOIs()
     poisCargados.value = pois
@@ -1381,7 +1306,9 @@ const limpiarCapasDelMapa = () => {
     marcadoresPOIs.value = []
   }
   const layersToRemove = [
-    'pois-combined',
+    'pois-circles', // 🆕 layer correcto
+    'pois-symbols', // 🆕 layer correcto
+    'geozonas-symbols', // 🆕 faltaba este
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined-fill',
     'geozonas-poligonales-combined-outline',
@@ -1391,6 +1318,7 @@ const limpiarCapasDelMapa = () => {
     'pois-combined',
     'geozonas-circulares-combined',
     'geozonas-poligonales-combined',
+    'geozonas-symbols', // 🆕 faltaba este
   ]
 
   layersToRemove.forEach((layerId) => {
@@ -1804,6 +1732,78 @@ const limpiarRuta = () => {
 
 // EXPONER MÉTODOS GLOBALMENTE (para que EstadoFlota pueda llamarlos)
 window.dibujarRutaTrayecto = dibujarRutaTrayecto
+window.centrarEnUnidad = (unidadId) => {
+  const mapPage = document.getElementById('map-page')
+  if (mapPage?._mapaAPI?.centrarEnUnidad) {
+    mapPage._mapaAPI.centrarEnUnidad(unidadId)
+  }
+}
+window.abrirPopupPOI = (poiId) => {
+  const poi = poisCargados.value.find((p) => p.id === poiId)
+  if (!poi || !mapaAPI?.map) return
+
+  const { lat, lng } = poi.coordenadas
+  const color = poi.color || '#FF5252'
+  const colorHex = color.replace('#', '')
+  const r = parseInt(colorHex.substring(0, 2), 16)
+  const g = parseInt(colorHex.substring(2, 4), 16)
+  const b = parseInt(colorHex.substring(4, 6), 16)
+  const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+  const textoColor = luminancia < 200 ? '#ffffff' : '#1f2937'
+  const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
+
+  if (popupGlobalActivo) popupGlobalActivo.remove()
+
+  popupGlobalActivo = new mapboxgl.Popup({
+    offset: 25,
+    className: 'popup-animated',
+    closeButton: true,
+    closeOnClick: false,
+  })
+    .setLngLat([lng, lat])
+    .setHTML(
+      `
+      <div class="poi-popup-container">
+        <div class="poi-color-band" style="background: ${bandColor};">
+          <button class="poi-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <span class="poi-band-nombre" style="color: ${textoColor};">${poi.nombre}</span>
+        </div>
+        <div class="poi-popup-body">
+          <div class="address-info">
+            <div class="address-text">${poi.direccion}</div>
+          </div>
+          <button onclick="window.verDetallesPOI('${poi.id}')" class="details-btn">
+            Ver más detalles
+          </button>
+        </div>
+      </div>
+    `,
+    )
+    .addTo(mapaAPI.map)
+}
+
+window.abrirPopupGeozona = (geozonaId) => {
+  const geozona = geozonasCargadas.value.find((g) => g.id === geozonaId)
+  if (!geozona || !mapaAPI?.map) return
+
+  let lat, lng
+  if (geozona.tipoGeozona === 'circular' && geozona.centro) {
+    lat = geozona.centro.lat
+    lng = geozona.centro.lng
+  } else if (geozona.tipoGeozona === 'poligono' && geozona.puntos) {
+    const lats = geozona.puntos.map((p) => p.lat)
+    const lngs = geozona.puntos.map((p) => p.lng)
+    lat = lats.reduce((a, b) => a + b) / lats.length
+    lng = lngs.reduce((a, b) => a + b) / lngs.length
+  }
+  if (!lat || !lng) return
+
+  mostrarPopupGeozonaConDireccion(geozona, { lng, lat })
+}
 window.limpiarRuta = limpiarRuta
 
 // Función para mostrar popup de geozona con dirección geocodificada
@@ -1815,7 +1815,14 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
     console.error('No se pudo calcular centroide')
     return
   }
-
+  const color = geozona.color || '#4ECDC4'
+  const colorHex = color.replace('#', '')
+  const r = parseInt(colorHex.substring(0, 2), 16)
+  const g = parseInt(colorHex.substring(2, 4), 16)
+  const b = parseInt(colorHex.substring(4, 6), 16)
+  const luminancia = (r * 299 + g * 587 + b * 114) / 1000
+  const textoColor = luminancia < 160 ? '#ffffff' : '#1f2937'
+  const bandColor = luminancia > 200 ? oscurecerColor(color, 20) : color
   // Obtener direcciones de los puntos individuales (solo para polígonos)
   let direccionesPuntos = []
   if (geozona.tipoGeozona === 'poligono' && geozona.puntos?.length > 0) {
@@ -1842,11 +1849,16 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
 
   const popupContent = `
     <div class="geozona-popup-container">
+      <div class="geozona-color-band" style="background: ${bandColor};">
+        <button class="geozona-close-btn" onclick="this.closest('.mapboxgl-popup').querySelector('.mapboxgl-popup-close-button').click()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+        <span class="geozona-band-nombre" style="color: ${textoColor};">${geozona.nombre}</span>
+      </div>
       <div class="geozona-popup-header">
         <div class="header-info">
-          <div class="header-title">${geozona.nombre}</div>
-          <div class="header-divider"></div>
-          <!-- CAMBIO: Mostrar dirección en lugar de "X puntos definidos" -->
           <div class="header-subtitle">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#6b7280" stroke-width="2" fill="none"/>
@@ -1856,7 +1868,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
           </div>
         </div>
         <button id="toggle-btn-geo-${geozona.id}" class="toggle-geozona-btn" onclick="toggleGeozonaPopup('${geozona.id}')">
-          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path d="M6 9L12 15L18 9" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
@@ -1874,10 +1886,7 @@ const mostrarPopupGeozonaConDireccion = async (geozona, lngLat) => {
                 <div class="point-address">
                   <div class="address-name">${punto.direccion}</div>
                 </div>
-                <div class="point-coords">
-                  <div><span class="coord-label">Lat:</span> <span class="coord-value">${punto.lat.toFixed(6)}</span></div>
-                  <div><span class="coord-label">Lng:</span> <span class="coord-value">${punto.lng.toFixed(6)}</span></div>
-                </div>
+
               </div>
             `,
               )
@@ -1918,7 +1927,6 @@ onMounted(async () => {
 
   try {
     await obtenerUnidades()
-    console.log(`${unidades.value.length} unidades cargadas`)
   } catch (error) {
     console.error('Error al cargar unidades:', error)
   }
@@ -1983,6 +1991,9 @@ onMounted(async () => {
       }
       window._mapMoveStartHandler = moveStartHandler
       window._mapMoveEndHandler = moveEndHandler
+
+      mapPage._mapaAPI.map.on('movestart', moveStartHandler)
+      mapPage._mapaAPI.map.on('moveend', moveEndHandler)
     }
     window.abrirDetallesUbicacion = (ubicacionData) => {
       try {
@@ -2006,9 +2017,7 @@ onMounted(async () => {
       }
     }
 
-    window.addEventListener('empresa-cambiada', async (event) => {
-      console.log('Empresa cambiada:', event.detail.empresas)
-
+    window.addEventListener('empresa-cambiada', async () => {
       /*// Solo notificar, NO recargar
       Notify.create({
         type: 'info',
@@ -2017,7 +2026,6 @@ onMounted(async () => {
         icon: 'business',
         timeout: 2000,
       })*/
-
       // NO hacer: window.location.reload()
     })
 
@@ -2053,10 +2061,10 @@ onMounted(async () => {
     })
 
     await inicializarSistemaDeteccion()
-    iniciarEvaluacionContinuaEventos()
+    // iniciarEvaluacionContinuaEventos()
 
     iniciarSeguimientoGPS()
-
+    iniciarListenerConfig()
     iniciarTracking()
 
     /* setTimeout(async () => {
@@ -2066,6 +2074,16 @@ onMounted(async () => {
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
         console.warn('Evento sin target válido')
+        return
+      }
+
+      const btnBloqueo = event.target.closest('[data-action="toggle-bloqueo-arranque"]')
+      if (btnBloqueo) {
+        const unidadId = btnBloqueo.dataset.unidadId
+        const accion = btnBloqueo.dataset.accion
+        if (unidadId && accion) {
+          confirmarYEjecutarBloqueo(unidadId, accion, btnBloqueo)
+        }
         return
       }
 
@@ -2142,12 +2160,12 @@ onMounted(async () => {
               })
             } else {
               console.error('Conductor no encontrado')
-              /*$q.notify({
+              $q.notify({
                 type: 'negative',
                 message: 'No se encontró el conductor',
                 icon: 'error',
                 position: 'top',
-              })*/
+              })
             }
           })
         }
@@ -2155,7 +2173,11 @@ onMounted(async () => {
       }
     })
     mapPage._mapaAPI.map.on('click', (e) => {
-      const clickEnMarcador = e.originalEvent.target.closest('.mapboxgl-marker')
+      if (window._clickEnUnidad) return
+
+      const clickEnMarcador =
+        e.originalEvent.target.closest('.mapboxgl-marker') ||
+        e.originalEvent.target.closest('.custom-marker-unidad')
 
       if (clickEnMarcador) {
         return
@@ -2179,6 +2201,7 @@ onMounted(async () => {
 
         const allPopups = document.querySelectorAll('.mapboxgl-popup')
         allPopups.forEach((popupEl) => {
+          if (popupEl.classList.contains('popup-unidad-mapbox')) return
           const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button')
           if (closeBtn) {
             closeBtn.click()
@@ -2249,23 +2272,26 @@ onMounted(async () => {
 
   window.addEventListener('redibujarMapa', async () => {
     await nextTick()
-
-    // Limpiar todo (incluyendo cache)
     limpiarCapasDelMapa()
-
     await nextTick()
-
-    // Redibujar todo desde cero
     await dibujarTodosEnMapa()
 
-    resetear()
-    await inicializarSistemaDeteccion()
-    detenerEvaluacionEventos()
-    iniciarEvaluacionContinuaEventos()
+    const [eventos, pois, geozonas] = await Promise.all([
+      obtenerEventos(),
+      obtenerPOIs(),
+      obtenerGeozonas(),
+    ])
+    recargarConfiguracion(
+      eventos.filter((e) => e.activo),
+      pois,
+      geozonas,
+    )
 
-    // Actualizar marcadores de unidades ola
+    // detenerEvaluacionEventos()
+    // iniciarEvaluacionContinuaEventos()
+
     await nextTick()
-    if (unidadesActivas.value && unidadesActivas.value.length > 0) {
+    if (unidadesActivas.value?.length > 0) {
       actualizarMarcadoresUnidades(unidadesActivas.value)
     }
   })
@@ -2335,6 +2361,9 @@ onUnmounted(() => {
   if (window._mapMoveEndHandler && mapPage?._mapaAPI?.map) {
     mapPage._mapaAPI.map.off('moveend', window._mapMoveEndHandler)
   }
+  if (window.centrarEnUnidad) delete window.centrarEnUnidad
+  if (window.abrirPopupPOI) delete window.abrirPopupPOI
+  if (window.abrirPopupGeozona) delete window.abrirPopupGeozona
 
   // Limpiar flags
   delete window._mapListenersRegistered
@@ -2342,10 +2371,11 @@ onUnmounted(() => {
   delete window._mapMoveEndHandler
 
   detenerSeguimientoGPS()
-
+  detenerListenerConfig()
   detenerEvaluacionEventos()
   limpiarMarcadoresUnidades()
   resetear()
+  resetearEstadoReconstruido()
 
   if (window._resizeHandler) {
     window.removeEventListener('resize', window._resizeHandler)
@@ -2490,7 +2520,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .geozona-popup-header {
   display: flex;
-  flex-direction: column;
+  grid-template-columns: 36px 1fr 36px;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
   padding: 16px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
@@ -2499,15 +2533,16 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .header-divider {
   width: 100%;
   height: 1px;
-  margin-bottom: 10px;
-  background-color: #6b7280;
-  margin: 15px 0;
+  background-color: #e5e7eb; /* más sutil */
+  margin: 8px 0;
 }
 
 .header-info {
   display: flex;
   flex-direction: column;
-  margin-bottom: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0; /* quitar el margin-bottom: 8px */
 }
 
 .header-title {
@@ -2515,29 +2550,37 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 700;
   color: #1f2937;
   line-height: 1.2;
-  margin-left: 15%;
+  padding-left: 48px;
+}
+.geozona-popup-container .header-title {
+  display: none;
 }
 
 .header-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
-  margin-top: 2px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .toggle-geozona-btn {
   background-color: #f3f4f6 !important;
-  border: 1px solid #6b7280;
-
+  border: 1px solid #d1d5db;
   border-radius: 50%;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease !important;
-  align-self: flex-end;
-  margin-top: -32px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .toggle-geozona-btn:hover {
@@ -2570,15 +2613,15 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .points-list-container {
   max-height: 220px;
   overflow-y: auto;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .point-card {
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
 }
 
 .point-card:last-child {
@@ -2586,14 +2629,14 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .point-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .point-address {
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 
 .address-name {
@@ -2601,12 +2644,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   color: #1f2937;
   background-color: #f3f4f6;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   border-left: 3px solid #3b82f6;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
-
 .point-coords {
   display: flex;
   flex-direction: column;
@@ -2628,7 +2670,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 .details-btn {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #91c6bc 0%, #059669 100%);
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -2636,13 +2678,13 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-weight: 600;
   font-size: 14px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 6px rgba(107, 114, 128, 0.3);
   margin-top: 8px;
 }
 .details-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
-  background: linear-gradient(135deg, #91c6bc 0%, #047857 100%);
+  box-shadow: 0 6px 12px rgba(107, 114, 128, 0.4);
+  background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
 }
 
 .points-list-container::-webkit-scrollbar {
@@ -2698,8 +2740,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 
 .address-text {
   font-size: 13px;
-  color: #4b5563;
+  color: #374151;
+  font-weight: 500;
   flex: 1;
+  line-height: 1.4;
 }
 
 .mapboxgl-popup-content {
@@ -2761,9 +2805,10 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   font-size: 12px;
   color: #6b7280;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: break-word;
+  line-height: 1.3;
 }
 .unidad-popup-header {
   display: flex;
@@ -3105,11 +3150,15 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 /* Estilos para el header subtitle con icono */
 .header-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: #374151;
+  font-weight: 500;
   margin-top: 2px;
   display: flex;
   align-items: center;
   line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
 }
 
 .header-subtitle svg {
@@ -3136,6 +3185,93 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   color: #1f2937;
   font-family: 'Courier New', monospace;
   font-weight: 600;
+}
+.geozona-color-band {
+  height: 56px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+.geozona-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geozona-popup-container .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.geozona-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.geozona-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+.mapboxgl-popup:has(.geozona-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.mapboxgl-popup:has(.poi-popup-container) .mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.poi-color-band {
+  height: 56px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.poi-band-nombre {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poi-close-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.poi-close-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 </style>
 

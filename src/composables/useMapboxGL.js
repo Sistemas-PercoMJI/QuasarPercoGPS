@@ -2,6 +2,11 @@
 import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { useGeocoding } from './useGeocoding'
+import { useBloqueoArranque } from './useBloqueoArranque'
+
+const { obtenerConfigBloqueo, estaCargando, puedeControlarBloqueo } = useBloqueoArranque()
+const { obtenerDireccion: _obtenerDireccion } = useGeocoding()
 
 const originalWarn = console.warn
 console.warn = function (...args) {
@@ -59,8 +64,6 @@ const ESTILOS_MAPA = {
 let popupGlobalActivo = null
 
 //  Tu API key de Mapbox
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
 
 //  OPTIMIZACIÓN: Throttle ajustado para mejor fluidez
 const THROTTLE_MS = 200 //  200ms = 5 actualizaciones/segundo (antes era 300ms)
@@ -73,6 +76,10 @@ let ultimaActualizacion = 0
 //  Cache de última posición para evitar updates innecesarios
 const ultimasPosiciones = new Map()
 
+// CONTADORES DE TIEMPO PARADO/APAGADO
+// { unidadId -> { desde: timestamp (ms), tipo: 'detenido' | 'apagado' } }
+const tiemposParado = new Map()
+
 //  COLORES ESTANDARIZADOS (coinciden con EstadoFlota.vue)
 const COLORES_ESTADO = {
   movimiento: '#4CAF50', // Verde
@@ -80,21 +87,79 @@ const COLORES_ESTADO = {
   inactivo: '#607D8B', // Gris azulado
 }
 
-function formatearTiempo(minutos) {
-  if (minutos < 1) {
-    return 'menos de 1 minuto'
-  } else if (minutos < 60) {
-    return `${minutos} minuto${minutos > 1 ? 's' : ''}`
-  } else if (minutos < 1440) {
-    const horas = Math.floor(minutos / 60)
-    return `${horas} hora${horas > 1 ? 's' : ''}`
+function formatearTiempo(segundos) {
+  if (segundos < 60) {
+    return `${segundos} seg`
+  } else if (segundos < 3600) {
+    const mins = Math.floor(segundos / 60)
+    const segs = segundos % 60
+    return segs > 0 ? `${mins}m ${segs}s` : `${mins}m`
+  } else if (segundos < 86400) {
+    const horas = Math.floor(segundos / 3600)
+    const mins = Math.floor((segundos % 3600) / 60)
+    return mins > 0 ? `${horas}h ${mins}m` : `${horas}h`
   } else {
-    const dias = Math.floor(minutos / 1440)
-    return `${dias} día${dias > 1 ? 's' : ''}`
+    const dias = Math.floor(segundos / 86400)
+    const horas = Math.floor((segundos % 86400) / 3600)
+    return horas > 0 ? `${dias}d ${horas}h` : `${dias}d`
   }
 }
+
+/**
+ * Devuelve el HTML de la fila de tiempo parado/apagado para el popup.
+ * Retorna '' si la unidad está en movimiento.
+ */
+function obtenerFilaTiempoParado(unidad) {
+  const unidadId = unidad.unidadId || unidad.id
+  const velocidad = unidad.velocidad ?? 0
+
+  if (velocidad > 0) {
+    const entradaExistente = tiemposParado.get(unidadId)
+    if (entradaExistente?._intervalo) clearInterval(entradaExistente._intervalo)
+    tiemposParado.delete(unidadId)
+    return ''
+  }
+
+  // ── REGISTRAR AQUÍ DIRECTAMENTE (no depender del forEach) ──
+  const tipoActual = unidad.ignicion === false ? 'apagado' : 'detenido'
+  const entradaExistente = tiemposParado.get(unidadId)
+
+  if (!entradaExistente) {
+    // PROBLEMA: no tenemos timestamp real de cuando se detuvo.
+    // Usar unidad.timestamp si existe, sino Date.now()
+    const desdeReal = unidad.timestamp ? unidad.timestamp : Date.now()
+    tiemposParado.set(unidadId, { desde: desdeReal, tipo: tipoActual })
+  } else if (entradaExistente.tipo !== tipoActual) {
+    tiemposParado.set(unidadId, { desde: entradaExistente.desde, tipo: tipoActual })
+  }
+
+  const registrado = tiemposParado.get(unidadId)
+  const segundosTranscurridos = Math.floor((Date.now() - registrado.desde) / 1000)
+
+  const esApagado = registrado.tipo === 'apagado'
+  const color = esApagado ? '#F44336' : '#FF9800'
+  const icono = esApagado
+    ? `<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>`
+    : `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`
+  const label = esApagado ? 'Apagada hace:' : 'Detenida hace:'
+
+  return `
+    <div class="popup-section popup-tiempo-parado" style="background:#fff8f0; border-radius:6px; padding:6px 8px; margin-bottom:4px;">
+      <span class="label" style="display:flex; align-items:center; gap:4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" style="flex-shrink:0">
+          ${icono}
+        </svg>
+        ${label}
+      </span>
+      <span class="value popup-tiempo-valor" data-unidad-id="${unidadId}" style="color:${color}; font-weight:bold; font-size:13px;">
+        ${formatearTiempo(segundosTranscurridos)}
+      </span>
+    </div>
+  `
+}
+
 function obtenerColorPorTiempo(unidad) {
-  const TIEMPO_INACTIVIDAD_MAX = 5 * 60 * 1000 // 5 minutos
+  const TIEMPO_INACTIVIDAD_MAX = 2 * 60 * 1000 // 2 minutos
   const ahora = Date.now()
   const ultimaActualizacion = unidad.timestamp || unidad.ultimoPuntoTiempo || 0
   const tiempoInactivo = ahora - ultimaActualizacion
@@ -114,6 +179,26 @@ function obtenerColorPorTiempo(unidad) {
     esInactivo: false,
     minutosInactivo: 0,
   }
+}
+const animacionesActivas = new Map()
+function animarMarcador(marcador, unidadId, fromLat, fromLng, toLat, toLng, duracionMs = 10000) {
+  if (animacionesActivas.has(unidadId)) {
+    cancelAnimationFrame(animacionesActivas.get(unidadId))
+    animacionesActivas.delete(unidadId)
+  }
+  const inicio = performance.now()
+  function step(ahora) {
+    const t = Math.min((ahora - inicio) / duracionMs, 1) // ← linear, sin easing
+    const lat = fromLat + (toLat - fromLat) * t
+    const lng = fromLng + (toLng - fromLng) * t
+    marcador.setLngLat([lng, lat])
+    if (t < 1) {
+      animacionesActivas.set(unidadId, requestAnimationFrame(step))
+    } else {
+      animacionesActivas.delete(unidadId)
+    }
+  }
+  animacionesActivas.set(unidadId, requestAnimationFrame(step))
 }
 
 const agregarBadgeACanvas = (canvas) => {
@@ -420,7 +505,7 @@ export function useMapboxGL() {
     const popupId = `popup-unidad-${unidadId}`
 
     const popupContent = `
-  <div id="${popupId}" class="unidad-popup-container ${esInactivo ? 'unidad-inactiva' : ''}">
+  <div id="${popupId}" translate="no" class="unidad-popup-container ${esInactivo ? 'unidad-inactiva' : ''}">
     ${
       esInactivo
         ? `
@@ -468,7 +553,112 @@ export function useMapboxGL() {
       Sin datos desde hace ${formatearTiempo(minutosInactivo)}
     </div>
     `
-        : ''
+        : unidad.estado === 'movimiento'
+          ? `
+    <div style="
+      background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    ">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+        <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
+         </svg>
+        <span>En movimiento</span>
+      </div>
+      <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+        background: rgba(255,255,255,0.25);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    </div>
+    `
+          : unidad.estado === 'movimiento'
+            ? `
+    <div style="
+      background: linear-gradient(135deg, #2E7D32 0%, #43A047 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    ">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+          <path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>
+        </svg>
+        <span>En movimiento</span>
+      </div>
+      <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+        background: rgba(255,255,255,0.25);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    </div>
+    `
+            : unidad.estado === 'detenido'
+              ? `
+    <div style="
+      background: linear-gradient(135deg, #F57F17 0%, #FFC107 100%);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    ">
+      <div style="display:flex; align-items:center; gap:6px; flex:1; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+        </svg>
+        <span>Detenido</span>
+      </div>
+      <button onclick="(function(btn){ var p = btn.closest('.mapboxgl-popup'); if(p) p.remove(); })(this)" style="
+        background: rgba(255,255,255,0.25);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 22px; height: 22px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+      ">×</button>
+    </div>
+    `
+              : ''
     }
 
         <!-- ENCABEZADO (SIEMPRE VISIBLE) -->
@@ -491,9 +681,17 @@ export function useMapboxGL() {
 
       <!-- Segunda fila: (Unidad + Dirección) | Ícono -->
       <div class="unidad-info-row">
-        <div class="unidad-info">
+        <div class="unidad-info" style="flex: 1; min-width: 0; overflow: visible;">
           <div class="unidad-placa">${unidad.unidadNombre}</div>
-          <div class="unidad-direccion">${unidad.direccionTexto || 'Obteniendo...'}</div>
+          <div class="unidad-direccion" style="
+          white-space: normal;
+          word-break: break-word;
+          overflow: visible;
+          max-width: 200px;
+          font-size: 12px;
+          color: #6B7280;
+          line-height: 1.3;
+        ">${unidad.direccionTexto || 'Obteniendo...'}</div>
         </div>
         <div class="unidad-icon" style="background-color: ${esInactivo ? '#9E9E9E' : estadoColor[unidad.estado]};">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
@@ -504,6 +702,7 @@ export function useMapboxGL() {
     </div>
 
     <!-- CUERPO (OCULTO POR DEFECTO) -->
+    ${obtenerFilaTiempoParado(unidad)}
     <div class="unidad-popup-body">
       <div class="popup-section">
         <span class="label">Estado:</span>
@@ -511,8 +710,14 @@ export function useMapboxGL() {
           ${esInactivo ? 'Sin transmisión GPS' : estadoTexto[unidad.estado]}
         </span>
       </div>
+      <div class="popup-section">
+  <span class="label">Ignición:</span>
+  <span class="value" style="color: ${unidad.ignicion ? '#4CAF50' : '#F44336'}; font-weight: bold;">
+    ${unidad.ignicion ? 'Encendida' : 'Apagada'}
+  </span>
+</div>
       ${
-        !esInactivo
+        unidad.ignicion !== false
           ? `
       <div class="popup-section">
         <span class="label">Velocidad:</span>
@@ -529,6 +734,48 @@ export function useMapboxGL() {
         <span class="label">Coordenadas:</span>
         <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
       </div>
+
+      ${(() => {
+        const unidadId2 = unidad.unidadId || unidad.id
+        const cfg = obtenerConfigBloqueo(unidadId2)
+
+        if (!cfg.relayInstalado || !puedeControlarBloqueo()) return ''
+
+        const cargando = estaCargando(unidadId2)
+        const bloqueado = cfg.bloqueado
+        const accionSiguiente = bloqueado ? 'desbloquear' : 'bloquear'
+        const textoEstado = bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+        const colorEstado = bloqueado ? '#F44336' : '#4CAF50'
+        const textoBoton = cargando
+          ? 'Enviando…'
+          : bloqueado
+            ? 'Permitir arranque'
+            : 'Bloquear arranque'
+        const colorBoton = bloqueado ? '#4CAF50' : '#F44336'
+
+        return `
+    <div class="popup-section-bloqueo" style="margin-top:10px; padding-top:10px; border-top:1px solid #f3f4f6;">
+      <div class="popup-section">
+        <span class="label">Estado de arranque:</span>
+        <span class="value" style="color:${colorEstado}; font-weight:bold;">${textoEstado}</span>
+      </div>
+      <button
+        class="bloqueo-arranque-btn"
+        data-action="toggle-bloqueo-arranque"
+        data-unidad-id="${unidadId2}"
+        data-accion="${accionSiguiente}"
+        ${cargando ? 'disabled' : ''}
+        style="width:100%; margin-top:6px; padding:10px; background:${colorBoton};
+               color:white; border:none; border-radius:8px; font-weight:600;
+               font-size:13px; cursor:${cargando ? 'default' : 'pointer'};
+               opacity:${cargando ? '0.7' : '1'};"
+      >${textoBoton}</button>
+      <div style="font-size:10px; color:#9ca3af; margin-top:6px; line-height:1.3;">
+        ⚠️ Esto bloquea el arranque del motor. No detiene un vehículo en movimiento.
+      </div>
+    </div>
+  `
+      })()}
 
       <button
         class="details-btn"
@@ -583,12 +830,14 @@ export function useMapboxGL() {
 
       const { lat, lng } = unidad.ubicacion
       const ultimaPos = ultimasPosiciones.get(unidadId)
+
       const cambioSignificativo =
         !ultimaPos ||
         Math.abs(ultimaPos.lat - lat) > 0.00005 ||
         Math.abs(ultimaPos.lng - lng) > 0.00005 ||
         ultimaPos.estado !== unidad.estado ||
-        ultimaPos.direccionTexto !== unidad.direccionTexto
+        ultimaPos.direccionTexto !== unidad.direccionTexto ||
+        ultimaPos.ignicion !== unidad.ignicion
 
       if (marcadoresUnidades.value[unidadId]) {
         if (cambioSignificativo) {
@@ -605,13 +854,78 @@ export function useMapboxGL() {
 
             popup.on('open', () => {
               registrarPopupActivo(popup)
+
+              // Si la dirección aún dice "Obteniendo..." pero ya tenemos una en cache, aplicarla
+              const cached = ultimasPosiciones.get(unidadId)
+              if (cached?.direccionTexto) {
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  const dirEl = popupEl.querySelector('.unidad-direccion')
+                  if (dirEl && dirEl.textContent === 'Obteniendo...') {
+                    dirEl.textContent = cached.direccionTexto
+                  }
+                }
+              } else if (!cached?.direccionTexto) {
+                // No tenemos dirección todavía → disparar geocoding ahora
+                const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
+                if (lngLat) {
+                  _obtenerDireccion({ lat: lngLat.lat, lng: lngLat.lng }).then((direccion) => {
+                    const c = ultimasPosiciones.get(unidadId)
+                    if (c) c.direccionTexto = direccion
+
+                    const popupEl = popup.getElement()
+                    if (popupEl) {
+                      const dirEl = popupEl.querySelector('.unidad-direccion')
+                      if (dirEl) dirEl.textContent = direccion
+                    }
+                  })
+                }
+              }
+              const unidadId2 = unidad.unidadId || unidad.id
+              const entry = tiemposParado.get(unidadId2)
+              if (entry) {
+                // Limpiar intervalo previo SIN EXCEPCIÓN
+                if (entry._intervalo) {
+                  clearInterval(entry._intervalo)
+                  delete entry._intervalo
+                }
+                // Actualizar inmediatamente antes de arrancar el intervalo
+                const elInicial = popup
+                  .getElement()
+                  ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+                if (elInicial) {
+                  elInicial.textContent = formatearTiempo(
+                    Math.floor((Date.now() - entry.desde) / 1000),
+                  )
+                }
+                entry._intervalo = setInterval(() => {
+                  const el = popup
+                    .getElement()
+                    ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+                  if (!el) {
+                    clearInterval(entry._intervalo)
+                    delete entry._intervalo
+                    return
+                  }
+                  el.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+                }, 1000)
+              }
             })
 
             const element = crearIconoUnidad(unidad)
 
-            //  APLICAR FILTRO AL CREAR
             if (!debeEstarVisible(unidadId)) {
               element.style.display = 'none'
+            }
+
+            if (!element._listenerRegistrado) {
+              element._listenerRegistrado = true
+              element.addEventListener('mousedown', () => {
+                window._clickEnUnidad = true
+                setTimeout(() => {
+                  window._clickEnUnidad = false
+                }, 150)
+              })
             }
 
             const marker = new mapboxgl.Marker({
@@ -623,31 +937,164 @@ export function useMapboxGL() {
               .addTo(map.value)
 
             marcadoresUnidades.value[unidadId] = marker
+
             ultimasPosiciones.set(unidadId, {
               lat,
               lng,
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
+              timestamp: unidad.timestamp,
+              ignicion: unidad.ignicion,
+              velocidad: unidad.velocidad,
             })
           } else {
             // Solo cambió posición - mover marcador
-            marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
+            const posAnterior = ultimasPosiciones.get(unidadId)
+
+            const distanciaKm = calcularDistanciaKm(
+              posAnterior?.lat || lat,
+              posAnterior?.lng || lng,
+              lat,
+              lng,
+            )
+
+            if (distanciaKm > 0.5) {
+              // Salto > 500m → teletransportar sin animación
+              marcadoresUnidades.value[unidadId].setLngLat([lng, lat])
+            } else {
+              // Salto normal → animar
+              const duracion =
+                unidad.timestamp && posAnterior?.timestamp
+                  ? Math.min(Math.max(unidad.timestamp - posAnterior.timestamp, 5000), 60000)
+                  : 15000
+
+              animarMarcador(
+                marcadoresUnidades.value[unidadId],
+                unidadId,
+                posAnterior?.lat || lat,
+                posAnterior?.lng || lng,
+                lat,
+                lng,
+                duracion,
+              )
+            }
 
             // OPTIMIZACIÓN: Solo actualizar popup si está ABIERTO
             const popup = marcadoresUnidades.value[unidadId].getPopup()
-            if (popup && popup.isOpen()) {
-              const popupContent = popup.getElement()
-              const oldContainer = popupContent
-                ? popupContent.querySelector(`#popup-unidad-${unidadId}`)
-                : null
-              const wasExpanded = oldContainer ? oldContainer.classList.contains('expanded') : false
+            if (popup) {
+              const dirCambio = ultimaPos?.direccionTexto !== unidad.direccionTexto
+              const ignicionCambio = ultimaPos?.ignicion !== unidad.ignicion
+              const velocidadCambio = ultimaPos?.velocidad !== unidad.velocidad
+              // DESPUÉS (sin cerrar el popup)
+              if (dirCambio || ignicionCambio) {
+                // Actualizar DOM directamente sin tocar el popup
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  // Actualizar dirección
+                  if (dirCambio) {
+                    const dirEl = popupEl.querySelector('.unidad-direccion')
+                    if (dirEl) dirEl.textContent = unidad.direccionTexto || 'Obteniendo...'
+                  }
+                  // Actualizar ignición
+                  if (ignicionCambio) {
+                    //const ignEl = popupEl.querySelector('.popup-section .value[style*="color"]')
+                    // Buscar la sección de ignición específicamente
+                    const sections = popupEl.querySelectorAll('.popup-section')
+                    sections.forEach((section) => {
+                      const label = section.querySelector('.label')
+                      if (label?.textContent?.includes('Ignición')) {
+                        const val = section.querySelector('.value')
+                        if (val) {
+                          val.textContent = unidad.ignicion ? 'Encendida' : 'Apagada'
+                          val.style.color = unidad.ignicion ? '#4CAF50' : '#F44336'
+                        }
+                      }
+                    })
+                  }
+                  if (velocidadCambio) {
+                    const sections = popupEl.querySelectorAll('.popup-section')
+                    sections.forEach((section) => {
+                      const label = section.querySelector('.label')
+                      if (label?.textContent?.includes('Velocidad')) {
+                        const val = section.querySelector('.value')
+                        if (val) val.textContent = `${unidad.velocidad || 0} km/h`
+                      }
+                    })
+                  }
+                  // ── NUEVO: actualizar tiempo parado/apagado en DOM ──
+                  const tiempoEl = popupEl.querySelector(
+                    `.popup-tiempo-valor[data-unidad-id="${unidadId}"]`,
+                  )
+                  if (tiempoEl) {
+                    const velocidad = unidad.velocidad ?? 0
+                    if (velocidad > 0) {
+                      // Se movió → quitar la fila entera
+                      const filaEl = tiempoEl.closest('.popup-tiempo-parado')
+                      if (filaEl) filaEl.remove()
+                    } else {
+                      const entrada = tiemposParado.get(unidadId)
+                      if (entrada) {
+                        const mins = Math.floor((Date.now() - entrada.desde) / 60000)
+                        tiempoEl.textContent = formatearTiempo(mins)
+                        const esApagado = unidad.ignicion === false
+                        tiempoEl.style.color = esApagado ? '#F44336' : '#FF9800'
+                        // Actualizar label
+                        const labelEl = tiempoEl
+                          .closest('.popup-tiempo-parado')
+                          ?.querySelector('.label')
+                        if (labelEl) {
+                          const svg = labelEl.querySelector('svg')
+                          const texto = esApagado ? 'Apagada hace:' : 'Detenida hace:'
+                          if (svg) {
+                            svg.style.fill = esApagado ? '#F44336' : '#FF9800'
+                            svg.innerHTML = esApagado
+                              ? `<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>`
+                              : `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`
+                          }
+                          labelEl.lastChild.textContent = ` ${texto}`
+                        }
+                      }
+                    }
+                  }
+                }
+              } else if (popup.isOpen()) {
+                const popupContent = popup.getElement()
+                const oldContainer = popupContent?.querySelector(`#popup-unidad-${unidadId}`)
+                const wasExpanded = oldContainer?.classList.contains('expanded') || false
 
-              popup.setHTML(crearPopupUnidad(unidad))
+                // Limpiar intervalo ANTES de setHTML
+                const entryAntes = tiemposParado.get(unidadId)
+                if (entryAntes?._intervalo) {
+                  clearInterval(entryAntes._intervalo)
+                  delete entryAntes._intervalo
+                }
 
-              if (wasExpanded) {
-                const newContainer = popup.getElement().querySelector(`#popup-unidad-${unidadId}`)
-                if (newContainer) {
-                  newContainer.classList.add('expanded')
+                popup.setHTML(crearPopupUnidad(unidad))
+
+                if (wasExpanded) {
+                  const newContainer = popup
+                    .getElement()
+                    ?.querySelector(`#popup-unidad-${unidadId}`)
+                  if (newContainer) newContainer.classList.add('expanded')
+                }
+
+                // Re-arrancar intervalo después del setHTML
+                const entryDespues = tiemposParado.get(unidadId)
+                if (entryDespues) {
+                  if (entryDespues._intervalo) clearInterval(entryDespues._intervalo)
+                  entryDespues._intervalo = setInterval(() => {
+                    const el = popup
+                      .getElement()
+                      ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId}"]`)
+                    if (!el) {
+                      clearInterval(entryDespues._intervalo)
+                      delete entryDespues._intervalo
+                      return
+                    }
+                    el.textContent = formatearTiempo(
+                      Math.floor((Date.now() - entryDespues.desde) / 1000),
+                    )
+                  }, 1000)
                 }
               }
             }
@@ -657,6 +1104,9 @@ export function useMapboxGL() {
               lng,
               estado: unidad.estado,
               direccionTexto: unidad.direccionTexto,
+              timestamp: unidad.timestamp,
+              ignicion: unidad.ignicion,
+              velocidad: unidad.velocidad,
             })
           }
         }
@@ -671,13 +1121,76 @@ export function useMapboxGL() {
 
         popup.on('open', () => {
           registrarPopupActivo(popup)
+
+          // Si la dirección aún dice "Obteniendo..." pero ya tenemos una en cache, aplicarla
+          const cached = ultimasPosiciones.get(unidadId)
+          if (cached?.direccionTexto) {
+            const popupEl = popup.getElement()
+            if (popupEl) {
+              const dirEl = popupEl.querySelector('.unidad-direccion')
+              if (dirEl && dirEl.textContent === 'Obteniendo...') {
+                dirEl.textContent = cached.direccionTexto
+              }
+            }
+          } else if (!cached?.direccionTexto) {
+            // No tenemos dirección todavía → disparar geocoding ahora
+            const lngLat = marcadoresUnidades.value[unidadId]?.getLngLat()
+            if (lngLat) {
+              _obtenerDireccion({ lat: lngLat.lat, lng: lngLat.lng }).then((direccion) => {
+                const c = ultimasPosiciones.get(unidadId)
+                if (c) c.direccionTexto = direccion
+
+                const popupEl = popup.getElement()
+                if (popupEl) {
+                  const dirEl = popupEl.querySelector('.unidad-direccion')
+                  if (dirEl) dirEl.textContent = direccion
+                }
+              })
+            }
+          }
+          const unidadId2 = unidad.unidadId || unidad.id
+          const entry = tiemposParado.get(unidadId2)
+          if (entry) {
+            // Limpiar intervalo previo SIN EXCEPCIÓN
+            if (entry._intervalo) {
+              clearInterval(entry._intervalo)
+              delete entry._intervalo
+            }
+            // Actualizar inmediatamente antes de arrancar el intervalo
+            const elInicial = popup
+              .getElement()
+              ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+            if (elInicial) {
+              elInicial.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+            }
+            entry._intervalo = setInterval(() => {
+              const el = popup
+                .getElement()
+                ?.querySelector(`.popup-tiempo-valor[data-unidad-id="${unidadId2}"]`)
+              if (!el) {
+                clearInterval(entry._intervalo)
+                delete entry._intervalo
+                return
+              }
+              el.textContent = formatearTiempo(Math.floor((Date.now() - entry.desde) / 1000))
+            }, 1000)
+          }
         })
 
         const element = crearIconoUnidad(unidad)
 
-        //  APLICAR FILTRO AL CREAR
         if (!debeEstarVisible(unidadId)) {
           element.style.display = 'none'
+        }
+
+        if (!element._listenerRegistrado) {
+          element._listenerRegistrado = true
+          element.addEventListener('mousedown', () => {
+            window._clickEnUnidad = true
+            setTimeout(() => {
+              window._clickEnUnidad = false
+            }, 150)
+          })
         }
 
         const marker = new mapboxgl.Marker({
@@ -687,6 +1200,22 @@ export function useMapboxGL() {
           .setLngLat([lng, lat])
           .setPopup(popup)
           .addTo(map.value)
+        if (!unidad.direccionTexto) {
+          _obtenerDireccion({ lat, lng }).then((direccion) => {
+            // Guardar en cache para que el popup la tenga al abrirse
+            const posCache = ultimasPosiciones.get(unidadId)
+            if (posCache) posCache.direccionTexto = direccion
+
+            // Actualizar DOM si el popup YA está abierto
+            const popupEl = popup.getElement()
+            if (popupEl) {
+              const dirEl = popupEl.querySelector('.unidad-direccion')
+              if (dirEl) dirEl.textContent = direccion
+            }
+          })
+        }
+
+        marcadoresUnidades.value[unidadId] = marker
 
         marcadoresUnidades.value[unidadId] = marker
         ultimasPosiciones.set(unidadId, {
@@ -694,6 +1223,9 @@ export function useMapboxGL() {
           lng,
           estado: unidad.estado,
           direccionTexto: unidad.direccionTexto,
+          timestamp: unidad.timestamp,
+          ignicion: unidad.ignicion,
+          velocidad: unidad.velocidad,
         })
       }
     })
@@ -741,15 +1273,15 @@ export function useMapboxGL() {
       })
     }
   }
+
   const limpiarMarcadoresUnidades = () => {
     if (!map.value) return
-
     Object.values(marcadoresUnidades.value).forEach((marcador) => {
       marcador.remove()
     })
-
     marcadoresUnidades.value = {}
     ultimasPosiciones.clear()
+    tiemposParado.clear() // ← AGREGAR
     pendingUnidades = null
     pendingUpdate = false
   }
@@ -900,9 +1432,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
   }
 
-  function actualizarMarcadorConCirculo(lat, lng, nombre, direccion, radio) {
+  function actualizarMarcadorConCirculo() {
     if (!map.value) return
-    console.log(` Marcador y círculo actualizados: ${nombre} (${radio}m)`)
   }
 
   //  MODO SELECCIÓN SIMPLE (POI)
@@ -933,7 +1464,7 @@ export function useMapboxGL() {
         .setLngLat([lng, lat])
         .addTo(map.value)
 
-      const direccionObtenida = await obtenerDireccion(lat, lng)
+      const direccionObtenida = await _obtenerDireccion({ lat, lng })
       ubicacionSeleccionada.value = {
         coordenadas: { lat, lng },
         direccion: direccionObtenida,
@@ -1016,7 +1547,7 @@ export function useMapboxGL() {
 
       circuloTemporal.value = { id: circleId }
 
-      const direccionObtenida = await obtenerDireccion(lat, lng)
+      const direccionObtenida = await _obtenerDireccion({ lat, lng })
       ubicacionSeleccionada.value = {
         tipo: 'circular',
         coordenadas: { lat, lng },
@@ -1039,9 +1570,8 @@ export function useMapboxGL() {
     ubicacionSeleccionada.value = null
   }
 
-  const confirmarCirculoTemporal = (nombre) => {
+  const confirmarCirculoTemporal = () => {
     if (circuloTemporal.value && ubicacionSeleccionada.value) {
-      console.log(` Círculo confirmado: ${nombre}`, ubicacionSeleccionada.value)
       limpiarCirculoTemporal()
     }
   }
@@ -1241,9 +1771,8 @@ export function useMapboxGL() {
     }
   }
 
-  const confirmarPoligonoTemporal = (nombre) => {
+  const confirmarPoligonoTemporal = () => {
     if (poligonoTemporal.value && puntosPoligono.value.length >= 3) {
-      console.log(`Polígono confirmado: ${nombre}`, puntosPoligono.value)
       limpiarPoligonoTemporal()
     }
   }
@@ -1338,20 +1867,6 @@ export function useMapboxGL() {
         'line-width': 3,
       },
     })
-  }
-
-  //  OBTENER DIRECCIÓN
-  const obtenerDireccion = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`,
-      )
-      const data = await response.json()
-      return data.features[0]?.place_name || 'Dirección no disponible'
-    } catch (error) {
-      console.error('Error obteniendo dirección:', error)
-      return 'Error al obtener dirección'
-    }
   }
 
   //  CAMBIAR ESTILO DEL MAPA (NUEVO)
@@ -1481,8 +1996,7 @@ export function useMapboxGL() {
         delete window._mapMoveEndHandler
       }
 
-      mapboxgl.accessToken =
-        'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+      mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
       map.value = new mapboxgl.Map({
         container: containerId,
@@ -1493,7 +2007,7 @@ export function useMapboxGL() {
         hash: false,
         preserveDrawingBuffer: false,
         refreshExpiredTiles: false,
-        maxTileCacheSize: 100,
+        maxTileCacheSize: 500,
         minZoom: 5,
         maxZoom: 18,
         //  OPTIMIZACIONES ADICIONALES v2
@@ -1517,7 +2031,7 @@ export function useMapboxGL() {
           if (resourceType === 'Tile') {
             return {
               url: url,
-              headers: { 'Cache-Control': 'max-age=3600' },
+              //headers: { 'Cache-Control': 'max-age=3600' },
             }
           }
         },
@@ -1630,20 +2144,18 @@ export function useMapboxGL() {
         isPanning = true
         pendingUpdate = false
 
-        if (map.value.getCanvas()) {
-          map.value.getCanvas().style.imageRendering = 'auto'
-        }
-
-        Object.values(marcadoresUnidades.value).forEach((marker) => {
-          const el = marker.getElement()
-          if (el) {
-            el.style.transition = 'none'
-          }
+        // Cancelar animaciones durante panning
+        animacionesActivas.forEach((rafId) => {
+          cancelAnimationFrame(rafId)
         })
+        animacionesActivas.clear()
 
-        //  Ocultar layers combinados (MUCHO más rápido que 181 layers)
+        // Ocultar marcadores DOM durante panning
+
         const layersToHide = [
-          'pois-combined',
+          'pois-circles',
+          'pois-symbols',
+          'geozonas-symbols',
           'geozonas-circulares-combined',
           'geozonas-poligonales-combined-fill',
           'geozonas-poligonales-combined-outline',
@@ -1666,21 +2178,14 @@ export function useMapboxGL() {
             map.value.getCanvas().style.imageRendering = 'crisp-edges'
           }
 
-          Object.values(marcadoresUnidades.value).forEach((marker) => {
-            const el = marker.getElement()
-            if (el) {
-              el.style.transition = 'transform 0.3s ease-out'
-            }
-          })
-
-          //  Mostrar layers combinados de nuevo
           const layersToShow = [
-            'pois-combined',
+            'pois-circles',
+            'pois-symbols',
+            'geozonas-symbols',
             'geozonas-circulares-combined',
             'geozonas-poligonales-combined-fill',
             'geozonas-poligonales-combined-outline',
           ]
-
           layersToShow.forEach((layerId) => {
             if (map.value.getLayer(layerId)) {
               map.value.setLayoutProperty(layerId, 'visibility', 'visible')
@@ -1690,13 +2195,13 @@ export function useMapboxGL() {
           if (pendingUnidades) {
             procesarActualizacionMarcadores(pendingUnidades)
           }
-
-          if (map.value) {
-            requestAnimationFrame(() => {
-              map.value.triggerRepaint()
-            })
-          }
         }, 50)
+      })
+      map.value.on('click', (e) => {
+        if (window._clickEnUnidad) return
+        if (!e.originalEvent.target.closest('.custom-marker-unidad')) {
+          cerrarPopupGlobal()
+        }
       })
 
       let zoomTimeout
@@ -1724,7 +2229,6 @@ export function useMapboxGL() {
         //  REDUCIDO DE 150ms A 50ms
         zoomTimeout = setTimeout(() => {
           if (map.value) {
-            map.value.triggerRepaint()
             if (pendingUnidades) {
               procesarActualizacionMarcadores(pendingUnidades)
             }
@@ -1781,6 +2285,7 @@ export function useMapboxGL() {
       //  Crear objeto mapaAPI con todas las funciones
       const mapaAPI = {
         map: map.value,
+        marcadoresUnidades,
         resize: () => {
           if (map.value && map.value.resize) {
             map.value.resize()
@@ -1791,25 +2296,18 @@ export function useMapboxGL() {
         desactivarModoSeleccion,
         getUbicacionSeleccionada: () => ubicacionSeleccionada.value,
         limpiarMarcadorTemporal,
-        confirmarMarcadorTemporal: (nombre) => {
+        confirmarMarcadorTemporal: () => {
           if (ubicacionSeleccionada.value) {
-            console.log(` Marcador confirmado: ${nombre}`)
             limpiarMarcadorTemporal()
           }
         },
-        actualizarMarcador: (_lat, _lng, nombre) => {
-          console.log(`Actualizando marcador: ${nombre}`)
-        },
-        eliminarMarcadorPorCoordenadas: (lat, lng) => {
-          console.log(`Eliminando marcador en: ${lat}, ${lng}`)
-        },
+        actualizarMarcador: () => {},
+        eliminarMarcadorPorCoordenadas: () => {},
         activarModoSeleccionGeozonaCircular,
         limpiarCirculoTemporal,
         confirmarCirculoTemporal,
         actualizarCirculo,
-        eliminarCirculo: (id) => {
-          console.log(`Eliminando círculo con ID: ${id}`)
-        },
+        eliminarCirculo: () => {},
         activarModoSeleccionGeozonaPoligonal,
         getPuntosSeleccionados: () => puntosPoligono.value,
         isPoligonoFinalizado: () => poligonoFinalizado.value,
@@ -1819,9 +2317,7 @@ export function useMapboxGL() {
         actualizarPoligono,
         actualizarPoligonoTemporal,
         actualizarColorPoligonoTemporal,
-        eliminarPoligono: (id) => {
-          console.log(`Eliminando polígono con ID: ${id}`)
-        },
+        eliminarPoligono: () => {},
         crearCirculoTemporalPOI,
         actualizarRadioCirculoTemporal,
         limpiarCirculoTemporalPOI,
@@ -1899,6 +2395,10 @@ export function useMapboxGL() {
 
   const cleanup = () => {
     limpiarMarcadoresUnidades()
+    tiemposParado.forEach((entry) => {
+      if (entry._intervalo) clearInterval(entry._intervalo)
+    })
+    tiemposParado.clear()
     ultimasPosiciones.clear()
     cerrarPopupGlobal()
 
@@ -1965,6 +2465,18 @@ export function useMapboxGL() {
     b = Math.floor(b * (1 - porcentaje / 100))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
   }
+  function calcularDistanciaKm(lat1, lng1, lat2, lng2) {
+    const R = 6371
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLng = ((lng2 - lng1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2)
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
 
   const eliminarMarcadorUnidad = (unidadId) => {
     if (!map.value) {
@@ -2007,25 +2519,18 @@ export function useMapboxGL() {
     desactivarModoSeleccion,
     getUbicacionSeleccionada: () => ubicacionSeleccionada.value,
     limpiarMarcadorTemporal,
-    confirmarMarcadorTemporal: (nombre) => {
+    confirmarMarcadorTemporal: () => {
       if (ubicacionSeleccionada.value) {
-        console.log(`Marcador confirmado: ${nombre}`)
         limpiarMarcadorTemporal()
       }
     },
-    actualizarMarcador: (_lat, _lng, nombre) => {
-      console.log(`Actualizando marcador: ${nombre}`)
-    },
-    eliminarMarcadorPorCoordenadas: (lat, lng) => {
-      console.log(`Eliminando marcador en: ${lat}, ${lng}`)
-    },
+    actualizarMarcador: () => {},
+    eliminarMarcadorPorCoordenadas: () => {},
     activarModoSeleccionGeozonaCircular,
     limpiarCirculoTemporal,
     confirmarCirculoTemporal,
     actualizarCirculo,
-    eliminarCirculo: (id) => {
-      console.log(`Eliminando círculo con ID: ${id}`)
-    },
+    eliminarCirculo: () => {},
     activarModoSeleccionGeozonaPoligonal,
     getPuntosSeleccionados: () => puntosPoligono.value,
     isPoligonoFinalizado: () => poligonoFinalizado.value,
@@ -2034,9 +2539,7 @@ export function useMapboxGL() {
     confirmarPoligonoTemporal,
     actualizarPoligono,
     actualizarPoligonoTemporal,
-    eliminarPoligono: (id) => {
-      console.log(`Eliminando polígono con ID: ${id}`)
-    },
+    eliminarPoligono: () => {},
     crearCirculoTemporalPOI,
     actualizarRadioCirculoTemporal,
     limpiarCirculoTemporalPOI,

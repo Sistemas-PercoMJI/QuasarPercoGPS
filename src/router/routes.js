@@ -8,6 +8,10 @@ const routes = [
     component: () => import('pages/Login.vue'),
   },
   {
+    path: '/recuperar-password',
+    component: () => import('pages/RecuperarPassword.vue'),
+  },
+  {
     path: '/dashboard',
     component: () => import('layouts/MainLayout.vue'),
     children: [

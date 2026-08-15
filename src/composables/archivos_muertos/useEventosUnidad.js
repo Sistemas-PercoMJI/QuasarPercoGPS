@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore'
-import { useGeocoding } from './useGeocoding' //  Importar geocoding
+import { useGeocoding } from '../useGeocoding' //  Importar geocoding
 
 export function useEventosUnidad() {
   const loading = ref(false)
@@ -156,13 +156,16 @@ export function useEventosUnidad() {
           ubicacion: direccion, //  Dirección geocodificada
           coordenadas: { lat, lng },
           fechaTexto,
-          conductorNombre: 'Conductor', // Puedes agregarlo si está disponible
+          conductorNombre: data.conductorNombre || 'Conductor', // también este está hardcodeado
           color,
           icono,
           mapaUrl,
           accion: data.TipoEvento, // Para filtrar
           geozonaNombre: data.GeozonaNombre,
           tipoUbicacion: data.tipoUbicacion,
+          ignicion: data.Ignicion ?? false,
+          velocidad: data.Velocidad || 0,
+          kilometraje: data.Kilometraje || null,
           _raw: data,
         }
       })
@@ -324,12 +327,8 @@ export function useEventosUnidad() {
   //  FUNCIONES AUXILIARES NUEVAS
   // ========================================
 
-  /**
-   * Genera URL de mapa estático de Mapbox
-   */
   const generarMapaEstatico = (lat, lng, color) => {
-    const accessToken =
-      'pk.eyJ1IjoiY29uY2F6ZWQiLCJhIjoiY200MnE0cnNkMGduNzJrczhtZzh4c2JiNSJ9.3x7HwvZNxr4Tsr6KGLCWeg'
+    const accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
     const pinColor = color === 'green' ? '4CAF50' : color === 'red' ? 'F44336' : '00BCD4'
 

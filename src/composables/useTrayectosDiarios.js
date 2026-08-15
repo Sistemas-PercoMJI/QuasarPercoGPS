@@ -3,11 +3,13 @@ import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
 import { doc, getDoc } from 'firebase/firestore'
 import { useGeocoding } from './useGeocoding'
+import { useSortTimestamp } from './useSortTimestamp'
 
 export function useTrayectosDiarios() {
   const loading = ref(false)
   const error = ref(null)
   const { obtenerDireccion } = useGeocoding()
+  const { sortPorTimestamp } = useSortTimestamp()
 
   /**
    * Calcula distancia entre dos puntos (fórmula Haversine)
@@ -35,7 +37,13 @@ export function useTrayectosDiarios() {
       (new Date(coord2.timestamp).getTime() - new Date(coord1.timestamp).getTime()) / 3600000
 
     if (tiempoHoras <= 0) return 0
-    return distanciaKm / tiempoHoras // km/h
+
+    const velocidad = distanciaKm / tiempoHoras
+
+    // Filtrar velocidades imposibles para vehiculos terrestres
+    if (velocidad > 200) return 0
+
+    return velocidad
   }
 
   /**
@@ -66,16 +74,18 @@ export function useTrayectosDiarios() {
           const lat = coord.lat || coord.latitude
           const lng = coord.lng || coord.longitude || coord.lon
           const timestamp = coord.timestamp || coord.time
+          // 🆕 Ignorar timestamps con Z (son del buffer del servidor)
+          if (timestamp && timestamp.endsWith('Z')) return false
           return lat && lng && timestamp
         })
         .map((coord) => ({
           lat: coord.lat || coord.latitude,
           lng: coord.lng || coord.longitude || coord.lon,
           timestamp: coord.timestamp || coord.time,
+          ignicion: coord.ignicion,
+          velocidad: coord.velocidad,
         }))
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-
-      return coordenadasNormalizadas
+      return sortPorTimestamp(coordenadasNormalizadas)
     } catch (err) {
       console.error(' Error descargando coordenadas:', err)
       return []
@@ -106,101 +116,179 @@ export function useTrayectosDiarios() {
     return coordenadasEnriquecidas
   }
 
+  const detectarViajesPorVelocidad = (coordenadas) => {
+    const UMBRAL_KMH = 7
+    const GAP_DETENCION_MS = 5 * 60 * 1000
+
+    const viajes = []
+    let viajeActual = []
+    let inicioParada = null
+    let indiceUltimoMovimiento = -1 // ✅ rastrear último punto con velocidad
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const c = coordenadas[i]
+      const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
+
+      if (enMovimiento) {
+        inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length // ✅ posición dentro del viaje actual
+        viajeActual.push(c)
+      } else {
+        if (viajeActual.length === 0) continue
+
+        if (inicioParada === null) {
+          inicioParada = new Date(c.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          // ✅ Cortar en el último punto con movimiento, no en el punto parado
+          const viajeHastaMovimiento = viajeActual.slice(0, indiceUltimoMovimiento + 1)
+          if (viajeHastaMovimiento.length >= 2) viajes.push([...viajeHastaMovimiento])
+          viajeActual = []
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        } else {
+          // Parada breve (semáforo, tope) → mantener en viaje
+          viajeActual.push(c)
+        }
+      }
+    }
+
+    // Cerrar viaje abierto → también cortar en último movimiento
+    if (viajeActual.length >= 2) {
+      const viajeHastaMovimiento =
+        indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+      if (viajeHastaMovimiento.length >= 2) viajes.push(viajeHastaMovimiento)
+    }
+
+    return viajes.length > 0 ? viajes : [coordenadas]
+  }
+
   /**
    * Analiza coordenadas y genera trayectos (viajes separados por paradas)
+   */
+  // DESPUÉS
+  const agruparEnViajes = (coordenadas) => {
+    if (!coordenadas || coordenadas.length === 0) return []
+
+    // 🆕 Detectar si hay movimiento real con ignición apagada
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
+
+    // 🆕 Si hay movimiento real pero nunca hubo ignición true → segmentar por velocidad
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      return detectarViajesPorVelocidad(coordenadas)
+    }
+
+    // Lógica original por ignición — pero SIN descartar coords con ignicion:false + velocidad
+    const viajes = []
+    let viajeActual = []
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const punto = coordenadas[i]
+      const ignicion = punto.ignicion === true || punto.ignicion === 'true'
+
+      if (ignicion) {
+        viajeActual.push(punto)
+      } else {
+        // 🆕 Si tiene velocidad real aunque ignición esté apagada, mantener en viaje activo
+        const tieneMovimiento = (punto.velocidad || 0) > 7
+        if (tieneMovimiento && viajeActual.length > 0) {
+          viajeActual.push(punto)
+          continue
+        }
+
+        const siguiente = coordenadas[i + 1]
+
+        if (!siguiente) {
+          if (viajeActual.length >= 2) viajes.push(viajeActual)
+          viajeActual = []
+        } else {
+          const siguienteIgnicion = siguiente.ignicion === true || siguiente.ignicion === 'true'
+          const gap = new Date(siguiente.timestamp).getTime() - new Date(punto.timestamp).getTime()
+
+          if (!siguienteIgnicion || gap >= 2 * 60 * 1000) {
+            if (viajeActual.length >= 2) viajes.push(viajeActual)
+            viajeActual = []
+          }
+          // gap < 2 min y siguiente tiene ignición → apagón momentáneo, continuar
+        }
+      }
+    }
+
+    if (viajeActual.length >= 2) viajes.push(viajeActual)
+    return viajes
+  }
+
+  /**
+   * Analiza coordenadas y genera trayectos separados por ignicion
    */
   const analizarTrayectos = (coordenadas) => {
     if (!coordenadas || coordenadas.length < 2) return []
 
-    //  Primero calcular velocidades
-    const coordsConVelocidad = enriquecerCoordenadasConVelocidad(coordenadas)
+    // 🆕 Detectar el caso: hay movimiento real pero nunca hubo ignición true
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true || c.ignicion === 'true')
 
-    const trayectos = []
-    let trayectoActual = {
-      inicio: null,
-      fin: null,
-      coordenadas: [],
-      distancia: 0,
-      velocidadMax: 0,
-      velocidadPromedio: 0,
+    let gruposDeViaje = []
+
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      // 🆕 Sin ignición cableada pero con movimiento → segmentar por velocidad
+      gruposDeViaje = detectarViajesPorVelocidad(coordenadas)
+    } else if (conIgnicionTrue.length > 0) {
+      // Tiene ignición true → lógica original por ignición
+      gruposDeViaje = agruparEnViajes(coordenadas)
+    } else {
+      // Sin movimiento ni ignición → todo como un grupo
+      gruposDeViaje = [coordenadas]
     }
 
-    let enMovimiento = false
-    const UMBRAL_PARADA = 5 // km/h
-    const MIN_COORDS_TRAYECTO = 5
+    // Procesar cada grupo como un trayecto independiente
+    return gruposDeViaje
+      .map((puntosViaje) => {
+        if (puntosViaje.length < 2) return null
 
-    for (let i = 0; i < coordsConVelocidad.length; i++) {
-      const coord = coordsConVelocidad[i]
-      const velocidad = coord.velocidad || 0
+        const puntosOrdenados = sortPorTimestamp(puntosViaje)
+        const coordsConVelocidad = enriquecerCoordenadasConVelocidad(puntosOrdenados)
 
-      // Detectar inicio de movimiento
-      if (!enMovimiento && velocidad > UMBRAL_PARADA) {
-        enMovimiento = true
-        trayectoActual.inicio = coord
-        trayectoActual.coordenadas = [coord]
-      }
+        let distancia = 0
+        let velocidadMax = 0
+        const velocidades = []
 
-      // Si está en movimiento, agregar coordenada
-      if (enMovimiento) {
-        trayectoActual.coordenadas.push(coord)
-        trayectoActual.velocidadMax = Math.max(trayectoActual.velocidadMax, velocidad)
+        for (let i = 1; i < coordsConVelocidad.length; i++) {
+          const prev = coordsConVelocidad[i - 1]
+          const curr = coordsConVelocidad[i]
+          distancia += calcularDistancia(prev.lat, prev.lng, curr.lat, curr.lng)
 
-        // Calcular distancia
-        if (trayectoActual.coordenadas.length > 1) {
-          const prev = trayectoActual.coordenadas[trayectoActual.coordenadas.length - 2]
-          const dist = calcularDistancia(prev.lat, prev.lng, coord.lat, coord.lng)
-          trayectoActual.distancia += dist
-        }
-      }
-
-      // Detectar parada (velocidad baja por tiempo prolongado)
-      if (enMovimiento && velocidad <= UMBRAL_PARADA) {
-        // Verificar si los siguientes 3 puntos también están parados
-        const siguientesParados = coordsConVelocidad
-          .slice(i, i + 3)
-          .every((c) => (c.velocidad || 0) <= UMBRAL_PARADA)
-
-        if (siguientesParados) {
-          trayectoActual.fin = coord
-
-          // Calcular velocidad promedio
-          const velocidades = trayectoActual.coordenadas
-            .map((c) => c.velocidad || 0)
-            .filter((v) => v > 0)
-          trayectoActual.velocidadPromedio =
-            velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
-
-          // Guardar trayecto solo si tiene suficientes coordenadas
-          if (trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
-            trayectos.push({ ...trayectoActual })
-          }
-
-          // Resetear
-          enMovimiento = false
-          trayectoActual = {
-            inicio: null,
-            fin: null,
-            coordenadas: [],
-            distancia: 0,
-            velocidadMax: 0,
-            velocidadPromedio: 0,
+          const vel = curr.velocidad || 0
+          if (vel > 0) {
+            velocidades.push(vel)
+            if (vel > velocidadMax) velocidadMax = vel
           }
         }
-      }
-    }
 
-    // Si quedó un trayecto activo al final
-    if (enMovimiento && trayectoActual.coordenadas.length >= MIN_COORDS_TRAYECTO) {
-      trayectoActual.fin = coordsConVelocidad[coordsConVelocidad.length - 1]
-      const velocidades = trayectoActual.coordenadas
-        .map((c) => c.velocidad || 0)
-        .filter((v) => v > 0)
-      trayectoActual.velocidadPromedio =
-        velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
-      trayectos.push(trayectoActual)
-    }
+        const velocidadPromedio =
+          velocidades.length > 0 ? velocidades.reduce((a, b) => a + b, 0) / velocidades.length : 0
 
-    return trayectos
+        return {
+          inicio: coordsConVelocidad[0],
+          fin: coordsConVelocidad[coordsConVelocidad.length - 1],
+          coordenadas: coordsConVelocidad,
+          distancia,
+          velocidadMax,
+          velocidadPromedio,
+        }
+      })
+      .filter(Boolean)
+      .filter((t) => {
+        const duracionMs =
+          new Date(t.fin.timestamp).getTime() - new Date(t.inicio.timestamp).getTime()
+        const duracionMin = duracionMs / 60000
+        if (t.distancia < 0.5 && duracionMin > 10) return false
+        return true
+      })
   }
 
   /**
@@ -242,25 +330,42 @@ export function useTrayectosDiarios() {
 
       // Analizar trayectos
       const trayectos = analizarTrayectos(coordenadas)
-
       // Generar resumen
       const resumen = await generarResumenDesdeData(data, trayectos)
 
+      const trayectosMapeados = trayectos.map((t, index) => ({
+        id: `trayecto_${fechaStr}_${index}`,
+        titulo: `Viaje ${index + 1}`,
+        horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
+        horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
+        duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
+        distancia: `${t.distancia.toFixed(2)} km`,
+        coordenadas: t.coordenadas,
+        icono: 'navigation',
+        color: 'green',
+        direccionInicio: null,
+        direccionFin: null,
+        inicio: t.inicio,
+        fin: t.fin,
+      }))
+
+      const trayectosConDirecciones = await Promise.all(
+        trayectosMapeados.map(async (t) => {
+          const [dirInicio, dirFin] = await Promise.all([
+            obtenerDireccion({ lat: t.inicio.lat, lng: t.inicio.lng }),
+            obtenerDireccion({ lat: t.fin.lat, lng: t.fin.lng }),
+          ])
+          return {
+            ...t,
+            direccionInicio: dirInicio,
+            direccionFin: dirFin,
+          }
+        }),
+      )
+
       return {
         existenDatos: true,
-        trayectos: trayectos.map((t, index) => ({
-          id: `trayecto_${fechaStr}_${index}`,
-          titulo: `Viaje ${index + 1}`,
-          horaInicio: t.inicio.timestamp ? formatearHora(t.inicio.timestamp) : 'N/A',
-          horaFin: t.fin.timestamp ? formatearHora(t.fin.timestamp) : 'N/A',
-          duracion: calcularDuracionTrayecto(t.inicio.timestamp, t.fin.timestamp),
-          distancia: `${t.distancia.toFixed(2)} km`,
-          velocidadMax: `${Math.round(t.velocidadMax)} km/h`,
-          velocidadPromedio: `${Math.round(t.velocidadPromedio)} km/h`,
-          coordenadas: t.coordenadas,
-          icono: 'navigation',
-          color: 'green',
-        })),
+        trayectos: trayectosConDirecciones,
         resumen,
       }
     } catch (err) {
@@ -285,7 +390,7 @@ export function useTrayectosDiarios() {
 
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'WebGpsPerco/1.0', // Nominatim requiere User-Agent
+          'User-Agent': 'WebGpsPerco/1.0',
         },
       })
 
@@ -366,10 +471,7 @@ export function useTrayectosDiarios() {
   }
 
   const formatearFechaParaFirestore = (fecha) => {
-    const año = fecha.getFullYear()
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
-    const dia = String(fecha.getDate()).padStart(2, '0')
-    return `${año}-${mes}-${dia}`
+    return fecha.toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
   }
 
   const formatearHora = (timestamp) => {
@@ -379,6 +481,7 @@ export function useTrayectosDiarios() {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZone: 'America/Tijuana',
     })
   }
 

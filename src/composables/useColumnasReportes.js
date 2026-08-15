@@ -61,6 +61,16 @@ export const COLUMNAS_DEFAULT = {
     'Duración dentro del horario comercial',
     'Duración fuera del horario comercial',
   ],
+  ignicion_dia: [
+    'Fecha',
+    'Unidad',
+    'Placa',
+    'Conductor',
+    'Primera ignición',
+    'Lugar primera ignición',
+    'Última ignición',
+    'Lugar última ignición',
+  ],
 }
 /**
  * ============================================
@@ -431,20 +441,9 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeInicio',
     label: 'Kilometraje al inicio',
     obtenerValor: (trayecto) => {
-      //  PRIORIDAD 1: Usar odómetro del hardware si existe
-      if (
-        trayecto.odometroInicio !== null &&
-        trayecto.odometroInicio !== undefined &&
-        trayecto.odometroInicio > 0
-      ) {
-        return `${trayecto.odometroInicio} km`
+      if (trayecto.kilometrajeInicio !== null && trayecto.kilometrajeInicio !== undefined) {
+        return `${trayecto.kilometrajeInicio} km`
       }
-
-      //  PRIORIDAD 2: Usar odómetro virtual como fallback
-      if (trayecto.odometroVirtual !== null && trayecto.odometroVirtual !== undefined) {
-        return `${trayecto.odometroVirtual} km`
-      }
-
       return 'N/A'
     },
     ancho: 150,
@@ -488,26 +487,9 @@ const COLUMNAS_TRAYECTOS = {
     key: 'kilometrajeFinal',
     label: 'Kilometraje al final',
     obtenerValor: (trayecto) => {
-      //  PRIORIDAD 1: Usar odómetro del hardware si existe
-      if (
-        trayecto.odometroFin !== null &&
-        trayecto.odometroFin !== undefined &&
-        trayecto.odometroFin > 0
-      ) {
-        return `${trayecto.odometroFin} km`
+      if (trayecto.kilometrajeFinal !== null && trayecto.kilometrajeFinal !== undefined) {
+        return `${trayecto.kilometrajeFinal} km`
       }
-
-      //  PRIORIDAD 2: Calcular con odómetro virtual
-      if (
-        trayecto.odometroVirtual !== null &&
-        trayecto.odometroVirtual !== undefined &&
-        trayecto.kilometrajeRecorrido !== null &&
-        trayecto.kilometrajeRecorrido !== undefined
-      ) {
-        const kmFinal = trayecto.odometroVirtual + trayecto.kilometrajeRecorrido
-        return `${kmFinal.toFixed(2)} km`
-      }
-
       return 'N/A'
     },
     ancho: 150,
@@ -762,6 +744,64 @@ const COLUMNAS_HORAS_TRABAJO = {
   Conductor: COLUMNAS_COMPARTIDAS['Conductor'],
 }
 
+//COLUMNAS PARA INFORME DE PRIMERA/ÚLTIMA IGNICIÓN
+const COLUMNAS_IGNICION_DIA = {
+  // ── Columnas compartidas (reutilizadas directamente) ──────────────────────
+  Fecha: COLUMNAS_HORAS_TRABAJO['Fecha'], // misma lógica: YYYY-MM-DD → DD/MM/YYYY
+  Unidad: COLUMNAS_COMPARTIDAS['Vehículo'],
+  Placa: COLUMNAS_COMPARTIDAS['Placa'],
+  Conductor: COLUMNAS_COMPARTIDAS['Conductor'],
+
+  // ── Columnas específicas de este reporte ──────────────────────────────────
+  'Primera ignición': {
+    key: 'primeraIgnicion',
+    label: 'Primera ignición',
+    obtenerValor: (dato) => dato.horasPrimeraIgnicion || 'N/A',
+    ancho: 120,
+    formato: 'texto',
+  },
+
+  'Lugar primera ignición': {
+    key: 'lugarPrimeraIgnicion',
+    label: 'Lugar primera ignición',
+    obtenerValor: (dato) => dato.lugarPrimeraIgnicion || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  'Última ignición': {
+    key: 'ultimaIgnicion',
+    label: 'Última ignición',
+    obtenerValor: (dato) => dato.horasUltimaIgnicion || 'N/A',
+    ancho: 120,
+    formato: 'texto',
+  },
+
+  'Lugar última ignición': {
+    key: 'lugarUltimaIgnicion',
+    label: 'Lugar última ignición',
+    obtenerValor: (dato) => dato.lugarUltimaIgnicion || 'N/A',
+    ancho: 250,
+    formato: 'texto',
+  },
+
+  'Tiempo en operación': {
+    key: 'tiempoOperacion',
+    label: 'Tiempo en operación',
+    obtenerValor: (dato) => {
+      if (!dato.primeraIgnicionTimestamp || !dato.ultimaIgnicionTimestamp) return 'N/A'
+      const ms = dato.ultimaIgnicionTimestamp - dato.primeraIgnicionTimestamp
+      if (ms <= 0) return 'N/A'
+      const h = Math.floor(ms / 3600000)
+      const m = Math.floor((ms % 3600000) / 60000)
+      const s = Math.floor((ms % 60000) / 1000)
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    },
+    ancho: 130,
+    formato: 'texto',
+  },
+}
+
 /**
  * ============================================
  * CONFIGURACIÓN DE COLUMNAS POR TIPO
@@ -771,6 +811,7 @@ export const COLUMNAS_POR_TIPO = {
   eventos: COLUMNAS_EVENTOS,
   trayectos: COLUMNAS_TRAYECTOS,
   horas_trabajo: COLUMNAS_HORAS_TRABAJO,
+  ignicion_dia: COLUMNAS_IGNICION_DIA,
 }
 
 /**
@@ -902,6 +943,17 @@ export function useColumnasReportes() {
       fila.unidad = dato.unidadNombre || dato.unidad
       fila.placa = dato.unidadPlaca || dato.placa
 
+      // ── Campos extra para ignicion_dia ────────────────────────────────────
+      // El PDF/Excel los necesita para pintar los dos marcadores del mapa
+      if (dato.latPrimera !== undefined) {
+        fila.latPrimera = dato.latPrimera
+        fila.lngPrimera = dato.lngPrimera
+        fila.latUltima = dato.latUltima
+        fila.lngUltima = dato.lngUltima
+        fila.primeraIgnicionTimestamp = dato.primeraIgnicionTimestamp
+        fila.ultimaIgnicionTimestamp = dato.ultimaIgnicionTimestamp
+      }
+
       return fila
     })
   }
@@ -989,4 +1041,10 @@ export function useColumnasReportes() {
 }
 
 // Exportar columnas por tipo para uso directo si se necesita
-export { COLUMNAS_EVENTOS, COLUMNAS_TRAYECTOS, COLUMNAS_HORAS_TRABAJO, COLUMNAS_COMPARTIDAS }
+export {
+  COLUMNAS_EVENTOS,
+  COLUMNAS_TRAYECTOS,
+  COLUMNAS_HORAS_TRABAJO,
+  COLUMNAS_COMPARTIDAS,
+  COLUMNAS_IGNICION_DIA,
+}

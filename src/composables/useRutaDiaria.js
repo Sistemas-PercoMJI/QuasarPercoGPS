@@ -97,6 +97,8 @@ export function useRutaDiaria() {
           datosCoordenada.nuevaCoordenada?.timestamp ||
           datosCoordenada.timestamp ||
           new Date().toISOString(),
+        ignicion: datosCoordenada.nuevaCoordenada?.ignicion ?? datosCoordenada.ignicion ?? false,
+        velocidad: datosCoordenada.nuevaCoordenada?.velocidad ?? datosCoordenada.velocidad ?? 0, // ← agregar esto
       }
 
       // 4. Agregar al array existente

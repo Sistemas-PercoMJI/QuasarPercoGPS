@@ -10,6 +10,8 @@ import {
   //query,
   //orderBy,
   serverTimestamp,
+  getDoc,
+  setDoc,
 } from 'firebase/firestore'
 
 export function usePOIs(userId) {
@@ -31,6 +33,8 @@ export function usePOIs(userId) {
       }
 
       const docRef = await addDoc(collection(db, 'Usuarios', userId, 'POIS'), dataConUsuario)
+      const empresas = await obtenerEmpresasUsuario()
+      await sincronizarUbicacionGlobalPOI(docRef.id, dataConUsuario, empresas)
 
       const nuevoPOI = {
         ...dataConUsuario,
@@ -115,7 +119,8 @@ export function usePOIs(userId) {
         ...poiData,
         updatedAt: serverTimestamp(),
       })
-
+      const empresas = await obtenerEmpresasUsuario()
+      await sincronizarUbicacionGlobalPOI(poiId, poiData, empresas)
       const index = pois.value.findIndex((p) => p.id === poiId)
       if (index !== -1) {
         pois.value[index] = {
@@ -134,7 +139,31 @@ export function usePOIs(userId) {
       loading.value = false
     }
   }
+  const obtenerEmpresasUsuario = async () => {
+    try {
+      const userDoc = await getDoc(doc(db, 'Usuarios', userId))
+      return userDoc.exists() ? userDoc.data().IdEmpresaUsuario || [] : []
+    } catch {
+      return []
+    }
+  }
 
+  const sincronizarUbicacionGlobalPOI = async (id, poiData, empresas) => {
+    await setDoc(
+      doc(db, 'UbicacionesGlobal', id),
+      {
+        ubicacionId: id,
+        tipo: 'POI',
+        userId: userId,
+        IdEmpresaUsuario: empresas,
+        coordenadas: poiData.coordenadas || { lat: 0, lng: 0 },
+        radio: poiData.radio || 100,
+        nombre: poiData.nombre || '',
+        eventos: [],
+      },
+      { merge: true },
+    )
+  }
   // Eliminar POI
   const eliminarPOI = async (poiId) => {
     loading.value = true
@@ -143,6 +172,7 @@ export function usePOIs(userId) {
     try {
       const poiDoc = doc(db, 'Usuarios', userId, 'POIS', poiId)
       await deleteDoc(poiDoc)
+      await deleteDoc(doc(db, 'UbicacionesGlobal', poiId))
 
       pois.value = pois.value.filter((p) => p.id !== poiId)
 

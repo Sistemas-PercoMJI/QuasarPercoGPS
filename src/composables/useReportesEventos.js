@@ -2,94 +2,13 @@
 import { ref } from 'vue'
 import { collection, getDocs, getFirestore, doc, getDoc } from 'firebase/firestore'
 import { useGeocoding } from './useGeocoding'
+import { auth } from 'src/firebase/firebaseConfig'
 
 const db = getFirestore()
 
 export function useReportesEventos() {
   const loading = ref(false)
   const error = ref(null)
-
-  /**
-   * Genera eventos simulados para pruebas
-   */
-  const generarEventosSimulados = (unidadNombre, unidadId, fechaInicio, fechaFin) => {
-    const eventos = []
-    const tiposEvento = [
-      'Entrada a geozona',
-      'Salida de geozona',
-      'Exceso de velocidad',
-      'Ralentí prolongado',
-    ]
-
-    const geozonas = [
-      'Zona Industrial',
-      'Centro de Distribución',
-      'Almacén Principal',
-      'Sucursal Norte',
-    ]
-
-    const conductores = [
-      'Perez Lopez Pedro',
-      'García Martínez Juan',
-      'López Hernández María',
-      'Rodríguez Sánchez Carlos',
-    ]
-
-    // Generar entre 5-15 eventos por día
-    const diasEnRango = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)) + 1
-
-    for (let dia = 0; dia < diasEnRango; dia++) {
-      const fecha = new Date(fechaInicio)
-      fecha.setDate(fecha.getDate() + dia)
-
-      const numEventos = Math.floor(Math.random() * 11) + 5 // 5-15 eventos
-
-      for (let i = 0; i < numEventos; i++) {
-        const hora = Math.floor(Math.random() * 14) + 6 // Entre 6 AM y 8 PM
-        const minuto = Math.floor(Math.random() * 60)
-
-        const timestamp = new Date(fecha)
-        timestamp.setHours(hora, minuto, 0, 0)
-
-        const tipoEvento = tiposEvento[Math.floor(Math.random() * tiposEvento.length)]
-        const geozona = geozonas[Math.floor(Math.random() * geozonas.length)]
-        const conductor = conductores[Math.floor(Math.random() * conductores.length)]
-
-        eventos.push({
-          id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          eventoNombre: tipoEvento,
-          tipoEvento: tipoEvento.includes('Entrada')
-            ? 'entrada'
-            : tipoEvento.includes('Salida')
-              ? 'salida'
-              : tipoEvento.includes('Exceso')
-                ? 'velocidad'
-                : 'ralenti',
-          timestamp: timestamp,
-          geozonaNombre: tipoEvento.includes('geozona') ? geozona : 'N/A',
-          conductorNombre: conductor,
-          unidadNombre: unidadNombre,
-          idUnidad: unidadId,
-          coordenadas: {
-            lat: 32.5149 + (Math.random() - 0.5) * 0.1,
-            lng: -117.0382 + (Math.random() - 0.5) * 0.1,
-          },
-          direccion: `Tijuana, Baja California, México`,
-          velocidad: tipoEvento.includes('Exceso')
-            ? Math.floor(Math.random() * 40) + 80
-            : Math.floor(Math.random() * 60) + 20,
-          duracion: tipoEvento.includes('Ralentí') ? Math.floor(Math.random() * 30) + 5 : null,
-          mensaje: tipoEvento,
-          detalles: `Evento ${tipoEvento.toLowerCase()} registrado`,
-        })
-      }
-    }
-
-    // Ordenar por timestamp
-    eventos.sort((a, b) => a.timestamp - b.timestamp)
-
-    return eventos
-  }
 
   const procesarEventosParaPDF = async (eventos) => {
     if (!eventos || eventos.length === 0) {
@@ -128,7 +47,7 @@ export function useReportesEventos() {
   }
 
   /**
-   * Obtiene eventos reales de Firebase, con fallback a datos simulados
+   * Obtiene eventos reales de Firebase
    */
   const obtenerEventosReales = async (
     unidadesNombres,
@@ -206,9 +125,9 @@ export function useReportesEventos() {
             if (!snapshot.empty) {
               snapshot.forEach((doc) => {
                 const data = doc.data()
-
+                if (data.userId && data.userId !== auth.currentUser?.uid) return
                 //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
-                const duracionSegundos = data.DuracionDentro || null
+                const duracionSegundos = data.DuracionSegundos ?? data.DuracionDentro ?? null
 
                 // Formatear duración como HH:MM:SS si existe
                 let duracionFormateada = null
@@ -246,6 +165,8 @@ export function useReportesEventos() {
                   coordenadas: data.Coordenadas || data.coordenadas || { lat: 0, lng: 0 },
                   direccion: data.Direccion || data.direccion || 'Sin dirección',
                   velocidad: data.Velocidad || data.velocidad || 0,
+                  ignicion: data.Ignicion ?? null,
+                  kilometraje: data.Kilometraje || null,
                   //  CORRECCIÓN 1: Usar el campo correcto y formateado
                   duracion: duracionFormateada,
                   duracionSegundos: duracionSegundos, // Mantener el valor numérico también
@@ -271,22 +192,14 @@ export function useReportesEventos() {
         }
       }
 
-      //  SI NO HAY EVENTOS REALES, GENERAR SIMULADOS
-      if (todosLosEventos.length === 0) {
-        for (let i = 0; i < unidadesNombres.length; i++) {
-          const nombre = unidadesNombres[i]
-          const id = unidadesIds[i]
-          const eventosSimulados = generarEventosSimulados(nombre, id, fechaInicio, fechaFin)
-          todosLosEventos.push(...eventosSimulados)
-        }
-      }
-
       // Filtrar por tipos de evento si se especificaron
       let eventosFiltrados = todosLosEventos
       if (filtroEventos && filtroEventos.length > 0) {
-        eventosFiltrados = todosLosEventos.filter((evento) =>
-          filtroEventos.includes(evento.eventoNombre),
-        )
+        if (!filtroEventos.includes('Todos los eventos')) {
+          eventosFiltrados = todosLosEventos.filter((evento) =>
+            filtroEventos.includes(evento.eventoNombre),
+          )
+        }
       }
 
       const eventosProcesados = await procesarEventosParaPDF(eventosFiltrados)
@@ -294,24 +207,7 @@ export function useReportesEventos() {
     } catch (err) {
       console.error('Error al obtener eventos:', err)
       error.value = err.message
-
-      // En caso de error, generar datos simulados como fallback
-
-      const eventosFallback = []
-      const unidadesIds = unidadesNombres.map((nombre) => window.unidadesMap?.[nombre] || nombre)
-
-      for (let i = 0; i < unidadesNombres.length; i++) {
-        const eventosSimulados = generarEventosSimulados(
-          unidadesNombres[i],
-          unidadesIds[i],
-          fechaInicio,
-          fechaFin,
-        )
-        eventosFallback.push(...eventosSimulados)
-      }
-
-      const eventosFallbackProcesados = await procesarEventosParaPDF(eventosFallback)
-      return eventosFallbackProcesados
+      return []
     } finally {
       loading.value = false
     }
@@ -321,6 +217,5 @@ export function useReportesEventos() {
     loading,
     error,
     obtenerEventosReales,
-    generarEventosSimulados,
   }
 }

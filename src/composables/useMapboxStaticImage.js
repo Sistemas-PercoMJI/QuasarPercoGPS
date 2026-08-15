@@ -7,8 +7,7 @@
  * CONFIGURACIÓN
  * ============================================
  */
-const MAPBOX_TOKEN =
-  'pk.eyJ1Ijoic2lzdGVtYXNtajEyMyIsImEiOiJjbWdwZWpkZTAyN3VlMm5vazkzZjZobWd3In0.0ET-a5pO9xn5b6pZj1_YXA'
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 const MAPBOX_STYLE = 'streets-v12' // streets-v12, satellite-v9, outdoors-v12, etc.
 const MAP_WIDTH = 1200
 const MAP_HEIGHT = 800
@@ -20,14 +19,14 @@ const MAP_RETINA = '@2x' // Alta resolución
  * ============================================
  */
 const COLORES_TRAYECTOS = [
-  'f43', // Rojo (era f44336)
-  '21f', // Azul (era 2196F3)
-  '4c5', // Verde (era 4CAF50)
-  'f90', // Naranja (era FF9800)
-  '92b', // Púrpura (era 9C27B0)
-  'fe3', // Amarillo (era FFEB3B)
-  '0bd', // Cyan (era 00BCD4)
-  'f57', // Naranja profundo (era FF5722)
+  'e74c3c', // Rojo vivo
+  '2980b9', // Azul fuerte
+  '27ae60', // Verde fuerte
+  'f39c12', // Amarillo oscuro
+  '8e44ad', // Púrpura
+  '16a085', // Verde azulado
+  'd35400', // Naranja quemado
+  '2c3e50', // Azul oscuro
 ]
 /**
  * ============================================
@@ -42,6 +41,33 @@ const COLORES_TRAYECTOS = [
  * @param {Object} lineEnd - Punto final de la línea {lat, lng}
  * @returns {Number} Distancia perpendicular
  */
+
+function encodePolyline(coordenadas) {
+  let output = ''
+  let prevLat = 0
+  let prevLng = 0
+
+  for (const coord of coordenadas) {
+    const lat = Math.round(coord.lat * 1e5)
+    const lng = Math.round(coord.lng * 1e5)
+
+    let dLat = lat - prevLat
+    let dLng = lng - prevLng
+    prevLat = lat
+    prevLng = lng
+
+    for (const value of [dLat, dLng]) {
+      let v = value < 0 ? ~(value << 1) : value << 1
+      while (v >= 0x20) {
+        output += String.fromCharCode((0x20 | (v & 0x1f)) + 63)
+        v >>= 5
+      }
+      output += String.fromCharCode(v + 63)
+    }
+  }
+  return output
+}
+
 function distanciaPerpendicularPunto(point, lineStart, lineEnd) {
   const { lat: x0, lng: y0 } = point
   const { lat: x1, lng: y1 } = lineStart
@@ -103,7 +129,7 @@ function douglasPeucker(coordenadas, tolerancia = 0.0001) {
  * @param {Number} maxPuntos - Límite máximo de puntos (default: 100)
  * @returns {Array} Coordenadas simplificadas
  */
-function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
+function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100, protegidos = new Set()) {
   if (!coordenadas || coordenadas.length === 0) {
     return []
   }
@@ -120,7 +146,7 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
   const area = rangoLat * rangoLng
 
   // Tolerancia adaptativa según el área
-  let tolerancia = area * 0.001 // Empezar con 0.1% del área
+  let tolerancia = area * 0.0003 // Empezar con 0.1% del área
   let simplificadas = douglasPeucker(coordenadas, tolerancia)
 
   // Si aún hay demasiados puntos, aumentar tolerancia iterativamente
@@ -142,13 +168,16 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
       muestreadas.push(simplificadas[i])
     }
 
-    muestreadas.push(simplificadas[simplificadas.length - 1]) // Siempre incluir fin
+    coordenadas.forEach((punto, idx) => {
+      if (protegidos.has(idx) && !muestreadas.includes(punto)) {
+        muestreadas.push(punto)
+      }
+    })
+    muestreadas.push(simplificadas[simplificadas.length - 1])
+    // Re-ordenar por timestamp para que la línea quede correcta
+    muestreadas.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     simplificadas = muestreadas
   }
-
-  const reduccion = ((1 - simplificadas.length / coordenadas.length) * 100).toFixed(1)
-  console.log(`   ${coordenadas.length} → ${simplificadas.length} puntos (${reduccion}% reducción)`)
-
   return simplificadas
 }
 
@@ -161,85 +190,88 @@ function simplificarCoordenadasInteligente(coordenadas, maxPuntos = 100) {
 /**
  * Prepara los datos de trayectos para el mapa
  */
+/**
+ * ============================================
+ * FUNCIONES AUXILIARES
+ * ============================================
+ */
+
 function prepararDatosTrayectos(registros) {
-  const trayectosPorVehiculo = {}
-
-  registros.forEach((registro) => {
-    const vehiculoId = registro.vehiculoId || registro.unidadId || registro.idUnidad
-    const vehiculoNombre =
-      registro.vehiculo || registro.unidad || registro.unidadNombre || 'Sin nombre'
-
-    if (!trayectosPorVehiculo[vehiculoId]) {
-      trayectosPorVehiculo[vehiculoId] = {
-        vehiculoId,
-        vehiculoNombre,
-        placa: registro.placa || '',
-        coordenadas: [],
-      }
-    }
-
-    // Si el registro tiene array de coordenadas, usarlo
-    if (
-      registro.coordenadas &&
-      Array.isArray(registro.coordenadas) &&
-      registro.coordenadas.length > 0
-    ) {
-      trayectosPorVehiculo[vehiculoId].coordenadas.push(...registro.coordenadas)
-    }
-    // Fallback: si solo tiene lat/lng individuales
-    else if (registro.latitud && registro.longitud) {
-      trayectosPorVehiculo[vehiculoId].coordenadas.push({
-        lat: parseFloat(registro.latitud),
-        lng: parseFloat(registro.longitud),
-        timestamp: registro.fecha || registro.timestamp,
-      })
-    }
-  })
-
-  // Convertir a array y ordenar coordenadas
-  const trayectos = Object.values(trayectosPorVehiculo)
-    .filter((t) => t.coordenadas.length > 0)
-    .map((trayecto) => {
-      // Ordenar por timestamp
-      const coordenadasOrdenadas = trayecto.coordenadas.sort((a, b) => {
+  const trayectos = registros
+    .filter((registro) => registro.coordenadas && registro.coordenadas.length > 0)
+    .map((registro, index) => {
+      const coordenadasOrdenadas = [...registro.coordenadas].sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
         return timeA - timeB
       })
 
-      //  SIMPLIFICAR con Douglas-Peucker (máximo 80 puntos por trayecto)
-      const coordenadasSimplificadas = simplificarCoordenadasInteligente(coordenadasOrdenadas, 50)
+      // 🆕 Solo analizar gaps entre coords con ignición ON
+      const coordsRelevantes = coordenadasOrdenadas.filter(
+        (c) => c.ignicion === true || c.velocidad > 0,
+      )
+
+      const pinsConexion = []
+      const indicesProtegidos = new Set([0, coordenadasOrdenadas.length - 1])
+
+      for (let i = 1; i < coordsRelevantes.length; i++) {
+        const anterior = coordsRelevantes[i - 1]
+        const actual = coordsRelevantes[i]
+        const diffSegundos = (new Date(actual.timestamp) - new Date(anterior.timestamp)) / 1000
+        const dLat = ((actual.lat - anterior.lat) * Math.PI) / 180
+        const dLng = ((actual.lng - anterior.lng) * Math.PI) / 180
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((anterior.lat * Math.PI) / 180) *
+            Math.cos((actual.lat * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2
+        const distanciaKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        if (diffSegundos > 120 && distanciaKm > 0.5) {
+          // Encontrar índices en coordenadasOrdenadas para protegerlos
+          const idxAnterior = coordenadasOrdenadas.indexOf(anterior)
+          const idxActual = coordenadasOrdenadas.indexOf(actual)
+          if (idxAnterior !== -1) {
+            // Proteger 2 puntos antes y después del gap
+            for (
+              let j = Math.max(0, idxAnterior - 2);
+              j <= Math.min(coordenadasOrdenadas.length - 1, idxAnterior + 2);
+              j++
+            ) {
+              indicesProtegidos.add(j)
+            }
+          }
+          if (idxActual !== -1) {
+            for (
+              let j = Math.max(0, idxActual - 2);
+              j <= Math.min(coordenadasOrdenadas.length - 1, idxActual + 2);
+              j++
+            ) {
+              indicesProtegidos.add(j)
+            }
+          }
+          pinsConexion.push({ lat: anterior.lat, lng: anterior.lng, tipo: 'perdida' })
+          pinsConexion.push({ lat: actual.lat, lng: actual.lng, tipo: 'reconexion' })
+        }
+      }
+
+      const maxPuntosPorViaje = registros.length > 4 ? 80 : 120
+      const coordenadasSimplificadas = simplificarCoordenadasInteligente(
+        coordenadasOrdenadas,
+        maxPuntosPorViaje,
+        indicesProtegidos,
+      )
 
       return {
-        ...trayecto,
+        vehiculoId: registro.idUnidad || registro.vehiculoId,
+        vehiculoNombre: `${registro.unidadNombre || 'Sin nombre'} - Viaje ${index + 1}`,
+        placa: registro.Placa || registro.placa || '',
         coordenadas: coordenadasSimplificadas,
+        pinsConexion,
       }
     })
 
-  /*trayectos.forEach((t, i) => {
-    console.log(`   ${i + 1}. ${t.vehiculoNombre}: ${t.coordenadas.length} puntos`)
-  })*/
-
   return trayectos
-}
-function calcularBoundingBox(trayectos) {
-  let minLat = Infinity
-  let maxLat = -Infinity
-  let minLng = Infinity
-  let maxLng = -Infinity
-
-  trayectos.forEach((trayecto) => {
-    trayecto.coordenadas.forEach((coord) => {
-      minLat = Math.min(minLat, coord.lat)
-      maxLat = Math.max(maxLat, coord.lat)
-      minLng = Math.min(minLng, coord.lng)
-      maxLng = Math.max(maxLng, coord.lng)
-    })
-  })
-
-  //  AGREGAR ESTOS LOGS:
-
-  return { minLat, maxLat, minLng, maxLng }
 }
 /**
  * Calcula el bounding box de todos los trayectos
@@ -256,22 +288,7 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
   const { mostrarPins = true } = config
 
-  const bbox = calcularBoundingBox(trayectos) //  AQUÍ SE LLAMA
-  const centroLat = (bbox.minLat + bbox.maxLat) / 2
-  const centroLng = (bbox.minLng + bbox.maxLng) / 2
-
-  // Calcular zoom apropiado
-  const rangoLat = bbox.maxLat - bbox.minLat
-  const rangoLng = bbox.maxLng - bbox.minLng
-  const rangoMax = Math.max(rangoLat, rangoLng)
-
-  let zoom = 12
-  if (rangoMax > 1) zoom = 8
-  else if (rangoMax > 0.5) zoom = 9
-  else if (rangoMax > 0.2) zoom = 10
-  else if (rangoMax > 0.1) zoom = 11
-  else if (rangoMax > 0.05) zoom = 12
-  else zoom = 13
+  //const padding = config.padding ?? 60
 
   // Construir overlays (paths + pins)
   const overlays = []
@@ -282,53 +299,119 @@ function generarURLMapaTrayectos(trayectos, config = {}) {
 
     if (coordenadas.length === 0) return
 
-    // 1. GeoJSON LineString (en lugar de path)
-    const geojson = {
-      type: 'Feature',
-      properties: {
-        stroke: `#${color}`,
-        'stroke-width': 2,
-        'stroke-opacity': 1,
-      },
-      geometry: {
-        type: 'LineString',
-        coordinates: coordenadas.map((c) => [c.lng, c.lat]),
-      },
+    const todasIguales = coordenadas.every(
+      (c) => c.lat === coordenadas[0].lat && c.lng === coordenadas[0].lng,
+    )
+
+    if (coordenadas.length < 2 || todasIguales) {
+      if (mostrarPins) {
+        const tamano = index === 0 ? 'pin-l' : 'pin-s'
+        overlays.push(
+          `${tamano}-${index + 1}+${color}(${coordenadas[0].lng.toFixed(6)},${coordenadas[0].lat.toFixed(6)})`,
+        )
+      }
+      return
     }
 
-    const geojsonStr = encodeURIComponent(JSON.stringify(geojson))
+    // 1. GeoJSON LineString (en lugar de path)
 
-    overlays.push(`geojson(${geojsonStr})`)
+    const polyline = encodePolyline(coordenadas)
+    overlays.push(`path-3+${color}-1(${polyline})`)
 
     // 2. Pin de inicio (verde)
     if (mostrarPins) {
       const inicio = coordenadas[0]
-      overlays.push(`pin-s-circle+4CAF50(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`)
+      const tamano = index === 0 ? 'pin-l' : 'pin-s'
+      overlays.push(
+        `${tamano}-${index + 1}+${color}(${inicio.lng.toFixed(6)},${inicio.lat.toFixed(6)})`,
+      )
     }
 
-    // 3. Pin de fin (color del trayecto)
+    // Pin de fin (cuadrado del mismo color)
     if (mostrarPins) {
       const fin = coordenadas[coordenadas.length - 1]
       overlays.push(`pin-s-square+${color}(${fin.lng.toFixed(6)},${fin.lat.toFixed(6)})`)
     }
+    if (trayecto.pinsConexion && trayecto.pinsConexion.length > 0) {
+      trayecto.pinsConexion.forEach((pin) => {
+        if (pin.tipo === 'perdida') {
+          overlays.push(`pin-s-cross+ff0000(${pin.lng.toFixed(6)},${pin.lat.toFixed(6)})`)
+        } else {
+          overlays.push(`pin-s-star+00cc00(${pin.lng.toFixed(6)},${pin.lat.toFixed(6)})`)
+        }
+      })
+    }
   })
 
-  /*overlays.forEach((overlay, i) => {
-    console.log(`   ${i + 1}. ${overlay.substring(0, 150)}...`)
-  })*/
-
   // Construir URL
+  // Después - reemplaza todo eso con esto
   const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
   const overlaysStr = overlays.join(',')
+  const overlaysEncoded = encodeURIComponent(overlaysStr)
   const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
 
-  const url = `${baseURL}/${overlaysStr}/${centroLng},${centroLat},${zoom},0/${dimensions}?access_token=${MAPBOX_TOKEN}`
+  // Calcular bbox manual en lugar de usar auto
+  const todasCoords = trayectos.flatMap((t) => t.coordenadas)
+  const lats = todasCoords.map((c) => c.lat)
+  const lngs = todasCoords.map((c) => c.lng)
 
-  if (url.length > 8000) {
-    console.warn(' URL muy larga, puede fallar. Considera reducir más los puntos.')
-  }
+  const minLat = Math.min(...lats)
+  const maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs)
+  const maxLng = Math.max(...lngs)
+
+  const margenLat = (maxLat - minLat) * 0.1 || 0.01
+  const margenLng = (maxLng - minLng) * 0.1 || 0.01
+
+  const bbox = [
+    (minLng - margenLng).toFixed(6),
+    (minLat - margenLat).toFixed(6),
+    (maxLng + margenLng).toFixed(6),
+    (maxLat + margenLat).toFixed(6),
+  ].join(',')
+
+  const url = `${baseURL}/${overlaysEncoded}/[${bbox}]/${dimensions}?access_token=${MAPBOX_TOKEN}`
 
   return url
+}
+
+function generarURLMapaIgnicion({ latPrimera, lngPrimera, latUltima, lngUltima }) {
+  if (!latPrimera || !lngPrimera || !latUltima || !lngUltima) {
+    console.warn('Coordenadas incompletas para mapa de ignición')
+    return null
+  }
+
+  const overlays = []
+
+  // Pin verde = primera ignición
+  overlays.push(`pin-l+27ae60(${lngPrimera.toFixed(6)},${latPrimera.toFixed(6)})`)
+
+  // Pin rojo = última ignición
+  overlays.push(`pin-l+e74c3c(${lngUltima.toFixed(6)},${latUltima.toFixed(6)})`)
+
+  // Calcular bbox para que ambos puntos entren en el encuadre
+  const minLat = Math.min(latPrimera, latUltima)
+  const maxLat = Math.max(latPrimera, latUltima)
+  const minLng = Math.min(lngPrimera, lngUltima)
+  const maxLng = Math.max(lngPrimera, lngUltima)
+
+  // Margen generoso para que los pins no queden en el borde
+  const margenLat = Math.max((maxLat - minLat) * 0.3, 0.01)
+  const margenLng = Math.max((maxLng - minLng) * 0.3, 0.01)
+
+  const bbox = [
+    (minLng - margenLng).toFixed(6),
+    (minLat - margenLat).toFixed(6),
+    (maxLng + margenLng).toFixed(6),
+    (maxLat + margenLat).toFixed(6),
+  ].join(',')
+
+  const baseURL = `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static`
+  const overlaysStr = overlays.join(',')
+  const overlaysEncoded = encodeURIComponent(overlaysStr)
+  const dimensions = `${MAP_WIDTH}x${MAP_HEIGHT}${MAP_RETINA}`
+
+  return `${baseURL}/${overlaysEncoded}/[${bbox}]/${dimensions}?access_token=${MAPBOX_TOKEN}`
 }
 
 /**
@@ -472,5 +555,6 @@ export function useMapboxStaticImage() {
     generarURLMapaTrayectos,
     descargarImagenMapaBase64,
     generarLeyendaMapa,
+    generarURLMapaIgnicion,
   }
 }

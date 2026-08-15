@@ -43,7 +43,7 @@
       </div>
 
       <!-- Búsqueda -->
-      <div class="search-container">
+      <div class="search-container-flota">
         <q-input
           v-model="busqueda"
           outlined
@@ -59,11 +59,25 @@
           </template>
         </q-input>
       </div>
-
+      <!-- ===== TABS DE FILTRO ===== -->
+      <div class="q-px-md q-pb-sm filtro-conductor-tabs">
+        <q-tabs
+          v-model="tabFiltroUnidades"
+          dense
+          class="text-grey"
+          active-color="primary"
+          indicator-color="primary"
+          align="left"
+          no-caps
+        >
+          <q-tab name="todas" label="Todas" icon="directions_car" />
+          <q-tab name="con_conductor" label="Con conductor" icon="person" />
+          <q-tab name="sin_conductor" label="Sin conductor" icon="person_off" />
+        </q-tabs>
+      </div>
       <!-- Header de tabla -->
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
-        <div class="header-col-velocidad">Velocidad</div>
         <div class="header-col-acciones">Acciones</div>
       </div>
 
@@ -75,7 +89,7 @@
             :key="vehiculo.id"
             clickable
             v-ripple
-            @click="seleccionarVehiculoParaMapa(vehiculo)"
+            @click="onClickVehiculo(vehiculo)"
             class="vehiculo-item"
           >
             <q-item-section avatar>
@@ -245,7 +259,7 @@
             <!-- Tab Hoy -->
             <q-tab-panel name="hoy" class="tab-panel-padding">
               <!-- Selector de fecha -->
-              <div class="filtro-dia-card">
+              <div class="filtro-dia-card filtro-dia-hoy">
                 <q-btn flat dense round icon="chevron_left" size="sm" @click="cambiarDia(-1)" />
                 <div class="dia-actual">
                   <div class="dia-label">
@@ -325,7 +339,7 @@
               </div>
 
               <!--  Filtro por rango de horas -->
-              <div class="filtro-horas-card">
+              <div class="filtro-horas-card filtro-horas-hoy">
                 <div class="filtro-horas-header">
                   <q-icon name="schedule" size="20px" color="primary" />
                   <span class="filtro-horas-titulo">Filtrar por hora</span>
@@ -363,6 +377,20 @@
                   <q-icon name="route" size="18px" color="primary" />
                   <span>Historial de viajes</span>
                   <q-badge color="primary" :label="trayectosFiltradosPorHora.length" />
+
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    :icon="refrescandoTrayectos ? 'hourglass_empty' : 'refresh'"
+                    :color="refrescandoTrayectos ? 'grey-5' : 'grey-6'"
+                    :disable="refrescandoTrayectos"
+                    @click="cargarTrayectosDia(false)"
+                    class="q-ml-auto"
+                  >
+                    <q-tooltip>Actualizar trayectos</q-tooltip>
+                  </q-btn>
                 </div>
 
                 <div class="timeline-list">
@@ -370,6 +398,7 @@
                     v-for="trayecto in trayectosFiltradosPorHora"
                     :key="trayecto.id"
                     class="trayecto-card-compact"
+                    :class="{ 'trayecto-activo': trayectoActivoId === trayecto.id }"
                     @click="mostrarRutaEnMapa(trayecto)"
                     style="cursor: pointer"
                   >
@@ -400,14 +429,14 @@
                         <span class="stat-valor">{{ trayecto.distancia }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="speed" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadMax }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionInicio">
+                        <q-icon name="trip_origin" size="14px" color="green" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionInicio }}</span>
                       </div>
 
-                      <div class="stat-item">
-                        <q-icon name="trending_flat" size="14px" color="grey-7" />
-                        <span class="stat-valor">{{ trayecto.velocidadPromedio }}</span>
+                      <div class="stat-item-full" v-if="trayecto.direccionFin">
+                        <q-icon name="place" size="14px" color="red" />
+                        <span class="stat-valor-dir">{{ trayecto.direccionFin }}</span>
                       </div>
                     </div>
                   </div>
@@ -425,7 +454,7 @@
             <!-- Tab Notificaciones -->
             <q-tab-panel name="notificaciones" class="tab-panel-padding">
               <!--  Selector de fecha (igual que en tab "hoy") -->
-              <div class="filtro-dia-card">
+              <div class="filtro-dia-card filtro-dia-eventos">
                 <q-btn
                   flat
                   dense
@@ -460,7 +489,7 @@
               </div>
 
               <!--  Filtro por tipo de evento -->
-              <div class="filtro-horas-card">
+              <div class="filtro-horas-card filtro-horas-eventos">
                 <div class="filtro-horas-header">
                   <q-icon name="filter_list" size="20px" color="primary" />
                   <span class="filtro-horas-titulo">Filtrar eventos</span>
@@ -611,6 +640,9 @@ import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTi
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
 import { useEventBus } from 'src/composables/useEventBus.js'
+//import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 // ==================== COMPOSABLES ====================
 const { cargarUsuarioActual, idEmpresaActual, crearQueryConEmpresa } = useMultiTenancy()
@@ -621,12 +653,34 @@ const { obtenerTrayectosDia } = useTrayectosDiarios()
 //  Agregar composable de geocoding
 const { obtenerDireccion } = useGeocoding()
 
-const { estadoCompartido: estadoEventBus } = useEventBus()
+const { estadoCompartido: estadoEventBus, actualizarFiltroUnidades } = useEventBus()
 
+/*const {
+  // gruposUnidades,
+  obtenerGrupos,
+  //escucharGrupos,
+  //crearGrupo,
+  //actualizarGrupo:,// actualizarGrupoUnidad,
+  //eliminarGrupo: //eliminarGrupoUnidad,
+} = useGruposUnidades()*/
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
+const tabFiltroUnidades = ref('todas')
+const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
+
+const refrescandoTrayectos = ref(false)
+const grupoSeleccionadoId = ref(null)
+//const dialogGrupoUnidades = ref(false)
+//const nuevoGrupoNombre = ref('')
+//const busquedaUnidadesGrupo = ref('')
+//const unidadesSeleccionadasGrupo = ref([])
+//const modoEdicionGrupo = ref(false)
+//const grupoMenuActual = ref(null)
+//const guardandoGrupo = ref(false)
+//let unsubscribeGruposUnidades = null
+let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
 const { eventosUnidad, loadingEventos, escucharEventosDia, detenerEscucha } =
@@ -796,13 +850,11 @@ const estadosVehiculos = computed(() => {
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
-  // Aplicar filtro por grupo de conductores si esta activo
-  if (
-    estadoEventBus.value.filtroUnidadesActivo &&
-    estadoEventBus.value.idsUnidadesFiltradas !== null
-  ) {
-    const idsFiltrados = estadoEventBus.value.idsUnidadesFiltradas
-    resultado = resultado.filter((v) => idsFiltrados.includes(v.id))
+  // Filtro por tab
+  if (tabFiltroUnidades.value === 'con_conductor') {
+    resultado = resultado.filter((v) => v.conductor !== 'Sin conductor')
+  } else if (tabFiltroUnidades.value === 'sin_conductor') {
+    resultado = resultado.filter((v) => v.conductor === 'Sin conductor')
   }
 
   // Filtro por estado (comportamiento existente)
@@ -810,7 +862,7 @@ const vehiculosFiltrados = computed(() => {
     resultado = resultado.filter((v) => v.estado === estadoSeleccionado.value)
   }
 
-  // Filtro por busqueda (comportamiento existente)
+  // Filtro por búsqueda (comportamiento existente)
   if (busqueda.value) {
     const busquedaLower = busqueda.value.toLowerCase()
     resultado = resultado.filter(
@@ -853,20 +905,38 @@ const trayectosFiltradosPorHora = computed(() => {
 
 // Después de las refs existentes
 const eventosConDirecciones = ref([])
+const cacheDireccionesEventos = ref({})
+const eventosEnVuelo = new Map()
 
 // Agregar esta función
 const procesarEventosConDirecciones = async (eventos) => {
+  const unidadId = vehiculoSeleccionado.value?.id
+
+  // Asegurar que existe el cache para esta unidad
+  if (!cacheDireccionesEventos.value[unidadId]) {
+    cacheDireccionesEventos.value[unidadId] = {}
+  }
+
   const procesados = await Promise.all(
     eventos.map(async (evento) => {
       const infoConductor = obtenerConductorDeUnidad(evento.unidadId)
 
-      //  Geocodificar dirección si tiene coordenadas
-      let direccionGeocoded = evento.ubicacion || 'Ubicación desconocida'
-      if (evento.coordenadas) {
-        try {
-          direccionGeocoded = await obtenerDireccion(evento.coordenadas)
-        } catch (error) {
-          console.warn('Error geocodificando:', error)
+      let direccionGeocoded = cacheDireccionesEventos.value[unidadId][evento.id]
+
+      if (!direccionGeocoded) {
+        if (eventosEnVuelo.has(evento.id)) {
+          direccionGeocoded = await eventosEnVuelo.get(evento.id)
+        } else {
+          const promesa = evento.coordenadas
+            ? obtenerDireccion(evento.coordenadas).catch(
+                () => evento.ubicacion || 'Ubicación desconocida',
+              )
+            : Promise.resolve(evento.ubicacion || 'Ubicación desconocida')
+
+          eventosEnVuelo.set(evento.id, promesa)
+          direccionGeocoded = await promesa
+          cacheDireccionesEventos.value[unidadId][evento.id] = direccionGeocoded
+          eventosEnVuelo.delete(evento.id)
         }
       }
 
@@ -939,10 +1009,13 @@ const cargarEstadisticasVehiculo = async (unidadId) => {
   }
 }
 
-const cargarTrayectosDia = async () => {
+const cargarTrayectosDia = async (silencioso = false) => {
+  // NO limpiar trayectoActivoId aquí — necesitamos saber cuál redibujar
   if (!vehiculoSeleccionado.value) return
 
-  loadingHistorial.value = true
+  if (!silencioso) loadingHistorial.value = true
+  else refrescandoTrayectos.value = true
+
   try {
     const resultado = await obtenerTrayectosDia(
       vehiculoSeleccionado.value.id,
@@ -950,12 +1023,45 @@ const cargarTrayectosDia = async () => {
     )
     trayectosDia.value = resultado.trayectos
     resumenDia.value = resultado.resumen
+
+    // Si hay un trayecto activo en el mapa, redibujar con datos frescos
+    if (trayectoActivoId.value && window.dibujarRutaTrayecto) {
+      const trayectoActualizado = resultado.trayectos.find((t) => t.id === trayectoActivoId.value)
+      if (trayectoActualizado) {
+        window.dibujarRutaTrayecto(
+          { ...trayectoActualizado, color: trayectoActualizado.color || '#00E5FF' },
+          props.vehiculo,
+        )
+      }
+    }
   } catch (err) {
     console.error('Error cargando trayectos:', err)
     trayectosDia.value = []
     resumenDia.value = null
   } finally {
     loadingHistorial.value = false
+    refrescandoTrayectos.value = false
+  }
+}
+
+const iniciarAutoRefresh = () => {
+  detenerAutoRefresh()
+  intervalRefreshTrayectos = setInterval(
+    async () => {
+      const esHoy = fechaSeleccionada.value.toDateString() === new Date().toDateString()
+      const unidadActual = vehiculos.value.find((v) => v.id === vehiculoSeleccionado.value?.id)
+      if (esHoy && unidadActual?.ignicion && tabActual.value === 'hoy') {
+        await cargarTrayectosDia(true)
+      }
+    },
+    2 * 60 * 1000,
+  )
+}
+
+const detenerAutoRefresh = () => {
+  if (intervalRefreshTrayectos) {
+    clearInterval(intervalRefreshTrayectos)
+    intervalRefreshTrayectos = null
   }
 }
 
@@ -1002,20 +1108,84 @@ const resetearFiltroEventos = () => {
 }
 
 // Mostrar ruta en mapa (trayectos)
-const mostrarRutaEnMapa = (trayecto) => {
+const mostrarRutaEnMapa = async (trayecto) => {
+  trayectoActivoId.value = trayecto.id //
+
   const trayectoConColor = {
     ...trayecto,
     color: trayecto.color || '#00E5FF',
   }
 
+  const mapPage = document.getElementById('map-page')
+  const mapaDisponible = mapPage?._mapaAPI?.map
+
+  if (!mapaDisponible) {
+    // Navegar al dashboard y esperar a que el mapa esté listo
+    await router.push('/')
+    await new Promise((resolve) => {
+      const intervalo = setInterval(() => {
+        const mp = document.getElementById('map-page')
+        if (mp?._mapaAPI?.map) {
+          clearInterval(intervalo)
+          resolve()
+        }
+      }, 100)
+      setTimeout(() => {
+        clearInterval(intervalo)
+        resolve()
+      }, 3000)
+    })
+  }
   if (window.dibujarRutaTrayecto) {
     window.dibujarRutaTrayecto(trayectoConColor, props.vehiculo)
   }
 
-  //  Activar botón de limpiar
   hayElementosEnMapa.value = true
 }
+const onClickVehiculo = (vehiculo) => {
+  if (tabFiltroUnidades.value === 'todas') {
+    seleccionarVehiculoParaMapa(vehiculo)
+    return
+  }
 
+  // Para con_conductor y sin_conductor: volar al mapa
+  const mapPage = document.getElementById('map-page')
+  if (!mapPage?._mapaAPI?.map) {
+    $q.notify({ type: 'warning', message: 'Mapa no disponible', icon: 'warning' })
+    return
+  }
+
+  const { lat, lng } = vehiculo.ubicacionCoords || {}
+  if (!lat || !lng) {
+    $q.notify({ type: 'warning', message: 'Unidad sin ubicación GPS', icon: 'gps_not_fixed' })
+    return
+  }
+
+  mapPage._mapaAPI.map.flyTo({
+    center: [lng, lat],
+    zoom: 17,
+    duration: 300,
+    essential: true,
+  })
+
+  setTimeout(() => {
+    if (mapPage._mapaAPI.centrarEnUnidad) {
+      mapPage._mapaAPI.centrarEnUnidad(vehiculo.id)
+    }
+  }, 1600)
+
+  $q.notify({
+    type: 'positive',
+    message: vehiculo.nombre,
+    caption:
+      tabFiltroUnidades.value === 'con_conductor'
+        ? `Conductor: ${vehiculo.conductor}`
+        : 'Sin conductor asignado',
+    icon: 'my_location',
+    position: 'top',
+    timeout: 2500,
+  })
+}
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
     console.warn(' Evento sin coordenadas')
@@ -1155,7 +1325,7 @@ const mostrarEventoEnMapa = async (evento) => {
   map.flyTo({
     center: [lng, lat],
     zoom: 17,
-    duration: 1500,
+    duration: 300,
     essential: true,
   })
 
@@ -1206,6 +1376,21 @@ const obtenerConductorDeEvento = (unidadId) => {
   return null
 }*/
 
+// ── Grupos de unidades ──────────────────────────────────────────────
+
+function limpiarFiltroGrupo() {
+  grupoSeleccionadoId.value = null
+  actualizarFiltroUnidades(false, null, null)
+  window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: null } }))
+
+  // ← agregar esto
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
+}
+
 const cerrarDrawer = () => {
   // Limpiar todo del mapa antes de cerrar
   if (window.limpiarRuta) {
@@ -1242,7 +1427,7 @@ function seleccionarVehiculoParaMapa(vehiculo) {
     mapPage._mapaAPI.map.flyTo({
       center: [lng, lat],
       zoom: 16,
-      duration: 1000,
+      duration: 300,
       essential: true,
     })
 
@@ -1330,12 +1515,15 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
     estadisticasVehiculo.value = null
     trayectosDia.value = []
     resumenDia.value = null
+
+    eventosEnVuelo.clear()
   }
 })
 
 // Watcher para cambio de fecha de trayectos
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
+    trayectoActivoId.value = null // ← solo al cambiar fecha se limpia el activo
     cargarTrayectosDia()
   }
 })
@@ -1351,6 +1539,24 @@ watch(fechaSeleccionadaEventos, (nuevaFecha) => {
 watch(tabActual, () => {
   // Limpiar mapa al cambiar de tab
   limpiarTodoDelMapa()
+  iniciarAutoRefresh()
+  detenerAutoRefresh()
+})
+watch(tabFiltroUnidades, (nuevoTab) => {
+  // ← agregar al inicio del watcher
+  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
+    const btn = p.querySelector('.mapboxgl-popup-close-button')
+    if (btn) btn.click()
+    else p.remove()
+  })
+
+  if (nuevoTab === 'todas') {
+    limpiarFiltroGrupo()
+  } else {
+    const ids = vehiculosFiltrados.value.map((v) => v.id)
+    actualizarFiltroUnidades(true, ids, 'estadoFlota')
+    window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: ids } }))
+  }
 })
 
 watch(
@@ -1364,25 +1570,40 @@ watch(
   },
   { immediate: true },
 )
-
+// Si conductores activa su filtro, resetear selección de grupos de unidades
+watch(
+  () => estadoEventBus.value.filtroFuente,
+  (fuente) => {
+    if (fuente === 'conductores') {
+      grupoSeleccionadoId.value = null
+    }
+  },
+)
 // ==================== LIFECYCLE ====================
 
 onMounted(async () => {
   await cargarUsuarioActual()
-
+  limpiarFiltroGrupo()
   if (!idEmpresaActual.value) {
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
+      // await obtenerGrupos()
+      //unsubscribeGruposUnidades = escucharGrupos()
+      grupoSeleccionadoId.value = '__todas__'
     }, 1000)
   } else {
     await cargarConductoresFirebase()
     iniciarTracking()
+    //  await obtenerGrupos()
+    // unsubscribeGruposUnidades = escucharGrupos()
+    grupoSeleccionadoId.value = '__todas__'
   }
 })
 
 onUnmounted(() => {
   detenerEscucha()
+  detenerAutoRefresh()
 
   // Limpiar todo del mapa
   if (window.limpiarRuta) {
@@ -1395,6 +1616,9 @@ onUnmounted(() => {
   }
 
   hayElementosEnMapa.value = false
+
+  //if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
+  limpiarFiltroGrupo()
 })
 </script>
 
@@ -1598,8 +1822,8 @@ onUnmounted(() => {
 /* ============================================ */
 /* === BÚSQUEDA === */
 /* ============================================ */
-.search-container {
-  padding: 0 20px 16px 20px;
+.search-container-flota {
+  padding: 12px 20px 16px 20px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
 }
@@ -2076,6 +2300,12 @@ onUnmounted(() => {
   color: #212121;
   font-weight: 600;
   margin-top: 4px;
+}
+
+.trayecto-activo {
+  background: #e3f2fd !important;
+  border-left-color: #1565c0 !important;
+  box-shadow: 0 4px 16px rgba(21, 101, 192, 0.25) !important;
 }
 
 /* ============================================ */
@@ -2687,5 +2917,82 @@ onUnmounted(() => {
 .fade-scale-btn-leave-to {
   opacity: 0;
   transform: scale(0.7) translateY(20px);
+}
+
+.stat-item-full {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+.stat-valor-dir {
+  color: #424242;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ============================================ */
+/* === GRUPOS DE UNIDADES === */
+/* ============================================ */
+.grupos-unidades-section {
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding-top: 8px;
+}
+
+.grupos-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grupo-unidad-item {
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: visible;
+}
+
+.grupo-unidad-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
+  transition: width 0.3s ease;
+}
+
+.grupo-unidad-item:hover {
+  background-color: #e3f2fd;
+  transform: translateX(4px);
+}
+
+.grupo-unidad-item:hover::before,
+.grupo-unidad-item.q-item--active::before {
+  width: 4px;
+}
+
+.grupo-unidad-item.q-item--active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+}
+
+.btn-menu-grupo-unidad {
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.btn-menu-grupo-unidad:hover {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>

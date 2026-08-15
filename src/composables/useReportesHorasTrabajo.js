@@ -51,60 +51,166 @@ export function useReportesHorasTrabajo() {
       return []
     }
 
+    const conMovimiento = coordenadas.filter((c) => (c.velocidad || 0) > 7)
+    const conIgnicionTrue = coordenadas.filter((c) => c.ignicion === true)
+
+    // Sin ignición cableada pero con movimiento real → segmentar por velocidad
+    if (conMovimiento.length > 3 && conIgnicionTrue.length === 0) {
+      return detectarViajesPorVelocidad(coordenadas)
+    }
+
+    // Lógica híbrida: ignición + timeout por velocidad + tolerancia a apagones breves
+    const UMBRAL_KMH = 7
+    const GAP_DETENCION_MS = 5 * 60 * 1000 // 5 minutos detenido = fin de viaje
+    const GAP_IGNICION_MS = 2 * 60 * 1000 // 2 minutos de tolerancia para apagones
+
     const viajes = []
     let viajeActual = []
-    let motorEncendido = false
+    let enViaje = false
+    let inicioParada = null
+    let indiceUltimoMovimiento = -1
 
-    for (const coord of coordenadas) {
-      // Detectar si hay campo ignicion (true/false)
-      const ignicion = coord.ignicion !== undefined ? coord.ignicion : null
+    for (let i = 0; i < coordenadas.length; i++) {
+      const coord = coordenadas[i]
+      const enMovimiento = (coord.velocidad || 0) > UMBRAL_KMH
 
-      if (ignicion === null) {
-        // Fallback: si no hay campo ignicion, usar gaps de tiempo
-        if (viajeActual.length === 0) {
+      // Detectar inicio de viaje por ignición
+      if (coord.ignicion === true && !enViaje) {
+        enViaje = true
+        viajeActual = []
+        inicioParada = null
+        indiceUltimoMovimiento = -1
+      }
+
+      if (enViaje) {
+        if (enMovimiento) {
+          // Se está moviendo → reiniciar contador de parada
+          inicioParada = null
+          indiceUltimoMovimiento = viajeActual.length
           viajeActual.push(coord)
-          motorEncendido = true
         } else {
-          const ultimaCoord = viajeActual[viajeActual.length - 1]
-          const tiempoEntrePuntos = new Date(coord.timestamp) - new Date(ultimaCoord.timestamp)
+          // Detenido → verificar timeout
+          if (inicioParada === null) {
+            inicioParada = new Date(coord.timestamp).getTime()
+          }
 
-          // Gap > 10 minutos = motor apagado y encendido
-          if (tiempoEntrePuntos > 10 * 60 * 1000) {
-            // Finalizar viaje anterior
-            if (viajeActual.length > 0) {
-              viajes.push([...viajeActual])
+          const tiempoDetenido = new Date(coord.timestamp).getTime() - inicioParada
+
+          if (tiempoDetenido >= GAP_DETENCION_MS) {
+            // Más de 5 min detenido → cerrar viaje en último punto con movimiento
+            const viajeHastaMovimiento =
+              indiceUltimoMovimiento >= 0
+                ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+                : viajeActual
+
+            if (viajeHastaMovimiento.length >= 2) {
+              viajes.push([...viajeHastaMovimiento])
             }
-            // Iniciar nuevo viaje
-            viajeActual = [coord]
+
+            viajeActual = []
+            enViaje = false
+            inicioParada = null
+            indiceUltimoMovimiento = -1
           } else {
+            // Parada breve (< 5 min) → mantener en viaje
             viajeActual.push(coord)
           }
         }
-      } else {
-        //  DETECCIÓN CON IGNICIÓN
-        if (ignicion && !motorEncendido) {
-          // Motor se encendió - iniciar viaje
-          motorEncendido = true
-          viajeActual = [coord]
-        } else if (!ignicion && motorEncendido) {
-          // Motor se apagó - finalizar viaje
-          motorEncendido = false
-          viajeActual.push(coord)
-          viajes.push([...viajeActual])
-          viajeActual = []
-        } else if (motorEncendido) {
-          // Motor sigue encendido - continuar viaje
-          viajeActual.push(coord)
+
+        // Detectar fin de viaje por ignición apagada CON TOLERANCIA
+        if (coord.ignicion === false && enViaje) {
+          // Buscar siguiente punto con ignición true
+          const siguienteIgnicion = coordenadas.slice(i + 1).find((c) => c.ignicion === true)
+
+          let debeCortar = true
+
+          if (siguienteIgnicion) {
+            const gap =
+              new Date(siguienteIgnicion.timestamp).getTime() - new Date(coord.timestamp).getTime()
+
+            // Si el gap es menor a 2 minutos → apagón momentáneo, NO cortar
+            if (gap < GAP_IGNICION_MS) {
+              debeCortar = false
+              viajeActual.push(coord) // Agregar el punto con ignición apagada
+            }
+          }
+
+          if (debeCortar) {
+            // Cerrar en último punto con movimiento
+            const viajeHastaMovimiento =
+              indiceUltimoMovimiento >= 0
+                ? viajeActual.slice(0, indiceUltimoMovimiento + 1)
+                : viajeActual
+
+            if (viajeHastaMovimiento.length >= 2) {
+              viajes.push([...viajeHastaMovimiento])
+            }
+
+            viajeActual = []
+            enViaje = false
+            inicioParada = null
+            indiceUltimoMovimiento = -1
+          }
         }
       }
     }
 
-    // Si quedó un viaje sin cerrar (motor sigue encendido)
-    if (viajeActual.length > 0) {
-      viajes.push(viajeActual)
+    // Cerrar viaje abierto
+    if (viajeActual.length >= 2) {
+      const viajeHastaMovimiento =
+        indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+      if (viajeHastaMovimiento.length >= 2) {
+        viajes.push(viajeHastaMovimiento)
+      }
     }
 
-    return viajes
+    return viajes.length > 0 ? viajes : [coordenadas]
+  }
+  const detectarViajesPorVelocidad = (coordenadas) => {
+    const UMBRAL_KMH = 7
+    const GAP_DETENCION_MS = 5 * 60 * 1000
+
+    const viajes = []
+    let viajeActual = []
+    let inicioParada = null
+    let indiceUltimoMovimiento = -1
+
+    for (let i = 0; i < coordenadas.length; i++) {
+      const c = coordenadas[i]
+      const enMovimiento = (c.velocidad || 0) > UMBRAL_KMH
+
+      if (enMovimiento) {
+        inicioParada = null
+        indiceUltimoMovimiento = viajeActual.length
+        viajeActual.push(c)
+      } else {
+        if (viajeActual.length === 0) continue
+
+        if (inicioParada === null) {
+          inicioParada = new Date(c.timestamp).getTime()
+        }
+
+        const tiempoDetenido = new Date(c.timestamp).getTime() - inicioParada
+
+        if (tiempoDetenido >= GAP_DETENCION_MS) {
+          const viajeHastaMovimiento = viajeActual.slice(0, indiceUltimoMovimiento + 1)
+          if (viajeHastaMovimiento.length >= 2) viajes.push([...viajeHastaMovimiento])
+          viajeActual = []
+          inicioParada = null
+          indiceUltimoMovimiento = -1
+        } else {
+          viajeActual.push(c)
+        }
+      }
+    }
+
+    if (viajeActual.length >= 2) {
+      const viajeHastaMovimiento =
+        indiceUltimoMovimiento >= 0 ? viajeActual.slice(0, indiceUltimoMovimiento + 1) : viajeActual
+      if (viajeHastaMovimiento.length >= 2) viajes.push(viajeHastaMovimiento)
+    }
+
+    return viajes.length > 0 ? viajes : [coordenadas]
   }
 
   /**
@@ -144,28 +250,61 @@ export function useReportesHorasTrabajo() {
       const coord = viaje[i]
       const siguienteCoord = viaje[i + 1]
 
-      const timestampInicio = new Date(coord.timestamp)
-      const timestampFin = new Date(siguienteCoord.timestamp)
-      const duracionSegmento = (timestampFin - timestampInicio) / 1000 / 60 // minutos
+      const tsInicio = new Date(coord.timestamp)
+      const tsFin = new Date(siguienteCoord.timestamp)
+      const duracionSegmentoMs = tsFin - tsInicio
 
-      // Determinar si este segmento está dentro o fuera
-      const dentroHorario = estaDentroHorarioComercial(
+      const inicioDentro = estaDentroHorarioComercial(
         coord.timestamp,
         horarioInicio,
         horarioFin,
         diasLaborables,
       )
+      const finDentro = estaDentroHorarioComercial(
+        siguienteCoord.timestamp,
+        horarioInicio,
+        horarioFin,
+        diasLaborables,
+      )
 
-      if (dentroHorario) {
-        duracionDentro += duracionSegmento
+      if (inicioDentro === finDentro) {
+        // Todo el segmento está del mismo lado
+        const duracionHoras = duracionSegmentoMs / 1000 / 60 / 60
+        if (inicioDentro) {
+          duracionDentro += duracionHoras
+        } else {
+          duracionFuera += duracionHoras
+        }
       } else {
-        duracionFuera += duracionSegmento
+        // El segmento cruza el límite del horario — interpolamos el punto exacto de cruce
+        const [horaLimiteH, horaLimiteM] = (inicioDentro ? horarioFin : horarioInicio)
+          .split(':')
+          .map(Number)
+
+        const fechaBase = new Date(tsInicio)
+        fechaBase.setHours(horaLimiteH, horaLimiteM, 0, 0)
+
+        // Si el límite cayó antes del inicio por diferencia de día, ajustar
+        let tsCruce = fechaBase.getTime()
+        if (tsCruce < tsInicio.getTime()) tsCruce += 24 * 60 * 60 * 1000
+        if (tsCruce > tsFin.getTime()) tsCruce = tsFin.getTime()
+
+        const antesHoras = (tsCruce - tsInicio.getTime()) / 1000 / 60 / 60
+        const despuesHoras = (tsFin.getTime() - tsCruce) / 1000 / 60 / 60
+
+        if (inicioDentro) {
+          duracionDentro += antesHoras
+          duracionFuera += despuesHoras
+        } else {
+          duracionFuera += antesHoras
+          duracionDentro += despuesHoras
+        }
       }
     }
 
     return {
-      duracionDentro: duracionDentro / 60, // convertir a horas
-      duracionFuera: duracionFuera / 60,
+      duracionDentro: duracionDentro,
+      duracionFuera: duracionFuera,
     }
   }
 
@@ -215,7 +354,25 @@ export function useReportesHorasTrabajo() {
         //  DETECTAR VIAJES POR IGNICIÓN
         const viajes = detectarViajesPorIgnicion(coordenadas)
 
-        if (viajes.length === 0) {
+        const viajesValidos = viajes.filter((viaje) => {
+          if (viaje.length < 2) return false
+          const inicio = new Date(viaje[0].timestamp)
+          const fin = new Date(viaje[viaje.length - 1].timestamp)
+          const duracionMinutos = (fin - inicio) / 1000 / 60
+          return duracionMinutos > 0 // Solo viajes con al menos 1 segundo
+        })
+
+        const viajesAUsar = viajesValidos
+
+        viajes.forEach((viaje, i) => {
+          const inicio = new Date(viaje[0].timestamp)
+          const fin = new Date(viaje[viaje.length - 1].timestamp)
+          console.log(
+            `  Viaje ${i}: ${inicio.toLocaleTimeString()} → ${fin.toLocaleTimeString()} | ignicion en coords: ${viaje[0].ignicion}`,
+          )
+        })
+
+        if (viajesAUsar.length === 0) {
           console.warn(`No se detectaron viajes`)
           continue
         }
@@ -229,7 +386,7 @@ export function useReportesHorasTrabajo() {
 
         const detallesViajes = []
 
-        for (const viaje of viajes) {
+        for (const viaje of viajesAUsar) {
           const inicio = viaje[0]
           const fin = viaje[viaje.length - 1]
 
@@ -250,10 +407,10 @@ export function useReportesHorasTrabajo() {
           duracionFueraDia += duracionFuera
 
           // Clasificar viaje
-          if (duracionDentro > duracionFuera) {
-            viajesDentroDia++
-          } else {
+          if (duracionFuera > 0) {
             viajesFueraDia++
+          } else {
+            viajesDentroDia++
           }
           const direccionInicio = await obtenerDireccion(inicio)
           const direccionFin = await obtenerDireccion(fin)
@@ -298,7 +455,7 @@ export function useReportesHorasTrabajo() {
           duracionTotal: formatearDuracion(duracionTotalDia), //  CAMBIO
           duracionDentroHorario: formatearDuracion(duracionDentroDia), //  CAMBIO
           duracionFueraHorario: formatearDuracion(duracionFueraDia),
-          totalViajes: viajes.length,
+          totalViajes: viajesAUsar.length,
           viajesDentroHorario: viajesDentroDia,
           viajesFueraHorario: viajesFueraDia,
           detallesViajes: detallesViajes,

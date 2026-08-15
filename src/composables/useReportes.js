@@ -1,10 +1,11 @@
 // composables/useReportes.js - ACTUALIZADO
 import { ref } from 'vue'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from 'src/firebase/firebaseConfig'
 import { useReportesEventos } from './useReportesEventos'
 import { useReportesTrayectos } from './useReportesTrayectos'
 import { useReportesHoras } from './useReportesHoras'
+import { useMultiTenancy } from './useMultiTenancy'
 
 /**
  * ============================================
@@ -15,6 +16,8 @@ import { useReportesHoras } from './useReportesHoras'
 export function useReportes() {
   const loading = ref(false)
   const error = ref(null)
+
+  const { crearQueryConEmpresa } = useMultiTenancy()
 
   // Composables especializados
   const reportesEventos = useReportesEventos()
@@ -132,13 +135,29 @@ export function useReportes() {
    */
   const obtenerUnidades = async () => {
     try {
-      const unidadesRef = collection(db, 'Unidades')
-      const snapshot = await getDocs(unidadesRef)
+      const { getIdEmpresaActual } = useMultiTenancy()
+      const idEmpresa = getIdEmpresaActual()
 
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      if (Array.isArray(idEmpresa) && idEmpresa.length > 10) {
+        const chunks = []
+        for (let i = 0; i < idEmpresa.length; i += 10) {
+          chunks.push(idEmpresa.slice(i, i + 10))
+        }
+        const snapshots = await Promise.all(
+          chunks.map((chunk) =>
+            getDocs(query(collection(db, 'Unidades'), where('IdEmpresaUnidad', 'in', chunk))),
+          ),
+        )
+        const docs = []
+        snapshots.forEach((snapshot) =>
+          snapshot.docs.forEach((doc) => docs.push({ id: doc.id, ...doc.data() })),
+        )
+        return docs
+      }
+
+      const q = crearQueryConEmpresa('Unidades', 'IdEmpresaUnidad')
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     } catch (err) {
       console.error('Error al obtener unidades:', err)
       throw err
@@ -160,13 +179,9 @@ export function useReportes() {
    */
   const obtenerConductores = async () => {
     try {
-      const conductoresRef = collection(db, 'Conductores')
-      const snapshot = await getDocs(conductoresRef)
-
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+      const q = crearQueryConEmpresa('Conductores', 'IdEmpresaConductor') // ← CAMBIO
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     } catch (err) {
       console.error('Error al obtener conductores:', err)
       throw err
