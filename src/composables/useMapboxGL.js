@@ -818,14 +818,6 @@ ${(() => {
   `
 })()}
 
-      <button
-        class="details-btn"
-        data-action="ver-detalles-conductor"
-        data-conductor-id="${unidad.conductorId || unidad.id}"
-        data-conductor-nombre="${unidad.conductorNombre}"
-      >
-        Ver Detalles del Conductor
-      </button>
     </div>
   </div>
   `

@@ -2751,11 +2751,11 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
 }
 
 .accion-conductor-btn {
-  background: #3b82f6;
+  background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%);
 }
 
 .accion-unidad-btn {
-  background: #6366f1;
+  background: linear-gradient(135deg, #bb5e00 15%, #bb0000 85%);
 }
 
 .points-list-container::-webkit-scrollbar {
