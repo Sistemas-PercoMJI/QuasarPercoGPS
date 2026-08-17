@@ -735,47 +735,88 @@ export function useMapboxGL() {
         <span class="value" style="font-family: monospace;">${unidad.ubicacion.lat.toFixed(5)}, ${unidad.ubicacion.lng.toFixed(5)}</span>
       </div>
 
-      ${(() => {
-        const unidadId2 = unidad.unidadId || unidad.id
-        const cfg = obtenerConfigBloqueo(unidadId2)
+${(() => {
+  const unidadId2 = unidad.unidadId || unidad.id
+  const cfg = obtenerConfigBloqueo(unidadId2)
+  const mostrarBloqueo = cfg.relayInstalado && puedeControlarBloqueo()
 
-        if (!cfg.relayInstalado || !puedeControlarBloqueo()) return ''
+  const cargando = mostrarBloqueo ? estaCargando(unidadId2) : false
+  const bloqueado = mostrarBloqueo ? cfg.bloqueado : false
+  const accionSiguiente = bloqueado ? 'desbloquear' : 'bloquear'
+  const textoEstado = bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+  const colorEstado = bloqueado ? '#F44336' : '#4CAF50'
+  const colorBoton = bloqueado ? '#4CAF50' : '#F44336'
+  const textoBotonBloqueo = bloqueado ? 'Permitir' : 'Bloquear'
 
-        const cargando = estaCargando(unidadId2)
-        const bloqueado = cfg.bloqueado
-        const accionSiguiente = bloqueado ? 'desbloquear' : 'bloquear'
-        const textoEstado = bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
-        const colorEstado = bloqueado ? '#F44336' : '#4CAF50'
-        const textoBoton = cargando
-          ? 'Enviando…'
-          : bloqueado
-            ? 'Permitir arranque'
-            : 'Bloquear arranque'
-        const colorBoton = bloqueado ? '#4CAF50' : '#F44336'
+  const iconoCandado = bloqueado
+    ? `<path d="M12 17a2 2 0 002-2 2 2 0 00-2-2 2 2 0 00-2 2 2 2 0 002 2zm6-9h-1V6a5 5 0 00-10 0v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zM8.9 6a3.1 3.1 0 016.2 0v2H8.9V6z"/>`
+    : `<path d="M18 8h-1V6a5 5 0 00-10 0h2a3 3 0 016 0v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zM12 17a2 2 0 002-2 2 2 0 00-2-2 2 2 0 00-2 2 2 2 0 002 2z"/>`
 
-        return `
+  return `
     <div class="popup-section-bloqueo" style="margin-top:10px; padding-top:10px; border-top:1px solid #f3f4f6;">
+      ${
+        mostrarBloqueo
+          ? `
       <div class="popup-section">
         <span class="label">Estado de arranque:</span>
-        <span class="value" style="color:${colorEstado}; font-weight:bold;">${textoEstado}</span>
+        <span class="value bloqueo-estado-texto" style="color:${colorEstado}; font-weight:bold;">${textoEstado}</span>
       </div>
-      <button
-        class="bloqueo-arranque-btn"
-        data-action="toggle-bloqueo-arranque"
-        data-unidad-id="${unidadId2}"
-        data-accion="${accionSiguiente}"
-        ${cargando ? 'disabled' : ''}
-        style="width:100%; margin-top:6px; padding:10px; background:${colorBoton};
-               color:white; border:none; border-radius:8px; font-weight:600;
-               font-size:13px; cursor:${cargando ? 'default' : 'pointer'};
-               opacity:${cargando ? '0.7' : '1'};"
-      >${textoBoton}</button>
-      <div style="font-size:10px; color:#9ca3af; margin-top:6px; line-height:1.3;">
-        ⚠️ Esto bloquea el arranque del motor. No detiene un vehículo en movimiento.
+      `
+          : ''
+      }
+
+      <div class="unidad-popup-acciones-row">
+        ${
+          mostrarBloqueo
+            ? `
+        <button
+          class="accion-cuadrito bloqueo-arranque-btn"
+          data-action="toggle-bloqueo-arranque"
+          data-unidad-id="${unidadId2}"
+          data-accion="${accionSiguiente}"
+          ${cargando ? 'disabled' : ''}
+          style="background:${colorBoton}; opacity:${cargando ? '0.7' : '1'}; cursor:${cargando ? 'default' : 'pointer'};"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">${iconoCandado}</svg>
+          <span class="accion-cuadrito-label">${cargando ? 'Enviando…' : textoBotonBloqueo}</span>
+        </button>
+        `
+            : ''
+        }
+
+        <button
+          class="accion-cuadrito accion-conductor-btn"
+          data-action="ver-detalles-conductor"
+          data-conductor-id="${unidad.conductorId || unidad.id}"
+          data-conductor-nombre="${unidad.conductorNombre}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/>
+          </svg>
+          <span class="accion-cuadrito-label">Conductor</span>
+        </button>
+
+        <button
+          class="accion-cuadrito accion-unidad-btn"
+          data-action="ver-detalles-unidad"
+          data-unidad-id="${unidadId2}"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+          <span class="accion-cuadrito-label">Unidad</span>
+        </button>
       </div>
+
+      ${
+        mostrarBloqueo
+          ? `<div style="font-size:10px; color:#9ca3af; margin-top:6px; line-height:1.3;">⚠️ Bloquear el arranque no detiene un vehículo en movimiento.</div>`
+          : ''
+      }
     </div>
   `
-      })()}
+})()}
 
       <button
         class="details-btn"
@@ -791,6 +832,7 @@ export function useMapboxGL() {
 
     return popupContent
   }
+
   // OPTIMIZADO: Procesamiento real de marcadores
   const procesarActualizacionMarcadores = (unidades) => {
     if (!map.value || !unidades) {

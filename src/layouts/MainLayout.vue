@@ -1298,6 +1298,23 @@ watch(
   { deep: true },
 )
 watch(
+  () => estadoCompartido.value?.abrirEstadoFlotaConVehiculo,
+  (newValue) => {
+    if (newValue && newValue.vehiculo) {
+      if (router.currentRoute.value.path !== '/') {
+        router.push('/')
+      }
+
+      cerrarTodosLosDialogs()
+
+      setTimeout(() => {
+        estadoFlotaDrawerOpen.value = true
+      }, 150)
+    }
+  },
+  { deep: true },
+)
+watch(
   () => router.currentRoute.value.path,
   (newPath, oldPath) => {
     if (newPath !== oldPath) {
