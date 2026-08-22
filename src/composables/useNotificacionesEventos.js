@@ -151,6 +151,7 @@ export function useNotificacionesEventos() {
         const unidadNombre = unidadesNombresPorId[evento.idUnidad] || `Unidad ${evento.idUnidad}`
         const notifData = eventoANotificacion(evento, unidadNombre)
         notifData.timestamp = evento.Timestamp?.toDate?.()?.getTime?.() || Date.now()
+        notifData.esCatchUp = true
         // No se marca como leída: el usuario aún no la ha visto, aunque haya pasado tiempo
         agregarNotificacion(notifData)
       })

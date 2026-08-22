@@ -76,13 +76,15 @@ export function useNotifications() {
 
     notifications.value.unshift(nuevaNotificacion)
 
-    // Auto-expirar después de 5 minutos
-    setTimeout(
-      () => {
-        marcarComoLeida(id)
-      },
-      5 * 60 * 1000,
-    )
+    // 🆕 Las notificaciones de catch-up no se auto-marcan como leídas
+    if (!notificacionData.esCatchUp) {
+      setTimeout(
+        () => {
+          marcarComoLeida(id)
+        },
+        5 * 60 * 1000,
+      )
+    }
 
     return id
   }
