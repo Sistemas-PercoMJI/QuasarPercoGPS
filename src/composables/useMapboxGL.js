@@ -1904,7 +1904,7 @@ ${(() => {
   }
 
   //  CAMBIAR ESTILO DEL MAPA (NUEVO)
-  const cambiarEstiloMapa = () => {
+  const cambiarEstiloMapa = (estiloDeseado = null) => {
     if (!map.value) {
       console.warn(' Mapa no disponible')
       return false
@@ -1920,8 +1920,19 @@ ${(() => {
         ? map.value.getLayoutProperty('traffic', 'visibility') === 'visible'
         : false
 
-      // Cambiar estilo
-      const nuevoEstilo = estiloActual.value === 'satellite' ? 'streets' : 'satellite'
+      // 🆕 Usar el estilo explícito si se pasó; si no, mantener el toggle como fallback
+      const nuevoEstilo =
+        estiloDeseado && ESTILOS_MAPA[estiloDeseado]
+          ? estiloDeseado
+          : estiloActual.value === 'satellite'
+            ? 'streets'
+            : 'satellite'
+
+      // 🆕 Si ya está en ese estilo, no hacer nada
+      if (nuevoEstilo === estiloActual.value) {
+        return nuevoEstilo === 'streets'
+      }
+
       estiloActual.value = nuevoEstilo
 
       // Aplicar nuevo estilo

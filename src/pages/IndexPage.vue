@@ -1962,6 +1962,11 @@ onMounted(async () => {
       console.error('Error: Mapa no inicializado correctamente')
       return
     }
+
+    if (mapPage._mapaAPI.getEstiloActual) {
+      estiloMapa.value = mapPage._mapaAPI.getEstiloActual()
+    }
+
     await new Promise((resolve) => {
       if (mapPage._mapaAPI.map.loaded()) {
         resolve()
@@ -2429,7 +2434,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
     return // Ya está en ese estilo
   }
 
-  const resultado = cambiarEstiloMapa()
+  const resultado = cambiarEstiloMapa(nuevoEstilo) // 🆕 pasar el estilo explícito
   if (resultado !== null) {
     estiloMapa.value = nuevoEstilo
 
