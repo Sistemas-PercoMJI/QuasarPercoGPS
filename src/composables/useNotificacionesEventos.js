@@ -1,7 +1,19 @@
 // src/composables/useNotificacionesEventos.js
 import { ref } from 'vue'
 import { db } from 'src/firebase/firebaseConfig'
-import { collection, query, where, onSnapshot, getDocs, orderBy } from 'firebase/firestore'
+import {
+  collection,
+  collectionGroup,
+  query,
+  where,
+  onSnapshot,
+  getDocs,
+  orderBy,
+  doc,
+  getDoc,
+  setDoc,
+  Timestamp,
+} from 'firebase/firestore'
 import { useNotifications } from './useNotifications'
 import { useMultiTenancy } from './useMultiTenancy'
 import { auth } from 'src/firebase/firebaseConfig'
@@ -16,6 +28,30 @@ export function useNotificacionesEventos() {
 
   const obtenerFechaHoy = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Tijuana' })
+  }
+  const obtenerCursorUsuario = async (uid) => {
+    try {
+      const ref = doc(db, 'Usuarios', uid)
+      const snap = await getDoc(ref)
+      if (snap.exists() && snap.data().ultimaRevisionNotificaciones) {
+        return snap.data().ultimaRevisionNotificaciones.toDate()
+      }
+    } catch (err) {
+      console.warn('No se pudo leer el cursor de notificaciones:', err.message)
+    }
+    // Si no existe, arrancamos desde hace 3 días (ventana de catch-up inicial)
+    const hace3Dias = new Date()
+    hace3Dias.setDate(hace3Dias.getDate() - 3)
+    return hace3Dias
+  }
+
+  const actualizarCursorUsuario = async (uid) => {
+    try {
+      const ref = doc(db, 'Usuarios', uid)
+      await setDoc(ref, { ultimaRevisionNotificaciones: Timestamp.now() }, { merge: true })
+    } catch (err) {
+      console.warn('No se pudo actualizar el cursor de notificaciones:', err.message)
+    }
   }
 
   const eventoANotificacion = (evento, unidadNombre) => {
@@ -78,6 +114,50 @@ export function useNotificacionesEventos() {
             : null,
     }
   }
+
+  const cargarEventosPerdidos = async (
+    unidadesIdsDelUsuario,
+    unidadesNombresPorId,
+    cursorFecha,
+    currentUserId,
+  ) => {
+    try {
+      const cursorTimestamp = Timestamp.fromDate(cursorFecha)
+
+      // collectionGroup: busca en TODAS las subcolecciones EventoDiario,
+      // sin importar bajo qué unidad/fecha estén — así cubre días anteriores también
+      const qPerdidos = query(
+        collectionGroup(db, 'EventoDiario'),
+        where('Timestamp', '>', cursorTimestamp),
+        orderBy('Timestamp', 'asc'),
+      )
+
+      const snapshot = await getDocs(qPerdidos)
+      if (snapshot.empty) return
+
+      snapshot.forEach((docSnap) => {
+        const evento = { id: docSnap.id, ...docSnap.data() }
+
+        // Solo eventos de unidades que le pertenecen a este usuario/empresa
+        if (!unidadesIdsDelUsuario.includes(evento.idUnidad)) return
+
+        // Mismo filtro de userId que ya usas en tiempo real
+        if (evento.userId && evento.userId !== currentUserId) return
+
+        // Evitar duplicados si el listener en tiempo real ya lo agregó
+        if (eventosYaProcesados.has(evento.id)) return
+        eventosYaProcesados.add(evento.id)
+
+        const unidadNombre = unidadesNombresPorId[evento.idUnidad] || `Unidad ${evento.idUnidad}`
+        const notifData = eventoANotificacion(evento, unidadNombre)
+        notifData.timestamp = evento.Timestamp?.toDate?.()?.getTime?.() || Date.now()
+        // No se marca como leída: el usuario aún no la ha visto, aunque haya pasado tiempo
+        agregarNotificacion(notifData)
+      })
+    } catch (err) {
+      console.error('Error cargando eventos perdidos:', err)
+    }
+  }
   const iniciarEscucha = async () => {
     if (iniciado.value) return
     iniciado.value = true
@@ -111,23 +191,34 @@ export function useNotificacionesEventos() {
     const idEmpresa = idEmpresaActual.value
 
     let qUnidades
-    console.log('🔍 idEmpresa:', idEmpresa) // 🆕 debug temporal
+
     if (Array.isArray(idEmpresa)) {
       qUnidades = query(unidadesRef, where('IdEmpresaUnidad', 'in', idEmpresa.slice(0, 10)))
     } else {
       qUnidades = query(unidadesRef, where('IdEmpresaUnidad', '==', idEmpresa))
     }
-
     const unidadesSnap = await getDocs(qUnidades)
     if (unidadesSnap.empty) return
-    console.log(
-      '🔍 Unidades encontradas para notificaciones:',
-      unidadesSnap.docs.map((d) => ({ id: d.id, IdEmpresaUnidad: d.data().IdEmpresaUnidad })),
-    )
 
     const fechaHoy = obtenerFechaHoy()
     const currentUserId = auth.currentUser?.uid
     if (!currentUserId) return
+
+    // 🆕 CATCH-UP: cargar eventos que pasaron mientras la app estaba cerrada
+    const unidadesIdsDelUsuario = unidadesSnap.docs.map((d) => d.id)
+    const unidadesNombresPorId = {}
+    unidadesSnap.docs.forEach((d) => {
+      unidadesNombresPorId[d.id] = d.data().Unidad || `Unidad ${d.id}`
+    })
+
+    const cursorFecha = await obtenerCursorUsuario(currentUserId)
+    await cargarEventosPerdidos(
+      unidadesIdsDelUsuario,
+      unidadesNombresPorId,
+      cursorFecha,
+      currentUserId,
+    )
+    await actualizarCursorUsuario(currentUserId)
 
     // Por cada unidad, escuchar EventoDiario del día actual
     unidadesSnap.forEach((unidadDoc) => {
