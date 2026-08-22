@@ -126,6 +126,8 @@ export function useReportesEventos() {
               snapshot.forEach((doc) => {
                 const data = doc.data()
                 if (data.userId && data.userId !== auth.currentUser?.uid) return
+                const esEventoUbicacion =
+                  data.TipoEvento === 'Entrada' || data.TipoEvento === 'Salida'
                 //  CORRECCIÓN 1: Usar DuracionDentro (no Duracion)
                 const duracionSegundos = data.DuracionSegundos ?? data.DuracionDentro ?? null
 
@@ -153,7 +155,7 @@ export function useReportesEventos() {
                     data.geozonaNombre ||
                     data.PoiNombre ||
                     data.poiNombre ||
-                    'N/A',
+                    (esEventoUbicacion ? 'N/A' : ''),
                   //  CORRECCIÓN 2: Usar conductor obtenido de RutaDiaria
                   conductorNombre: conductorNombre,
                   unidadNombre: window.unidadesMap
@@ -175,7 +177,7 @@ export function useReportesEventos() {
                   //  Campos adicionales útiles
                   idEvento: data.IdEvento || data.idEvento || '',
                   idRutaDiaria: data.IdRutaDiaria || data.idRutaDiaria || fechaStr,
-                  tipoUbicacion: data.tipoUbicacion || 'Geozona',
+                  tipoUbicacion: data.tipoUbicacion || (esEventoUbicacion ? 'Geozona' : ''),
                   ubicacionId: data.ubicacionId || '',
                   finEvento: data.FinEvento?.toDate() || null,
                   unidadPlaca: unidadPlaca,
@@ -193,12 +195,19 @@ export function useReportesEventos() {
       }
 
       // Filtrar por tipos de evento si se especificaron
+      // Filtrar por tipos de evento si se especificaron
       let eventosFiltrados = todosLosEventos
       if (filtroEventos && filtroEventos.length > 0) {
         if (!filtroEventos.includes('Todos los eventos')) {
-          eventosFiltrados = todosLosEventos.filter((evento) =>
-            filtroEventos.includes(evento.eventoNombre),
-          )
+          eventosFiltrados = todosLosEventos.filter((evento) => {
+            if (filtroEventos.includes('Odómetro') && evento.tipoEvento === 'Odometro') return true
+            if (
+              filtroEventos.includes('Voltaje de alimentación bajo / posible desconexión') &&
+              evento.tipoEvento === 'PowerSupplyBajo'
+            )
+              return true
+            return filtroEventos.includes(evento.eventoNombre)
+          })
         }
       }
 
