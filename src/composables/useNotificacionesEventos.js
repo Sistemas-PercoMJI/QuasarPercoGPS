@@ -33,6 +33,20 @@ export function useNotificacionesEventos() {
         ubicacion: null,
       }
     }
+    //Evento de corte de energía / voltaje bajo
+    if (evento.TipoEvento === 'PowerSupplyBajo') {
+      return {
+        type: 'negative',
+        icon: 'bolt',
+        title: 'Corte de energía',
+        message: `${unidadNombre} — voltaje bajo detectado (${evento.VoltajeDetectado?.toFixed(1) || '?'}V), posible desconexión`,
+        eventoId: evento.id,
+        ubicacionNombre: '',
+        tipoUbicacion: '',
+        accion: 'PowerSupplyBajo',
+        ubicacion: null,
+      }
+    }
 
     const esEntrada = evento.TipoEvento === 'Entrada'
     const nombreUbicacion = evento.PoiNombre || evento.GeozonaNombre || 'Ubicación'
@@ -97,6 +111,7 @@ export function useNotificacionesEventos() {
     const idEmpresa = idEmpresaActual.value
 
     let qUnidades
+    console.log('🔍 idEmpresa:', idEmpresa) // 🆕 debug temporal
     if (Array.isArray(idEmpresa)) {
       qUnidades = query(unidadesRef, where('IdEmpresaUnidad', 'in', idEmpresa.slice(0, 10)))
     } else {
@@ -105,6 +120,10 @@ export function useNotificacionesEventos() {
 
     const unidadesSnap = await getDocs(qUnidades)
     if (unidadesSnap.empty) return
+    console.log(
+      '🔍 Unidades encontradas para notificaciones:',
+      unidadesSnap.docs.map((d) => ({ id: d.id, IdEmpresaUnidad: d.data().IdEmpresaUnidad })),
+    )
 
     const fechaHoy = obtenerFechaHoy()
     const currentUserId = auth.currentUser?.uid

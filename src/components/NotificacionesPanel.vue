@@ -61,6 +61,7 @@
             v-for="(notif, index) in notificacionesFiltradas"
             :key="notif.id"
             :type="notif.type"
+            :icon="notif.icon"
             :title="notif.title"
             :message="notif.message"
             :timestamp="notif.timestamp"

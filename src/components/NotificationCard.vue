@@ -39,6 +39,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   type: { type: String, default: 'info' },
+  icon: { type: String, default: null },
   title: { type: String, default: '' },
   message: { type: String, default: '' },
   timestamp: { type: Number, default: Date.now },
@@ -55,8 +56,7 @@ const iconMap = {
   negative: 'error',
   warning: 'warning',
 }
-
-const icon = computed(() => iconMap[props.type] || 'info')
+const icon = computed(() => props.icon || iconMap[props.type] || 'info')
 
 // Tiempo transcurrido actualizado cada minuto
 const tiempoTranscurrido = ref('')

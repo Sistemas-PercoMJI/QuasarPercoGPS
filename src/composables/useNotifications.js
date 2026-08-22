@@ -50,6 +50,7 @@ export function useNotifications() {
       id,
       leida: notificacionData.yaLeida || false,
       type: notificacionData.type || 'info',
+      icon: notificacionData.icon || null,
       title: notificacionData.title || 'Notificación',
       message: notificacionData.message || '',
       eventoId: notificacionData.eventoId || null,
