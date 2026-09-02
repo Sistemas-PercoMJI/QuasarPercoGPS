@@ -167,6 +167,7 @@ import mapboxgl from 'mapbox-gl'
 import { useMultiTenancy } from 'src/composables/useMultiTenancy'
 import { useGeozonaUtils } from 'src/composables/useGeozonaUtils'
 import { useGeocoding } from 'src/composables/useGeocoding'
+import { useBloqueoArranque } from 'src/composables/useBloqueoArranque'
 
 //import { Notify } from 'quasar'
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
@@ -183,12 +184,21 @@ const {
   limpiarMarcadoresUnidades,
 } = useMapboxGL()
 
+const {
+  iniciarListenerConfig,
+  detenerListenerConfig,
+  toggleBloqueoArranque,
+  obtenerConfigBloqueo,
+} = useBloqueoArranque()
+
 const geozonasDibujadas = ref(new Set())
 const poisDibujados = ref(new Set())
 
 const { cargarUsuarioActual /*, idEmpresaActual*/ } = useMultiTenancy()
 
-const { abrirGeozonasConPOI } = useEventBus()
+const { abrirGeozonasConPOI, abrirEstadoFlotaConVehiculo, abrirConductoresConConductor } =
+  useEventBus()
+
 const {
   inicializar,
   // evaluarEventosParaUnidadesSimulacion,
@@ -231,8 +241,6 @@ const {
   obtenerConductores,
   obtenerUnidades,
 } = useConductoresFirebase()
-
-const { estadoCompartido } = useEventBus()
 
 //const simuladorActivo = ref(false)
 //let simuladorYaIniciado = false
@@ -336,6 +344,92 @@ function detenerEvaluacionEventos() {
     })
   }
 }*/
+
+const confirmarYEjecutarBloqueo = (unidadId, accion, btnElement) => {
+  const esBloqueo = accion === 'bloquear'
+  const unidad = unidadesActivas.value.find((u) => (u.unidadId || u.id) === unidadId)
+  const nombreUnidad = unidad?.unidadNombre || unidadId
+
+  $q.dialog({
+    title: esBloqueo ? 'Bloquear arranque' : 'Permitir arranque',
+    message: esBloqueo
+      ? `¿Confirmas bloquear el arranque de <b>${nombreUnidad}</b>?<br><br>Esto impide que el motor encienda. No detiene el vehículo si ya está en movimiento.`
+      : `¿Confirmas permitir el arranque de <b>${nombreUnidad}</b>?`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    color: esBloqueo ? 'negative' : 'positive',
+  }).onOk(async () => {
+    const labelEl = btnElement.querySelector('.accion-cuadrito-label')
+    const textoOriginal = labelEl ? labelEl.textContent : btnElement.textContent
+
+    btnElement.disabled = true
+    btnElement.style.opacity = '0.7'
+    btnElement.style.cursor = 'default'
+    if (labelEl) labelEl.textContent = 'Enviando…'
+
+    const resultado = await toggleBloqueoArranque(unidadId, accion)
+
+    if (resultado.ok) {
+      $q.notify({
+        type: 'positive',
+        message: esBloqueo
+          ? 'Arranque bloqueado correctamente'
+          : 'Arranque permitido correctamente',
+        position: 'top',
+        timeout: 2500,
+        icon: esBloqueo ? 'lock' : 'lock_open',
+      })
+
+      const cfg = obtenerConfigBloqueo(unidadId)
+      btnElement.dataset.accion = cfg.bloqueado ? 'desbloquear' : 'bloquear'
+      if (labelEl) labelEl.textContent = cfg.bloqueado ? 'Permitir' : 'Bloquear'
+      btnElement.style.background = cfg.bloqueado ? '#4CAF50' : '#F44336'
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+
+      const estadoValueEl = btnElement
+        .closest('.popup-section-bloqueo')
+        ?.querySelector('.bloqueo-estado-texto')
+      if (estadoValueEl) {
+        estadoValueEl.textContent = cfg.bloqueado ? 'Arranque bloqueado' : 'Arranque permitido'
+        estadoValueEl.style.color = cfg.bloqueado ? '#F44336' : '#4CAF50'
+      }
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'No se pudo enviar el comando',
+        caption: resultado.error || 'Intenta de nuevo',
+        position: 'top',
+        timeout: 3000,
+        icon: 'error',
+      })
+      btnElement.disabled = false
+      btnElement.style.opacity = '1'
+      btnElement.style.cursor = 'pointer'
+      if (labelEl) labelEl.textContent = textoOriginal
+      else btnElement.textContent = textoOriginal
+    }
+  })
+}
+
+const abrirDetallesUnidadEnFlota = (unidadId) => {
+  const unidad = unidadesActivas.value.find((u) => (u.unidadId || u.id) === unidadId)
+  if (!unidad) {
+    console.warn('Unidad no encontrada para abrir detalles:', unidadId)
+    return
+  }
+
+  const cerrarDialogs = new CustomEvent('cerrarTodosDialogs')
+  window.dispatchEvent(cerrarDialogs)
+
+  setTimeout(() => {
+    // Solo mandamos el id — EstadoFlota.vue ya tiene su propio
+    // computed `vehiculos` armado con todo lo necesario (conductor, etc.)
+    abrirEstadoFlotaConVehiculo({ id: unidad.unidadId || unidad.id })
+  }, 100)
+}
 
 function tieneEventosAsignados(ubicacionId, tipo, eventosActivos) {
   let count = 0
@@ -1868,6 +1962,11 @@ onMounted(async () => {
       console.error('Error: Mapa no inicializado correctamente')
       return
     }
+
+    if (mapPage._mapaAPI.getEstiloActual) {
+      estiloMapa.value = mapPage._mapaAPI.getEstiloActual()
+    }
+
     await new Promise((resolve) => {
       if (mapPage._mapaAPI.map.loaded()) {
         resolve()
@@ -1990,7 +2089,7 @@ onMounted(async () => {
     // iniciarEvaluacionContinuaEventos()
 
     iniciarSeguimientoGPS()
-
+    iniciarListenerConfig()
     iniciarTracking()
 
     /* setTimeout(async () => {
@@ -2000,6 +2099,25 @@ onMounted(async () => {
     mapPage.addEventListener('click', (event) => {
       if (!event || !event.target) {
         console.warn('Evento sin target válido')
+        return
+      }
+
+      const btnBloqueo = event.target.closest('[data-action="toggle-bloqueo-arranque"]')
+      if (btnBloqueo) {
+        const unidadId = btnBloqueo.dataset.unidadId
+        const accion = btnBloqueo.dataset.accion
+        if (unidadId && accion) {
+          confirmarYEjecutarBloqueo(unidadId, accion, btnBloqueo)
+        }
+        return
+      }
+
+      const btnUnidad = event.target.closest('[data-action="ver-detalles-unidad"]')
+      if (btnUnidad) {
+        const unidadId = btnUnidad.dataset.unidadId
+        if (unidadId) {
+          abrirDetallesUnidadEnFlota(unidadId)
+        }
         return
       }
 
@@ -2047,22 +2165,13 @@ onMounted(async () => {
                   window.dispatchEvent(cerrarDialogs)
 
                   setTimeout(() => {
-                    estadoCompartido.value.abrirConductoresConConductor = {
-                      conductor: {
-                        id: conductorId,
-                        grupoId: grupoDelConductor.id,
-                        grupoNombre: grupoDelConductor.Nombre,
-                      },
-                      timestamp: Date.now(),
-                    }
+                    abrirConductoresConConductor({
+                      id: conductorId,
+                      grupoId: grupoDelConductor.id,
+                      grupoNombre: grupoDelConductor.Nombre,
+                    })
 
-                    /*$q.notify({
-                      type: 'positive',
-                      message: `Abriendo detalles de ${conductorNombre}`,
-                      icon: 'person',
-                      position: 'top',
-                      timeout: 2000,
-                    })*/
+                    /*$q.notify({...})*/
                   }, 100)
                 } else {
                   console.warn('Conductor sin grupo')
@@ -2287,7 +2396,7 @@ onUnmounted(() => {
   delete window._mapMoveEndHandler
 
   detenerSeguimientoGPS()
-
+  detenerListenerConfig()
   detenerEvaluacionEventos()
   limpiarMarcadoresUnidades()
   resetear()
@@ -2325,7 +2434,7 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
     return // Ya está en ese estilo
   }
 
-  const resultado = cambiarEstiloMapa()
+  const resultado = cambiarEstiloMapa(nuevoEstilo) // 🆕 pasar el estilo explícito
   if (resultado !== null) {
     estiloMapa.value = nuevoEstilo
 
@@ -2601,6 +2710,57 @@ const cambiarEstiloDesdeMenu = async (nuevoEstilo) => {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(107, 114, 128, 0.4);
   background: linear-gradient(135deg, #9ca3af 0%, #4b5563 100%);
+}
+
+.unidad-popup-acciones-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.accion-cuadrito {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: none;
+  border-radius: 10px;
+  background: #6b7280;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease;
+  min-width: 0;
+}
+
+.accion-cuadrito:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.accion-cuadrito:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.accion-cuadrito-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.accion-conductor-btn {
+  background: linear-gradient(135deg, #bb0000 15%, #bb5e00 85%);
+}
+
+.accion-unidad-btn {
+  background: linear-gradient(135deg, #bb5e00 15%, #bb0000 85%);
 }
 
 .points-list-container::-webkit-scrollbar {

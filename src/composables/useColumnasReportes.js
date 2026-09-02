@@ -107,6 +107,8 @@ const COLUMNAS_EVENTOS = {
         negative: 'Fuera',
         entrada: 'Entrada',
         salida: 'Salida',
+        powersupplybajo: 'Corte de energía',
+        odometro: 'Odómetro',
       }
 
       return tiposMap[tipo.toLowerCase()] || tipo
@@ -201,35 +203,34 @@ const COLUMNAS_EVENTOS = {
     key: 'condicion',
     label: 'Condición',
     obtenerValor: (notificacion) => {
-      // Si ya tiene una acción definida, usarla
+      const tipoRaw = notificacion.tipoEvento || notificacion.TipoEvento
+
+      // 🆕 Eventos del sistema, no tienen ubicación
+      if (tipoRaw === 'PowerSupplyBajo') return 'Corte de energía detectado'
+      if (tipoRaw === 'Odometro') return notificacion.eventoNombre || 'Umbral de odómetro alcanzado'
+
       if (notificacion.accion && notificacion.accion !== 'N/A') {
         return notificacion.accion
       }
 
-      // Obtener valores
-      const tipo = notificacion.tipoEvento || notificacion.TipoEvento
+      const tipo = tipoRaw
       const tipoUbicacion = notificacion.tipoUbicacion
       const nombreUbicacion =
         notificacion.geozonaNombre || notificacion.ubicacionNombre || notificacion.eventoNombre
 
-      // Normalizar tipo de evento
       let tipoTexto = tipo
       if (tipo === 'Entrada' || tipo === 'entrada' || tipo === 'positive') {
         tipoTexto = 'Entrada'
       } else if (tipo === 'Salida' || tipo === 'salida' || tipo === 'warning') {
         tipoTexto = 'Salida'
       }
-      //  DEBUG PASO A PASO
-      //  CONSTRUCCIÓN PASO A PASO (más seguro)
+
       if (!tipoTexto) return 'N/A'
       if (!nombreUbicacion) return 'N/A'
 
-      // Con tipo de ubicación
       if (tipoUbicacion) {
         return `${tipoTexto} a ${tipoUbicacion}: ${nombreUbicacion}`
       }
-
-      // Sin tipo de ubicación (fallback)
       return `${tipoTexto}: ${nombreUbicacion}`
     },
     ancho: 250,

@@ -911,8 +911,11 @@ const cargarEventosDisponibles = async () => {
     const { obtenerEventos } = useEventos(userId.value)
     const eventosDelUsuario = await obtenerEventos()
 
+    const eventosDelSistema = ['Voltaje de alimentación bajo / posible desconexión', 'Odómetro']
+
     listaEventosDisponibles.value = [
       'Todos los eventos',
+      ...eventosDelSistema,
       ...eventosDelUsuario.map((evento) => evento.nombre).filter(Boolean),
     ]
     eventosDisponiblesFiltrados.value = listaEventosDisponibles.value
@@ -1205,7 +1208,9 @@ const obtenerDatosReporte = async () => {
   let datosFiltrados = datosInforme
   if (tipoInforme === 'eventos' && eventos.value.length > 0) {
     if (!eventos.value.includes('Todos los eventos')) {
-      datosFiltrados = datosInforme.filter((evento) => eventos.value.includes(evento.eventoNombre))
+      datosFiltrados = datosInforme.filter((evento) =>
+        eventoCoincideConFiltro(evento, eventos.value),
+      )
     }
   }
   // Agrupar datos
@@ -1713,6 +1718,19 @@ const cargarHistorialReportes = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const eventoCoincideConFiltro = (evento, filtroSeleccionado) => {
+  if (filtroSeleccionado.includes('Odómetro') && evento.tipoEvento === 'Odometro') {
+    return true
+  }
+  if (
+    filtroSeleccionado.includes('Voltaje de alimentación bajo / posible desconexión') &&
+    evento.tipoEvento === 'PowerSupplyBajo'
+  ) {
+    return true
+  }
+  return filtroSeleccionado.includes(evento.eventoNombre)
 }
 /**logconsole.log
  *  Abre vista previa según tipo de archivo

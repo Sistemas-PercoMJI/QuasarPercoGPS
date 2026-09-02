@@ -157,7 +157,6 @@
           indicator-color="primary"
           align="justify"
         >
-          <q-tab name="resumen" icon="description" class="tab-item" />
           <q-tab name="hoy" icon="schedule" class="tab-item" />
           <q-tab name="notificaciones" icon="notifications" class="tab-item">
             <q-badge
@@ -169,6 +168,7 @@
               {{ vehiculoSeleccionado.notificaciones }}
             </q-badge>
           </q-tab>
+          <q-tab name="resumen" icon="description" class="tab-item" />
         </q-tabs>
 
         <!-- Contenido de las tabs -->
@@ -631,7 +631,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useTrackingUnidades } from 'src/composables/useTrackingUnidades'
 import { useEstadisticasUnidad } from 'src/composables/useEstadisticasUnidad'
 import { useTrayectosDiarios } from 'src/composables/useTrayectosDiarios'
@@ -698,7 +698,7 @@ const emit = defineEmits(['close', 'vehiculo-seleccionado', 'vehiculo-mapa'])
 const vehiculoSeleccionado = ref(null)
 const busqueda = ref('')
 const estadoSeleccionado = ref('todos')
-const tabActual = ref('resumen')
+const tabActual = ref('hoy')
 
 // Conductores
 const conductoresLista = ref([])
@@ -1494,6 +1494,9 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
   }
 
   if (nuevoVehiculo) {
+    await nextTick()
+    tabActual.value = 'hoy'
+
     // Tab Resumen
     await cargarEstadisticasVehiculo(nuevoVehiculo.id)
 
@@ -1520,6 +1523,31 @@ watch(vehiculoSeleccionado, async (nuevoVehiculo, vehiculoAnterior) => {
   }
 })
 
+const ultimoTimestampProcesado = ref(0)
+
+function procesarAperturaConVehiculo(payload, intentos = 0) {
+  if (!payload || !payload.vehiculo) return
+  if (payload.timestamp === ultimoTimestampProcesado.value) return
+
+  const idBuscado = payload.vehiculo.id
+  const vehiculoCompleto = vehiculos.value.find((v) => v.id === idBuscado)
+
+  if (vehiculoCompleto) {
+    ultimoTimestampProcesado.value = payload.timestamp
+    seleccionarVehiculo(vehiculoCompleto)
+    tabActual.value = 'hoy'
+  } else if (intentos < 10) {
+    setTimeout(() => procesarAperturaConVehiculo(payload, intentos + 1), 200)
+  } else {
+    console.warn('Vehículo no encontrado en EstadoFlota tras varios intentos:', idBuscado)
+  }
+}
+
+watch(
+  () => estadoEventBus.value?.abrirEstadoFlotaConVehiculo,
+  (payload) => procesarAperturaConVehiculo(payload),
+  { deep: true, immediate: true },
+)
 // Watcher para cambio de fecha de trayectos
 watch(fechaSeleccionada, () => {
   if (vehiculoSeleccionado.value) {
@@ -1569,6 +1597,22 @@ watch(
     }
   },
   { immediate: true },
+)
+watch(
+  () => estadoEventBus.value?.abrirEstadoFlotaConVehiculo,
+  (payload) => {
+    if (!payload || !payload.vehiculo) return
+
+    const idBuscado = payload.vehiculo.id
+    const vehiculoCompleto = vehiculos.value.find((v) => v.id === idBuscado)
+
+    if (vehiculoCompleto) {
+      seleccionarVehiculo(vehiculoCompleto)
+    } else {
+      console.warn('Vehículo no encontrado en EstadoFlota:', idBuscado)
+    }
+  },
+  { deep: true },
 )
 // Si conductores activa su filtro, resetear selección de grupos de unidades
 watch(
