@@ -24,21 +24,17 @@
 
     <!-- Vista de Lista de Vehículos -->
     <div v-show="!vehiculoSeleccionado" class="vista-lista">
-      <!-- Grid de estados (ahora más compacto) -->
-      <div class="estados-container">
-        <div class="estados-grid compact-grid">
-          <div
-            v-for="estado in estadosVehiculos"
-            :key="estado.tipo"
-            class="estado-card compact-card"
-            :class="{ 'estado-activo': estadoSeleccionado === estado.tipo }"
-            @click="seleccionarEstado(estado)"
-          >
-            <q-icon :name="estado.icono" size="20px" :color="estado.color" />
-            <div class="estado-badge" :style="{ backgroundColor: getColorHex(estado.color) }">
-              {{ estado.cantidad }}
-            </div>
-          </div>
+      <!-- Barra compacta de estados -->
+      <div class="estados-bar">
+        <div
+          v-for="estado in estadosVehiculos"
+          :key="estado.tipo"
+          class="estado-chip"
+          :class="{ 'estado-chip-activo': estadoSeleccionado === estado.tipo }"
+          @click="seleccionarEstado(estado)"
+        >
+          <q-icon :name="estado.icono" size="20px" :color="estado.color" />
+          <span class="estado-chip-count">{{ estado.cantidad }}</span>
         </div>
       </div>
 
@@ -59,22 +55,70 @@
           </template>
         </q-input>
       </div>
-      <!-- ===== TABS DE FILTRO ===== -->
-      <div class="q-px-md q-pb-sm filtro-conductor-tabs">
-        <q-tabs
-          v-model="tabFiltroUnidades"
-          dense
-          class="text-grey"
-          active-color="primary"
-          indicator-color="primary"
-          align="left"
-          no-caps
-        >
-          <q-tab name="todas" label="Todas" icon="directions_car" />
-          <q-tab name="con_conductor" label="Con conductor" icon="person" />
-          <q-tab name="sin_conductor" label="Sin conductor" icon="person_off" />
-        </q-tabs>
+
+      <!-- ===== CARPETAS / GRUPOS ===== -->
+      <!-- ===== CARPETAS / GRUPOS ===== -->
+      <div class="grupos-scroll-wrapper">
+        <div class="grupos-chips-row">
+          <div
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionadoId === '__todas__' }"
+            @click="seleccionarGrupo(null)"
+          >
+            <q-icon name="apps" size="16px" />
+            <span>Todas</span>
+          </div>
+
+          <div
+            v-for="grupo in gruposUnidades"
+            :key="grupo.id"
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionadoId === grupo.id }"
+            @click="seleccionarGrupo(grupo)"
+          >
+            <q-icon name="folder" size="16px" />
+            <span>{{ grupo.Nombre }}</span>
+            <q-badge dense color="grey-6">{{ grupo.UnidadesIds?.length || 0 }}</q-badge>
+            <q-btn
+              flat dense round size="xs" icon="more_vert"
+              @click.stop="abrirMenuGrupo(grupo)"
+              class="grupo-chip-menu-btn"
+            />
+          </div>
+
+          <div class="grupo-chip grupo-chip-nuevo" @click="abrirDialogNuevoGrupo">
+            <q-icon name="add" size="16px" />
+            <span>Nueva carpeta</span>
+          </div>
+        </div>
       </div>
+
+      <!-- Barra contextual, solo aparece si hay un grupo seleccionado -->
+     <transition name="fade-scale-btn">
+        <div v-if="grupoActivo" class="grupo-accion-bar">
+          <div class="grupo-accion-info">
+            <q-icon name="folder" size="18px" color="primary" />
+            <span>{{ grupoActivo.Nombre }} · {{ unidadesDelGrupoActivo.length }} unidad(es)</span>
+          </div>
+          <div class="grupo-accion-botones">
+            <q-btn
+              dense no-caps size="sm"
+              color="negative"
+              icon="power_settings_new"
+              label="Bloquear"
+              @click="confirmarAccionGrupo('bloquear')"
+            />
+            <q-btn
+              dense no-caps size="sm"
+              color="positive"
+              icon="lock_open"
+              label="Desbloquear"
+              @click="confirmarAccionGrupo('desbloquear')"
+            />
+          </div>
+        </div>
+      </transition>
+
       <!-- Header de tabla -->
       <div class="tabla-header">
         <div class="header-col">Vehículo</div>
@@ -89,7 +133,7 @@
             :key="vehiculo.id"
             clickable
             v-ripple
-            @click="onClickVehiculo(vehiculo)"
+           @click="seleccionarVehiculoParaMapa(vehiculo)"
             class="vehiculo-item"
           >
             <q-item-section avatar>
@@ -614,6 +658,7 @@
         </q-scroll-area>
       </div>
     </transition>
+
     <transition name="fade-scale-btn">
       <q-btn
         v-if="hayElementosEnMapa"
@@ -627,6 +672,52 @@
         <q-tooltip>Limpiar mapa</q-tooltip>
       </q-btn>
     </transition>
+
+    <!-- Diálogo de crear/editar carpeta -->
+    <q-dialog v-model="dialogGrupoUnidades">
+      <q-card style="min-width: 320px; max-width: 90vw">
+        <q-card-section>
+          <div class="text-h6">{{ modoEdicionGrupo ? 'Editar carpeta' : 'Nueva carpeta' }}</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input v-model="nuevoGrupoNombre" outlined dense label="Nombre de la carpeta" class="q-mb-md" />
+
+          <q-input v-model="busquedaUnidadesGrupo" outlined dense placeholder="Buscar unidad..." class="q-mb-sm">
+            <template v-slot:prepend><q-icon name="search" /></template>
+          </q-input>
+
+          <q-scroll-area style="height: 240px">
+            <q-list dense>
+              <q-item
+                v-for="vehiculo in vehiculosParaSeleccionGrupo"
+                :key="vehiculo.id"
+                tag="label"
+                v-ripple
+              >
+                <q-item-section avatar>
+                  <q-checkbox
+                    :model-value="unidadesSeleccionadasGrupo.includes(vehiculo.id)"
+                    @update:model-value="toggleUnidadEnGrupo(vehiculo.id)"
+                  />
+                </q-item-section>
+                <q-item-section>{{ vehiculo.nombre }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-scroll-area>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" v-close-popup @click="cerrarDialogGrupo" />
+          <q-btn
+            v-if="modoEdicionGrupo"
+            flat color="negative" label="Eliminar carpeta"
+            @click="eliminarGrupoActual"
+          />
+          <q-btn color="primary" label="Guardar" :loading="guardandoGrupo" @click="guardarGrupo" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -640,7 +731,8 @@ import { useEventosUnidadRealTime } from 'src/composables/useEventosUnidadRealTi
 import { useGeocoding } from 'src/composables/useGeocoding'
 import { useQuasar } from 'quasar'
 import { useEventBus } from 'src/composables/useEventBus.js'
-//import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
+import { useGruposUnidades } from 'src/composables/useGruposUnidades.js'
+import { useBloqueoArranque } from 'src/composables/useBloqueoArranque'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
@@ -655,31 +747,29 @@ const { obtenerDireccion } = useGeocoding()
 
 const { estadoCompartido: estadoEventBus, actualizarFiltroUnidades } = useEventBus()
 
-/*const {
-  // gruposUnidades,
-  obtenerGrupos,
-  //escucharGrupos,
-  //crearGrupo,
-  //actualizarGrupo:,// actualizarGrupoUnidad,
-  //eliminarGrupo: //eliminarGrupoUnidad,
-} = useGruposUnidades()*/
+const { gruposUnidades, escucharGrupos, crearGrupo, actualizarGrupo, eliminarGrupo } =
+  useGruposUnidades()
+const { toggleBloqueoArranque, obtenerConfigBloqueo } = useBloqueoArranque()
+
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
-const tabFiltroUnidades = ref('todas')
 const trayectoActivoId = ref(null)
 
 const $q = useQuasar()
 
 const refrescandoTrayectos = ref(false)
 const grupoSeleccionadoId = ref(null)
-//const dialogGrupoUnidades = ref(false)
-//const nuevoGrupoNombre = ref('')
-//const busquedaUnidadesGrupo = ref('')
-//const unidadesSeleccionadasGrupo = ref([])
-//const modoEdicionGrupo = ref(false)
-//const grupoMenuActual = ref(null)
-//const guardandoGrupo = ref(false)
-//let unsubscribeGruposUnidades = null
+
+// Estado del diálogo de carpetas / grupos
+const dialogGrupoUnidades = ref(false)
+const nuevoGrupoNombre = ref('')
+const busquedaUnidadesGrupo = ref('')
+const unidadesSeleccionadasGrupo = ref([])
+const modoEdicionGrupo = ref(false)
+const grupoEnEdicionId = ref(null)
+const guardandoGrupo = ref(false)
+let unsubscribeGruposUnidades = null
+
 let intervalRefreshTrayectos = null
 
 // Eventos en tiempo real
@@ -850,11 +940,10 @@ const estadosVehiculos = computed(() => {
 const vehiculosFiltrados = computed(() => {
   let resultado = vehiculos.value
 
-  // Filtro por tab
-  if (tabFiltroUnidades.value === 'con_conductor') {
-    resultado = resultado.filter((v) => v.conductor !== 'Sin conductor')
-  } else if (tabFiltroUnidades.value === 'sin_conductor') {
-    resultado = resultado.filter((v) => v.conductor === 'Sin conductor')
+  // Filtro por grupo seleccionado
+  if (grupoActivo.value) {
+    const ids = grupoActivo.value.UnidadesIds || []
+    resultado = resultado.filter((v) => ids.includes(v.id))
   }
 
   // Filtro por estado (comportamiento existente)
@@ -1142,50 +1231,7 @@ const mostrarRutaEnMapa = async (trayecto) => {
 
   hayElementosEnMapa.value = true
 }
-const onClickVehiculo = (vehiculo) => {
-  if (tabFiltroUnidades.value === 'todas') {
-    seleccionarVehiculoParaMapa(vehiculo)
-    return
-  }
 
-  // Para con_conductor y sin_conductor: volar al mapa
-  const mapPage = document.getElementById('map-page')
-  if (!mapPage?._mapaAPI?.map) {
-    $q.notify({ type: 'warning', message: 'Mapa no disponible', icon: 'warning' })
-    return
-  }
-
-  const { lat, lng } = vehiculo.ubicacionCoords || {}
-  if (!lat || !lng) {
-    $q.notify({ type: 'warning', message: 'Unidad sin ubicación GPS', icon: 'gps_not_fixed' })
-    return
-  }
-
-  mapPage._mapaAPI.map.flyTo({
-    center: [lng, lat],
-    zoom: 17,
-    duration: 300,
-    essential: true,
-  })
-
-  setTimeout(() => {
-    if (mapPage._mapaAPI.centrarEnUnidad) {
-      mapPage._mapaAPI.centrarEnUnidad(vehiculo.id)
-    }
-  }, 1600)
-
-  $q.notify({
-    type: 'positive',
-    message: vehiculo.nombre,
-    caption:
-      tabFiltroUnidades.value === 'con_conductor'
-        ? `Conductor: ${vehiculo.conductor}`
-        : 'Sin conductor asignado',
-    icon: 'my_location',
-    position: 'top',
-    timeout: 2500,
-  })
-}
 const mostrarEventoEnMapa = async (evento) => {
   if (!evento.coordenadas) {
     console.warn(' Evento sin coordenadas')
@@ -1360,22 +1406,6 @@ const limpiarTodoDelMapa = () => {
   })
 }
 
-/* En el script setup de EstadoFlota.vue, agregar esta función helper:
-const obtenerConductorDeEvento = (unidadId) => {
-  if (!unidadId || !conductoresLista.value.length) return null
-
-  const conductor = conductoresLista.value.find((c) => c.UnidadAsignada === String(unidadId))
-
-  if (conductor) {
-    return {
-      id: conductor.id,
-      nombre: conductor.Nombre,
-      telefono: conductor.Telefono,
-    }
-  }
-  return null
-}*/
-
 // ── Grupos de unidades ──────────────────────────────────────────────
 
 function limpiarFiltroGrupo() {
@@ -1388,6 +1418,137 @@ function limpiarFiltroGrupo() {
     const btn = p.querySelector('.mapboxgl-popup-close-button')
     if (btn) btn.click()
     else p.remove()
+  })
+}
+
+function seleccionarGrupo(grupo) {
+  if (!grupo) {
+    grupoSeleccionadoId.value = '__todas__'
+    limpiarFiltroGrupo()
+    return
+  }
+  grupoSeleccionadoId.value = grupo.id
+  const ids = grupo.UnidadesIds || []
+  actualizarFiltroUnidades(true, ids, 'grupoUnidades')
+  window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: ids } }))
+}
+
+function abrirDialogNuevoGrupo() {
+  modoEdicionGrupo.value = false
+  grupoEnEdicionId.value = null
+  nuevoGrupoNombre.value = ''
+  unidadesSeleccionadasGrupo.value = []
+  busquedaUnidadesGrupo.value = ''
+  dialogGrupoUnidades.value = true
+}
+
+function abrirMenuGrupo(grupo) {
+  modoEdicionGrupo.value = true
+  grupoEnEdicionId.value = grupo.id
+  nuevoGrupoNombre.value = grupo.Nombre
+  unidadesSeleccionadasGrupo.value = [...(grupo.UnidadesIds || [])]
+  busquedaUnidadesGrupo.value = ''
+  dialogGrupoUnidades.value = true
+}
+
+function toggleUnidadEnGrupo(vehiculoId) {
+  const idx = unidadesSeleccionadasGrupo.value.indexOf(vehiculoId)
+  if (idx === -1) unidadesSeleccionadasGrupo.value.push(vehiculoId)
+  else unidadesSeleccionadasGrupo.value.splice(idx, 1)
+}
+
+function cerrarDialogGrupo() {
+  dialogGrupoUnidades.value = false
+}
+
+async function guardarGrupo() {
+  if (!nuevoGrupoNombre.value.trim()) {
+    $q.notify({ type: 'warning', message: 'Ponle un nombre a la carpeta' })
+    return
+  }
+  guardandoGrupo.value = true
+  try {
+    if (modoEdicionGrupo.value && grupoEnEdicionId.value) {
+      await actualizarGrupo(grupoEnEdicionId.value, {
+        Nombre: nuevoGrupoNombre.value.trim(),
+        UnidadesIds: unidadesSeleccionadasGrupo.value,
+      })
+    } else {
+      await crearGrupo(nuevoGrupoNombre.value.trim(), unidadesSeleccionadasGrupo.value)
+    }
+    dialogGrupoUnidades.value = false
+  } catch (err) {
+    console.error('Error guardando grupo:', err)
+    $q.notify({ type: 'negative', message: 'No se pudo guardar la carpeta' })
+  } finally {
+    guardandoGrupo.value = false
+  }
+}
+
+async function eliminarGrupoActual() {
+  if (!grupoEnEdicionId.value) return
+  try {
+    await eliminarGrupo(grupoEnEdicionId.value)
+    if (grupoSeleccionadoId.value === grupoEnEdicionId.value) {
+      seleccionarGrupo(null)
+    }
+    dialogGrupoUnidades.value = false
+  } catch (err) {
+    console.error('Error eliminando grupo:', err)
+  }
+}
+
+function confirmarAccionGrupo(accion) {
+  if (!grupoActivo.value) return
+
+  const unidadesConRelay = unidadesDelGrupoActivo.value.filter(
+    (v) => obtenerConfigBloqueo(v.id).relayInstalado,
+  )
+
+  if (unidadesConRelay.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'Ninguna unidad de este grupo tiene relé instalado',
+      icon: 'warning',
+    })
+    return
+  }
+
+  const esBloqueo = accion === 'bloquear'
+  const verbo = esBloqueo ? 'Bloquear' : 'Desbloquear'
+
+  $q.dialog({
+    title: `${verbo} arranque del grupo`,
+    message: `¿${verbo.toLowerCase()} el arranque de ${unidadesConRelay.length} unidad(es) en "${grupoActivo.value.Nombre}"?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    let exitosos = 0
+    let fallidos = 0
+
+    for (const vehiculo of unidadesConRelay) {
+      const resultado = await toggleBloqueoArranque(vehiculo.id, accion)
+      if (resultado.ok) {
+        exitosos++
+      } else {
+        fallidos++
+        console.error(`Error en ${accion} de ${vehiculo.nombre}:`, resultado.error)
+      }
+    }
+
+    if (fallidos === 0) {
+      $q.notify({
+        type: 'positive',
+        message: `${verbo === 'Bloquear' ? 'Bloqueado' : 'Desbloqueado'} en ${exitosos} unidad(es)`,
+        icon: esBloqueo ? 'lock' : 'lock_open',
+      })
+    } else {
+      $q.notify({
+        type: 'warning',
+        message: `${exitosos} listas, ${fallidos} fallaron`,
+        icon: 'warning',
+      })
+    }
   })
 }
 
@@ -1485,6 +1646,24 @@ function getEstadoTexto(estado) {
   return textos[estado] || 'Desconocido'
 }
 
+// ==================== COMPUTED DE GRUPOS (después de "vehiculos") ====================
+
+const grupoActivo = computed(() =>
+  gruposUnidades.value.find((g) => g.id === grupoSeleccionadoId.value) || null,
+)
+
+const unidadesDelGrupoActivo = computed(() => {
+  if (!grupoActivo.value) return []
+  const ids = grupoActivo.value.UnidadesIds || []
+  return vehiculos.value.filter((v) => ids.includes(v.id))
+})
+
+const vehiculosParaSeleccionGrupo = computed(() => {
+  if (!busquedaUnidadesGrupo.value) return vehiculos.value
+  const b = busquedaUnidadesGrupo.value.toLowerCase()
+  return vehiculos.value.filter((v) => v.nombre.toLowerCase().includes(b))
+})
+
 // ==================== WATCHERS ====================
 
 // UN SOLO WATCHER para vehiculoSeleccionado
@@ -1570,22 +1749,7 @@ watch(tabActual, () => {
   iniciarAutoRefresh()
   detenerAutoRefresh()
 })
-watch(tabFiltroUnidades, (nuevoTab) => {
-  // ← agregar al inicio del watcher
-  document.querySelectorAll('.mapboxgl-popup').forEach((p) => {
-    const btn = p.querySelector('.mapboxgl-popup-close-button')
-    if (btn) btn.click()
-    else p.remove()
-  })
 
-  if (nuevoTab === 'todas') {
-    limpiarFiltroGrupo()
-  } else {
-    const ids = vehiculosFiltrados.value.map((v) => v.id)
-    actualizarFiltroUnidades(true, ids, 'estadoFlota')
-    window.dispatchEvent(new CustomEvent('filtrar-unidades-mapa', { detail: { idsUnidades: ids } }))
-  }
-})
 
 watch(
   eventosUnidad,
@@ -1628,19 +1792,17 @@ watch(
 onMounted(async () => {
   await cargarUsuarioActual()
   limpiarFiltroGrupo()
+  unsubscribeGruposUnidades = escucharGrupos() // NOTA: no es async, se guarda el unsubscribe directo
+
   if (!idEmpresaActual.value) {
     setTimeout(async () => {
       await cargarConductoresFirebase()
       iniciarTracking()
-      // await obtenerGrupos()
-      //unsubscribeGruposUnidades = escucharGrupos()
       grupoSeleccionadoId.value = '__todas__'
     }, 1000)
   } else {
     await cargarConductoresFirebase()
     iniciarTracking()
-    //  await obtenerGrupos()
-    // unsubscribeGruposUnidades = escucharGrupos()
     grupoSeleccionadoId.value = '__todas__'
   }
 })
@@ -1661,7 +1823,7 @@ onUnmounted(() => {
 
   hayElementosEnMapa.value = false
 
-  //if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
+  if (unsubscribeGruposUnidades) unsubscribeGruposUnidades()
   limpiarFiltroGrupo()
 })
 </script>
@@ -1754,115 +1916,48 @@ onUnmounted(() => {
 }
 
 /* ============================================ */
-/* === ESTADOS GRID === */
+/* === BARRA DE ESTADOS (compacta) === */
 /* ============================================ */
-.estados-container {
-  padding: 12px 20px;
+.estados-bar {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-
-.compact-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+.estados-bar::-webkit-scrollbar {
+  display: none;
 }
-
-.compact-card {
-  position: relative;
+.estado-chip {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 8px 6px;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 24px;
   background: #fafafa;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
+  border: 1px solid #e0e0e0;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 60px;
-  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
-
-.compact-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 70%
-  );
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
-  pointer-events: none;
-}
-
-.compact-card:hover {
+.estado-chip:hover {
   border-color: #2196f3;
   background: #f5f9ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
 }
 
-.compact-card:hover::before {
-  transform: translateX(100%);
-}
-
-.compact-card.estado-activo {
+.estado-chip-activo {
   border-color: #2196f3;
   background: #e3f2fd;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
-/* Estado Badge - FIJO sin movimiento */
-.estado-badge {
-  position: absolute !important;
-  top: 6px !important;
-  right: 6px !important;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
+.estado-chip-count {
   font-weight: 700;
-  font-size: 11px;
-  padding: 0 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  transition: transform 0.3s ease;
+  font-size: 15px;
+  color: #424242;
 }
-
-.compact-card:hover .estado-badge {
-  transform: scale(1.2);
-}
-
-/* Icono animado */
-.compact-card:hover .q-icon {
-  animation: icon-rotate-shake 0.6s ease;
-}
-
-@keyframes icon-rotate-shake {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  25% {
-    transform: rotate(-10deg) scale(1.2);
-  }
-  75% {
-    transform: rotate(10deg) scale(1.2);
-  }
-  100% {
-    transform: rotate(0deg) scale(1);
-  }
-}
-
 /* ============================================ */
 /* === BÚSQUEDA === */
 /* ============================================ */
@@ -1901,6 +1996,86 @@ onUnmounted(() => {
   50% {
     transform: scale(1.2);
   }
+}
+
+/* ============================================ */
+/* === CARPETAS / GRUPOS === */
+/* ============================================ */
+.grupos-scroll-wrapper {
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 20px;
+}
+
+.grupos-chips-row::-webkit-scrollbar {
+  display: none;
+}
+.grupos-chips-row {
+  display: flex;
+  gap: 8px;
+  height: 40px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.grupo-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #424242;
+  transition: all 0.2s ease;
+}
+
+.grupo-chip:hover {
+  border-color: #1976d2;
+  background: #f5f9ff;
+}
+
+.grupo-chip-activo {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  font-weight: 600;
+}
+
+.grupo-chip-nuevo {
+  border-style: dashed;
+  color: #1976d2;
+}
+
+.grupo-chip-menu-btn {
+  margin-left: 2px;
+}
+
+/* Barra de acción bulk sobre grupo activo */
+.grupo-accion-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #fff3e0;
+  border-bottom: 1px solid #ffe0b2;
+}
+.grupo-accion-botones {
+  display: flex;
+  gap: 8px;
+}
+.grupo-accion-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #424242;
+  font-weight: 500;
 }
 
 /* ============================================ */
@@ -2671,11 +2846,17 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .evento-notification-card:hover {
-  transform: translateX(4px) scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateX(6px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-left-color: #1976d2;
+}
+
+.evento-notification-card:active {
+  transform: translateX(4px) scale(1.01);
 }
 
 .evento-notification-card:hover .evento-header .q-avatar {
@@ -2776,43 +2957,6 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
 }
 
-.evento-notification-card {
-  /* ... estilos existentes ... */
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.evento-notification-card:hover {
-  transform: translateX(6px) scale(1.03);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  border-left-color: #1976d2;
-}
-
-.evento-notification-card:active {
-  transform: translateX(4px) scale(1.01);
-}
-
-.marcador-evento-custom {
-  z-index: 1000;
-}
-
-/* Animación del avatar al hacer hover */
-.evento-notification-card:hover .evento-header .q-avatar {
-  animation: avatar-pulse-glow 0.8s ease;
-}
-
-@keyframes avatar-pulse-glow {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
-  }
-  50% {
-    transform: scale(1.2) rotate(10deg);
-    box-shadow: 0 0 20px 10px rgba(33, 150, 243, 0);
-  }
-}
-
 /* ============================================ */
 /* === LOADING & EMPTY STATE === */
 /* ============================================ */
@@ -2909,22 +3053,10 @@ onUnmounted(() => {
     font-size: 16px;
   }
 
-  .compact-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .compact-card {
-    min-height: 55px;
-    padding: 6px 4px;
-  }
-
   .tab-panel-padding {
     padding: 16px;
   }
 }
-
-/* ... estilos existentes ... */
 
 /* ============================================ */
 /* === BOTÓN FLOTANTE LIMPIAR MAPA === */
@@ -2978,65 +3110,5 @@ onUnmounted(() => {
   line-height: 1.3;
   white-space: normal;
   word-break: break-word;
-}
-
-/* ============================================ */
-/* === GRUPOS DE UNIDADES === */
-/* ============================================ */
-.grupos-unidades-section {
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
-  padding-top: 8px;
-}
-
-.grupos-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.grupo-unidad-item {
-  border-radius: 8px;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: visible;
-}
-
-.grupo-unidad-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 0;
-  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
-  transition: width 0.3s ease;
-}
-
-.grupo-unidad-item:hover {
-  background-color: #e3f2fd;
-  transform: translateX(4px);
-}
-
-.grupo-unidad-item:hover::before,
-.grupo-unidad-item.q-item--active::before {
-  width: 4px;
-}
-
-.grupo-unidad-item.q-item--active {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
-}
-
-.btn-menu-grupo-unidad {
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.btn-menu-grupo-unidad:hover {
-  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-  transform: rotate(90deg) scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>

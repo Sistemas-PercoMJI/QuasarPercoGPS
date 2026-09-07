@@ -6,6 +6,7 @@ const gruposUnidades = ref([])
 
 export function useGruposUnidades() {
   let unsubscribe = null
+  let cancelado = false
 
   const obtenerGrupos = async () => {
     const userId = auth.currentUser?.uid
@@ -32,9 +33,14 @@ export function useGruposUnidades() {
     const userId = auth.currentUser?.uid
     if (!userId) return () => {}
 
+    cancelado = false
+
     const setupListener = async () => {
       const { collection, onSnapshot, orderBy, query } = await import('firebase/firestore')
       const { db } = await import('src/firebase/firebaseConfig')
+
+      // Si ya se pidió cancelar antes de que esto resolviera, no armar el listener
+      if (cancelado) return
 
       const q = query(
         collection(db, `Usuarios/${userId}/GruposUnidades`),
@@ -47,8 +53,15 @@ export function useGruposUnidades() {
     }
 
     setupListener()
+
+    // Cleanup seguro: si el setupListener aún no ha resuelto, marca cancelado
+    // para que no arme el listener; si ya resolvió, lo desconecta de una vez.
     return () => {
-      if (unsubscribe) unsubscribe()
+      cancelado = true
+      if (unsubscribe) {
+        unsubscribe()
+        unsubscribe = null
+      }
     }
   }
 
