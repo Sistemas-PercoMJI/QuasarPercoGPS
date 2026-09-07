@@ -6,10 +6,6 @@
     <div class="drawer-header">
       <div class="header-content">
         <div class="text-h6 text-weight-medium">Conductores</div>
-        <div class="header-stats">
-          <div class="stat-item"></div>
-          <div class="stat-item"></div>
-        </div>
       </div>
       <div class="header-actions">
         <q-btn
@@ -32,17 +28,9 @@
       </div>
     </div>
 
-    <!-- Botones de acción -->
-    <div class="q-pa-sm q-px-md" style="display: flex; justify-content: flex-end; gap: 4px">
-      <div class="nuevoGrupo-btn">
-        <q-btn flat dense round icon="create_new_folder" size="sm" @click="abrirDialogNuevoGrupo">
-          <q-tooltip>Crear grupo</q-tooltip>
-        </q-btn>
-      </div>
-    </div>
 
     <!-- Búsqueda mejorada -->
-    <div class="q-px-md q-pb-sm">
+     <div class="q-px-md q-pt-md q-pb-sm">
       <q-input
         v-model="busqueda"
         outlined
@@ -55,114 +43,73 @@
         </template>
       </q-input>
     </div>
+<!-- ===== GRUPOS (carpetas horizontales) ===== -->
+<div class="grupos-scroll-wrapper" v-if="gruposConEspeciales.length > 0 || true">
+  <q-btn
+    flat dense round size="sm"
+    icon="chevron_left"
+    class="grupos-nav-btn"
+    @click="scrollGrupos(-1)"
+  />
 
-    <!-- Lista de grupos -->
+  <div
+    class="grupos-chips-row"
+    ref="gruposChipsRowRef"
+    @wheel.prevent="onWheelGrupos"
+  >
     <div
-      class="grupos-lista q-px-md q-pb-sm"
-      v-if="tab === 'grupos' && gruposConductores.length > 0"
+      v-for="grupo in gruposConEspeciales"
+      :key="grupo.id"
+      class="grupo-chip"
+      :class="{ 'grupo-chip-activo': grupoSeleccionado === grupo.id }"
+      @click="filtrarPorGrupo(grupo)"
     >
-      <div
-        class="text-caption text-grey-7 q-mb-xs"
-        style="display: flex; align-items: center; justify-content: space-between"
+      <q-icon :name="grupo.icono || 'folder'" size="16px" />
+      <span>{{ grupo.Nombre }}</span>
+      <q-badge dense color="grey-6">
+        {{
+          grupo.id === '__todos__'
+            ? conductores.length
+            : grupo.esGrupoEspecial && grupo.cantidadUnidades
+              ? grupo.cantidadUnidades
+              : contarConductoresPorGrupo(grupo.id)
+        }}
+      </q-badge>
+      <q-btn
+        flat dense round size="xs" icon="more_vert"
+        @click.stop="mostrarMenuGrupo($event, grupo)"
+        class="grupo-chip-menu-btn"
       >
-        <span>GRUPOS</span>
-        <q-btn
-          flat
-          dense
-          round
-          :icon="gruposColapsados ? 'expand_more' : 'expand_less'"
-          size="sm"
-          color="grey-6"
-          @click="gruposColapsados = !gruposColapsados"
-        >
-          <q-tooltip>{{ gruposColapsados ? 'Mostrar grupos' : 'Ocultar grupos' }}</q-tooltip>
-        </q-btn>
-      </div>
-      <q-slide-transition>
-        <q-list v-if="!gruposColapsados" dense bordered class="rounded-borders">
-          <q-item
-            v-for="grupo in gruposConEspeciales"
-            :key="grupo.id"
-            clickable
-            v-ripple
-            @click="filtrarPorGrupo(grupo)"
-            :active="grupoSeleccionado === grupo.id"
-            class="group-item"
-          >
-            <q-item-section avatar>
-              <q-avatar
-                :color="grupoSeleccionado === grupo.id ? 'primary' : 'blue-grey-5'"
-                text-color="white"
-                size="32px"
-              >
-                <q-icon :name="grupo.icono || 'folder'" size="16px" />
-              </q-avatar>
-            </q-item-section>
-
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ grupo.Nombre }}</q-item-label>
-              <q-item-label caption class="text-grey-7">
-                <q-icon
-                  :name="grupo.esGrupoEspecial ? 'directions_car' : 'person'"
-                  size="14px"
-                  class="q-mr-xs"
-                />
-                {{
-                  grupo.id === '__todos__'
-                    ? `${conductores.length} conductores`
-                    : grupo.esGrupoEspecial && grupo.cantidadUnidades
-                      ? `${grupo.cantidadUnidades} unidades`
-                      : !grupo.esGrupoEspecial
-                        ? `${contarConductoresPorGrupo(grupo.id)} conductores`
-                        : ''
-                }}
-              </q-item-label>
-            </q-item-section>
-
-            <q-item-section side>
-              <q-btn
-                flat
-                dense
-                round
-                icon="more_vert"
-                size="sm"
-                color="grey-7"
-                class="btn-menu-hover"
-                @click.stop="mostrarMenuGrupo($event, grupo)"
-              >
-                <q-tooltip>Opciones del grupo</q-tooltip>
-                <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
-                  <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
-                    <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
-                      <q-item-section avatar
-                        ><q-icon name="edit" size="sm" color="black"
-                      /></q-item-section>
-                      <q-item-section><q-item-label>Editar grupo</q-item-label></q-item-section>
-                    </q-item>
-                    <q-separator spaced inset />
-                    <q-item
-                      clickable
-                      v-close-popup
-                      @click="confirmarEliminarGrupo"
-                      class="menu-item"
-                    >
-                      <q-item-section avatar
-                        ><q-icon name="delete" size="sm" color="negative"
-                      /></q-item-section>
-                      <q-item-section
-                        ><q-item-label class="text-negative"
-                          >Eliminar grupo</q-item-label
-                        ></q-item-section
-                      >
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-slide-transition>
+        <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+          <q-list dense style="min-width: 180px" class="rounded-borders menu-contextual">
+            <q-item clickable v-close-popup @click="editarGrupo" class="menu-item">
+              <q-item-section avatar><q-icon name="edit" size="sm" color="black" /></q-item-section>
+              <q-item-section><q-item-label>Editar grupo</q-item-label></q-item-section>
+            </q-item>
+            <q-separator spaced inset />
+            <q-item clickable v-close-popup @click="confirmarEliminarGrupo" class="menu-item">
+              <q-item-section avatar><q-icon name="delete" size="sm" color="negative" /></q-item-section>
+              <q-item-section><q-item-label class="text-negative">Eliminar grupo</q-item-label></q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
     </div>
+
+    <div class="grupo-chip grupo-chip-nuevo" @click="abrirDialogNuevoGrupo">
+      <q-icon name="create_new_folder" size="16px" />
+      <span>Nuevo grupo</span>
+    </div>
+  </div>
+
+  <q-btn
+    flat dense round size="sm"
+    icon="chevron_right"
+    class="grupos-nav-btn"
+    @click="scrollGrupos(1)"
+  />
+</div>
+
 
     <!-- Lista de conductores -->
     <q-scroll-area class="conductores-list">
@@ -1369,13 +1316,14 @@ const unidadDraftFechasRaw = ref({
 })
 const dirtyUnidad = ref(false)
 const guardandoUnidad = ref(false)
+const gruposChipsRowRef = ref(null)
 
 // Listeners Firebase
 let unsubscribeConductores = null
 let unsubscribeGrupos = null
 
 const nuevoGrupo = ref({ Nombre: '', ConductoresIds: [] })
-const gruposColapsados = ref(false)
+
 // ─── Helpers fecha ────────────────────────────────────────────────────────────
 function toDate(val) {
   if (!val) return null
@@ -1992,6 +1940,17 @@ function filtrarPorGrupo(grupo) {
   grupoSeleccionado.value = grupo.id
   tab.value = 'grupos'
   filtroMapaActivo.value = true
+}
+function scrollGrupos(direccion) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollBy({ left: direccion * 160, behavior: 'smooth' })
+}
+
+function onWheelGrupos(e) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollLeft += e.deltaY
 }
 
 async function seleccionarConductor(conductor) {
@@ -2778,62 +2737,73 @@ function procesarSeleccionConductor(conductorId, grupoId, grupoNombre) {
 }
 
 /* ============================================ */
-/* === GRUPOS === */
+/* === GRUPOS (chips horizontales) === */
 /* ============================================ */
-.grupos-lista {
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  margin-top: 8px;
-  padding: 8px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-  max-height: 200px;
-  overflow-y: auto;
+.grupos-scroll-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 12px;
 }
 
-.group-item {
-  border-radius: 8px;
-  margin-bottom: 6px;
-  padding: 8px 12px;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: visible;
+.grupos-nav-btn {
+  flex-shrink: 0;
+  color: #757575;
 }
-.group-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 0;
-  background: linear-gradient(180deg, #1976d2 0%, #42a5f5 100%);
-  transition: width 0.3s ease;
+
+.grupos-chips-row {
+  display: flex;
+  gap: 8px;
+  height: 40px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
 }
-.group-item:hover {
-  background-color: #e3f2fd;
-  transform: translateX(4px);
+
+.grupos-chips-row::-webkit-scrollbar {
+  display: none;
 }
-.group-item .q-avatar {
-  transition: all 0.3s ease;
+
+.grupo-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #424242;
+  transition: all 0.2s ease;
   flex-shrink: 0;
 }
-.group-item:hover::before {
-  width: 4px;
-}
-.group-item.q-item--active {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
-}
-.group-item.q-item--active::before {
-  width: 4px;
-}
-.group-item:hover .q-avatar {
-  transform: scale(1.08);
-}
-.group-item .q-avatar .q-icon {
-  font-size: 18px !important;
+
+.grupo-chip:hover {
+  border-color: #1976d2;
+  background: #f5f9ff;
 }
 
+.grupo-chip-activo {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  font-weight: 600;
+}
+
+.grupo-chip-nuevo {
+  border-style: dashed;
+  color: #bb0000;
+}
+
+.grupo-chip-menu-btn {
+  margin-left: 2px;
+}
 /* ============================================ */
 /* === LISTA DE CONDUCTORES === */
 /* ============================================ */
