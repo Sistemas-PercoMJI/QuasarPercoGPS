@@ -57,9 +57,19 @@
       </div>
 
       <!-- ===== CARPETAS / GRUPOS ===== -->
-      <!-- ===== CARPETAS / GRUPOS ===== -->
       <div class="grupos-scroll-wrapper">
-        <div class="grupos-chips-row">
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_left"
+          class="grupos-nav-btn"
+          @click="scrollGrupos(-1)"
+        />
+
+        <div
+          class="grupos-chips-row"
+          ref="gruposChipsRowRef"
+          @wheel.prevent="onWheelGrupos"
+        >
           <div
             class="grupo-chip"
             :class="{ 'grupo-chip-activo': grupoSeleccionadoId === '__todas__' }"
@@ -91,6 +101,13 @@
             <span>Nueva carpeta</span>
           </div>
         </div>
+
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_right"
+          class="grupos-nav-btn"
+          @click="scrollGrupos(1)"
+        />
       </div>
 
       <!-- Barra contextual, solo aparece si hay un grupo seleccionado -->
@@ -162,6 +179,16 @@
               >
                 <q-icon name="person" size="12px" class="q-mr-xs" />
                 {{ vehiculo.conductor }}
+              </q-item-label>
+
+              <q-item-label caption class="vehiculo-relay">
+              <q-icon
+                  :name="obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'settings_remote' : 'block'"
+                  :color="obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'positive' : 'grey-5'"
+                  size="12px"
+                  class="q-mr-xs"
+                />
+                {{ obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'Con relé' : 'Sin relé' }}
               </q-item-label>
             </q-item-section>
 
@@ -689,20 +716,31 @@
 
           <q-scroll-area style="height: 240px">
             <q-list dense>
-              <q-item
-                v-for="vehiculo in vehiculosParaSeleccionGrupo"
-                :key="vehiculo.id"
-                tag="label"
-                v-ripple
-              >
-                <q-item-section avatar>
-                  <q-checkbox
-                    :model-value="unidadesSeleccionadasGrupo.includes(vehiculo.id)"
-                    @update:model-value="toggleUnidadEnGrupo(vehiculo.id)"
+            <q-item
+              v-for="vehiculo in vehiculosParaSeleccionGrupo"
+              :key="vehiculo.id"
+              tag="label"
+              v-ripple
+            >
+              <q-item-section avatar>
+                <q-checkbox
+                  :model-value="unidadesSeleccionadasGrupo.includes(vehiculo.id)"
+                  @update:model-value="toggleUnidadEnGrupo(vehiculo.id)"
+                />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ vehiculo.nombre }}</q-item-label>
+                <q-item-label caption>
+                  <q-icon
+                    :name="obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'settings_remote' : 'block'"
+                    :color="obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'positive' : 'grey-5'"
+                    size="12px"
+                    class="q-mr-xs"
                   />
-                </q-item-section>
-                <q-item-section>{{ vehiculo.nombre }}</q-item-section>
-              </q-item>
+                  {{ obtenerConfigBloqueo(vehiculo.id).relayInstalado ? 'Con relé' : 'Sin relé' }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
             </q-list>
           </q-scroll-area>
         </q-card-section>
@@ -754,6 +792,7 @@ const { toggleBloqueoArranque, obtenerConfigBloqueo } = useBloqueoArranque()
 //  Estado para controlar visibilidad del botón de limpiar
 const hayElementosEnMapa = ref(false)
 const trayectoActivoId = ref(null)
+const gruposChipsRowRef = ref(null)
 
 const $q = useQuasar()
 
@@ -1420,7 +1459,17 @@ function limpiarFiltroGrupo() {
     else p.remove()
   })
 }
+function scrollGrupos(direccion) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollBy({ left: direccion * 160, behavior: 'smooth' })
+}
 
+function onWheelGrupos(e) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollLeft += e.deltaY
+}
 function seleccionarGrupo(grupo) {
   if (!grupo) {
     grupoSeleccionadoId.value = '__todas__'
@@ -1848,7 +1897,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 16px 16px;
   background: linear-gradient(135deg, #c62828 0%, #d84315 100%);
   background-size: 200% 200%;
   animation: gradientFlow 8s ease infinite;
@@ -1873,13 +1922,13 @@ onUnmounted(() => {
   gap: 12px;
   flex: 1;
 }
-
 .header-title {
   color: white;
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.3px;
   flex: 1;
+  padding: 0 !important;
 }
 
 .vehiculo-nombre {
@@ -2002,11 +2051,18 @@ onUnmounted(() => {
 /* === CARPETAS / GRUPOS === */
 /* ============================================ */
 .grupos-scroll-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
-  padding: 8px 20px;
+  padding: 8px 12px;
 }
 
+.grupos-nav-btn {
+  flex-shrink: 0;
+  color: #757575;
+}
 .grupos-chips-row::-webkit-scrollbar {
   display: none;
 }
@@ -2018,6 +2074,8 @@ onUnmounted(() => {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
 }
 
 .grupo-chip {
@@ -2181,6 +2239,12 @@ onUnmounted(() => {
 }
 
 .vehiculo-conductor {
+  font-size: 12px;
+  color: #757575;
+  display: flex;
+  align-items: center;
+}
+.vehiculo-relay {
   font-size: 12px;
   color: #757575;
   display: flex;
