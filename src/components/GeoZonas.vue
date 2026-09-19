@@ -65,81 +65,56 @@
           </template>
         </q-input>
 
-        <!--  BOTÓN CREAR GRUPO -->
-        <q-btn
-          outline
-          dense
-          icon="create_new_folder"
-          label="Crear Grupo"
-          color="orange"
-          class="full-width q-mt-sm crear-grupo-btn"
-          @click="dialogNuevoGrupo = true"
-        >
-          <q-tooltip>Crear un nuevo grupo para organizar ubicaciones</q-tooltip>
-        </q-btn>
       </div>
+      <!-- ===== GRUPOS (chips horizontales) ===== -->
+      <div class="grupos-scroll-wrapper">
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_left"
+          class="grupos-nav-btn"
+          @click="scrollGruposUbicaciones(-1)"
+        />
 
-      <!-- Filtro por grupos POIs -->
-      <!-- Filtro por grupos POIs -->
-      <div class="q-px-md q-pb-md" v-if="grupos.length > 0">
-        <!-- Header colapsable -->
-        <div class="filtro-header" @click="filtrosExpandidosPOI = !filtrosExpandidosPOI">
-          <div class="text-caption text-grey-7 text-weight-medium">FILTRAR POR GRUPO</div>
-          <div class="filtro-actions">
-            <q-chip dense color="primary" text-color="white" size="sm">
-              {{ grupoSeleccionado !== null ? '1 filtro activo' : 'Sin filtros' }}
-            </q-chip>
-            <q-icon
-              :name="filtrosExpandidosPOI ? 'expand_less' : 'expand_more'"
-              size="20px"
-              color="grey-7"
-            />
+        <div
+          class="grupos-chips-row"
+          ref="gruposChipsRowRef"
+          @wheel.prevent="onWheelGruposUbicaciones"
+        >
+          <div
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionado === null }"
+            @click="grupoSeleccionado = null"
+          >
+            <q-icon name="apps" size="16px" />
+            <span>Todos</span>
+            <q-badge dense color="grey-6">{{ totalPOIs }}</q-badge>
+          </div>
+
+          <div
+            v-for="grupo in grupos"
+            :key="grupo.id"
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionado === grupo.id }"
+            :style="grupoSeleccionado === grupo.id ? { borderColor: grupo.color, background: grupo.color + '18' } : {}"
+            @click="grupoSeleccionado = grupo.id"
+          >
+            <span class="grupo-color-dot" :style="{ background: grupo.color }"></span>
+            <span>{{ grupo.nombre }}</span>
+            <q-badge dense color="grey-6">{{ contarPOIPorGrupo(grupo.id) }}</q-badge>
+          </div>
+
+          <div class="grupo-chip grupo-chip-nuevo" @click="dialogNuevoGrupo = true">
+            <q-icon name="create_new_folder" size="16px" />
+            <span>Nuevo grupo</span>
           </div>
         </div>
 
-        <!-- Chips colapsables -->
-        <q-slide-transition>
-          <div v-show="filtrosExpandidosPOI" class="chips-container q-mt-sm">
-            <!--  CHIP "TODOS" -->
-            <q-chip
-              :outline="grupoSeleccionado !== null"
-              color="primary"
-              text-color="white"
-              clickable
-              @click="grupoSeleccionado = null"
-            >
-              <q-avatar
-                v-if="grupoSeleccionado === null"
-                icon="check"
-                color="white"
-                text-color="primary"
-              />
-              Todos ({{ totalPOIs }})
-            </q-chip>
-
-            <!--  CHIPS DE GRUPOS -->
-            <q-chip
-              v-for="grupo in grupos"
-              :key="grupo.id"
-              :outline="grupoSeleccionado !== grupo.id"
-              :style="{
-                background: grupoSeleccionado === grupo.id ? grupo.color : 'transparent',
-                borderColor: grupo.color,
-                color: grupoSeleccionado === grupo.id ? 'white' : grupo.color,
-              }"
-              clickable
-              @click="grupoSeleccionado = grupo.id"
-            >
-              <q-avatar
-                v-if="grupoSeleccionado === grupo.id"
-                icon="check"
-                color="white"
-                :text-color="grupo.color"
-              />
-              {{ grupo.nombre }} ({{ contarPOIPorGrupo(grupo.id) }})
-            </q-chip>
-          </div>
-        </q-slide-transition>
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_right"
+          class="grupos-nav-btn"
+          @click="scrollGruposUbicaciones(1)"
+        />
       </div>
 
       <!-- Lista de POIs con diseño moderno -->
@@ -246,37 +221,60 @@
             <q-icon name="close" class="cursor-pointer" @click="busquedaGeozona = ''" />
           </template>
         </q-input>
-
-        <!--  BOTÓN CREAR GRUPO -->
-        <q-btn
-          outline
-          dense
-          icon="create_new_folder"
-          label="Crear Grupo"
-          color="orange"
-          class="full-width q-mt-sm crear-grupo-btn"
-          @click="dialogNuevoGrupo = true"
-        >
-          <q-tooltip>Crear un nuevo grupo para organizar ubicaciones</q-tooltip>
-        </q-btn>
       </div>
 
       <!-- Filtro por grupos Geozonas -->
       <div class="q-px-md q-pb-md" v-if="grupos.length > 0">
-        <!-- Header colapsable -->
-        <div class="filtro-header" @click="filtrosExpandidosGZ = !filtrosExpandidosGZ">
-          <div class="text-caption text-grey-7 text-weight-medium">FILTRAR POR GRUPO</div>
-          <div class="filtro-actions">
-            <q-chip dense color="secondary" text-color="white" size="sm">
-              {{ grupoSeleccionadoGZ !== null ? '1 filtro activo' : 'Sin filtros' }}
-            </q-chip>
-            <q-icon
-              :name="filtrosExpandidosGZ ? 'expand_less' : 'expand_more'"
-              size="20px"
-              color="grey-7"
-            />
+        <!-- ===== GRUPOS (chips horizontales) ===== -->
+      <div class="grupos-scroll-wrapper">
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_left"
+          class="grupos-nav-btn"
+          @click="scrollGruposUbicaciones(-1)"
+        />
+
+        <div
+          class="grupos-chips-row"
+          ref="gruposChipsRowRef"
+          @wheel.prevent="onWheelGruposUbicaciones"
+        >
+          <div
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionadoGZ === null }"
+            @click="grupoSeleccionadoGZ = null"
+          >
+            <q-icon name="apps" size="16px" />
+            <span>Todos</span>
+            <q-badge dense color="grey-6">{{ totalGeozonas }}</q-badge>
+          </div>
+
+          <div
+            v-for="grupo in grupos"
+            :key="grupo.id"
+            class="grupo-chip"
+            :class="{ 'grupo-chip-activo': grupoSeleccionadoGZ === grupo.id }"
+            :style="grupoSeleccionadoGZ === grupo.id ? { borderColor: grupo.color, background: grupo.color + '18' } : {}"
+            @click="grupoSeleccionadoGZ = grupo.id"
+          >
+            <span class="grupo-color-dot" :style="{ background: grupo.color }"></span>
+            <span>{{ grupo.nombre }}</span>
+            <q-badge dense color="grey-6">{{ contarGeozonaPorGrupo(grupo.id) }}</q-badge>
+          </div>
+
+          <div class="grupo-chip grupo-chip-nuevo" @click="dialogNuevoGrupo = true">
+            <q-icon name="create_new_folder" size="16px" />
+            <span>Nuevo grupo</span>
           </div>
         </div>
+
+        <q-btn
+          flat dense round size="sm"
+          icon="chevron_right"
+          class="grupos-nav-btn"
+          @click="scrollGruposUbicaciones(1)"
+        />
+      </div>
 
         <!-- Chips colapsables -->
         <q-slide-transition>
@@ -1583,8 +1581,21 @@ const modoSeleccionGeozonaPoligonal = ref(false)
 const posicionMouseActual = ref(null)
 const lineaPreview = ref(null)
 const poligonoPreview = ref(null)
-const filtrosExpandidosPOI = ref(false)
+
 const filtrosExpandidosGZ = ref(false)
+const gruposChipsRowRef = ref(null)
+
+function scrollGruposUbicaciones(direccion) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollBy({ left: direccion * 160, behavior: 'smooth' })
+}
+
+function onWheelGruposUbicaciones(e) {
+  const el = gruposChipsRowRef.value
+  if (!el) return
+  el.scrollLeft += e.deltaY
+}
 
 const nuevoPOI = ref({
   nombre: '',
@@ -4173,39 +4184,74 @@ defineExpose({
     transform: scale(1) rotate(0deg);
   }
 }
-/*  HEADER DE FILTROS COLAPSABLE */
-.filtro-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: white;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.filtro-header:hover {
-  background: #f5f7fa;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.filtro-actions {
+.grupos-scroll-wrapper {
   display: flex;
   align-items: center;
+  gap: 4px;
+  padding: 0 16px 16px;
+}
+
+.grupos-nav-btn {
+  flex-shrink: 0;
+  color: #9ca3af;
+}
+
+.grupos-chips-row {
+  display: flex;
   gap: 8px;
+  height: 40px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
 }
 
-/* Animación del icono de expandir */
-.filtro-header .q-icon {
-  transition: transform 0.3s ease;
+.grupos-chips-row::-webkit-scrollbar {
+  display: none;
 }
 
-.filtro-header:hover .q-icon {
-  transform: scale(1.2);
+.grupo-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #424242;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+
+.grupo-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.grupo-chip-activo {
+  font-weight: 600;
+}
+
+.grupo-chip-nuevo {
+  border-style: dashed;
+  border-color: #fb923c;
+  color: #ea580c;
+  background: #fff7ed;
+}
+
+.grupo-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 
 /* ===== NUEVO DISEÑO DIALOGS ===== */
 .form-body {
